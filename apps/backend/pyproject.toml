@@ -1,0 +1,214 @@
+[tool.poetry]
+name = "all-saints-backend"
+version = "1.0.0"
+description = "Encyklopedia Świętych Kościoła Katolickiego – Backend API"
+authors = ["All Saints Team <dev@all-saints.local>"]
+readme = "README.md"
+packages = [{ include = "src" }]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+
+# ==============================================================================
+# WEB FRAMEWORK
+# ==============================================================================
+fastapi = "^0.111.0"
+uvicorn = { version = "^0.30.0", extras = ["standard"] }
+gunicorn = "^22.0.0"
+
+# ==============================================================================
+# DATABASE
+# ==============================================================================
+sqlalchemy = "^2.0.30"
+asyncpg = "^0.29.0"         # async PostgreSQL driver
+psycopg2-binary = "^2.9.9"  # sync driver (Alembic)
+alembic = "^1.13.1"
+pgvector = "^0.3.0"         # vector similarity search
+
+# ==============================================================================
+# CACHING & MESSAGING
+# ==============================================================================
+redis = { version = "^5.0.4", extras = ["hiredis"] }
+celery = { version = "^5.4.0", extras = ["redis"] }
+celery-beat = "^2.7.0"
+flower = "^2.0.1"
+
+# ==============================================================================
+# AUTHENTICATION & SECURITY
+# ==============================================================================
+python-jose = { version = "^3.3.0", extras = ["cryptography"] }
+passlib = { version = "^1.7.4", extras = ["bcrypt"] }
+cryptography = "^42.0.5"
+python-multipart = "^0.0.9"
+
+# ==============================================================================
+# VALIDATION & SERIALIZATION
+# ==============================================================================
+pydantic = { version = "^2.7.0", extras = ["email"] }
+pydantic-settings = "^2.3.0"
+
+# ==============================================================================
+# HTTP & STORAGE
+# ==============================================================================
+httpx = "^0.27.0"
+boto3 = "^1.34.0"       # S3 / MinIO
+aiofiles = "^23.2.1"
+pillow = "^10.3.0"       # Image processing
+
+# ==============================================================================
+# EXPORTS
+# ==============================================================================
+openpyxl = "^3.1.2"        # Excel
+python-docx = "^1.1.0"     # Word documents
+weasyprint = "^62.3"        # PDF generation
+jinja2 = "^3.1.4"           # HTML templates for PDF
+lxml = "^5.2.1"             # XML processing
+
+# ==============================================================================
+# SEARCH & AI
+# ==============================================================================
+openai = "^1.30.1"          # OpenAI API (optional)
+tiktoken = "^0.7.0"         # Token counting
+
+# ==============================================================================
+# UTILITIES
+# ==============================================================================
+loguru = "^0.7.2"
+sentry-sdk = { version = "^2.4.0", extras = ["fastapi"] }
+prometheus-fastapi-instrumentator = "^7.0.0"
+python-slugify = "^8.0.4"
+babel = "^2.15.0"           # Internationalization
+pytz = "^2024.1"
+arrow = "^1.3.0"
+tenacity = "^8.3.0"         # Retry logic
+orjson = "^3.10.3"          # Fast JSON
+unidecode = "^1.3.8"        # Unicode to ASCII (search normalization)
+fuzzywuzzy = "^0.18.0"      # Fuzzy matching for dedup
+python-levenshtein = "^0.25.1"
+
+# ==============================================================================
+# IMPORT PARSING
+# ==============================================================================
+pandas = "^2.2.2"           # Data manipulation for imports
+xlrd = "^2.0.1"             # Excel reading
+chardet = "^5.2.0"          # Encoding detection
+
+[tool.poetry.group.dev.dependencies]
+# Testing
+pytest = "^8.2.0"
+pytest-asyncio = "^0.23.7"
+pytest-cov = "^5.0.0"
+pytest-mock = "^3.14.0"
+httpx = "^0.27.0"           # Test client
+factory-boy = "^3.3.0"      # Test factories
+faker = "^25.2.0"           # Fake data
+testcontainers = { version = "^4.4.0", extras = ["postgres", "redis"] }
+
+# Code Quality
+ruff = "^0.4.5"
+black = "^24.4.2"
+mypy = "^1.10.0"
+pre-commit = "^3.7.1"
+
+# Type stubs
+types-redis = "^4.6.0.20240425"
+types-passlib = "^1.7.7.20240327"
+types-python-jose = "^3.3.4.20240106"
+boto3-stubs = { version = "^1.34.0", extras = ["s3"] }
+
+[tool.poetry.group.docs.dependencies]
+mkdocs = "^1.6.0"
+mkdocs-material = "^9.5.25"
+mkdocstrings = { version = "^0.25.1", extras = ["python"] }
+
+# ==============================================================================
+# TOOL CONFIGURATIONS
+# ==============================================================================
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "-ra",
+    "--cov=src",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+    "--cov-fail-under=80",
+]
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "e2e: End-to-end tests",
+    "slow: Slow tests",
+]
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+include = '\.pyi?$'
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+    "N",  # pep8-naming
+    "S",  # flake8-bandit (security)
+    "ANN",# flake8-annotations
+]
+ignore = [
+    "E501",   # line too long (handled by black)
+    "B008",   # do not perform function calls in default arguments (FastAPI Depends)
+    "S101",   # use of assert (pytest)
+    "ANN101", # missing type annotation for self
+    "ANN102", # missing type annotation for cls
+]
+exclude = [
+    ".git",
+    ".venv",
+    "alembic/versions",
+    "__pycache__",
+]
+
+[tool.ruff.per-file-ignores]
+"tests/**/*.py" = ["S", "ANN"]
+"alembic/**/*.py" = ["ANN", "E501"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+plugins = ["pydantic.mypy", "sqlalchemy.ext.mypy.plugin"]
+exclude = ["alembic/", "tests/"]
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "src/infrastructure/db/seed.py",
+    "*/migrations/*",
+    "alembic/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@abstract",
+]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

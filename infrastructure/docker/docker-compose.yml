@@ -1,0 +1,339 @@
+# ==============================================================================
+# Docker Compose – Development Stack
+# Encyklopedia Świętych Kościoła Katolickiego
+# ==============================================================================
+
+name: all-saints-dev
+
+services:
+
+  # ============================================================
+  # DATABASE
+  # ============================================================
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: saints-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-all_saints}
+      POSTGRES_USER: ${POSTGRES_USER:-saints_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-saints_dev_password}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --locale=pl_PL.utf8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./apps/backend/scripts/sql/init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-saints_user} -d ${POSTGRES_DB:-all_saints}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - saints-network
+
+  # ============================================================
+  # REDIS
+  # ============================================================
+  redis:
+    image: redis:7.2-alpine
+    container_name: saints-redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - saints-network
+
+  # ============================================================
+  # BACKEND – FastAPI
+  # ============================================================
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: saints-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-saints_user}:${POSTGRES_PASSWORD:-saints_dev_password}@db:5432/${POSTGRES_DB:-all_saints}
+      DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-saints_user}:${POSTGRES_PASSWORD:-saints_dev_password}@db:5432/${POSTGRES_DB:-all_saints}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    volumes:
+      - ./apps/backend:/app
+      - backend_deps:/app/.venv
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - saints-network
+
+  # ============================================================
+  # CELERY WORKER
+  # ============================================================
+  celery-worker:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: saints-celery-worker
+    restart: unless-stopped
+    command: celery -A src.workers.celery_app worker --loglevel=info --concurrency=4 -Q default,exports,imports,ai
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-saints_user}:${POSTGRES_PASSWORD:-saints_dev_password}@db:5432/${POSTGRES_DB:-all_saints}
+      DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-saints_user}:${POSTGRES_PASSWORD:-saints_dev_password}@db:5432/${POSTGRES_DB:-all_saints}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    volumes:
+      - ./apps/backend:/app
+    depends_on:
+      - redis
+      - db
+    networks:
+      - saints-network
+
+  # ============================================================
+  # CELERY BEAT (Scheduler)
+  # ============================================================
+  celery-beat:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: saints-celery-beat
+    restart: unless-stopped
+    command: celery -A src.workers.celery_app beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-saints_user}:${POSTGRES_PASSWORD:-saints_dev_password}@db:5432/${POSTGRES_DB:-all_saints}
+      CELERY_BROKER_URL: redis://redis:6379/1
+    volumes:
+      - ./apps/backend:/app
+    depends_on:
+      - redis
+      - db
+    networks:
+      - saints-network
+
+  # ============================================================
+  # FLOWER – Celery Monitoring UI
+  # ============================================================
+  flower:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: saints-flower
+    restart: unless-stopped
+    command: celery -A src.workers.celery_app flower --port=5555 --basic_auth=${FLOWER_BASIC_AUTH:-admin:flower_dev_password}
+    env_file:
+      - .env
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    ports:
+      - "${FLOWER_PORT:-5555}:5555"
+    depends_on:
+      - redis
+      - celery-worker
+    networks:
+      - saints-network
+
+  # ============================================================
+  # MINIO – Object Storage (S3-compatible)
+  # ============================================================
+  minio:
+    image: minio/minio:RELEASE.2024-01-16T16-07-38Z
+    container_name: saints-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin123}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"   # API
+      - "9001:9001"   # Console UI
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - saints-network
+
+  # ============================================================
+  # MAILHOG – Email Testing (dev only)
+  # ============================================================
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: saints-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI
+    networks:
+      - saints-network
+
+  # ============================================================
+  # ADMIN – Next.js Admin Panel
+  # ============================================================
+  admin:
+    build:
+      context: ./apps/admin
+      dockerfile: Dockerfile
+      target: development
+    container_name: saints-admin
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    volumes:
+      - ./apps/admin:/app
+      - admin_node_modules:/app/node_modules
+    ports:
+      - "3001:3001"
+    depends_on:
+      - backend
+    networks:
+      - saints-network
+
+  # ============================================================
+  # WEB – Next.js Public Frontend
+  # ============================================================
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+      target: development
+    container_name: saints-web
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    volumes:
+      - ./apps/web:/app
+      - web_node_modules:/app/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - saints-network
+
+  # ============================================================
+  # PROMETHEUS
+  # ============================================================
+  prometheus:
+    image: prom/prometheus:v2.49.0
+    container_name: saints-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    volumes:
+      - ./infrastructure/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    networks:
+      - saints-network
+
+  # ============================================================
+  # GRAFANA
+  # ============================================================
+  grafana:
+    image: grafana/grafana:10.2.3
+    container_name: saints-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-grafana_dev_password}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: http://localhost:3002
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infrastructure/monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./infrastructure/monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    ports:
+      - "${GRAFANA_PORT:-3002}:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - saints-network
+
+  # ============================================================
+  # NGINX – Reverse Proxy (dev)
+  # ============================================================
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: saints-nginx
+    restart: unless-stopped
+    volumes:
+      - ./infrastructure/nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+      - admin
+      - web
+    networks:
+      - saints-network
+
+# ==============================================================================
+# VOLUMES
+# ==============================================================================
+volumes:
+  postgres_data:
+    name: saints_postgres_data
+  redis_data:
+    name: saints_redis_data
+  minio_data:
+    name: saints_minio_data
+  prometheus_data:
+    name: saints_prometheus_data
+  grafana_data:
+    name: saints_grafana_data
+  backend_deps:
+    name: saints_backend_deps
+  admin_node_modules:
+    name: saints_admin_node_modules
+  web_node_modules:
+    name: saints_web_node_modules
+
+# ==============================================================================
+# NETWORKS
+# ==============================================================================
+networks:
+  saints-network:
+    name: saints-network
+    driver: bridge
