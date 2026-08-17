@@ -16,7 +16,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.services.person_service import PersonService
@@ -85,6 +85,13 @@ async def list_persons(
     status_code=status.HTTP_201_CREATED,
     summary="Create person",
     description="Create a new person entry in the hagiographic catalogue.",
+    responses={
+        201: {"description": "Person created together with the first version snapshot"},
+        401: {"description": "Missing or invalid JWT"},
+        403: {"description": "Missing persons:create permission"},
+        409: {"description": "Database constraint conflict"},
+        422: {"description": "Payload validation failed"},
+    },
 )
 async def create_person(
     data: PersonCreateSchema,
@@ -149,6 +156,8 @@ async def update_person(
 @router.delete(
     "/{person_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    response_model=None,
     summary="Soft-delete person",
     description="Soft-delete a person entry.",
 )

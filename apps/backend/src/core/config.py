@@ -8,10 +8,10 @@ from __future__ import annotations
 from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 from pydantic import AnyHttpUrl, EmailStr, PostgresDsn, RedisDsn, field_validator, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 # ==============================================================================
@@ -80,7 +80,10 @@ class Settings(BaseSettings):
     BACKEND_RELOAD: bool = False
 
     # ── CORS ───────────────────────────────────────────────────────────────────
-    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:3001"]
+    CORS_ORIGINS: Annotated[list[str], NoDecode] = [
+        "http://localhost:3000",
+        "http://localhost:3001",
+    ]
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
@@ -142,9 +145,9 @@ class Settings(BaseSettings):
 
     # ── Security ───────────────────────────────────────────────────────────────
     BCRYPT_ROUNDS: int = 12
-    ALLOWED_HOSTS: list[str] = ["localhost", "127.0.0.1"]
+    ALLOWED_HOSTS: Annotated[list[str], NoDecode] = ["localhost", "127.0.0.1"]
     SECURE_COOKIES: bool = False
-    CSRF_TRUSTED_ORIGINS: list[str] = []
+    CSRF_TRUSTED_ORIGINS: Annotated[list[str], NoDecode] = []
 
     @field_validator("ALLOWED_HOSTS", "CSRF_TRUSTED_ORIGINS", mode="before")
     @classmethod
@@ -181,7 +184,7 @@ class Settings(BaseSettings):
     SMTP_PORT: int = 1025
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
-    SMTP_FROM: EmailStr = "noreply@all-saints.local"
+    SMTP_FROM: EmailStr = "noreply@encyklopedia.pl"
     SMTP_TLS: bool = False
     SMTP_SSL: bool = False
 
@@ -195,7 +198,7 @@ class Settings(BaseSettings):
     EMBEDDING_DIMENSIONS: int = 1536
 
     # ── Initial Admin ──────────────────────────────────────────────────────────
-    INITIAL_ADMIN_EMAIL: EmailStr = "admin@all-saints.local"
+    INITIAL_ADMIN_EMAIL: EmailStr = "admin@encyklopedia.pl"
     INITIAL_ADMIN_PASSWORD: str = ""
     INITIAL_ADMIN_FULL_NAME: str = "System Administrator"
 

@@ -8,9 +8,26 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from src.domain.hagiography.models import Era, Gender, LiturgicalColor, PersonType, PublicationStatus
+
+
+OPTIONAL_UUID_FIELDS = (
+    "birth_place_id",
+    "death_place_id",
+    "birth_country_id",
+    "death_country_id",
+    "nationality_id",
+    "state_of_life_id",
+)
+
+
+def _blank_as_none(value: Any) -> Any:
+    """Treat blank HTML form values as an omitted optional field."""
+    if isinstance(value, str) and not value.strip():
+        return None
+    return value
 
 
 # ==============================================================================
@@ -59,11 +76,40 @@ class PersonBaseSchema(BaseModel):
     is_featured: bool = False
     external_ids: dict[str, Any] | None = None
 
+    @field_validator(*OPTIONAL_UUID_FIELDS, "era", "liturgical_color", mode="before")
+    @classmethod
+    def normalize_optional_selects(cls, value: Any) -> Any:
+        """Accept the empty value emitted by native HTML select controls."""
+        return _blank_as_none(value)
+
 
 class PersonCreateSchema(PersonBaseSchema):
     """Payload for creating a new Person."""
 
     status: PublicationStatus = Field(default=PublicationStatus.DRAFT)
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "canonical_name": "Św. Jan Paweł II",
+                    "canonical_name_en": "St. John Paul II",
+                    "person_type": "saint",
+                    "status": "draft",
+                    "gender": "male",
+                    "era": "modern",
+                    "birth_year": 1920,
+                    "death_year": 2005,
+                    "birth_country_id": None,
+                    "death_country_id": None,
+                    "state_of_life_id": None,
+                    "summary_pl": "Papież Kościoła katolickiego w latach 1978–2005.",
+                    "biography_pl": "Biogram przygotowany przez redakcję.",
+                    "is_featured": False,
+                }
+            ]
+        }
+    )
 
 
 class PersonUpdateSchema(BaseModel):
@@ -108,6 +154,12 @@ class PersonUpdateSchema(BaseModel):
     is_featured: bool | None = None
     external_ids: dict[str, Any] | None = None
     change_summary: str | None = Field(None, description="Optional description of changes for version log")
+
+    @field_validator(*OPTIONAL_UUID_FIELDS, "era", "liturgical_color", mode="before")
+    @classmethod
+    def normalize_optional_selects(cls, value: Any) -> Any:
+        """Accept the empty value emitted by native HTML select controls."""
+        return _blank_as_none(value)
 
 
 # ==============================================================================

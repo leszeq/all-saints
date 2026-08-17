@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { personsApi, geographyApi, taxonomyApi } from "@/lib/api";
+import { getApiErrorMessage, personsApi, geographyApi, taxonomyApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const personSchema = z.object({
@@ -18,8 +18,8 @@ const personSchema = z.object({
   status: z.enum(["draft", "review", "published", "archived"]),
   gender: z.enum(["male", "female", "unknown"]),
   era: z.string().optional(),
-  birth_year: z.union([z.number(), z.string()]).optional().nullable(),
-  death_year: z.union([z.number(), z.string()]).optional().nullable(),
+  birth_year: z.number().int().min(-5000).max(2100).optional().nullable(),
+  death_year: z.number().int().min(-5000).max(2100).optional().nullable(),
   birth_country_id: z.string().optional().nullable(),
   death_country_id: z.string().optional().nullable(),
   state_of_life_id: z.string().optional().nullable(),
@@ -30,6 +30,33 @@ const personSchema = z.object({
 });
 
 type PersonFormData = z.infer<typeof personSchema>;
+
+function normalizePersonPayload(data: PersonFormData, isEdit: boolean) {
+  const optionalText = (value?: string | null) => {
+    const normalized = value?.trim();
+    return normalized ? normalized : null;
+  };
+  const optionalId = (value?: string | null) => value || null;
+  const { change_summary, ...personFields } = data;
+
+  return {
+    ...personFields,
+    canonical_name: data.canonical_name.trim(),
+    canonical_name_en: optionalText(data.canonical_name_en),
+    latin_name: optionalText(data.latin_name),
+    era: data.era || null,
+    birth_year: Number.isFinite(data.birth_year) ? data.birth_year : null,
+    death_year: Number.isFinite(data.death_year) ? data.death_year : null,
+    birth_country_id: optionalId(data.birth_country_id),
+    death_country_id: optionalId(data.death_country_id),
+    state_of_life_id: optionalId(data.state_of_life_id),
+    summary_pl: optionalText(data.summary_pl),
+    biography_pl: optionalText(data.biography_pl),
+    ...(isEdit ? { change_summary: optionalText(change_summary) } : {}),
+  };
+}
+
+type PersonPayload = ReturnType<typeof normalizePersonPayload>;
 
 const TABS = [
   { id: "basic", label: "Dane podstawowe" },
@@ -48,25 +75,24 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("basic");
 
-  const { data: countriesData } = useQuery({
+  const countriesQuery = useQuery({
     queryKey: ["countries"],
     queryFn: () => geographyApi.countries(),
     staleTime: Infinity,
   });
-  const { data: statesData } = useQuery({
+  const statesQuery = useQuery({
     queryKey: ["states-of-life"],
     queryFn: () => taxonomyApi.statesOfLife(),
     staleTime: Infinity,
   });
 
-  const countries = countriesData?.data ?? [];
-  const statesOfLife = statesData?.data ?? [];
+  const countries = countriesQuery.data?.data ?? [];
+  const statesOfLife = statesQuery.data?.data ?? [];
 
   const {
     register,
     handleSubmit,
     formState: { errors, isDirty },
-    watch,
   } = useForm<PersonFormData>({
     resolver: zodResolver(personSchema),
     defaultValues: {
@@ -79,7 +105,7 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: PersonFormData) => personsApi.create(data),
+    mutationFn: (data: PersonPayload) => personsApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["persons"] });
       router.push("/dashboard/persons");
@@ -87,7 +113,7 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: PersonFormData) => personsApi.update(personId!, data),
+    mutationFn: (data: PersonPayload) => personsApi.update(personId!, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["persons"] });
       router.push(`/dashboard/persons/${personId}`);
@@ -97,7 +123,7 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
   const mutation = isEdit ? updateMutation : createMutation;
 
   const onSubmit = (data: PersonFormData) => {
-    mutation.mutate(data);
+    mutation.mutate(normalizePersonPayload(data, Boolean(isEdit)));
   };
 
   const inputCls =
@@ -179,23 +205,38 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
             <label className={labelCls}>Era</label>
             <select {...register("era")} className={inputCls}>
               <option value="">—</option>
-              <option value="ancient">Starożytność</option>
-              <option value="early_christian">Wczesnochrześcijańska</option>
+              <option value="apostolic">Epoka apostolska (I w.)</option>
+              <option value="early_church">Wczesny Kościół (II–V w.)</option>
+              <option value="late_antiquity">Późna starożytność (V–VII w.)</option>
               <option value="medieval">Średniowiecze</option>
               <option value="early_modern">Nowożytność</option>
-              <option value="modern">Nowoczesność</option>
-              <option value="contemporary">Współczesność</option>
+              <option value="modern">Epoka nowoczesna (XIX–XX w.)</option>
+              <option value="contemporary">Współczesność (XXI w.)</option>
             </select>
           </div>
 
           <div>
             <label className={labelCls}>Stan życia</label>
-            <select {...register("state_of_life_id")} className={inputCls}>
+            <select
+              {...register("state_of_life_id")}
+              className={inputCls}
+              disabled={statesQuery.isLoading || statesQuery.isError || statesOfLife.length === 0}
+            >
               <option value="">—</option>
+              {statesQuery.isLoading && <option>Ładowanie danych…</option>}
+              {statesQuery.isError && <option>Nie udało się pobrać danych</option>}
+              {!statesQuery.isLoading && !statesQuery.isError && statesOfLife.length === 0 && (
+                <option>Brak danych słownikowych</option>
+              )}
               {statesOfLife.map((s: Record<string, string>) => (
                 <option key={s.id} value={s.id}>{s.name_pl}</option>
               ))}
             </select>
+            {statesQuery.isError && (
+              <button type="button" onClick={() => statesQuery.refetch()} className="mt-1 text-xs text-primary hover:underline">
+                Spróbuj pobrać ponownie
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-2 sm:col-span-2">
@@ -219,7 +260,9 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
             <label className={labelCls}>Rok urodzenia</label>
             <input
               type="number"
-              {...register("birth_year", { valueAsNumber: true })}
+              {...register("birth_year", {
+                setValueAs: (value) => value === "" ? null : Number(value),
+              })}
               className={inputCls}
               placeholder="np. 1181"
             />
@@ -229,7 +272,9 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
             <label className={labelCls}>Rok śmierci</label>
             <input
               type="number"
-              {...register("death_year", { valueAsNumber: true })}
+              {...register("death_year", {
+                setValueAs: (value) => value === "" ? null : Number(value),
+              })}
               className={inputCls}
               placeholder="np. 1226"
             />
@@ -237,8 +282,17 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
 
           <div>
             <label className={labelCls}>Kraj urodzenia</label>
-            <select {...register("birth_country_id")} className={inputCls}>
+            <select
+              {...register("birth_country_id")}
+              className={inputCls}
+              disabled={countriesQuery.isLoading || countriesQuery.isError || countries.length === 0}
+            >
               <option value="">—</option>
+              {countriesQuery.isLoading && <option>Ładowanie krajów…</option>}
+              {countriesQuery.isError && <option>Nie udało się pobrać krajów</option>}
+              {!countriesQuery.isLoading && !countriesQuery.isError && countries.length === 0 && (
+                <option>Brak krajów w bazie</option>
+              )}
               {countries.map((c: Record<string, string>) => (
                 <option key={c.id} value={c.id}>{c.name_pl}</option>
               ))}
@@ -247,13 +301,29 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
 
           <div>
             <label className={labelCls}>Kraj śmierci</label>
-            <select {...register("death_country_id")} className={inputCls}>
+            <select
+              {...register("death_country_id")}
+              className={inputCls}
+              disabled={countriesQuery.isLoading || countriesQuery.isError || countries.length === 0}
+            >
               <option value="">—</option>
+              {countriesQuery.isLoading && <option>Ładowanie krajów…</option>}
+              {countriesQuery.isError && <option>Nie udało się pobrać krajów</option>}
+              {!countriesQuery.isLoading && !countriesQuery.isError && countries.length === 0 && (
+                <option>Brak krajów w bazie</option>
+              )}
               {countries.map((c: Record<string, string>) => (
                 <option key={c.id} value={c.id}>{c.name_pl}</option>
               ))}
             </select>
           </div>
+          {countriesQuery.isError && (
+            <div className="sm:col-span-2">
+              <button type="button" onClick={() => countriesQuery.refetch()} className="text-xs text-primary hover:underline">
+                Spróbuj ponownie pobrać listę krajów
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -317,8 +387,8 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
       </div>
 
       {mutation.isError && (
-        <p className="text-sm text-destructive text-center">
-          Wystąpił błąd podczas zapisu. Spróbuj ponownie.
+        <p role="alert" className="rounded-lg border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          {getApiErrorMessage(mutation.error)}
         </p>
       )}
     </form>

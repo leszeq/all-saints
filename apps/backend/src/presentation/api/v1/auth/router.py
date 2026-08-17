@@ -11,10 +11,12 @@ Endpoints:
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from loguru import logger
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
@@ -22,10 +24,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.core.security import JWTService, PasswordHasher, is_strong_password, jwt_service, password_hasher
-from src.domain.identity.models import RefreshToken, User, UserStatus
+from src.domain.identity.models import RefreshToken, Role, RolePermission, User, UserRole, UserStatus
 from src.infrastructure.db.session import get_db_session
 
 router = APIRouter()
+bearer_scheme = HTTPBearer(
+    auto_error=False,
+    description="JWT otrzymany z endpointu POST /api/v1/auth/login",
+)
 
 
 # ==============================================================================
@@ -76,7 +82,7 @@ class ChangePasswordRequest(BaseModel):
 
 
 async def get_current_user(
-    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db_session),
 ) -> User:
     """
@@ -93,12 +99,12 @@ async def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    # Extract token from Authorization header
-    authorization = request.headers.get("Authorization", "")
-    if not authorization.startswith("Bearer "):
+    # Extract token from Authorization header. HTTPBearer also exposes the
+    # authentication flow in Swagger UI.
+    if credentials is None or credentials.scheme.lower() != "bearer":
         raise credentials_exception
 
-    token = authorization.removeprefix("Bearer ").strip()
+    token = credentials.credentials.strip()
     if not token:
         raise credentials_exception
 
@@ -112,7 +118,12 @@ async def get_current_user(
     # Load user
     result = await db.execute(
         select(User)
-        .options(selectinload(User.roles).selectinload(UserRole.role).selectinload(Role.permissions))
+        .options(
+            selectinload(User.roles)
+            .selectinload(UserRole.role)
+            .selectinload(Role.permissions)
+            .selectinload(RolePermission.permission)
+        )
         .where(User.id == payload.user_id)
         .where(User.deleted_at.is_(None))
     )
@@ -136,7 +147,7 @@ async def get_current_user(
     return user
 
 
-async def require_permission(resource: str, action: str):
+def require_permission(resource: str, action: str) -> Callable[..., Awaitable[User]]:
     """
     Factory for permission-checking dependencies.
 
@@ -156,10 +167,6 @@ async def require_permission(resource: str, action: str):
             )
         return user
     return _check
-
-
-# Fix imports for type checker
-from src.domain.identity.models import UserRole, Role  # noqa: E402
 
 
 # ==============================================================================
@@ -351,6 +358,8 @@ async def refresh_token(
 @router.post(
     "/logout",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    response_model=None,
     summary="Logout",
     description="Revoke the refresh token and clear the cookie.",
 )
@@ -398,6 +407,8 @@ async def get_me(current_user: User = Depends(get_current_user)) -> UserProfileR
 @router.post(
     "/change-password",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    response_model=None,
     summary="Change password",
     description="Change the current user's password.",
 )

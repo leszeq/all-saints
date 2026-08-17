@@ -9,6 +9,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+from fastapi.encoders import jsonable_encoder
 from slugify import slugify
 from sqlalchemy import func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -97,7 +98,7 @@ class PersonService:
         version_snapshot = PersonVersion(
             person_id=person.id,
             version_number=1,
-            snapshot=person.to_dict(),
+            snapshot=jsonable_encoder(person.to_dict()),
             changed_by_id=user_id,
             changed_at=datetime.now(timezone.utc).isoformat(),
             change_summary="Utworzenie rekordu",
@@ -197,7 +198,7 @@ class PersonService:
         version_snapshot = PersonVersion(
             person_id=person.id,
             version_number=person.version,
-            snapshot=person.to_dict(),
+            snapshot=jsonable_encoder(person.to_dict()),
             changed_by_id=user_id,
             changed_at=datetime.now(timezone.utc).isoformat(),
             change_summary=data.change_summary or "Aktualizacja danych",

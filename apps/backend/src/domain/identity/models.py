@@ -243,7 +243,6 @@ class User(BaseModel, Base):
         String(30),
         nullable=False,
         default=UserStatus.PENDING_VERIFICATION,
-        index=True,
     )
 
     # Profile
@@ -276,7 +275,10 @@ class User(BaseModel, Base):
 
     # Relationships
     roles: Mapped[list["UserRole"]] = relationship(
-        "UserRole", back_populates="user", lazy="selectin"
+        "UserRole",
+        foreign_keys="UserRole.user_id",
+        back_populates="user",
+        lazy="selectin",
     )
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
         "RefreshToken", back_populates="user", cascade="all, delete-orphan"
@@ -497,7 +499,8 @@ class AuditLog(Base):
     )
 
     # Additional metadata
-    metadata: Mapped[dict | None] = mapped_column(
+    extra_metadata: Mapped[dict | None] = mapped_column(
+        "metadata",
         JSONB,
         nullable=True,
         comment="Additional context (e.g. export format, import filename)",

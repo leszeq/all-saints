@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   BookOpenText,
   Bot,
+  Braces,
   ChevronRight,
   CircleGauge,
   Database,
@@ -18,6 +19,7 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
+import { API_BASE_URL } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -25,6 +27,7 @@ interface NavItem {
   label: string;
   icon: LucideIcon;
   badge?: string;
+  external?: boolean;
 }
 
 const sections: Array<{ title: string; items: NavItem[] }> = [
@@ -50,6 +53,7 @@ const sections: Array<{ title: string; items: NavItem[] }> = [
   ] },
   { title: "Administracja", items: [
     { href: "/dashboard/users", label: "Użytkownicy", icon: Users },
+    { href: `${API_BASE_URL}/docs`, label: "Dokumentacja API", icon: Braces, external: true },
     { label: "Ustawienia", icon: Settings },
   ] },
 ];
@@ -70,9 +74,10 @@ export function Sidebar() {
             <h2 className="mb-1.5 px-2 text-[9px] font-bold uppercase tracking-[0.17em] text-sidebar-foreground/35">{section.title}</h2>
             <ul className="space-y-0.5">
               {section.items.map((item) => {
-                const active = item.href ? pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href)) : false;
+                const active = item.href && !item.external ? pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href)) : false;
                 const content = <><item.icon className="h-4 w-4 shrink-0" strokeWidth={1.7} /><span className="min-w-0 flex-1 truncate">{item.label}</span>{item.badge && <span className="rounded-full bg-white/8 px-2 py-0.5 text-[9px] text-sidebar-foreground/60">{item.badge}</span>}{!item.href && !item.badge && <ChevronRight className="h-3 w-3 text-sidebar-foreground/25" />}</>;
-                return <li key={item.label}>{item.href ? <Link href={item.href} className={cn("relative flex h-9 items-center gap-2.5 rounded-md px-2.5 text-[12px] font-medium transition-colors", active ? "bg-white/[0.07] text-white before:absolute before:-left-3 before:h-5 before:w-0.5 before:bg-sidebar-accent" : "text-sidebar-foreground/67 hover:bg-white/[0.04] hover:text-white")}>{content}</Link> : <span className="flex h-9 cursor-default items-center gap-2.5 rounded-md px-2.5 text-[12px] font-medium text-sidebar-foreground/48" title="Moduł przewidziany w kolejnym etapie">{content}</span>}</li>;
+                const navClassName = cn("relative flex h-9 items-center gap-2.5 rounded-md px-2.5 text-[12px] font-medium transition-colors", active ? "bg-white/[0.07] text-white before:absolute before:-left-3 before:h-5 before:w-0.5 before:bg-sidebar-accent" : "text-sidebar-foreground/67 hover:bg-white/[0.04] hover:text-white");
+                return <li key={item.label}>{item.href ? (item.external ? <a href={item.href} target="_blank" rel="noreferrer" className={navClassName}>{content}</a> : <Link href={item.href} className={navClassName}>{content}</Link>) : <span className="flex h-9 cursor-default items-center gap-2.5 rounded-md px-2.5 text-[12px] font-medium text-sidebar-foreground/48" title="Moduł przewidziany w kolejnym etapie">{content}</span>}</li>;
               })}
             </ul>
           </section>

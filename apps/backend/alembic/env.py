@@ -73,8 +73,9 @@ from src.domain.liturgy.models import (  # noqa: F401
 # Alembic Config
 config = context.config
 
-# Set database URL from settings (overrides alembic.ini)
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL_SYNC)  # type: ignore[arg-type]
+# This environment uses ``async_engine_from_config``, so it must receive the
+# asyncpg DSN rather than the synchronous psycopg2 DSN.
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)  # type: ignore[arg-type]
 
 # Python logging configuration
 if config.config_file_name is not None:

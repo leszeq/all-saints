@@ -80,7 +80,7 @@ class Country(BaseModel, Base):
     )
 
     # Names in multiple languages
-    name_pl: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
+    name_pl: Mapped[str] = mapped_column(String(200), nullable=False)
     name_en: Mapped[str] = mapped_column(String(200), nullable=False)
     name_la: Mapped[str | None] = mapped_column(
         String(200), nullable=True, comment="Latin name"
@@ -259,9 +259,7 @@ class ReligiousOrder(BaseModel, Base):
     name: Mapped[str] = mapped_column(String(500), nullable=False)
     name_la: Mapped[str | None] = mapped_column(String(500), nullable=True)
     name_local: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    abbreviation: Mapped[str | None] = mapped_column(
-        String(20), nullable=True, index=True
-    )
+    abbreviation: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     # Founding
     founded_year: Mapped[int | None] = mapped_column(Integer, nullable=True)

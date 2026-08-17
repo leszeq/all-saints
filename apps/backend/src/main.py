@@ -68,11 +68,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     else:
         logger.info("✓ Redis connected")
 
-    # Register Prometheus metrics
-    if settings.PROMETHEUS_ENABLED:
-        Instrumentator().instrument(app).expose(app)
-        logger.info("✓ Prometheus metrics enabled at /metrics")
-
     logger.info("✓ Application startup complete")
 
     yield  # Application is running
@@ -118,33 +113,39 @@ Bearer JWT token wymagany dla większości endpointów.
         docs_url=settings.docs_url,
         redoc_url=settings.redoc_url,
         openapi_url=settings.openapi_url,
+        swagger_ui_parameters={
+            "displayRequestDuration": True,
+            "filter": True,
+            "persistAuthorization": True,
+            "tryItOutEnabled": True,
+        },
         lifespan=lifespan,
         contact={
             "name": "All Saints Development Team",
-            "email": "dev@all-saints.local",
+            "email": "dev@encyklopedia.pl",
         },
         license_info={
             "name": "Proprietary",
         },
         openapi_tags=[
-            {"name": "auth", "description": "Authentication & token management"},
-            {"name": "persons", "description": "Saints, Blessed, Servants of God"},
-            {"name": "geography", "description": "Countries, Places, Dioceses"},
-            {"name": "orders", "description": "Religious Orders"},
-            {"name": "sources", "description": "Bibliography & Historical Sources"},
-            {"name": "images", "description": "Images & Media"},
-            {"name": "liturgy", "description": "Liturgical Calendar & Feasts"},
-            {"name": "export", "description": "Data Export"},
-            {"name": "import", "description": "Data Import"},
-            {"name": "users", "description": "User Management (Admin only)"},
-            {"name": "roles", "description": "Roles & Permissions (Admin only)"},
-            {"name": "audit", "description": "Audit Logs (Admin only)"},
-            {"name": "health", "description": "Health & Status"},
+            {"name": "auth", "description": "Logowanie, tokeny JWT i konto bieżącego użytkownika"},
+            {"name": "persons", "description": "Osoby, święci, wersjonowanie i workflow publikacyjny"},
+            {"name": "geography", "description": "Kraje, miejsca, diecezje i kościoły"},
+            {"name": "taxonomy", "description": "Kategorie, tagi, stany życia i zawody"},
+            {"name": "orders", "description": "Zakony i zgromadzenia"},
+            {"name": "popes", "description": "Papieże i dane o kanonizacjach"},
+            {"name": "sources", "description": "Bibliografia, źródła historyczne, media i dokumenty"},
+            {"name": "users", "description": "Użytkownicy i uprawnienia panelu administracyjnego"},
+            {"name": "health", "description": "Stan aplikacji i jej zależności"},
         ],
     )
 
     # ── Middleware (order matters – outermost first) ────────────────────────────
     _setup_middleware(app)
+
+    # Instrumentation must be registered before the Starlette lifespan starts.
+    if settings.PROMETHEUS_ENABLED:
+        Instrumentator().instrument(app).expose(app)
 
     # ── Exception handlers ─────────────────────────────────────────────────────
     _setup_exception_handlers(app)

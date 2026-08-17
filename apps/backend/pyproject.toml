@@ -30,7 +30,6 @@ pgvector = "^0.3.0"         # vector similarity search
 # ==============================================================================
 redis = { version = "^5.0.4", extras = ["hiredis"] }
 celery = { version = "^5.4.0", extras = ["redis"] }
-celery-beat = "^2.7.0"
 flower = "^2.0.1"
 
 # ==============================================================================
@@ -38,6 +37,7 @@ flower = "^2.0.1"
 # ==============================================================================
 python-jose = { version = "^3.3.0", extras = ["cryptography"] }
 passlib = { version = "^1.7.4", extras = ["bcrypt"] }
+bcrypt = "4.0.1"              # passlib 1.7.x compatibility (bcrypt 5 drops legacy API)
 cryptography = "^42.0.5"
 python-multipart = "^0.0.9"
 

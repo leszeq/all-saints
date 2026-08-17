@@ -18,10 +18,9 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-all_saints}
       POSTGRES_USER: ${POSTGRES_USER:-saints_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-saints_dev_password}
-      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --locale=pl_PL.utf8"
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --locale=C.UTF-8"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./apps/backend/scripts/sql/init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     healthcheck:
@@ -57,7 +56,7 @@ services:
   # ============================================================
   backend:
     build:
-      context: ./apps/backend
+      context: ../../apps/backend
       dockerfile: Dockerfile
       target: development
     container_name: saints-backend
@@ -71,7 +70,7 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2
     volumes:
-      - ./apps/backend:/app
+      - ../../apps/backend:/app
       - backend_deps:/app/.venv
     ports:
       - "${BACKEND_PORT:-8000}:8000"
@@ -92,13 +91,14 @@ services:
   # CELERY WORKER
   # ============================================================
   celery-worker:
+    profiles: ["ai"]
     build:
-      context: ./apps/backend
+      context: ../../apps/backend
       dockerfile: Dockerfile
       target: development
     container_name: saints-celery-worker
     restart: unless-stopped
-    command: celery -A src.workers.celery_app worker --loglevel=info --concurrency=4 -Q default,exports,imports,ai
+    command: python -m celery -A src.workers.celery_app worker --loglevel=info --concurrency=4 -Q default,exports,imports,ai
     env_file:
       - .env
     environment:
@@ -108,7 +108,8 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2
     volumes:
-      - ./apps/backend:/app
+      - ../../apps/backend:/app
+      - backend_deps:/app/.venv
     depends_on:
       - redis
       - db
@@ -119,20 +120,22 @@ services:
   # CELERY BEAT (Scheduler)
   # ============================================================
   celery-beat:
+    profiles: ["ai"]
     build:
-      context: ./apps/backend
+      context: ../../apps/backend
       dockerfile: Dockerfile
       target: development
     container_name: saints-celery-beat
     restart: unless-stopped
-    command: celery -A src.workers.celery_app beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    command: python -m celery -A src.workers.celery_app beat --loglevel=info
     env_file:
       - .env
     environment:
       DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-saints_user}:${POSTGRES_PASSWORD:-saints_dev_password}@db:5432/${POSTGRES_DB:-all_saints}
       CELERY_BROKER_URL: redis://redis:6379/1
     volumes:
-      - ./apps/backend:/app
+      - ../../apps/backend:/app
+      - backend_deps:/app/.venv
     depends_on:
       - redis
       - db
@@ -143,13 +146,14 @@ services:
   # FLOWER – Celery Monitoring UI
   # ============================================================
   flower:
+    profiles: ["ai"]
     build:
-      context: ./apps/backend
+      context: ../../apps/backend
       dockerfile: Dockerfile
       target: development
     container_name: saints-flower
     restart: unless-stopped
-    command: celery -A src.workers.celery_app flower --port=5555 --basic_auth=${FLOWER_BASIC_AUTH:-admin:flower_dev_password}
+    command: python -m celery -A src.workers.celery_app flower --port=5555 --basic_auth=${FLOWER_BASIC_AUTH:-admin:flower_dev_password}
     env_file:
       - .env
     environment:
@@ -157,6 +161,9 @@ services:
       CELERY_RESULT_BACKEND: redis://redis:6379/2
     ports:
       - "${FLOWER_PORT:-5555}:5555"
+    volumes:
+      - ../../apps/backend:/app
+      - backend_deps:/app/.venv
     depends_on:
       - redis
       - celery-worker
@@ -203,50 +210,50 @@ services:
   # ============================================================
   # ADMIN – Next.js Admin Panel
   # ============================================================
-  admin:
-    build:
-      context: ./apps/admin
-      dockerfile: Dockerfile
-      target: development
-    container_name: saints-admin
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
-    volumes:
-      - ./apps/admin:/app
-      - admin_node_modules:/app/node_modules
-    ports:
-      - "3001:3001"
-    depends_on:
-      - backend
-    networks:
-      - saints-network
+#  admin:
+#    build:
+#      context: ../../apps/admin
+#      dockerfile: Dockerfile
+#      target: development
+#    container_name: saints-admin
+#    restart: unless-stopped
+#    env_file:
+#      - .env
+#    environment:
+#      NEXT_PUBLIC_API_URL: http://localhost:8000
+#    volumes:
+#      - ../../apps/admin:/app
+#      - admin_node_modules:/app/node_modules
+#    ports:
+#      - "3001:3001"
+#    depends_on:
+#      - backend
+#    networks:
+#      - saints-network
 
   # ============================================================
   # WEB – Next.js Public Frontend
   # ============================================================
-  web:
-    build:
-      context: ./apps/web
-      dockerfile: Dockerfile
-      target: development
-    container_name: saints-web
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
-    volumes:
-      - ./apps/web:/app
-      - web_node_modules:/app/node_modules
-    ports:
-      - "3000:3000"
-    depends_on:
-      - backend
-    networks:
-      - saints-network
+#  web:
+#    build:
+#      context: ../../apps/web
+#      dockerfile: Dockerfile
+#      target: development
+#    container_name: saints-web
+#    restart: unless-stopped
+#    env_file:
+#      - .env
+#    environment:
+#      NEXT_PUBLIC_API_URL: http://localhost:8000
+#    volumes:
+#      - ../../apps/web:/app
+#      - web_node_modules:/app/node_modules
+#    ports:
+#      - "3000:3000"
+#    depends_on:
+#      - backend
+#    networks:
+#      - saints-network
 
   # ============================================================
   # PROMETHEUS
@@ -262,7 +269,7 @@ services:
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
     volumes:
-      - ./infrastructure/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../../infrastructure/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     ports:
       - "${PROMETHEUS_PORT:-9090}:9090"
@@ -282,8 +289,8 @@ services:
       GF_SERVER_ROOT_URL: http://localhost:3002
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./infrastructure/monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
-      - ./infrastructure/monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ../../infrastructure/monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ../../infrastructure/monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
     ports:
       - "${GRAFANA_PORT:-3002}:3000"
     depends_on:
@@ -294,20 +301,20 @@ services:
   # ============================================================
   # NGINX – Reverse Proxy (dev)
   # ============================================================
-  nginx:
-    image: nginx:1.25-alpine
-    container_name: saints-nginx
-    restart: unless-stopped
-    volumes:
-      - ./infrastructure/nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
-    ports:
-      - "80:80"
-    depends_on:
-      - backend
-      - admin
-      - web
-    networks:
-      - saints-network
+#  nginx:
+#    image: nginx:1.25-alpine
+#    container_name: saints-nginx
+#    restart: unless-stopped
+#    volumes:
+#      - ./infrastructure/nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+#    ports:
+#      - "80:80"
+#    depends_on:
+#      - backend
+#      - admin
+#      - web
+#    networks:
+#      - saints-network
 
 # ==============================================================================
 # VOLUMES

@@ -16,10 +16,12 @@ import asyncio
 from datetime import datetime, timezone
 
 from loguru import logger
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.config import settings
 from src.core.security import password_hasher
+from src.domain.geography import models as geography_models  # noqa: F401
 from src.domain.identity.models import (
     AuditAction,
     Permission,
@@ -32,6 +34,7 @@ from src.domain.identity.models import (
 )
 from src.domain.liturgy.models import CalendarScope, LiturgicalCalendar
 from src.domain.hagiography.models import StateOfLife
+from src.domain.sources import models as source_models  # noqa: F401
 from src.infrastructure.db.session import enable_pgvector, get_engine
 from src.domain.base import Base
 
@@ -205,12 +208,22 @@ async def seed_permissions(session: AsyncSession) -> dict[tuple[str, str], Permi
     permission_map: dict[tuple[str, str], Permission] = {}
 
     for resource, action, description in PERMISSIONS:
-        perm = Permission(
-            resource=resource,
-            action=action,
-            description=description,
+        result = await session.execute(
+            select(Permission).where(
+                Permission.resource == resource,
+                Permission.action == action,
+            )
         )
-        session.add(perm)
+        perm = result.scalar_one_or_none()
+        if perm is None:
+            perm = Permission(
+                resource=resource,
+                action=action,
+                description=description,
+            )
+            session.add(perm)
+        else:
+            perm.description = description
         permission_map[(resource, action)] = perm
 
     await session.flush()
@@ -228,25 +241,40 @@ async def seed_roles(
     now = datetime.now(timezone.utc)
 
     for role_name, (display_name, description) in ROLE_METADATA.items():
-        role = Role(
-            name=role_name,
-            display_name=display_name,
-            description=description,
-            is_system=True,
-        )
-        session.add(role)
-        await session.flush()
+        result = await session.execute(select(Role).where(Role.name == role_name))
+        role = result.scalar_one_or_none()
+        if role is None:
+            role = Role(
+                name=role_name,
+                display_name=display_name,
+                description=description,
+                is_system=True,
+            )
+            session.add(role)
+            await session.flush()
+        else:
+            role.display_name = display_name
+            role.description = description
+            role.is_system = True
 
         # Assign permissions
         for resource, action in ROLE_PERMISSIONS.get(role_name, []):
             perm = permission_map.get((resource, action))
             if perm:
-                rp = RolePermission(
-                    role_id=role.id,
-                    permission_id=perm.id,
-                    granted_at=now,
+                existing = await session.execute(
+                    select(RolePermission).where(
+                        RolePermission.role_id == role.id,
+                        RolePermission.permission_id == perm.id,
+                    )
                 )
-                session.add(rp)
+                if existing.scalar_one_or_none() is None:
+                    session.add(
+                        RolePermission(
+                            role_id=role.id,
+                            permission_id=perm.id,
+                            granted_at=now,
+                        )
+                    )
 
         role_map[role_name] = role
 
@@ -263,25 +291,40 @@ async def seed_admin_user(
     logger.info("Seeding admin user...")
     now = datetime.now(timezone.utc)
 
-    user = User(
-        email=settings.INITIAL_ADMIN_EMAIL,
-        hashed_password=password_hasher.hash(settings.INITIAL_ADMIN_PASSWORD or "Admin123!"),
-        full_name=settings.INITIAL_ADMIN_FULL_NAME,
-        status=UserStatus.ACTIVE,
-        is_verified=True,
+    result = await session.execute(
+        select(User).where(User.email == settings.INITIAL_ADMIN_EMAIL.lower())
     )
-    session.add(user)
-    await session.flush()
+    user = result.scalar_one_or_none()
+    if user is None:
+        user = User(
+            email=settings.INITIAL_ADMIN_EMAIL.lower(),
+            hashed_password=password_hasher.hash(
+                settings.INITIAL_ADMIN_PASSWORD or "Admin123!"
+            ),
+            full_name=settings.INITIAL_ADMIN_FULL_NAME,
+            status=UserStatus.ACTIVE,
+            is_verified=True,
+        )
+        session.add(user)
+        await session.flush()
 
     # Assign Super Admin role
     super_admin_role = role_map[SystemRole.SUPER_ADMIN]
-    user_role = UserRole(
-        user_id=user.id,
-        role_id=super_admin_role.id,
-        assigned_at=now,
-        assigned_by_id=None,
+    existing_role = await session.execute(
+        select(UserRole).where(
+            UserRole.user_id == user.id,
+            UserRole.role_id == super_admin_role.id,
+        )
     )
-    session.add(user_role)
+    if existing_role.scalar_one_or_none() is None:
+        session.add(
+            UserRole(
+                user_id=user.id,
+                role_id=super_admin_role.id,
+                assigned_at=now,
+                assigned_by_id=None,
+            )
+        )
     await session.flush()
 
     logger.info(f"✓ Created admin user: {settings.INITIAL_ADMIN_EMAIL}")
@@ -292,12 +335,21 @@ async def seed_states_of_life(session: AsyncSession) -> None:
     """Create reference states of life."""
     logger.info("Seeding states of life...")
     for name_pl, name_en, name_la in STATES_OF_LIFE:
-        sol = StateOfLife(
-            name_pl=name_pl,
-            name_en=name_en,
-            name_la=name_la,
+        result = await session.execute(
+            select(StateOfLife).where(StateOfLife.name_pl == name_pl)
         )
-        session.add(sol)
+        sol = result.scalar_one_or_none()
+        if sol is None:
+            session.add(
+                StateOfLife(
+                    name_pl=name_pl,
+                    name_en=name_en,
+                    name_la=name_la,
+                )
+            )
+        else:
+            sol.name_en = name_en
+            sol.name_la = name_la
     await session.flush()
     logger.info(f"✓ Created {len(STATES_OF_LIFE)} states of life")
 
@@ -306,14 +358,25 @@ async def seed_liturgical_calendars(session: AsyncSession) -> None:
     """Create reference liturgical calendars."""
     logger.info("Seeding liturgical calendars...")
     for code, name, rite, scope in LITURGICAL_CALENDARS:
-        cal = LiturgicalCalendar(
-            code=code,
-            name=name,
-            rite=rite,
-            scope=scope,
-            is_active=True,
+        result = await session.execute(
+            select(LiturgicalCalendar).where(LiturgicalCalendar.code == code)
         )
-        session.add(cal)
+        cal = result.scalar_one_or_none()
+        if cal is None:
+            session.add(
+                LiturgicalCalendar(
+                    code=code,
+                    name=name,
+                    rite=rite,
+                    scope=scope,
+                    is_active=True,
+                )
+            )
+        else:
+            cal.name = name
+            cal.rite = rite
+            cal.scope = scope
+            cal.is_active = True
     await session.flush()
     logger.info(f"✓ Created {len(LITURGICAL_CALENDARS)} liturgical calendars")
 
