@@ -5,15 +5,11 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Crown, Eye, EyeOff, Loader2 } from "lucide-react";
+import { BookOpenText, Eye, EyeOff, Loader2, LockKeyhole, ShieldCheck } from "lucide-react";
 import { authApi } from "@/lib/api";
 import { useAuthStore } from "@/lib/store/auth";
 
-const loginSchema = z.object({
-  email: z.string().email("Podaj prawidłowy adres email"),
-  password: z.string().min(1, "Hasło jest wymagane"),
-});
-
+const loginSchema = z.object({ email: z.string().email("Podaj prawidłowy adres email"), password: z.string().min(1, "Hasło jest wymagane") });
 type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
@@ -21,12 +17,7 @@ export default function LoginPage() {
   const { setAuth } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<LoginForm>({ resolver: zodResolver(loginSchema) });
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginForm>({ resolver: zodResolver(loginSchema) });
 
   const onSubmit = async (data: LoginForm) => {
     setServerError(null);
@@ -35,126 +26,35 @@ export default function LoginPage() {
       const { data: me } = await authApi.me();
       setAuth(me, tokenData.access_token);
       router.push("/dashboard");
-    } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data
-          ?.detail || "Błąd logowania. Sprawdź dane i spróbuj ponownie.";
-      setServerError(msg);
+    } catch (error: unknown) {
+      setServerError((error as { response?: { data?: { detail?: string } } })?.response?.data?.detail || "Błąd logowania. Sprawdź dane i spróbuj ponownie.");
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      {/* Background decoration */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-primary/5 blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-primary/5 blur-3xl" />
-      </div>
+    <main className="grid min-h-screen bg-[#f7f7f5] lg:grid-cols-[minmax(25rem,0.9fr)_1.1fr]">
+      <section className="relative hidden overflow-hidden bg-[#17191c] text-white lg:flex lg:flex-col lg:justify-between lg:p-12" aria-label="Panel redakcyjny">
+        <div className="absolute inset-0 opacity-30" style={{ backgroundImage: "radial-gradient(circle at 20% 20%, rgba(168,132,61,.35), transparent 22rem), repeating-linear-gradient(90deg, transparent 0, transparent 47px, rgba(255,255,255,.035) 48px)" }} />
+        <div className="relative flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-full border border-[#a8843d]/70 text-[#d2b977]"><BookOpenText className="h-5 w-5" /></span><div><p className="font-semibold">Encyklopedia Świętych</p><p className="mt-0.5 text-[10px] uppercase tracking-[0.18em] text-stone-500">Panel redakcyjny</p></div></div>
+        <div className="relative max-w-lg"><div className="mb-8 h-px w-20 bg-[#a8843d]" /><p className="font-serif text-4xl leading-tight text-stone-100">Rzetelna wiedza zaczyna się od uważnej redakcji.</p><p className="mt-5 max-w-md text-sm leading-6 text-stone-400">Weryfikuj biogramy, źródła i relacje. Każda decyzja pozostaje w historii zmian.</p></div>
+        <div className="relative flex items-center gap-2 text-xs text-stone-500"><ShieldCheck className="h-4 w-4 text-[#a8843d]" />Połączenie szyfrowane · pełny dziennik audytowy</div>
+      </section>
 
-      <div className="relative w-full max-w-md">
-        {/* Card */}
-        <div className="rounded-2xl border border-border bg-card p-8 shadow-2xl">
-          {/* Logo */}
-          <div className="mb-8 flex flex-col items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary shadow-lg shadow-primary/30">
-              <Crown className="h-6 w-6 text-white" />
-            </div>
-            <div className="text-center">
-              <h1 className="text-xl font-bold text-foreground">
-                Encyklopedia Świętych
-              </h1>
-              <p className="mt-0.5 text-sm text-muted-foreground">
-                Panel Administracyjny
-              </p>
-            </div>
-          </div>
+      <section className="flex items-center justify-center px-5 py-12 text-[#202225] sm:px-10">
+        <div className="w-full max-w-md">
+          <div className="mb-10 flex items-center gap-3 lg:hidden"><span className="flex h-10 w-10 items-center justify-center rounded-full border border-[#a8843d] text-[#88672e]"><BookOpenText className="h-5 w-5" /></span><div><p className="font-semibold">Encyklopedia Świętych</p><p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Panel redakcyjny</p></div></div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#716b64]">Bezpieczny dostęp</p><h1 className="mt-3 text-3xl font-semibold tracking-tight text-[#202225]">Zaloguj się do panelu</h1><p className="mt-2 text-sm leading-6 text-[#716b64]">Użyj konta przydzielonego przez administratora redakcji.</p>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            {/* Email */}
-            <div className="space-y-1.5">
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-foreground"
-              >
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                autoComplete="email"
-                placeholder="admin@all-saints.local"
-                {...register("email")}
-                className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-              />
-              {errors.email && (
-                <p className="text-xs text-destructive">{errors.email.message}</p>
-              )}
-            </div>
-
-            {/* Password */}
-            <div className="space-y-1.5">
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-foreground"
-              >
-                Hasło
-              </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                  {...register("password")}
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2.5 pr-10 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
-              {errors.password && (
-                <p className="text-xs text-destructive">{errors.password.message}</p>
-              )}
-            </div>
-
-            {/* Server error */}
-            {serverError && (
-              <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5">
-                <p className="text-sm text-destructive">{serverError}</p>
-              </div>
-            )}
-
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-primary/30 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Logowanie...
-                </>
-              ) : (
-                "Zaloguj się"
-              )}
-            </button>
+          <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5">
+            <div><label htmlFor="email" className="mb-2 block text-sm font-medium text-[#202225]">Adres e-mail</label><input id="email" type="email" autoComplete="email" placeholder="redaktor@encyklopedia.pl" {...register("email")} className="h-11 w-full rounded-lg border border-[#d5d2cc] bg-white px-3 text-sm text-[#202225] outline-none transition-colors placeholder:text-[#aaa49c] focus:border-[#a8843d]" />{errors.email && <p className="mt-1.5 text-xs text-[#b3261e]">{errors.email.message}</p>}</div>
+            <div><div className="mb-2 flex items-center justify-between"><label htmlFor="password" className="text-sm font-medium text-[#202225]">Hasło</label><button type="button" className="text-xs font-medium text-[#6b2033]">Nie pamiętasz hasła?</button></div><div className="relative"><input id="password" type={showPassword ? "text" : "password"} autoComplete="current-password" placeholder="••••••••" {...register("password")} className="h-11 w-full rounded-lg border border-[#d5d2cc] bg-white px-3 pr-11 text-sm text-[#202225] outline-none transition-colors placeholder:text-[#aaa49c] focus:border-[#a8843d]" /><button type="button" onClick={() => setShowPassword((show) => !show)} className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center text-[#716b64] hover:text-[#202225]" aria-label={showPassword ? "Ukryj hasło" : "Pokaż hasło"}>{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div>{errors.password && <p className="mt-1.5 text-xs text-[#b3261e]">{errors.password.message}</p>}</div>
+            <label className="flex items-center gap-2 text-sm text-[#716b64]"><input type="checkbox" className="h-4 w-4 rounded border-[#d5d2cc] accent-[#6b2033]" />Zapamiętaj mnie na tym urządzeniu</label>
+            {serverError && <div role="alert" className="rounded-lg border border-destructive/25 bg-destructive/8 px-3 py-3 text-sm text-destructive">{serverError}</div>}
+            <button type="submit" disabled={isSubmitting} className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#6b2033] px-4 text-sm font-semibold text-white shadow-sm hover:bg-[#591a2a] disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? <><Loader2 className="h-4 w-4 animate-spin" />Logowanie…</> : <><LockKeyhole className="h-4 w-4" />Zaloguj się</>}</button>
           </form>
+          <p className="mt-8 border-t border-[#dedbd5] pt-5 text-xs leading-5 text-[#716b64]">Dostęp jest monitorowany. Nieudane próby logowania i zmiany uprawnień są zapisywane w dzienniku audytowym.</p>
         </div>
-
-        <p className="mt-4 text-center text-xs text-muted-foreground">
-          Encyklopedia Świętych Kościoła Katolickiego © 2026
-        </p>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }

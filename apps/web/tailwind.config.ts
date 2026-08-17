@@ -11,51 +11,30 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        ivory: "#F7F3EA",
+        parchment: "#EFE8DA",
+        charcoal: "#24211E",
         gold: {
-          50: "#FFFDF0",
-          100: "#FFF9C4",
-          200: "#FFF380",
-          300: "#FFE83D",
-          400: "#FFDC0A",
-          500: "#D4AF37", // Metallic gold
-          600: "#B38F22",
-          700: "#8C6E14",
-          800: "#664F0A",
-          900: "#403104",
+          50: "#FBF8EF", 100: "#F3EBD8", 200: "#E4D4AD", 300: "#D2B977", 400: "#B99750",
+          500: "#A8843D", 600: "#88672E", 700: "#694C24", 800: "#4A351C", 900: "#2E2116",
         },
         burgundy: {
-          50: "#FDF2F4",
-          100: "#FADCE1",
-          200: "#F5B8C3",
-          300: "#EE8AA0",
-          400: "#E35478",
-          500: "#800020", // Deep Burgundy
-          600: "#6B001B",
-          700: "#540015",
-          800: "#3D000F",
-          900: "#29000A",
+          50: "#FAF3F5", 100: "#F4E3E8", 200: "#E7C1CB", 300: "#D394A5", 400: "#B95F78",
+          500: "#6B2033", 600: "#591A2A", 700: "#4B1725", 800: "#3A111C", 900: "#270B12",
         },
       },
       fontFamily: {
-        serif: ["Georgia", "Cambria", "Times New Roman", "serif"],
-        sans: ["Inter", "system-ui", "sans-serif"],
+        serif: ["Literata", "Iowan Old Style", "Palatino Linotype", "Book Antiqua", "Georgia", "serif"],
+        sans: ["Geist", "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
       },
-      animation: {
-        "fade-in": "fadeIn 0.5s ease-out forwards",
-        "pulse-glow": "pulseGlow 3s infinite ease-in-out",
-      },
+      boxShadow: { editorial: "0 18px 50px -32px rgba(36, 33, 30, 0.35)" },
+      animation: { "fade-in": "fadeIn 0.45s ease-out forwards" },
       keyframes: {
-        fadeIn: {
-          from: { opacity: "0", transform: "translateY(12px)" },
-          to: { opacity: "1", transform: "translateY(0)" },
-        },
-        pulseGlow: {
-          "0%, 100%": { opacity: "0.4" },
-          "50%": { opacity: "0.8" },
-        },
+        fadeIn: { from: { opacity: "0", transform: "translateY(8px)" }, to: { opacity: "1", transform: "translateY(0)" } },
       },
     },
   },
   plugins: [],
 };
+
 export default config;
