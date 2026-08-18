@@ -51,7 +51,20 @@ api.interceptors.response.use(
   (res) => res,
   async (error) => {
     const original = error.config;
-    if (error.response?.status === 401 && !original._retry) {
+    const requestUrl = original?.url ?? "";
+    const isAuthenticationRequest =
+      requestUrl.endsWith("/auth/login") ||
+      requestUrl.endsWith("/auth/refresh");
+
+    // A rejected login must reach the form unchanged so it can display the
+    // API error. Refreshing here caused a second 401 and an immediate reload,
+    // which made the original request and message appear to disappear.
+    if (
+      error.response?.status === 401 &&
+      original &&
+      !original._retry &&
+      !isAuthenticationRequest
+    ) {
       original._retry = true;
       try {
         const { data } = await axios.post(
@@ -64,7 +77,7 @@ api.interceptors.response.use(
         return api(original);
       } catch {
         localStorage.removeItem("access_token");
-        window.location.href = "/login";
+        window.location.replace("/login");
       }
     }
     return Promise.reject(error);
