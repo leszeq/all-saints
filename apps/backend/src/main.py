@@ -137,6 +137,7 @@ Bearer JWT token wymagany dla większości endpointów.
             {"name": "sources", "description": "Bibliografia, źródła historyczne, media i dokumenty"},
             {"name": "users", "description": "Użytkownicy i uprawnienia panelu administracyjnego"},
             {"name": "health", "description": "Stan aplikacji i jej zależności"},
+            {"name": "ai", "description": "Wyszukiwanie semantyczne, embeddingi pgvector i moduły AI"},
         ],
     )
 

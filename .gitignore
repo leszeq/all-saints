@@ -97,6 +97,7 @@ build/
 # Logs
 logs/
 *.log
+celerybeat-schedule*
 
 # OS
 .DS_Store

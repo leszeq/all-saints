@@ -58,6 +58,7 @@ from src.domain.hagiography.models import (  # noqa: F401
     StateOfLife,
     Tag,
 )
+from src.domain.hagiography.embedding_model import PersonEmbedding  # noqa: F401
 from src.domain.sources.models import (  # noqa: F401
     Bibliography,
     Document,

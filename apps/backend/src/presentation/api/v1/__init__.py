@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from src.presentation.api.v1.ai import router as ai_router
 from src.presentation.api.v1.auth.router import router as auth_router
 from src.presentation.api.v1.geography.router import router as geography_router
 from src.presentation.api.v1.orders.router import router as orders_router
@@ -25,3 +26,4 @@ router.include_router(popes_router, prefix="/popes", tags=["popes"])
 router.include_router(sources_router, prefix="/sources", tags=["sources"])
 router.include_router(taxonomy_router, prefix="/taxonomy", tags=["taxonomy"])
 router.include_router(users_router, prefix="/users", tags=["users"])
+router.include_router(ai_router, prefix="/ai", tags=["ai"])

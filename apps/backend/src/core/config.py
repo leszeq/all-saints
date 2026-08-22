@@ -195,6 +195,7 @@ class Settings(BaseSettings):
     OPENAI_COMPLETION_MODEL: str = "gpt-4o-mini"
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_EMBEDDING_MODEL: str = "nomic-embed-text"
+    OLLAMA_LLM_MODEL: str = "llama3"
     EMBEDDING_DIMENSIONS: int = 1536
 
     # ── Initial Admin ──────────────────────────────────────────────────────────

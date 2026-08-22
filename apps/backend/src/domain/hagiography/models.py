@@ -31,6 +31,7 @@ from src.domain.base import Base, BaseModel
 
 if TYPE_CHECKING:
     from src.domain.geography.models import Country, Place, ReligiousOrder
+    from src.domain.hagiography.embedding_model import PersonEmbedding
     from src.domain.identity.models import User
     from src.domain.sources.models import Image, Bibliography
     from src.domain.liturgy.models import Feast
@@ -445,6 +446,11 @@ class Person(BaseModel, Base):
         "PersonCategory", back_populates="person"
     )
     tags: Mapped[list["PersonTag"]] = relationship("PersonTag", back_populates="person")
+
+    # AI embedding (one-to-one)
+    embedding: Mapped["PersonEmbedding | None"] = relationship(
+        "PersonEmbedding", back_populates="person", uselist=False, cascade="all, delete-orphan"
+    )
 
     # Relationships between persons
     relationships_as_a: Mapped[list["PersonRelationship"]] = relationship(
