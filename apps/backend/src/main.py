@@ -130,6 +130,7 @@ Bearer JWT token wymagany dla większości endpointów.
         openapi_tags=[
             {"name": "auth", "description": "Logowanie, tokeny JWT i konto bieżącego użytkownika"},
             {"name": "persons", "description": "Osoby, święci, wersjonowanie i workflow publikacyjny"},
+            {"name": "calendar", "description": "Kalendarze liturgiczne, wspomnienia i widoki dnia"},
             {"name": "geography", "description": "Kraje, miejsca, diecezje i kościoły"},
             {"name": "taxonomy", "description": "Kategorie, tagi, stany życia i zawody"},
             {"name": "orders", "description": "Zakony i zgromadzenia"},

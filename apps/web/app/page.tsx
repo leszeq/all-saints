@@ -12,7 +12,12 @@ import {
   Search,
   Sparkles,
 } from "lucide-react";
-import { fetchPersons } from "@/lib/api";
+import { fetchCalendarToday, fetchPersons } from "@/lib/api";
+import {
+  type CalendarDay,
+  FEAST_RANK_LABELS,
+  formatCalendarDate,
+} from "@/lib/calendar";
 import { PATRONAGE_GROUPS, TIME_PERIODS } from "@/lib/utils";
 import { SaintAvatar, type SaintAvatarData } from "@/components/saint-avatar";
 
@@ -34,13 +39,21 @@ const fallbackPersons = [
 export default async function HomePage() {
   let persons: Array<Record<string, unknown>> = [];
   let totalPersons = 0;
+  let calendarDay: CalendarDay | null = null;
 
-  try {
-    const response = await fetchPersons({ per_page: 6, is_featured: true });
-    persons = response?.items ?? [];
-    totalPersons = response?.total ?? 0;
-  } catch {
-    persons = [];
+  const [personsResult, totalResult, calendarResult] = await Promise.allSettled([
+    fetchPersons({ per_page: 6, is_featured: true }),
+    fetchPersons({ per_page: 1 }),
+    fetchCalendarToday(),
+  ]);
+  if (personsResult.status === "fulfilled") {
+    persons = personsResult.value?.items ?? [];
+  }
+  if (totalResult.status === "fulfilled") {
+    totalPersons = totalResult.value?.total ?? 0;
+  }
+  if (calendarResult.status === "fulfilled") {
+    calendarDay = calendarResult.value as CalendarDay;
   }
 
   const featured = persons.length
@@ -54,7 +67,10 @@ export default async function HomePage() {
       }))
     : fallbackPersons;
 
-  const today = new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "long" }).format(new Date());
+  const primaryCommemoration = calendarDay?.primary ?? null;
+  const today = calendarDay
+    ? formatCalendarDate(calendarDay.date, { day: "numeric", month: "long" })
+    : new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "long" }).format(new Date());
 
   return (
     <div className="overflow-hidden">
@@ -105,15 +121,20 @@ export default async function HomePage() {
         <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
           <article className="surface-card grid overflow-hidden md:grid-cols-[14rem_1fr_auto] md:items-center">
             <div className="flex min-h-52 items-center justify-center bg-burgundy-800 p-8 text-gold-200">
-              <div className="text-center"><Sparkles className="mx-auto h-8 w-8" strokeWidth={1.25} /><p className="mt-4 font-serif text-2xl">22 maja</p></div>
+              <div className="text-center"><Sparkles className="mx-auto h-8 w-8" strokeWidth={1.25} /><p className="mt-4 font-serif text-2xl capitalize">{today}</p></div>
             </div>
             <div className="p-7 md:p-9">
-              <p className="editorial-label">Święta dnia · {today}</p>
-              <h2 className="mt-3 font-serif text-3xl font-semibold text-charcoal">Św. Rita z Cascii</h2>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600">Augustianka, mistyczka i orędowniczka w sprawach po ludzku trudnych. Poznaj historię jej życia oraz rozwój kultu.</p>
-              <div className="mt-5 flex flex-wrap gap-2"><span className="rounded-full border border-gold-200 bg-gold-50 px-3 py-1 text-xs text-gold-800">sprawy trudne</span><span className="rounded-full border border-gold-200 bg-gold-50 px-3 py-1 text-xs text-gold-800">małżeństwa</span></div>
+              <p className="editorial-label">Główne wspomnienie · {calendarDay?.calendar_name ?? "Kalendarz liturgiczny"}</p>
+              <h2 className="mt-3 font-serif text-3xl font-semibold text-charcoal">{primaryCommemoration?.person.canonical_name ?? "Dzień czeka na opracowanie"}</h2>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600">{primaryCommemoration?.person.summary_pl ?? "Redakcja nie przypisała jeszcze zweryfikowanej postaci do dzisiejszej daty."}</p>
+              {primaryCommemoration && (
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <span className="rounded-full border border-gold-200 bg-gold-50 px-3 py-1 text-xs text-gold-800">{FEAST_RANK_LABELS[primaryCommemoration.rank] ?? primaryCommemoration.rank}</span>
+                  {primaryCommemoration.person.patronages.slice(0, 2).map((patronage) => <span key={patronage.id} className="rounded-full border border-gold-200 bg-gold-50 px-3 py-1 text-xs text-gold-800">{patronage.name_pl}</span>)}
+                </div>
+              )}
             </div>
-            <div className="p-7 md:pr-9"><Link href="/swieci/sw-rita-z-cascii" className="inline-flex h-11 items-center gap-2 rounded-lg border border-burgundy-200 px-4 text-sm font-semibold text-burgundy-700 hover:bg-burgundy-50">Zobacz profil <ArrowRight className="h-4 w-4" /></Link></div>
+            <div className="p-7 md:pr-9"><Link href={calendarDay ? `/kalendarz/${calendarDay.date}` : "/kalendarz"} className="inline-flex h-11 items-center gap-2 rounded-lg border border-burgundy-200 px-4 text-sm font-semibold text-burgundy-700 hover:bg-burgundy-50">Zobacz cały dzień <ArrowRight className="h-4 w-4" /></Link></div>
           </article>
         </section>
 
@@ -132,10 +153,11 @@ export default async function HomePage() {
 
         <section className="mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:px-8">
           <div id="kalendarz">
-            <div className="flex items-center justify-between"><div><p className="editorial-label">Kalendarz liturgiczny</p><h2 className="mt-3 font-serif text-3xl font-semibold">Dzisiaj wspominamy</h2></div><CalendarDays className="h-7 w-7 text-gold-700" strokeWidth={1.4} /></div>
+            <div className="flex items-center justify-between"><div><p className="editorial-label">Kalendarz liturgiczny</p><h2 className="mt-3 font-serif text-3xl font-semibold">Dzisiaj wspominamy</h2></div><Link href="/kalendarz" aria-label="Otwórz kalendarz liturgiczny"><CalendarDays className="h-7 w-7 text-gold-700" strokeWidth={1.4} /></Link></div>
             <div className="mt-7 divide-y divide-[#ded8cd] border-y border-[#ded8cd]">
-              {["Św. Rita z Cascii", "Św. Emilia de Vialar", "Bł. Jan Forest"].map((name, index) => <Link key={name} href={`/swieci?search=${encodeURIComponent(name)}`} className="group flex items-center gap-5 py-5"><span className="flex h-11 w-11 items-center justify-center rounded-full border border-gold-200 bg-gold-50 font-serif text-lg text-gold-800">{index + 1}</span><span className="flex-1"><span className="block font-serif text-xl font-semibold">{name}</span><span className="mt-1 block text-xs text-stone-500">Wspomnienie dowolne · profil zweryfikowany</span></span><ChevronRight className="h-4 w-4 text-stone-400 group-hover:text-burgundy-700" /></Link>)}
+              {calendarDay?.entries.length ? calendarDay.entries.slice(0, 4).map((entry, index) => <Link key={entry.id} href={`/swieci/${entry.person.slug}`} className="group flex items-center gap-5 py-5"><span className="flex h-11 w-11 items-center justify-center rounded-full border border-gold-200 bg-gold-50 font-serif text-lg text-gold-800">{index + 1}</span><span className="flex-1"><span className="block font-serif text-xl font-semibold">{entry.person.canonical_name}</span><span className="mt-1 block text-xs text-stone-500">{FEAST_RANK_LABELS[entry.rank] ?? entry.rank} · {entry.calendar.name}</span></span><ChevronRight className="h-4 w-4 text-stone-400 group-hover:text-burgundy-700" /></Link>) : <div className="py-8 text-sm leading-6 text-stone-500">Brak zweryfikowanych wpisów na dzisiejszy dzień. Kalendarz jest sukcesywnie uzupełniany przez redakcję.</div>}
             </div>
+            <Link href={calendarDay ? `/kalendarz/${calendarDay.date}` : "/kalendarz"} className="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-burgundy-700">Pełna lista dnia <ChevronRight className="h-4 w-4" /></Link>
           </div>
 
           <div id="epoki">

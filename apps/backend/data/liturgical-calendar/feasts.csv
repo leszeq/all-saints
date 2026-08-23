@@ -1,0 +1,13 @@
+calendar_code,person_slug,month,day,rank,liturgical_color,is_primary,source_title,source_url,notes
+roman_universal,sw-tomasz-z-akwinu,1,28,memorial,white,true,USCCB Liturgical Calendar 2026,https://www.usccb.org/resources/2026cal.pdf,General Roman Calendar
+roman_universal,sw-jozef,3,19,solemnity,white,true,USCCB Liturgical Calendar 2026,https://www.usccb.org/resources/2026cal.pdf,General Roman Calendar
+roman_universal,sw-rita-z-cascii,5,22,opt_memorial,white,true,USCCB Liturgical Calendar 2026,https://www.usccb.org/resources/2026cal.pdf,General Roman Calendar
+roman_universal,sw-kamil-de-lellis,7,14,opt_memorial,white,true,USCCB Liturgical Calendar 2026,https://www.usccb.org/resources/2026cal.pdf,General Roman Calendar
+roman_universal,sw-teresa-benedykta-od-krzyza-edyta-stein,8,9,opt_memorial,red,true,USCCB Liturgical Calendar 2026,https://www.usccb.org/resources/2026cal.pdf,General Roman Calendar; in Europe a co-patronal celebration may have a higher rank
+roman_universal,sw-maksymilian-maria-kolbe,8,14,memorial,red,true,USCCB Liturgical Calendar 2026,https://www.usccb.org/resources/2026cal.pdf,General Roman Calendar
+roman_universal,sw-roza-z-limy,8,23,opt_memorial,white,true,USCCB Liturgical Calendar 2026,https://www.usccb.org/resources/2026cal.pdf,General Roman Calendar
+roman_pl,bl-wladyslaw-findysz,8,23,opt_memorial,red,false,Konferencja Episkopatu Polski — wspomnienie bł. Władysława Findysza,https://episkopat.pl/doc/251471.Leon-XIV-do-Polakow-Cywilizacje-milosci-buduje-sie-przebaczajac,Kalendarz polski
+roman_universal,sw-augustyn-z-hippony,8,28,memorial,white,true,USCCB Liturgical Calendar 2026,https://www.usccb.org/resources/2026cal.pdf,General Roman Calendar
+roman_universal,sw-franciszek-z-asyzu,10,4,memorial,white,true,USCCB Liturgical Calendar 2026,https://www.usccb.org/resources/2026cal.pdf,General Roman Calendar
+roman_universal,sw-teresa-z-avili,10,15,memorial,white,true,USCCB Liturgical Calendar 2026,https://www.usccb.org/resources/2026cal.pdf,General Roman Calendar
+roman_pl,sw-jan-pawel-ii,10,22,memorial,white,true,Dekret o kulcie liturgicznym św. Jana Pawła II,https://www.vatican.va/roman_curia/congregations/ccdds/documents/rc_con_ccdds_doc_20110402_dec-gpii_sp.html,Kalendarz diecezji polskich

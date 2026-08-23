@@ -9,12 +9,21 @@ from __future__ import annotations
 import uuid
 from enum import StrEnum
 
-from sqlalchemy import Boolean, ForeignKey, Index, Integer, SmallInteger, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    ForeignKey,
+    Index,
+    Integer,
+    SmallInteger,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.domain.base import Base, BaseModel
-
 
 # ==============================================================================
 # ENUMS
@@ -24,20 +33,20 @@ from src.domain.base import Base, BaseModel
 class FeastRank(StrEnum):
     """Liturgical rank of a feast."""
 
-    SOLEMNITY = "solemnity"       # Uroczystość
-    FEAST = "feast"               # Święto
-    MEMORIAL = "memorial"         # Wspomnienie obowiązkowe
-    OPT_MEMORIAL = "opt_memorial" # Wspomnienie dowolne
+    SOLEMNITY = "solemnity"  # Uroczystość
+    FEAST = "feast"  # Święto
+    MEMORIAL = "memorial"  # Wspomnienie obowiązkowe
+    OPT_MEMORIAL = "opt_memorial"  # Wspomnienie dowolne
     COMMEMORATION = "commemoration"
 
 
 class CalendarScope(StrEnum):
     """Geographic / rite scope of a liturgical calendar."""
 
-    UNIVERSAL = "universal"       # Roman Rite – universal
-    NATIONAL = "national"         # National calendar
+    UNIVERSAL = "universal"  # Roman Rite – universal
+    NATIONAL = "national"  # National calendar
     DIOCESAN = "diocesan"
-    RELIGIOUS = "religious"       # Religious order calendar
+    RELIGIOUS = "religious"  # Religious order calendar
     LOCAL = "local"
 
 
@@ -66,9 +75,7 @@ class LiturgicalCalendar(BaseModel, Base):
     rite: Mapped[str] = mapped_column(
         String(100), nullable=False, default="roman", comment="Rite name"
     )
-    scope: Mapped[str] = mapped_column(
-        String(30), nullable=False, default=CalendarScope.UNIVERSAL
-    )
+    scope: Mapped[str] = mapped_column(String(30), nullable=False, default=CalendarScope.UNIVERSAL)
     country_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("countries.id", ondelete="SET NULL"),
@@ -84,7 +91,7 @@ class LiturgicalCalendar(BaseModel, Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
-    feasts: Mapped[list["Feast"]] = relationship("Feast", back_populates="calendar")
+    feasts: Mapped[list[Feast]] = relationship("Feast", back_populates="calendar")
 
 
 # ==============================================================================
@@ -106,6 +113,27 @@ class Feast(BaseModel, Base):
         Index("ix_feasts_calendar_id", "calendar_id"),
         Index("ix_feasts_day_of_year", "day_of_year"),
         Index("ix_feasts_month", "month"),
+        Index("ix_feasts_month_day", "month", "day"),
+        Index(
+            "uq_feasts_active_person_calendar_date",
+            "person_id",
+            "calendar_id",
+            "month",
+            "day",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL AND month IS NOT NULL AND day IS NOT NULL"),
+        ),
+        Index(
+            "uq_feasts_active_primary_calendar_date",
+            "calendar_id",
+            "month",
+            "day",
+            unique=True,
+            postgresql_where=text(
+                "deleted_at IS NULL AND is_primary = true "
+                "AND month IS NOT NULL AND day IS NOT NULL"
+            ),
+        ),
         {"comment": "Liturgical feast days"},
     )
 
@@ -142,18 +170,24 @@ class Feast(BaseModel, Base):
     )
 
     # Liturgical details
-    rank: Mapped[str] = mapped_column(
-        String(30), nullable=False, default=FeastRank.MEMORIAL
-    )
+    rank: Mapped[str] = mapped_column(String(30), nullable=False, default=FeastRank.MEMORIAL)
     liturgical_color: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    is_primary: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        comment="Editorially selected primary person for this date and calendar",
+    )
 
     # Metadata
     is_suppressed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_title: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    source_url: Mapped[str | None] = mapped_column(String(2000), nullable=True)
 
     # Relationships
-    person: Mapped["Person"] = relationship("Person")
-    calendar: Mapped["LiturgicalCalendar"] = relationship(
+    person: Mapped[Person] = relationship("Person")
+    calendar: Mapped[LiturgicalCalendar] = relationship(
         "LiturgicalCalendar", back_populates="feasts"
     )
 

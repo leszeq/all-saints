@@ -8,6 +8,7 @@ from fastapi import APIRouter
 
 from src.presentation.api.v1.ai import router as ai_router
 from src.presentation.api.v1.auth.router import router as auth_router
+from src.presentation.api.v1.calendar.router import router as calendar_router
 from src.presentation.api.v1.geography.router import router as geography_router
 from src.presentation.api.v1.orders.router import router as orders_router
 from src.presentation.api.v1.persons.router import router as persons_router
@@ -19,6 +20,7 @@ from src.presentation.api.v1.users.router import router as users_router
 router = APIRouter()
 
 router.include_router(auth_router, prefix="/auth", tags=["auth"])
+router.include_router(calendar_router, prefix="/calendar", tags=["calendar"])
 router.include_router(persons_router, prefix="/persons", tags=["persons"])
 router.include_router(geography_router, prefix="/geography", tags=["geography"])
 router.include_router(orders_router, prefix="/orders", tags=["orders"])
