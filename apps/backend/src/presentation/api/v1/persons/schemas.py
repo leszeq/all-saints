@@ -76,6 +76,16 @@ class PersonAvatarInputSchema(BaseModel):
         return _validate_avatar_url(value)
 
 
+class PersonPatronageInputSchema(BaseModel):
+    """Editable patronage attached to a person record."""
+
+    patronage_type: str = Field(..., min_length=2, max_length=50)
+    name_pl: str = Field(..., min_length=2, max_length=500)
+    name_en: str | None = Field(None, max_length=500)
+    description: str | None = None
+    is_official: bool = False
+
+
 class PersonBaseSchema(BaseModel):
     """Base fields for Person payload."""
 
@@ -117,6 +127,7 @@ class PersonBaseSchema(BaseModel):
     is_featured: bool = False
     external_ids: dict[str, Any] | None = None
     avatar: PersonAvatarInputSchema | None = None
+    patronages: list[PersonPatronageInputSchema] = Field(default_factory=list)
 
     @field_validator(*OPTIONAL_UUID_FIELDS, "era", "liturgical_color", mode="before")
     @classmethod
@@ -196,6 +207,7 @@ class PersonUpdateSchema(BaseModel):
     is_featured: bool | None = None
     external_ids: dict[str, Any] | None = None
     avatar: PersonAvatarInputSchema | None = None
+    patronages: list[PersonPatronageInputSchema] | None = None
     change_summary: str | None = Field(None, description="Optional description of changes for version log")
 
     @field_validator(*OPTIONAL_UUID_FIELDS, "era", "liturgical_color", mode="before")
@@ -258,6 +270,19 @@ class PersonStateOfLifeSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class PersonPatronageSchema(BaseModel):
+    """Patronage returned on the public person profile."""
+
+    id: uuid.UUID
+    patronage_type: str
+    name_pl: str
+    name_en: str | None = None
+    description: str | None = None
+    is_official: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class PersonDetailSchema(PersonListItemSchema):
     """Complete detail schema for single record view."""
 
@@ -278,6 +303,7 @@ class PersonDetailSchema(PersonListItemSchema):
     nationality_id: uuid.UUID | None = None
     state_of_life_id: uuid.UUID | None = None
     state_of_life: PersonStateOfLifeSchema | None = None
+    patronages: list[PersonPatronageSchema] = Field(default_factory=list)
 
     biography_pl: str | None = None
     summary_en: str | None = None

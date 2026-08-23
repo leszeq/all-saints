@@ -1,7 +1,13 @@
 import Link from "next/link";
 import { BookOpen, ChevronRight, Search } from "lucide-react";
 import { fetchPersons } from "@/lib/api";
-import { ERA_LABELS, PERSON_TYPE_LABELS } from "@/lib/utils";
+import {
+  LEGACY_ERA_PERIODS,
+  LEGACY_SEARCH_PATRONAGES,
+  PATRONAGE_GROUPS,
+  PERSON_TYPE_LABELS,
+  TIME_PERIODS,
+} from "@/lib/utils";
 import { SaintAvatar, type SaintAvatarData } from "@/components/saint-avatar";
 
 export const revalidate = 30;
@@ -11,6 +17,8 @@ interface PageProps {
     search?: string;
     type?: string;
     era?: string;
+    period?: string;
+    patronage?: string;
     gender?: string;
     page?: string;
   }>;
@@ -18,9 +26,19 @@ interface PageProps {
 
 export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
   const params = await searchParams;
-  const search = params.search || "";
+  const requestedPatronage = params.patronage || LEGACY_SEARCH_PATRONAGES[params.search || ""] || "";
+  const patronageFilter = requestedPatronage in PATRONAGE_GROUPS ? requestedPatronage : "";
+  const search = patronageFilter ? "" : params.search || "";
   const typeFilter = params.type || "";
-  const eraFilter = params.era || "";
+  const requestedPeriod = params.period || LEGACY_ERA_PERIODS[params.era || ""] || "";
+  const periodFilter = requestedPeriod in TIME_PERIODS ? requestedPeriod : "";
+  const eraFilter = periodFilter ? "" : params.era || "";
+  const activePeriod = periodFilter
+    ? TIME_PERIODS[periodFilter as keyof typeof TIME_PERIODS]
+    : null;
+  const activePatronage = patronageFilter
+    ? PATRONAGE_GROUPS[patronageFilter as keyof typeof PATRONAGE_GROUPS]
+    : null;
   const page = Number(params.page || "1");
 
   let persons: Array<Record<string, unknown>> = [];
@@ -33,6 +51,8 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
       per_page: 18,
       ...(search && { search }),
       ...(typeFilter && { person_type: typeFilter }),
+      ...(periodFilter && { period: periodFilter }),
+      ...(patronageFilter && { patronage: patronageFilter }),
       ...(eraFilter && { era: eraFilter }),
     });
     persons = res?.items ?? [];
@@ -82,18 +102,27 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
           <option value="candidate">Kandydaci</option>
         </select>
 
-        {/* Era Select */}
         <select
-          name="era"
-          defaultValue={eraFilter}
+          name="patronage"
+          defaultValue={patronageFilter}
+          className="w-full rounded-xl border border-gold-500/30 bg-gray-50/50 px-3 py-2.5 text-sm text-gray-900 focus:border-gold-500 focus:outline-none md:w-48"
+        >
+          <option value="">Wszystkie patronaty</option>
+          {Object.entries(PATRONAGE_GROUPS).map(([value, group]) => (
+            <option key={value} value={value}>{group.title}</option>
+          ))}
+        </select>
+
+        {/* Timeline Period Select */}
+        <select
+          name="period"
+          defaultValue={periodFilter}
           className="w-full md:w-48 rounded-xl border border-gold-500/30 bg-gray-50/50 px-3 py-2.5 text-sm text-gray-900 focus:border-gold-500 focus:outline-none"
         >
-          <option value="">Wszystkie epoki</option>
-          {Object.entries(ERA_LABELS)
-            .filter(([value]) => value !== "unknown")
-            .map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
+          <option value="">Wszystkie okresy</option>
+          {Object.entries(TIME_PERIODS).map(([value, period]) => (
+            <option key={value} value={value}>{period.range}</option>
+          ))}
         </select>
 
         <button
@@ -103,6 +132,32 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
           Filtruj
         </button>
       </form>
+
+      {activePeriod && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gold-500/25 bg-gold-50/60 px-4 py-3">
+          <p className="text-sm text-burgundy-900">
+            <span className="font-semibold">{activePeriod.range}</span>
+            <span className="mx-2 text-gold-500">·</span>
+            {activePeriod.title}
+          </p>
+          <Link href="/swieci" className="text-xs font-semibold text-burgundy-700 hover:underline">
+            Wyczyść okres
+          </Link>
+        </div>
+      )}
+
+      {activePatronage && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-burgundy-500/15 bg-burgundy-50/70 px-4 py-3">
+          <p className="text-sm text-burgundy-900">
+            <span className="font-semibold">{activePatronage.title}</span>
+            <span className="mx-2 text-gold-500">·</span>
+            {activePatronage.detail}
+          </p>
+          <Link href="/swieci" className="text-xs font-semibold text-burgundy-700 hover:underline">
+            Wyczyść patronat
+          </Link>
+        </div>
+      )}
 
       {/* Results Counter */}
       <p className="text-xs font-medium text-gray-500">
@@ -173,7 +228,7 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
             return (
               <Link
                 key={pageNum}
-                href={`/swieci?page=${pageNum}${search ? `&search=${encodeURIComponent(search)}` : ""}${typeFilter ? `&type=${typeFilter}` : ""}${eraFilter ? `&era=${eraFilter}` : ""}`}
+                href={`/swieci?page=${pageNum}${search ? `&search=${encodeURIComponent(search)}` : ""}${typeFilter ? `&type=${typeFilter}` : ""}${periodFilter ? `&period=${periodFilter}` : ""}${patronageFilter ? `&patronage=${patronageFilter}` : ""}${eraFilter ? `&era=${eraFilter}` : ""}`}
                 className={`h-9 w-9 rounded-lg flex items-center justify-center text-sm font-semibold transition-all ${
                   active
                     ? "bg-burgundy-900 text-white shadow-md"

@@ -10,13 +10,16 @@ from datetime import UTC, datetime
 
 from fastapi.encoders import jsonable_encoder
 from slugify import slugify
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.domain.hagiography.models import (
     Era,
+    EraPeriod,
     Gender,
+    Patronage,
+    PatronageGroup,
     Person,
     PersonType,
     PersonVersion,
@@ -27,8 +30,27 @@ from src.domain.sources.models import Image
 from src.presentation.api.v1.persons.schemas import (
     PersonAvatarInputSchema,
     PersonCreateSchema,
+    PersonPatronageInputSchema,
     PersonUpdateSchema,
 )
+
+ERA_PERIOD_ERAS: dict[EraPeriod, tuple[Era, ...]] = {
+    EraPeriod.EARLY_WITNESSES: (
+        Era.APOSTOLIC,
+        Era.EARLY_CHURCH,
+        Era.LATE_ANTIQUITY,
+    ),
+    EraPeriod.MEDIEVAL: (Era.MEDIEVAL,),
+    EraPeriod.RENEWAL: (Era.EARLY_MODERN,),
+    EraPeriod.MODERN: (Era.MODERN, Era.CONTEMPORARY),
+}
+
+PATRONAGE_GROUP_TYPES: dict[PatronageGroup, tuple[str, ...]] = {
+    PatronageGroup.HEALTH: ("illness", "healthcare"),
+    PatronageGroup.FAMILY: ("family",),
+    PatronageGroup.WORK: ("profession", "work"),
+    PatronageGroup.TRAVEL: ("travel",),
+}
 
 
 class PersonService:
@@ -82,6 +104,25 @@ class PersonService:
 
         if not primary_images:
             self.db.add(image)
+
+    async def _replace_patronages(
+        self,
+        person: Person,
+        patronages: list[PersonPatronageInputSchema],
+    ) -> None:
+        """Replace the person's structured patronage assignments."""
+        await self.db.execute(delete(Patronage).where(Patronage.person_id == person.id))
+        for patronage in patronages:
+            self.db.add(
+                Patronage(
+                    person_id=person.id,
+                    patronage_type=patronage.patronage_type,
+                    name_pl=patronage.name_pl,
+                    name_en=patronage.name_en,
+                    description=patronage.description,
+                    is_official=patronage.is_official,
+                )
+            )
 
     async def _generate_unique_slug(self, name: str, person_id: uuid.UUID | None = None) -> str:
         """Generate a URL-safe unique slug for a person."""
@@ -147,6 +188,8 @@ class PersonService:
 
         if data.avatar is not None:
             await self._sync_avatar(person, data.avatar)
+        if data.patronages:
+            await self._replace_patronages(person, data.patronages)
 
         # Create initial version snapshot
         version_snapshot = PersonVersion(
@@ -161,7 +204,7 @@ class PersonService:
 
         await self.db.commit()
         await self.db.refresh(person)
-        await self.db.refresh(person, attribute_names=["images", "state_of_life"])
+        await self.db.refresh(person, attribute_names=["images", "state_of_life", "patronages"])
         return person
 
     async def get_by_id_or_slug(self, identifier: str) -> Person | None:
@@ -171,6 +214,7 @@ class PersonService:
             .options(
                 selectinload(Person.images),
                 selectinload(Person.state_of_life),
+                selectinload(Person.patronages),
             )
             .where(Person.deleted_at.is_(None))
         )
@@ -192,6 +236,8 @@ class PersonService:
         status: PublicationStatus | None = None,
         gender: Gender | None = None,
         era: Era | None = None,
+        period: EraPeriod | None = None,
+        patronage: PatronageGroup | None = None,
         country_id: uuid.UUID | None = None,
         is_featured: bool | None = None,
     ) -> tuple[list[Person], int]:
@@ -209,8 +255,21 @@ class PersonService:
             query = query.where(Person.status == status.value)
         if gender:
             query = query.where(Person.gender == gender.value)
-        if era:
+        if period:
+            query = query.where(
+                Person.era.in_([era.value for era in ERA_PERIOD_ERAS[period]])
+            )
+        elif era:
             query = query.where(Person.era == era.value)
+        if patronage:
+            query = query.where(
+                Person.patronages.any(
+                    and_(
+                        Patronage.deleted_at.is_(None),
+                        Patronage.patronage_type.in_(PATRONAGE_GROUP_TYPES[patronage]),
+                    )
+                )
+            )
         if country_id:
             query = query.where(
                 or_(Person.birth_country_id == country_id, Person.death_country_id == country_id)
@@ -278,9 +337,10 @@ class PersonService:
     ) -> Person:
         """Update person record and create version snapshot."""
         avatar_was_set = "avatar" in data.model_fields_set
+        patronages_were_set = "patronages" in data.model_fields_set
         update_dict = data.model_dump(
             exclude_unset=True,
-            exclude={"avatar", "change_summary"},
+            exclude={"avatar", "patronages", "change_summary"},
         )
 
         if "canonical_name" in update_dict and update_dict["canonical_name"] != person.canonical_name:
@@ -292,6 +352,8 @@ class PersonService:
 
         if avatar_was_set:
             await self._sync_avatar(person, data.avatar)
+        if patronages_were_set:
+            await self._replace_patronages(person, data.patronages or [])
 
         person.version += 1
         person.updated_at = datetime.now(UTC)
@@ -309,7 +371,7 @@ class PersonService:
 
         await self.db.commit()
         await self.db.refresh(person)
-        await self.db.refresh(person, attribute_names=["images", "state_of_life"])
+        await self.db.refresh(person, attribute_names=["images", "state_of_life", "patronages"])
         return person
 
     async def soft_delete_person(self, person: Person, user_id: uuid.UUID | None = None) -> None:
@@ -328,6 +390,7 @@ class PersonService:
             .options(
                 selectinload(Person.images),
                 selectinload(Person.state_of_life),
+                selectinload(Person.patronages),
             )
             .where(Person.id == person_id)
         )
@@ -349,7 +412,7 @@ class PersonService:
             )
             await self.db.commit()
             await self.db.refresh(person)
-            await self.db.refresh(person, attribute_names=["images", "state_of_life"])
+            await self.db.refresh(person, attribute_names=["images", "state_of_life", "patronages"])
         return person
 
     async def get_person_versions(self, person_id: uuid.UUID) -> list[PersonVersion]:

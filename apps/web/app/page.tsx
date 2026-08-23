@@ -13,22 +13,16 @@ import {
   Sparkles,
 } from "lucide-react";
 import { fetchPersons } from "@/lib/api";
+import { PATRONAGE_GROUPS, TIME_PERIODS } from "@/lib/utils";
 import { SaintAvatar, type SaintAvatarData } from "@/components/saint-avatar";
 
 export const revalidate = 60;
 
 const patronages = [
-  { title: "W chorobie", detail: "Patroni chorych, lekarzy i opiekunów", icon: HeartHandshake, query: "chorzy" },
-  { title: "W rodzinie", detail: "Orędownicy małżeństw, dzieci i rodziców", icon: Church, query: "rodzina" },
-  { title: "W pracy", detail: "Patroni zawodów i codziennych obowiązków", icon: Landmark, query: "praca" },
-  { title: "W drodze", detail: "Patroni podróżnych, kierowców i pielgrzymów", icon: Compass, query: "podróżni" },
-];
-
-const eras = [
-  ["I–V wiek", "Pierwsi świadkowie", "Starożytność"],
-  ["VI–XV wiek", "Klasztory i średniowiecze", "Średniowiecze"],
-  ["XVI–XVIII wiek", "Odnowa i misje", "Nowożytność"],
-  ["XIX–XXI wiek", "Święci bliscy naszym czasom", "Współczesność"],
+  { key: "health", ...PATRONAGE_GROUPS.health, icon: HeartHandshake },
+  { key: "family", ...PATRONAGE_GROUPS.family, icon: Church },
+  { key: "work", ...PATRONAGE_GROUPS.work, icon: Landmark },
+  { key: "travel", ...PATRONAGE_GROUPS.travel, icon: Compass },
 ];
 
 const fallbackPersons = [
@@ -127,8 +121,8 @@ export default async function HomePage() {
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="editorial-label">Punkty wyjścia</p><h2 className="mt-3 font-serif text-4xl font-semibold text-charcoal">Odkrywaj według patronatu</h2></div><Link href="/swieci" className="inline-flex items-center gap-1 text-sm font-semibold text-burgundy-700">Zobacz katalog <ChevronRight className="h-4 w-4" /></Link></div>
             <div className="mt-9 grid gap-px overflow-hidden rounded-xl border border-[#ded8cd] bg-[#ded8cd] sm:grid-cols-2 lg:grid-cols-4">
-              {patronages.map(({ title, detail, icon: Icon, query }) => (
-                <Link key={title} href={`/swieci?search=${encodeURIComponent(query)}`} className="group bg-[#fffdf8] p-6 transition-colors hover:bg-gold-50">
+              {patronages.map(({ key, title, detail, icon: Icon }) => (
+                <Link key={key} href={`/swieci?patronage=${key}`} className="group bg-[#fffdf8] p-6 transition-colors hover:bg-gold-50">
                   <Icon className="h-6 w-6 text-gold-700" strokeWidth={1.5} /><h3 className="mt-8 font-serif text-2xl font-semibold text-charcoal">{title}</h3><p className="mt-2 text-sm leading-6 text-stone-600">{detail}</p><span className="mt-7 inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-burgundy-700">Przeglądaj <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" /></span>
                 </Link>
               ))}
@@ -147,7 +141,7 @@ export default async function HomePage() {
           <div id="epoki">
             <div className="flex items-center justify-between"><div><p className="editorial-label">Oś czasu</p><h2 className="mt-3 font-serif text-3xl font-semibold">Święci przez wieki</h2></div><Clock3 className="h-7 w-7 text-gold-700" strokeWidth={1.4} /></div>
             <div className="relative mt-7 grid gap-3 before:absolute before:bottom-4 before:left-[6px] before:top-4 before:w-px before:bg-gold-300">
-              {eras.map(([period, title, era]) => <Link key={period} href={`/swieci?era=${encodeURIComponent(era)}`} className="group relative grid grid-cols-[7.5rem_1fr] items-center gap-4 pl-7"><span className="absolute left-0 h-3 w-3 rounded-full border-2 border-[#fffdf8] bg-gold-500 ring-1 ring-gold-400" /><span className="text-xs font-semibold text-gold-800">{period}</span><span className="rounded-lg border border-transparent px-4 py-3 font-serif text-lg transition-colors group-hover:border-[#ded8cd] group-hover:bg-[#fffdf8]">{title}</span></Link>)}
+              {Object.entries(TIME_PERIODS).map(([key, period]) => <Link key={key} href={`/swieci?period=${key}`} className="group relative grid grid-cols-[7.5rem_1fr] items-center gap-4 pl-7"><span className="absolute left-0 h-3 w-3 rounded-full border-2 border-[#fffdf8] bg-gold-500 ring-1 ring-gold-400" /><span className="text-xs font-semibold text-gold-800">{period.range}</span><span className="rounded-lg border border-transparent px-4 py-3 font-serif text-lg transition-colors group-hover:border-[#ded8cd] group-hover:bg-[#fffdf8]">{period.title}</span></Link>)}
             </div>
           </div>
         </section>

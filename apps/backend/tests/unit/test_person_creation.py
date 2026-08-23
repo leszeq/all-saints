@@ -7,8 +7,18 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from src.application.services.person_service import PersonService
-from src.domain.hagiography.models import Person, PersonVersion
+from src.application.services.person_service import (
+    ERA_PERIOD_ERAS,
+    PATRONAGE_GROUP_TYPES,
+    PersonService,
+)
+from src.domain.hagiography.models import (
+    Era,
+    EraPeriod,
+    PatronageGroup,
+    Person,
+    PersonVersion,
+)
 from src.main import app
 from src.presentation.api.v1.persons.schemas import (
     PersonCreateSchema,
@@ -127,3 +137,44 @@ def test_openapi_contains_all_active_modules_and_bearer_auth() -> None:
     assert "/api/v1/sources/bibliography" in schema["paths"]
     assert "/api/v1/users" in schema["paths"]
     assert "HTTPBearer" in schema["components"]["securitySchemes"]
+
+
+def test_timeline_periods_cover_the_expected_eras() -> None:
+    schema = app.openapi()
+
+    assert ERA_PERIOD_ERAS[EraPeriod.EARLY_WITNESSES] == (
+        Era.APOSTOLIC,
+        Era.EARLY_CHURCH,
+        Era.LATE_ANTIQUITY,
+    )
+    assert ERA_PERIOD_ERAS[EraPeriod.MEDIEVAL] == (Era.MEDIEVAL,)
+    assert ERA_PERIOD_ERAS[EraPeriod.RENEWAL] == (Era.EARLY_MODERN,)
+    assert ERA_PERIOD_ERAS[EraPeriod.MODERN] == (Era.MODERN, Era.CONTEMPORARY)
+
+    public_parameters = schema["paths"]["/api/v1/persons"]["get"]["parameters"]
+    assert any(parameter["name"] == "period" for parameter in public_parameters)
+
+
+def test_patronage_groups_are_structured_and_exposed_by_the_api() -> None:
+    schema = app.openapi()
+    person = PersonCreateSchema.model_validate(
+        {
+            **ADMIN_PAYLOAD,
+            "patronages": [
+                {
+                    "patronage_type": "illness",
+                    "name_pl": "Osoby chore",
+                    "is_official": True,
+                }
+            ],
+        }
+    )
+
+    assert person.patronages[0].name_pl == "Osoby chore"
+    assert PATRONAGE_GROUP_TYPES[PatronageGroup.HEALTH] == ("illness", "healthcare")
+    assert PATRONAGE_GROUP_TYPES[PatronageGroup.FAMILY] == ("family",)
+    assert PATRONAGE_GROUP_TYPES[PatronageGroup.WORK] == ("profession", "work")
+    assert PATRONAGE_GROUP_TYPES[PatronageGroup.TRAVEL] == ("travel",)
+
+    public_parameters = schema["paths"]["/api/v1/persons"]["get"]["parameters"]
+    assert any(parameter["name"] == "patronage" for parameter in public_parameters)

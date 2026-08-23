@@ -6,6 +6,7 @@ import {
   BookOpen,
   Crown,
   Heart,
+  HeartHandshake,
   Sparkles,
 } from "lucide-react";
 import { fetchPersonDetail } from "@/lib/api";
@@ -74,7 +75,7 @@ export default async function PersonDetailPage({ params }: PageProps) {
       />
 
       {/* ─── Hero Banner ──────────────────────────────────────────────────── */}
-      <section className="bg-gradient-to-b from-burgundy-900 via-burgundy-850 to-burgundy-950 text-white py-16">
+      <section className="bg-gradient-to-br from-burgundy-900 via-burgundy-800 to-burgundy-700 py-16 text-white">
         <div className="mx-auto max-w-5xl space-y-6 px-4 sm:px-6 lg:px-8">
           <Link
             href="/swieci"
@@ -109,38 +110,42 @@ export default async function PersonDetailPage({ params }: PageProps) {
               </h1>
 
               {Boolean(person.latin_name) && (
-                <p className="font-serif text-lg italic text-gold-300">
+                <p className="font-serif text-lg font-medium italic text-gold-100">
                   {String(person.latin_name)}
                 </p>
               )}
 
-              {/* Quick Stats Pill */}
-              <div className="flex flex-wrap gap-6 border-t border-burgundy-800 pt-6 text-xs text-burgundy-200">
+              {/* Quick Stats */}
+              <dl className="grid grid-cols-2 overflow-hidden rounded-xl border border-white/15 bg-black/10 shadow-sm sm:grid-cols-4">
                 {Boolean(person.birth_year) && (
-                  <div>
-                    <span className="block font-semibold uppercase text-gold-400">Rok urodzenia</span>
-                    <span>{String(person.birth_year)}</span>
+                  <div className="border-b border-r border-white/10 bg-burgundy-900/55 px-4 py-3 sm:border-b-0">
+                    <dt className="text-[10px] font-bold uppercase tracking-wider text-gold-300">Rok urodzenia</dt>
+                    <dd className="mt-1 text-sm font-semibold text-white">{String(person.birth_year)}</dd>
                   </div>
                 )}
                 {Boolean(person.death_year) && (
-                  <div>
-                    <span className="block font-semibold uppercase text-gold-400">Rok śmierci</span>
-                    <span>{String(person.death_year)}</span>
+                  <div className="border-b border-white/10 bg-burgundy-900/55 px-4 py-3 sm:border-b-0 sm:border-r">
+                    <dt className="text-[10px] font-bold uppercase tracking-wider text-gold-300">Rok śmierci</dt>
+                    <dd className="mt-1 text-sm font-semibold text-white">{String(person.death_year)}</dd>
                   </div>
                 )}
                 {Boolean(person.gender) && (
-                  <div>
-                    <span className="block font-semibold uppercase text-gold-400">Płeć</span>
-                    <span>{person.gender === "male" ? "Mężczyzna" : person.gender === "female" ? "Kobieta" : "—"}</span>
+                  <div className="border-r border-white/10 bg-burgundy-900/55 px-4 py-3">
+                    <dt className="text-[10px] font-bold uppercase tracking-wider text-gold-300">Płeć</dt>
+                    <dd className="mt-1 text-sm font-semibold text-white">
+                      {person.gender === "male" ? "Mężczyzna" : person.gender === "female" ? "Kobieta" : "—"}
+                    </dd>
                   </div>
                 )}
                 {Boolean((person.state_of_life as Record<string, unknown> | null)?.name_pl) && (
-                  <div>
-                    <span className="block font-semibold uppercase text-gold-400">Stan życia</span>
-                    <span>{String((person.state_of_life as Record<string, unknown>).name_pl)}</span>
+                  <div className="bg-burgundy-900/55 px-4 py-3">
+                    <dt className="text-[10px] font-bold uppercase tracking-wider text-gold-300">Stan życia</dt>
+                    <dd className="mt-1 text-sm font-semibold text-white">
+                      {String((person.state_of_life as Record<string, unknown>).name_pl)}
+                    </dd>
                   </div>
                 )}
-              </div>
+              </dl>
             </div>
           </div>
         </div>
@@ -175,6 +180,26 @@ export default async function PersonDetailPage({ params }: PageProps) {
             <p className="text-sm text-gray-500">Brak pełnego biogramu w bazie danych.</p>
           )}
         </div>
+
+        {/* Patronages */}
+        {Array.isArray(person.patronages) && person.patronages.length > 0 && (
+          <section className="rounded-2xl border border-gold-500/20 bg-white p-6 shadow-sm sm:p-8">
+            <h2 className="flex items-center gap-2 font-serif text-2xl font-bold text-burgundy-900">
+              <HeartHandshake className="h-5 w-5 text-gold-600" />
+              Patronaty
+            </h2>
+            <ul className="mt-4 flex flex-wrap gap-2">
+              {(person.patronages as Array<Record<string, unknown>>).map((patronage) => (
+                <li
+                  key={String(patronage.id)}
+                  className="rounded-full border border-burgundy-500/15 bg-burgundy-50 px-3 py-1.5 text-xs font-medium text-burgundy-900"
+                >
+                  {String(patronage.name_pl)}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {/* Prayers / Attributes Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

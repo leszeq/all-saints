@@ -20,7 +20,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.services.person_service import PersonService
-from src.domain.hagiography.models import Era, Gender, PersonType, PublicationStatus
+from src.domain.hagiography.models import (
+    Era,
+    EraPeriod,
+    Gender,
+    PatronageGroup,
+    PersonType,
+    PublicationStatus,
+)
 from src.domain.identity.models import User
 from src.infrastructure.db.session import get_db_session
 from src.presentation.api.v1.auth.router import require_permission
@@ -52,6 +59,8 @@ async def list_persons(
     status_filter: PublicationStatus | None = Query(None, alias="status"),
     gender: Gender | None = None,
     era: Era | None = None,
+    period: EraPeriod | None = Query(None, description="Timeline group spanning one or more eras"),
+    patronage: PatronageGroup | None = Query(None, description="Public patronage discovery group"),
     country_id: uuid.UUID | None = None,
     is_featured: bool | None = None,
     db: AsyncSession = Depends(get_db_session),
@@ -66,6 +75,8 @@ async def list_persons(
         status=status_filter,
         gender=gender,
         era=era,
+        period=period,
+        patronage=patronage,
         country_id=country_id,
         is_featured=is_featured,
     )

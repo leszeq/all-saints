@@ -94,6 +94,24 @@ class Era(StrEnum):
     UNKNOWN = "unknown"
 
 
+class EraPeriod(StrEnum):
+    """Public timeline groups spanning one or more historical eras."""
+
+    EARLY_WITNESSES = "early_witnesses"  # I–V w.
+    MEDIEVAL = "medieval"                # VI–XV w.
+    RENEWAL = "renewal"                  # XVI–XVIII w.
+    MODERN = "modern"                    # XIX–XXI w.
+
+
+class PatronageGroup(StrEnum):
+    """Public discovery groups backed by structured patronage records."""
+
+    HEALTH = "health"
+    FAMILY = "family"
+    WORK = "work"
+    TRAVEL = "travel"
+
+
 class MiracleStatus(StrEnum):
     """Vatican recognition status of a miracle."""
 

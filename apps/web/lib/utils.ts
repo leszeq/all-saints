@@ -35,3 +35,55 @@ export const ERA_LABELS: Record<string, string> = {
   contemporary: "Współczesność (XXI w.)",
   unknown: "Nieznana",
 };
+
+export const TIME_PERIODS = {
+  early_witnesses: {
+    range: "I–V wiek",
+    title: "Pierwsi świadkowie",
+  },
+  medieval: {
+    range: "VI–XV wiek",
+    title: "Klasztory i średniowiecze",
+  },
+  renewal: {
+    range: "XVI–XVIII wiek",
+    title: "Odnowa i misje",
+  },
+  modern: {
+    range: "XIX–XXI wiek",
+    title: "Święci bliscy naszym czasom",
+  },
+} as const;
+
+export const LEGACY_ERA_PERIODS: Record<string, keyof typeof TIME_PERIODS> = {
+  "Starożytność": "early_witnesses",
+  "Średniowiecze": "medieval",
+  "Nowożytność": "renewal",
+  "Współczesność": "modern",
+};
+
+export const PATRONAGE_GROUPS = {
+  health: {
+    title: "W chorobie",
+    detail: "Patroni chorych, lekarzy i opiekunów",
+  },
+  family: {
+    title: "W rodzinie",
+    detail: "Orędownicy małżeństw, dzieci i rodziców",
+  },
+  work: {
+    title: "W pracy",
+    detail: "Patroni zawodów i codziennych obowiązków",
+  },
+  travel: {
+    title: "W drodze",
+    detail: "Patroni podróżnych, kierowców i pielgrzymów",
+  },
+} as const;
+
+export const LEGACY_SEARCH_PATRONAGES: Record<string, keyof typeof PATRONAGE_GROUPS> = {
+  chorzy: "health",
+  rodzina: "family",
+  praca: "work",
+  "podróżni": "travel",
+};
