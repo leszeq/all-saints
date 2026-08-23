@@ -10,8 +10,11 @@ import pytest
 from src.application.services.person_service import PersonService
 from src.domain.hagiography.models import Person, PersonVersion
 from src.main import app
-from src.presentation.api.v1.persons.schemas import PersonCreateSchema, PersonUpdateSchema
-
+from src.presentation.api.v1.persons.schemas import (
+    PersonCreateSchema,
+    PersonDetailSchema,
+    PersonUpdateSchema,
+)
 
 ADMIN_PAYLOAD = {
     "canonical_name": "Św. Jan Paweł II",
@@ -48,6 +51,41 @@ def test_person_update_schema_accepts_empty_optional_selects() -> None:
     assert payload.birth_country_id is None
     assert payload.death_country_id is None
     assert payload.state_of_life_id is None
+
+
+def test_person_content_fields_and_state_of_life_are_exposed_in_detail() -> None:
+    person_id = uuid.uuid4()
+    state_id = uuid.uuid4()
+    now = "2026-08-23T12:00:00Z"
+
+    payload = PersonDetailSchema.model_validate(
+        {
+            "id": person_id,
+            "slug": "sw-rita-z-cascii",
+            "canonical_name": "Św. Rita z Cascii",
+            "person_type": "saint",
+            "status": "draft",
+            "gender": "female",
+            "era": "medieval",
+            "is_featured": True,
+            "prayers": "Święta Rito, módl się za nami.",
+            "iconographic_attributes": "Róże; cierń na czole",
+            "state_of_life_id": state_id,
+            "state_of_life": {
+                "id": state_id,
+                "name_pl": "Zakonnica",
+                "name_en": "Religious sister",
+            },
+            "version": 1,
+            "created_at": now,
+            "updated_at": now,
+        }
+    )
+
+    assert payload.prayers == "Święta Rito, módl się za nami."
+    assert payload.iconographic_attributes == "Róże; cierń na czole"
+    assert payload.state_of_life is not None
+    assert payload.state_of_life.name_pl == "Zakonnica"
 
 
 @pytest.mark.asyncio

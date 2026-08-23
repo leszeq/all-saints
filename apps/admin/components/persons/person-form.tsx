@@ -1,14 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowLeft, Loader2, Save } from "lucide-react";
+import { ArrowLeft, FileImage, ImagePlus, Info, Loader2, Save, Upload, X } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getApiErrorMessage, personsApi, geographyApi, taxonomyApi } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { getApiErrorMessage, personsApi, geographyApi, sourcesApi, taxonomyApi } from "@/lib/api";
+import { cn, ERA_LABELS } from "@/lib/utils";
+import { SaintAvatar } from "@/components/persons/saint-avatar";
+
+const optionalMediaUrl = z.string().optional().refine(
+  (value) => !value || value.startsWith("/") || /^https?:\/\//i.test(value),
+  "Podaj adres HTTP(S) lub ścieżkę zaczynającą się od /",
+);
 
 const personSchema = z.object({
   canonical_name: z.string().min(2, "Minimum 2 znaki"),
@@ -25,7 +31,24 @@ const personSchema = z.object({
   state_of_life_id: z.string().optional().nullable(),
   summary_pl: z.string().optional(),
   biography_pl: z.string().optional(),
+  prayers: z.string().optional(),
+  iconographic_attributes: z.string().optional(),
   is_featured: z.boolean(),
+  avatar_url: optionalMediaUrl,
+  avatar_thumbnail_url: optionalMediaUrl,
+  avatar_title: z.string().optional(),
+  avatar_license: z.enum([
+    "public_domain",
+    "cc_by",
+    "cc_by_sa",
+    "cc_by_nc",
+    "cc_by_nc_sa",
+    "all_rights_reserved",
+    "fair_use",
+    "unknown",
+  ]),
+  avatar_photographer: z.string().optional(),
+  avatar_source_url: optionalMediaUrl,
   change_summary: z.string().optional(),
 });
 
@@ -37,7 +60,17 @@ function normalizePersonPayload(data: PersonFormData, isEdit: boolean) {
     return normalized ? normalized : null;
   };
   const optionalId = (value?: string | null) => value || null;
-  const { change_summary, ...personFields } = data;
+  const {
+    change_summary,
+    avatar_url,
+    avatar_thumbnail_url,
+    avatar_title,
+    avatar_license,
+    avatar_photographer,
+    avatar_source_url,
+    ...personFields
+  } = data;
+  const normalizedAvatarUrl = optionalText(avatar_url);
 
   return {
     ...personFields,
@@ -52,16 +85,56 @@ function normalizePersonPayload(data: PersonFormData, isEdit: boolean) {
     state_of_life_id: optionalId(data.state_of_life_id),
     summary_pl: optionalText(data.summary_pl),
     biography_pl: optionalText(data.biography_pl),
+    prayers: optionalText(data.prayers),
+    iconographic_attributes: optionalText(data.iconographic_attributes),
+    avatar: normalizedAvatarUrl
+      ? {
+          url: normalizedAvatarUrl,
+          thumbnail_url: optionalText(avatar_thumbnail_url),
+          title: optionalText(avatar_title),
+          license: avatar_license,
+          photographer: optionalText(avatar_photographer),
+          source_url: optionalText(avatar_source_url),
+        }
+      : null,
     ...(isEdit ? { change_summary: optionalText(change_summary) } : {}),
   };
 }
 
-type PersonPayload = ReturnType<typeof normalizePersonPayload>;
+async function preparePersonPayload(
+  data: PersonFormData,
+  isEdit: boolean,
+  avatarFile: File | null,
+) {
+  const payload = normalizePersonPayload(data, isEdit);
+  if (!avatarFile) return payload;
+
+  const upload = await sourcesApi.uploadAvatar(avatarFile);
+  const optionalText = (value?: string | null) => value?.trim() || null;
+  return {
+    ...payload,
+    avatar: {
+      url: upload.data.url,
+      thumbnail_url: upload.data.thumbnail_url,
+      title: optionalText(data.avatar_title),
+      license: data.avatar_license,
+      photographer: optionalText(data.avatar_photographer),
+      source_url: optionalText(data.avatar_source_url),
+      storage_key: upload.data.storage_key,
+      width_px: upload.data.width_px,
+      height_px: upload.data.height_px,
+      file_size_bytes: upload.data.file_size_bytes,
+      mime_type: upload.data.mime_type,
+    },
+  };
+}
 
 const TABS = [
   { id: "basic", label: "Dane podstawowe" },
   { id: "dates", label: "Daty i miejsca" },
   { id: "biography", label: "Biografia" },
+  { id: "devotion", label: "Kult i ikonografia" },
+  { id: "avatar", label: "Avatar" },
 ];
 
 interface PersonFormProps {
@@ -74,6 +147,9 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
   const router = useRouter();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("basic");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarFileError, setAvatarFileError] = useState<string | null>(null);
 
   const countriesQuery = useQuery({
     queryKey: ["countries"],
@@ -92,6 +168,7 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isDirty },
   } = useForm<PersonFormData>({
     resolver: zodResolver(personSchema),
@@ -100,12 +177,14 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
       status: "draft",
       gender: "unknown",
       is_featured: false,
+      avatar_license: "unknown",
       ...defaultValues,
     },
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: PersonPayload) => personsApi.create(data),
+    mutationFn: async (data: PersonFormData) =>
+      personsApi.create(await preparePersonPayload(data, false, avatarFile)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["persons"] });
       router.push("/dashboard/persons");
@@ -113,7 +192,8 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: PersonPayload) => personsApi.update(personId!, data),
+    mutationFn: async (data: PersonFormData) =>
+      personsApi.update(personId!, await preparePersonPayload(data, true, avatarFile)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["persons"] });
       router.push(`/dashboard/persons/${personId}`);
@@ -123,18 +203,48 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
   const mutation = isEdit ? updateMutation : createMutation;
 
   const onSubmit = (data: PersonFormData) => {
-    mutation.mutate(normalizePersonPayload(data, Boolean(isEdit)));
+    mutation.mutate(data);
   };
 
   const inputCls =
     "w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all";
   const labelCls = "block text-sm font-medium text-foreground mb-1";
   const errorCls = "mt-1 text-xs text-destructive";
+  const avatarUrl = useWatch({ control, name: "avatar_url" });
+  const canonicalName = useWatch({ control, name: "canonical_name" }) || "Nowa postać";
+  const avatarDisplayUrl = avatarPreview || avatarUrl || null;
+
+  useEffect(() => {
+    return () => {
+      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+    };
+  }, [avatarPreview]);
+
+  const selectAvatarFile = (file?: File) => {
+    setAvatarFileError(null);
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setAvatarFileError("Wybierz obraz JPG, PNG lub WebP.");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setAvatarFileError("Obraz może mieć maksymalnie 8 MB.");
+      return;
+    }
+    setAvatarFile(file);
+    setAvatarPreview(URL.createObjectURL(file));
+  };
+
+  const clearAvatarFile = () => {
+    setAvatarFile(null);
+    setAvatarPreview(null);
+    setAvatarFileError(null);
+  };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {/* Tabs */}
-      <div className="flex gap-1 rounded-lg border border-border bg-muted/40 p-1 w-fit">
+      <div className="flex w-fit max-w-full flex-wrap gap-1 rounded-lg border border-border bg-muted/40 p-1">
         {TABS.map((tab) => (
           <button
             key={tab.id}
@@ -205,13 +315,9 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
             <label className={labelCls}>Era</label>
             <select {...register("era")} className={inputCls}>
               <option value="">—</option>
-              <option value="apostolic">Epoka apostolska (I w.)</option>
-              <option value="early_church">Wczesny Kościół (II–V w.)</option>
-              <option value="late_antiquity">Późna starożytność (V–VII w.)</option>
-              <option value="medieval">Średniowiecze</option>
-              <option value="early_modern">Nowożytność</option>
-              <option value="modern">Epoka nowoczesna (XIX–XX w.)</option>
-              <option value="contemporary">Współczesność (XXI w.)</option>
+              {Object.entries(ERA_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
             </select>
           </div>
 
@@ -358,6 +464,163 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
               />
             </div>
           )}
+        </div>
+      )}
+
+      {/* ─── Tab: Devotion & Iconography ──────────────────────────────── */}
+      {activeTab === "devotion" && (
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div>
+            <label className={labelCls}>Modlitwa</label>
+            <textarea
+              {...register("prayers")}
+              rows={10}
+              className={cn(inputCls, "resize-y leading-6")}
+              placeholder="Treść zatwierdzonej modlitwy związanej z postacią…"
+            />
+            <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
+              Podziały wierszy zostaną zachowane na profilu publicznym. Publikuj wyłącznie tekst o zweryfikowanym źródle i prawach do wykorzystania.
+            </p>
+          </div>
+
+          <div>
+            <label className={labelCls}>Atrybuty ikonograficzne</label>
+            <textarea
+              {...register("iconographic_attributes")}
+              rows={10}
+              className={cn(inputCls, "resize-y leading-6")}
+              placeholder="Róże; cierń na czole; habit augustiański; krucyfiks"
+            />
+            <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
+              Oddziel atrybuty średnikiem lub nowym wierszem. Portal pokaże każdy element jako osobną etykietę.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Tab: Avatar ───────────────────────────────────────────────── */}
+      {activeTab === "avatar" && (
+        <div className="grid gap-6 lg:grid-cols-[13rem_1fr]">
+          <div className="rounded-xl border border-border bg-muted/25 p-5 text-center">
+            <SaintAvatar
+              name={canonicalName}
+              avatar={avatarDisplayUrl ? { url: avatarDisplayUrl } : null}
+              className="mx-auto h-32 w-32 text-3xl"
+            />
+            <p className="mt-4 text-sm font-semibold text-foreground">Podgląd avatara</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              Bez obrazu pokażemy elegancki monogram, więc każdy profil pozostaje kompletny wizualnie.
+            </p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <span className={labelCls}>Plik z dysku</span>
+              <label
+                htmlFor="avatar-file"
+                className="flex cursor-pointer items-center justify-center gap-3 rounded-xl border border-dashed border-primary/35 bg-primary/5 px-5 py-6 text-sm text-foreground transition-colors hover:border-primary/60 hover:bg-primary/10"
+              >
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <Upload className="h-5 w-5" />
+                </span>
+                <span>
+                  <strong className="block font-semibold">Wybierz obraz z dysku</strong>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">JPG, PNG lub WebP · maksymalnie 8 MB</span>
+                </span>
+                <input
+                  key={avatarFile?.name ?? "empty-avatar-file"}
+                  id="avatar-file"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="sr-only"
+                  onChange={(event) => selectAvatarFile(event.target.files?.[0])}
+                />
+              </label>
+              {avatarFileError && <p className={errorCls}>{avatarFileError}</p>}
+              {avatarFile && (
+                <div className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-3 py-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <FileImage className="h-4 w-4 shrink-0 text-primary" />
+                    <span className="truncate text-xs font-medium text-foreground">{avatarFile.name}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {(avatarFile.size / 1024 / 1024).toFixed(2)} MB
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={clearAvatarFile}
+                    className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    aria-label="Usuń wybrany plik"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="sm:col-span-2 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              <span className="h-px flex-1 bg-border" />
+              lub użyj adresu
+              <span className="h-px flex-1 bg-border" />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className={labelCls}>Adres obrazu</label>
+              <div className="relative">
+                <ImagePlus className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  {...register("avatar_url")}
+                  className={cn(inputCls, "pl-9")}
+                  placeholder="https://…/portret.jpg lub /images/portret.jpg"
+                />
+              </div>
+              {errors.avatar_url && <p className={errorCls}>{errors.avatar_url.message}</p>}
+              {avatarFile && (
+                <p className="mt-1 text-xs text-muted-foreground">Wybrany plik z dysku ma pierwszeństwo przed adresem URL.</p>
+              )}
+            </div>
+
+            <div>
+              <label className={labelCls}>Miniatura (opcjonalnie)</label>
+              <input {...register("avatar_thumbnail_url")} className={inputCls} placeholder="https://…/miniatura.jpg" />
+              {errors.avatar_thumbnail_url && <p className={errorCls}>{errors.avatar_thumbnail_url.message}</p>}
+            </div>
+
+            <div>
+              <label className={labelCls}>Tytuł / tekst alternatywny</label>
+              <input {...register("avatar_title")} className={inputCls} placeholder={`Portret: ${canonicalName}`} />
+            </div>
+
+            <div>
+              <label className={labelCls}>Licencja</label>
+              <select {...register("avatar_license")} className={inputCls}>
+                <option value="unknown">Do weryfikacji</option>
+                <option value="public_domain">Domena publiczna</option>
+                <option value="cc_by">CC BY</option>
+                <option value="cc_by_sa">CC BY-SA</option>
+                <option value="cc_by_nc">CC BY-NC</option>
+                <option value="cc_by_nc_sa">CC BY-NC-SA</option>
+                <option value="all_rights_reserved">Wszelkie prawa zastrzeżone</option>
+                <option value="fair_use">Dozwolony użytek</option>
+              </select>
+            </div>
+
+            <div>
+              <label className={labelCls}>Autor / fotograf</label>
+              <input {...register("avatar_photographer")} className={inputCls} placeholder="Autor dzieła lub fotografii" />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className={labelCls}>Źródło obrazu</label>
+              <input {...register("avatar_source_url")} className={inputCls} placeholder="https://commons.wikimedia.org/…" />
+              {errors.avatar_source_url && <p className={errorCls}>{errors.avatar_source_url.message}</p>}
+            </div>
+
+            <div className="sm:col-span-2 flex gap-2 rounded-lg border border-primary/15 bg-primary/5 p-3 text-xs leading-5 text-muted-foreground">
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+              Avatar jest zapisywany jako główne zdjęcie w katalogu mediów. Pliki są automatycznie weryfikowane, konwertowane do WebP i otrzymują miniaturę. Usunięcie adresu wyłączy aktualny avatar bez kasowania rekordu osoby.
+            </div>
+          </div>
         </div>
       )}
 

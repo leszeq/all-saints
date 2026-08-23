@@ -10,8 +10,14 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from src.domain.hagiography.models import Era, Gender, LiturgicalColor, PersonType, PublicationStatus
-
+from src.domain.hagiography.models import (
+    Era,
+    Gender,
+    LiturgicalColor,
+    PersonType,
+    PublicationStatus,
+)
+from src.domain.sources.models import ImageLicense
 
 OPTIONAL_UUID_FIELDS = (
     "birth_place_id",
@@ -23,7 +29,7 @@ OPTIONAL_UUID_FIELDS = (
 )
 
 
-def _blank_as_none(value: Any) -> Any:
+def _blank_as_none(value: object) -> object:
     """Treat blank HTML form values as an omitted optional field."""
     if isinstance(value, str) and not value.strip():
         return None
@@ -33,6 +39,41 @@ def _blank_as_none(value: Any) -> Any:
 # ==============================================================================
 # BASE & CREATE/UPDATE SCHEMAS
 # ==============================================================================
+
+
+def _validate_avatar_url(value: object) -> str | None:
+    """Allow HTTP(S) and application-relative media URLs only."""
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ValueError("Adres obrazu musi być tekstem")
+    normalized = value.strip()
+    if not normalized:
+        return None
+    if not normalized.startswith(("https://", "http://", "/")):
+        raise ValueError("Adres obrazu musi używać HTTP(S) lub ścieżki względnej")
+    return normalized
+
+
+class PersonAvatarInputSchema(BaseModel):
+    """Editable primary portrait metadata stored in the media catalogue."""
+
+    url: str = Field(..., min_length=5, max_length=2000)
+    thumbnail_url: str | None = Field(None, max_length=2000)
+    title: str | None = Field(None, max_length=500)
+    license: ImageLicense = Field(default=ImageLicense.UNKNOWN)
+    photographer: str | None = Field(None, max_length=300)
+    source_url: str | None = Field(None, max_length=2000)
+    storage_key: str | None = Field(None, max_length=500)
+    width_px: int | None = Field(None, gt=0)
+    height_px: int | None = Field(None, gt=0)
+    file_size_bytes: int | None = Field(None, ge=0)
+    mime_type: str | None = Field(None, max_length=100)
+
+    @field_validator("url", "thumbnail_url", "source_url", mode="before")
+    @classmethod
+    def validate_urls(cls, value: object) -> str | None:
+        return _validate_avatar_url(value)
 
 
 class PersonBaseSchema(BaseModel):
@@ -46,7 +87,7 @@ class PersonBaseSchema(BaseModel):
     surnames: str | None = Field(None, max_length=500)
     religious_name: str | None = Field(None, max_length=300)
     epithets: list[str] | None = Field(default=None, description="Nicknames or epithets e.g. ['z Asyżu', 'Wielki']")
-    
+
     gender: Gender = Field(default=Gender.UNKNOWN)
     era: Era | None = Field(None)
     century: int | None = Field(None, ge=-50, le=22)
@@ -75,10 +116,11 @@ class PersonBaseSchema(BaseModel):
     liturgical_color: LiturgicalColor | None = None
     is_featured: bool = False
     external_ids: dict[str, Any] | None = None
+    avatar: PersonAvatarInputSchema | None = None
 
     @field_validator(*OPTIONAL_UUID_FIELDS, "era", "liturgical_color", mode="before")
     @classmethod
-    def normalize_optional_selects(cls, value: Any) -> Any:
+    def normalize_optional_selects(cls, value: object) -> object:
         """Accept the empty value emitted by native HTML select controls."""
         return _blank_as_none(value)
 
@@ -153,11 +195,12 @@ class PersonUpdateSchema(BaseModel):
     liturgical_color: LiturgicalColor | None = None
     is_featured: bool | None = None
     external_ids: dict[str, Any] | None = None
+    avatar: PersonAvatarInputSchema | None = None
     change_summary: str | None = Field(None, description="Optional description of changes for version log")
 
     @field_validator(*OPTIONAL_UUID_FIELDS, "era", "liturgical_color", mode="before")
     @classmethod
-    def normalize_optional_selects(cls, value: Any) -> Any:
+    def normalize_optional_selects(cls, value: object) -> object:
         """Accept the empty value emitted by native HTML select controls."""
         return _blank_as_none(value)
 
@@ -165,6 +208,20 @@ class PersonUpdateSchema(BaseModel):
 # ==============================================================================
 # RESPONSE SCHEMAS
 # ==============================================================================
+
+
+class PersonAvatarSchema(BaseModel):
+    """Primary portrait returned with person list and detail responses."""
+
+    id: uuid.UUID
+    url: str
+    thumbnail_url: str | None = None
+    title: str | None = None
+    license: ImageLicense
+    photographer: str | None = None
+    source_url: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PersonListItemSchema(BaseModel):
@@ -183,8 +240,20 @@ class PersonListItemSchema(BaseModel):
     summary_pl: str | None = None
     liturgical_color: LiturgicalColor | None = None
     is_featured: bool
+    avatar: PersonAvatarSchema | None = None
     created_at: datetime
     updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PersonStateOfLifeSchema(BaseModel):
+    """State-of-life label embedded in a person detail response."""
+
+    id: uuid.UUID
+    name_pl: str
+    name_en: str
+    name_la: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -208,6 +277,7 @@ class PersonDetailSchema(PersonListItemSchema):
     death_country_id: uuid.UUID | None = None
     nationality_id: uuid.UUID | None = None
     state_of_life_id: uuid.UUID | None = None
+    state_of_life: PersonStateOfLifeSchema | None = None
 
     biography_pl: str | None = None
     summary_en: str | None = None
@@ -227,6 +297,33 @@ class PersonListResponseSchema(BaseModel):
     """Paginated response wrapper."""
 
     items: list[PersonListItemSchema]
+    total: int
+    page: int
+    per_page: int
+    pages: int
+
+
+class PersonLastEditorSchema(BaseModel):
+    """Minimal editor identity exposed only by the protected admin list."""
+
+    id: uuid.UUID
+    full_name: str
+    avatar_url: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PersonAdminListItemSchema(PersonListItemSchema):
+    """Person row enriched with internal editorial audit information."""
+
+    last_modified_at: datetime
+    last_modified_by: PersonLastEditorSchema | None = None
+
+
+class PersonAdminListResponseSchema(BaseModel):
+    """Protected paginated list used by the editorial panel."""
+
+    items: list[PersonAdminListItemSchema]
     total: int
     page: int
     per_page: int

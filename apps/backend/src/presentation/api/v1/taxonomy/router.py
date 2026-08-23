@@ -5,7 +5,8 @@ Taxonomy API router (Categories, Tags, States of Life, Occupations).
 from __future__ import annotations
 
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+
+from fastapi import APIRouter, Depends, Query, status
 from slugify import slugify
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -99,7 +100,11 @@ async def create_tag(
 async def list_states_of_life(
     db: AsyncSession = Depends(get_db_session),
 ) -> list[StateOfLifeSchema]:
-    query = select(StateOfLife).order_by(StateOfLife.name_pl.asc())
+    query = (
+        select(StateOfLife)
+        .where(StateOfLife.deleted_at.is_(None))
+        .order_by(StateOfLife.name_pl.asc())
+    )
     res = await db.execute(query)
     return [StateOfLifeSchema.model_validate(s) for s in res.scalars().all()]
 

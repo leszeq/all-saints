@@ -13,6 +13,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { fetchPersons } from "@/lib/api";
+import { SaintAvatar, type SaintAvatarData } from "@/components/saint-avatar";
 
 export const revalidate = 60;
 
@@ -31,9 +32,9 @@ const eras = [
 ];
 
 const fallbackPersons = [
-  { id: "1", slug: "sw-franciszek-z-asyzu", name: "Św. Franciszek z Asyżu", years: "1181–1226", summary: "Założyciel Zakonu Braci Mniejszych, patron pokoju i troski o stworzenie." },
-  { id: "2", slug: "sw-faustyna-kowalska", name: "Św. Faustyna Kowalska", years: "1905–1938", summary: "Apostołka Bożego Miłosierdzia i autorka Dzienniczka." },
-  { id: "3", slug: "bl-jerzy-popieluszko", name: "Bł. Jerzy Popiełuszko", years: "1947–1984", summary: "Kapłan, męczennik i duszpasterz ludzi pracy." },
+  { id: "1", slug: "sw-franciszek-z-asyzu", name: "Św. Franciszek z Asyżu", years: "1181–1226", summary: "Założyciel Zakonu Braci Mniejszych, patron pokoju i troski o stworzenie.", avatar: null },
+  { id: "2", slug: "sw-faustyna-kowalska", name: "Św. Faustyna Kowalska", years: "1905–1938", summary: "Apostołka Bożego Miłosierdzia i autorka Dzienniczka.", avatar: null },
+  { id: "3", slug: "bl-jerzy-popieluszko", name: "Bł. Jerzy Popiełuszko", years: "1947–1984", summary: "Kapłan, męczennik i duszpasterz ludzi pracy.", avatar: null },
 ];
 
 export default async function HomePage() {
@@ -55,6 +56,7 @@ export default async function HomePage() {
         name: String(person.canonical_name),
         years: person.birth_year || person.death_year ? `${person.birth_year ?? "?"}–${person.death_year ?? "?"}` : "Daty w opracowaniu",
         summary: String(person.summary_pl || "Profil jest obecnie opracowywany przez redakcję."),
+        avatar: (person.avatar as SaintAvatarData | null) ?? null,
       }))
     : fallbackPersons;
 
@@ -157,9 +159,9 @@ export default async function HomePage() {
         <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
           <div className="flex items-end justify-between gap-4"><div><p className="editorial-label">Praca redakcji</p><h2 className="mt-3 font-serif text-4xl font-semibold">Ostatnio opracowane</h2></div><Link href="/swieci" className="hidden items-center gap-1 text-sm font-semibold text-burgundy-700 sm:inline-flex">Wszystkie profile <ChevronRight className="h-4 w-4" /></Link></div>
           <div className="mt-9 grid gap-5 md:grid-cols-3">
-            {featured.map((person, index) => (
+            {featured.map((person) => (
               <Link key={person.id} href={`/swieci/${person.slug}`} className="surface-card group flex min-h-72 flex-col p-6 transition-transform hover:-translate-y-1">
-                <div className="flex items-center justify-between"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-gold-100 font-serif text-lg text-gold-800">{String(index + 1).padStart(2, "0")}</span><span className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-700">Zweryfikowany</span></div>
+                <div className="flex items-start justify-between gap-4"><SaintAvatar name={person.name} avatar={person.avatar} className="h-16 w-16 text-lg" /><span className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-700">Zweryfikowany</span></div>
                 <div className="mt-auto pt-12"><p className="text-xs text-gold-800">{person.years}</p><h3 className="mt-2 font-serif text-2xl font-semibold text-charcoal group-hover:text-burgundy-700">{person.name}</h3><p className="mt-3 line-clamp-3 text-sm leading-6 text-stone-600">{person.summary}</p></div>
               </Link>
             ))}

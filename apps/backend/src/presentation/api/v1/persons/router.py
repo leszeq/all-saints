@@ -23,8 +23,10 @@ from src.application.services.person_service import PersonService
 from src.domain.hagiography.models import Era, Gender, PersonType, PublicationStatus
 from src.domain.identity.models import User
 from src.infrastructure.db.session import get_db_session
-from src.presentation.api.v1.auth.router import get_current_user, require_permission
+from src.presentation.api.v1.auth.router import require_permission
 from src.presentation.api.v1.persons.schemas import (
+    PersonAdminListItemSchema,
+    PersonAdminListResponseSchema,
     PersonCreateSchema,
     PersonDetailSchema,
     PersonListItemSchema,
@@ -72,6 +74,61 @@ async def list_persons(
 
     return PersonListResponseSchema(
         items=[PersonListItemSchema.model_validate(p) for p in items],
+        total=total,
+        page=page,
+        per_page=per_page,
+        pages=pages,
+    )
+
+
+@router.get(
+    "/admin",
+    response_model=PersonAdminListResponseSchema,
+    summary="List persons for the editorial panel",
+    description="Protected person list enriched with the latest editor identity.",
+)
+async def list_persons_for_admin(
+    page: Annotated[int, Query(ge=1)] = 1,
+    per_page: Annotated[int, Query(ge=1, le=100)] = 20,
+    search: str | None = Query(None, max_length=200),
+    person_type: PersonType | None = None,
+    status_filter: PublicationStatus | None = Query(None, alias="status"),
+    gender: Gender | None = None,
+    era: Era | None = None,
+    country_id: uuid.UUID | None = None,
+    is_featured: bool | None = None,
+    db: AsyncSession = Depends(get_db_session),
+    _user: User = Depends(require_permission("persons", "read")),
+) -> PersonAdminListResponseSchema:
+    """Return persons with internal editorial audit data."""
+    service = PersonService(db)
+    items, total = await service.list_persons(
+        page=page,
+        per_page=per_page,
+        search=search,
+        person_type=person_type,
+        status=status_filter,
+        gender=gender,
+        era=era,
+        country_id=country_id,
+        is_featured=is_featured,
+    )
+    editors = await service.get_last_editors([person.id for person in items])
+    pages = -(-total // per_page) if total > 0 else 1
+
+    admin_items = []
+    for person in items:
+        editor = editors.get(person.id)
+        admin_items.append(
+            PersonAdminListItemSchema(
+                **PersonListItemSchema.model_validate(person).model_dump(),
+                last_modified_at=person.updated_at,
+                last_modified_by=editor,
+            )
+        )
+
+    return PersonAdminListResponseSchema(
+        items=admin_items,
         total=total,
         page=page,
         per_page=per_page,
@@ -191,7 +248,7 @@ async def restore_person(
 ) -> PersonDetailSchema:
     """Restore soft-deleted person."""
     service = PersonService(db)
-    person = await service.restore_person(person_id)
+    person = await service.restore_person(person_id, user_id=current_user.id)
 
     if not person:
         raise HTTPException(

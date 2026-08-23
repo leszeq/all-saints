@@ -6,15 +6,36 @@ import { useRouter } from "next/navigation";
 import {
   ChevronLeft,
   ChevronRight,
-  Filter,
   Plus,
   RefreshCw,
   Search,
 } from "lucide-react";
 import { personsApi } from "@/lib/api";
-import { cn, formatDateTime, PERSON_STATUS_COLORS, PERSON_STATUS_LABELS, PERSON_TYPE_COLORS, PERSON_TYPE_LABELS } from "@/lib/utils";
+import { SaintAvatar, type SaintAvatarData } from "@/components/persons/saint-avatar";
+import { cn, ERA_LABELS, formatDateTime, PERSON_STATUS_COLORS, PERSON_STATUS_LABELS, PERSON_TYPE_COLORS, PERSON_TYPE_LABELS } from "@/lib/utils";
 
 const PER_PAGE = 20;
+
+interface LastEditor {
+  full_name: string;
+  avatar_url?: string | null;
+}
+
+function EditorIdentity({ editor }: { editor?: LastEditor | null }) {
+  const name = editor?.full_name ?? "System";
+  return (
+    <div className="flex items-center gap-2">
+      <SaintAvatar
+        name={name}
+        avatar={editor?.avatar_url ? { url: editor.avatar_url } : null}
+        className="h-7 w-7 text-[10px]"
+      />
+      <span className="max-w-40 truncate text-xs text-foreground" title={name}>
+        {name}
+      </span>
+    </div>
+  );
+}
 
 export default function PersonsPage() {
   const router = useRouter();
@@ -37,7 +58,7 @@ export default function PersonsPage() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["persons", page, debouncedSearch, typeFilter, statusFilter],
     queryFn: () =>
-      personsApi.list({
+      personsApi.adminList({
         page,
         per_page: PER_PAGE,
         ...(debouncedSearch && { search: debouncedSearch }),
@@ -123,8 +144,9 @@ export default function PersonsPage() {
       </p>
 
       {/* Table */}
-      <div className="rounded-xl border border-border bg-card overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
+        <div className="overflow-x-auto">
+        <table className="min-w-[1180px] w-full text-sm">
           <thead className="border-b border-border bg-muted/40">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -140,6 +162,12 @@ export default function PersonsPage() {
                 Era
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Ostatnia modyfikacja
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Zmodyfikował
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Dodano
               </th>
               <th className="px-4 py-3" />
@@ -149,7 +177,7 @@ export default function PersonsPage() {
             {isLoading ? (
               Array.from({ length: 8 }).map((_, i) => (
                 <tr key={i}>
-                  {Array.from({ length: 6 }).map((_, j) => (
+                  {Array.from({ length: 8 }).map((_, j) => (
                     <td key={j} className="px-4 py-3">
                       <div className="h-4 w-full animate-pulse rounded bg-muted" />
                     </td>
@@ -158,7 +186,7 @@ export default function PersonsPage() {
               ))
             ) : persons.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                <td colSpan={8} className="px-4 py-12 text-center text-sm text-muted-foreground">
                   Brak wyników
                 </td>
               </tr>
@@ -170,15 +198,22 @@ export default function PersonsPage() {
                   onClick={() => router.push(`/dashboard/persons/${p.id}`)}
                 >
                   <td className="px-4 py-3">
-                    <div>
-                      <p className="font-medium text-foreground">
-                        {p.canonical_name as string}
-                      </p>
-                      {Boolean(p.latin_name) && (
-                        <p className="text-xs text-muted-foreground italic">
-                          {String(p.latin_name)}
+                    <div className="flex items-center gap-3">
+                      <SaintAvatar
+                        name={p.canonical_name as string}
+                        avatar={p.avatar as SaintAvatarData | null}
+                        className="h-10 w-10 text-xs"
+                      />
+                      <div className="min-w-0">
+                        <p className="font-medium text-foreground">
+                          {p.canonical_name as string}
                         </p>
-                      )}
+                        {Boolean(p.latin_name) && (
+                          <p className="text-xs text-muted-foreground italic">
+                            {String(p.latin_name)}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td className="px-4 py-3">
@@ -202,7 +237,13 @@ export default function PersonsPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">
-                    {(p.era as string) ?? "—"}
+                    {ERA_LABELS[p.era as string] ?? (p.era as string) ?? "—"}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground">
+                    {formatDateTime(p.last_modified_at as string)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <EditorIdentity editor={p.last_modified_by as LastEditor | null} />
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">
                     {formatDateTime(p.created_at as string)}
@@ -223,6 +264,7 @@ export default function PersonsPage() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Pagination */}

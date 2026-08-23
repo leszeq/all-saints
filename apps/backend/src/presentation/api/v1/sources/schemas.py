@@ -6,10 +6,10 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.domain.sources.models import DocumentType, ImageLicense, SourceType
-
 
 # ==============================================================================
 # BIBLIOGRAPHY SCHEMAS
@@ -149,6 +149,18 @@ class ImageSchema(ImageCreateSchema):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ImageUploadSchema(BaseModel):
+    """Metadata returned after a validated image file upload."""
+
+    url: str
+    thumbnail_url: str
+    storage_key: str
+    width_px: int
+    height_px: int
+    file_size_bytes: int
+    mime_type: str = "image/webp"
 
 
 # ==============================================================================

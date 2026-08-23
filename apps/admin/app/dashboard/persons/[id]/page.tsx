@@ -2,9 +2,10 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Calendar, Edit, Globe, History, Shield, Trash } from "lucide-react";
+import { ArrowLeft, Edit, History } from "lucide-react";
 import { personsApi } from "@/lib/api";
-import { cn, formatDateTime, PERSON_STATUS_COLORS, PERSON_STATUS_LABELS, PERSON_TYPE_COLORS, PERSON_TYPE_LABELS } from "@/lib/utils";
+import { SaintAvatar } from "@/components/persons/saint-avatar";
+import { cn, ERA_LABELS, formatDateTime, PERSON_STATUS_COLORS, PERSON_STATUS_LABELS, PERSON_TYPE_COLORS, PERSON_TYPE_LABELS } from "@/lib/utils";
 
 export default function PersonDetailPage() {
   const params = useParams();
@@ -59,6 +60,11 @@ export default function PersonDetailPage() {
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
+          <SaintAvatar
+            name={person.canonical_name}
+            avatar={person.avatar}
+            className="h-16 w-16 text-lg"
+          />
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold text-foreground">
@@ -124,6 +130,42 @@ export default function PersonDetailPage() {
             )}
           </div>
 
+          {/* Devotion & Iconography */}
+          <div className="grid gap-6 md:grid-cols-2">
+            <section className="rounded-xl border border-border bg-card p-6">
+              <h2 className="text-base font-semibold text-foreground">Modlitwa</h2>
+              {person.prayers ? (
+                <p className="mt-4 whitespace-pre-line text-sm leading-6 text-foreground/80">
+                  {person.prayers}
+                </p>
+              ) : (
+                <p className="mt-4 text-sm text-muted-foreground">Brak przypisanej modlitwy.</p>
+              )}
+            </section>
+
+            <section className="rounded-xl border border-border bg-card p-6">
+              <h2 className="text-base font-semibold text-foreground">Atrybuty ikonograficzne</h2>
+              {person.iconographic_attributes ? (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {String(person.iconographic_attributes)
+                    .split(/[;\n]/)
+                    .map((attribute: string) => attribute.trim())
+                    .filter(Boolean)
+                    .map((attribute: string) => (
+                      <span
+                        key={attribute}
+                        className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-foreground"
+                      >
+                        {attribute}
+                      </span>
+                    ))}
+                </div>
+              ) : (
+                <p className="mt-4 text-sm text-muted-foreground">Brak opisanych atrybutów.</p>
+              )}
+            </section>
+          </div>
+
           {/* Dates & Details */}
           <div className="rounded-xl border border-border bg-card p-6 space-y-4">
             <h2 className="text-base font-semibold text-foreground">
@@ -136,7 +178,15 @@ export default function PersonDetailPage() {
               </div>
               <div>
                 <span className="text-xs text-muted-foreground block">Era</span>
-                <span className="font-medium text-foreground">{person.era ?? "—"}</span>
+                <span className="font-medium text-foreground">
+                  {ERA_LABELS[person.era] ?? person.era ?? "—"}
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-muted-foreground block">Stan życia</span>
+                <span className="font-medium text-foreground">
+                  {person.state_of_life?.name_pl ?? "—"}
+                </span>
               </div>
               <div>
                 <span className="text-xs text-muted-foreground block">Rok urodzenia</span>

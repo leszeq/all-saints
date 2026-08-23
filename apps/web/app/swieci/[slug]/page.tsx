@@ -4,17 +4,13 @@ import { notFound } from "next/navigation";
 import {
   ArrowLeft,
   BookOpen,
-  Calendar,
   Crown,
-  Globe,
   Heart,
-  HelpCircle,
-  MapPin,
-  Shield,
   Sparkles,
 } from "lucide-react";
 import { fetchPersonDetail } from "@/lib/api";
-import { PERSON_TYPE_LABELS } from "@/lib/utils";
+import { ERA_LABELS, PERSON_TYPE_LABELS } from "@/lib/utils";
+import { SaintAvatar, type SaintAvatarData } from "@/components/saint-avatar";
 
 interface PageProps {
   params: Promise<{
@@ -33,6 +29,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       openGraph: {
         title: person.canonical_name,
         description: person.summary_pl || `Życiorys ${person.canonical_name}`,
+        images: person.avatar?.url
+          ? [{ url: person.avatar.url, alt: person.avatar.title || `Portret: ${person.canonical_name}` }]
+          : undefined,
       },
     };
   } catch {
@@ -63,6 +62,7 @@ export default async function PersonDetailPage({ params }: PageProps) {
     description: person.summary_pl,
     birthDate: person.birth_year ? String(person.birth_year) : undefined,
     deathDate: person.death_year ? String(person.death_year) : undefined,
+    image: (person.avatar as SaintAvatarData | null)?.url || undefined,
   };
 
   return (
@@ -75,7 +75,7 @@ export default async function PersonDetailPage({ params }: PageProps) {
 
       {/* ─── Hero Banner ──────────────────────────────────────────────────── */}
       <section className="bg-gradient-to-b from-burgundy-900 via-burgundy-850 to-burgundy-950 text-white py-16">
-        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 space-y-6">
+        <div className="mx-auto max-w-5xl space-y-6 px-4 sm:px-6 lg:px-8">
           <Link
             href="/swieci"
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-gold-400 hover:text-gold-300 transition-colors"
@@ -84,49 +84,64 @@ export default async function PersonDetailPage({ params }: PageProps) {
             Wróć do katalogu
           </Link>
 
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-gold-500/20 border border-gold-400/30 px-3 py-1 text-xs font-semibold text-gold-300 backdrop-blur-md">
-                {PERSON_TYPE_LABELS[person.person_type as string] ?? (person.person_type as string)}
-              </span>
-              {Boolean(person.era) && (
-                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-burgundy-200">
-                  Era: {String(person.era)}
+          <div className="grid items-center gap-8 sm:grid-cols-[12rem_1fr]">
+            <SaintAvatar
+              name={String(person.canonical_name)}
+              avatar={person.avatar as SaintAvatarData | null}
+              className="h-48 w-48 rounded-2xl border-gold-300/40 bg-burgundy-800 text-5xl text-gold-300 shadow-2xl shadow-black/20"
+              eager
+            />
+
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-gold-400/30 bg-gold-500/20 px-3 py-1 text-xs font-semibold text-gold-300 backdrop-blur-md">
+                  {PERSON_TYPE_LABELS[person.person_type as string] ?? (person.person_type as string)}
                 </span>
+                {Boolean(person.era) && (
+                  <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-burgundy-200">
+                    Era: {ERA_LABELS[person.era as string] ?? String(person.era)}
+                  </span>
+                )}
+              </div>
+
+              <h1 className="font-serif text-3xl font-bold tracking-tight text-white sm:text-5xl">
+                {String(person.canonical_name)}
+              </h1>
+
+              {Boolean(person.latin_name) && (
+                <p className="font-serif text-lg italic text-gold-300">
+                  {String(person.latin_name)}
+                </p>
               )}
+
+              {/* Quick Stats Pill */}
+              <div className="flex flex-wrap gap-6 border-t border-burgundy-800 pt-6 text-xs text-burgundy-200">
+                {Boolean(person.birth_year) && (
+                  <div>
+                    <span className="block font-semibold uppercase text-gold-400">Rok urodzenia</span>
+                    <span>{String(person.birth_year)}</span>
+                  </div>
+                )}
+                {Boolean(person.death_year) && (
+                  <div>
+                    <span className="block font-semibold uppercase text-gold-400">Rok śmierci</span>
+                    <span>{String(person.death_year)}</span>
+                  </div>
+                )}
+                {Boolean(person.gender) && (
+                  <div>
+                    <span className="block font-semibold uppercase text-gold-400">Płeć</span>
+                    <span>{person.gender === "male" ? "Mężczyzna" : person.gender === "female" ? "Kobieta" : "—"}</span>
+                  </div>
+                )}
+                {Boolean((person.state_of_life as Record<string, unknown> | null)?.name_pl) && (
+                  <div>
+                    <span className="block font-semibold uppercase text-gold-400">Stan życia</span>
+                    <span>{String((person.state_of_life as Record<string, unknown>).name_pl)}</span>
+                  </div>
+                )}
+              </div>
             </div>
-
-            <h1 className="font-serif text-3xl sm:text-5xl font-bold tracking-tight text-white">
-              {String(person.canonical_name)}
-            </h1>
-
-            {Boolean(person.latin_name) && (
-              <p className="text-lg text-gold-300 italic font-serif">
-                {String(person.latin_name)}
-              </p>
-            )}
-          </div>
-
-          {/* Quick Stats Pill */}
-          <div className="flex flex-wrap gap-6 border-t border-burgundy-800 pt-6 text-xs text-burgundy-200">
-            {Boolean(person.birth_year) && (
-              <div>
-                <span className="text-gold-400 block uppercase font-semibold">Rok urodzenia</span>
-                <span>{String(person.birth_year)}</span>
-              </div>
-            )}
-            {Boolean(person.death_year) && (
-              <div>
-                <span className="text-gold-400 block uppercase font-semibold">Rok śmierci</span>
-                <span>{String(person.death_year)}</span>
-              </div>
-            )}
-            {Boolean(person.gender) && (
-              <div>
-                <span className="text-gold-400 block uppercase font-semibold">Płeć</span>
-                <span>{person.gender === "male" ? "Mężczyzna" : person.gender === "female" ? "Kobieta" : "—"}</span>
-              </div>
-            )}
           </div>
         </div>
       </section>
@@ -170,7 +185,7 @@ export default async function PersonDetailPage({ params }: PageProps) {
               Modlitwa
             </h3>
             {Boolean(person.prayers) ? (
-              <p className="text-sm text-gray-700 leading-relaxed italic">
+              <p className="whitespace-pre-line text-sm leading-relaxed text-gray-700 italic">
                 {String(person.prayers)}
               </p>
             ) : (
@@ -185,9 +200,17 @@ export default async function PersonDetailPage({ params }: PageProps) {
               Atrybuty Ikonograficzne
             </h3>
             {Boolean(person.iconographic_attributes) ? (
-              <p className="text-sm text-gray-700 leading-relaxed">
-                {String(person.iconographic_attributes)}
-              </p>
+              <ul className="flex flex-wrap gap-2">
+                {String(person.iconographic_attributes)
+                  .split(/[;\n]+/)
+                  .map((attribute) => attribute.trim())
+                  .filter(Boolean)
+                  .map((attribute) => (
+                    <li key={attribute} className="rounded-full border border-gold-500/25 bg-gold-50 px-3 py-1 text-xs text-burgundy-900">
+                      {attribute}
+                    </li>
+                  ))}
+              </ul>
             ) : (
               <p className="text-xs text-gray-400">Brak podanych atrybutów.</p>
             )}

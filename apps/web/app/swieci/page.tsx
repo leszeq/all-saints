@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { BookOpen, ChevronRight, Filter, Search } from "lucide-react";
+import { BookOpen, ChevronRight, Search } from "lucide-react";
 import { fetchPersons } from "@/lib/api";
-import { PERSON_TYPE_LABELS } from "@/lib/utils";
+import { ERA_LABELS, PERSON_TYPE_LABELS } from "@/lib/utils";
+import { SaintAvatar, type SaintAvatarData } from "@/components/saint-avatar";
 
 export const revalidate = 30;
 
@@ -88,12 +89,11 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
           className="w-full md:w-48 rounded-xl border border-gold-500/30 bg-gray-50/50 px-3 py-2.5 text-sm text-gray-900 focus:border-gold-500 focus:outline-none"
         >
           <option value="">Wszystkie epoki</option>
-          <option value="ancient">Starożytność</option>
-          <option value="early_christian">Wczesnochrześcijańska</option>
-          <option value="medieval">Średniowiecze</option>
-          <option value="early_modern">Nowożytność</option>
-          <option value="modern">Nowoczesność</option>
-          <option value="contemporary">Współczesność</option>
+          {Object.entries(ERA_LABELS)
+            .filter(([value]) => value !== "unknown")
+            .map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
         </select>
 
         <button
@@ -122,12 +122,19 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
             <Link
               key={p.id as string}
               href={`/swieci/${p.slug as string}`}
-              className="group rounded-2xl border border-gold-500/20 bg-white p-6 shadow-sm hover:shadow-md hover:border-gold-500/50 transition-all flex flex-col justify-between"
+              className="group flex flex-col justify-between rounded-2xl border border-gold-500/20 bg-white p-6 shadow-sm transition-all hover:border-gold-500/50 hover:shadow-md"
             >
               <div>
-                <span className="rounded-full bg-gold-100 px-3 py-1 text-xs font-semibold text-gold-800 inline-block mb-3">
-                  {PERSON_TYPE_LABELS[p.person_type as string] ?? (p.person_type as string)}
-                </span>
+                <div className="mb-5 flex items-start justify-between gap-4">
+                  <SaintAvatar
+                    name={p.canonical_name as string}
+                    avatar={p.avatar as SaintAvatarData | null}
+                    className="h-20 w-20 text-xl transition-transform duration-300 group-hover:scale-[1.03]"
+                  />
+                  <span className="inline-block rounded-full bg-gold-100 px-3 py-1 text-xs font-semibold text-gold-800">
+                    {PERSON_TYPE_LABELS[p.person_type as string] ?? (p.person_type as string)}
+                  </span>
+                </div>
 
                 <h2 className="font-serif text-xl font-bold text-burgundy-900 group-hover:text-gold-700 transition-colors">
                   {p.canonical_name as string}
@@ -166,7 +173,7 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
             return (
               <Link
                 key={pageNum}
-                href={`/swieci?page=${pageNum}${search ? `&search=${encodeURIComponent(search)}` : ""}${typeFilter ? `&type=${typeFilter}` : ""}`}
+                href={`/swieci?page=${pageNum}${search ? `&search=${encodeURIComponent(search)}` : ""}${typeFilter ? `&type=${typeFilter}` : ""}${eraFilter ? `&era=${eraFilter}` : ""}`}
                 className={`h-9 w-9 rounded-lg flex items-center justify-center text-sm font-semibold transition-all ${
                   active
                     ? "bg-burgundy-900 text-white shadow-md"

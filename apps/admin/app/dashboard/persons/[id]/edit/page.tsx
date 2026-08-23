@@ -70,7 +70,15 @@ export default function EditPersonPage() {
             state_of_life_id: person.state_of_life_id ?? null,
             summary_pl: person.summary_pl ?? "",
             biography_pl: person.biography_pl ?? "",
+            prayers: person.prayers ?? "",
+            iconographic_attributes: person.iconographic_attributes ?? "",
             is_featured: person.is_featured ?? false,
+            avatar_url: person.avatar?.url ?? "",
+            avatar_thumbnail_url: person.avatar?.thumbnail_url ?? "",
+            avatar_title: person.avatar?.title ?? "",
+            avatar_license: person.avatar?.license ?? "unknown",
+            avatar_photographer: person.avatar?.photographer ?? "",
+            avatar_source_url: person.avatar?.source_url ?? "",
           }}
         />
       </div>

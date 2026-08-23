@@ -35,6 +35,17 @@ export const PERSON_TYPE_LABELS: Record<string, string> = {
   candidate: "Kandydat/ka",
 };
 
+export const ERA_LABELS: Record<string, string> = {
+  apostolic: "Epoka apostolska (I w.)",
+  early_church: "Wczesny Kościół (II–V w.)",
+  late_antiquity: "Późna starożytność (V–VII w.)",
+  medieval: "Średniowiecze",
+  early_modern: "Nowożytność (XVI–XVIII w.)",
+  modern: "Epoka nowoczesna (XIX–XX w.)",
+  contemporary: "Współczesność (XXI w.)",
+  unknown: "Nieznana",
+};
+
 export const PERSON_STATUS_LABELS: Record<string, string> = {
   draft: "Szkic",
   review: "W recenzji",

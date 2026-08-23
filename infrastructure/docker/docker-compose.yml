@@ -187,7 +187,7 @@ services:
       - "9000:9000"   # API
       - "9001:9001"   # Console UI
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD", "mc", "ready", "local"]
       interval: 30s
       timeout: 20s
       retries: 3

@@ -446,6 +446,9 @@ class Person(BaseModel, Base):
         "PersonCategory", back_populates="person"
     )
     tags: Mapped[list["PersonTag"]] = relationship("PersonTag", back_populates="person")
+    images: Mapped[list["Image"]] = relationship(
+        "Image", back_populates="person", cascade="all, delete-orphan"
+    )
 
     # AI embedding (one-to-one)
     embedding: Mapped["PersonEmbedding | None"] = relationship(
@@ -468,6 +471,16 @@ class Person(BaseModel, Base):
     def all_relationships(self) -> list["PersonRelationship"]:
         """All relationships regardless of direction."""
         return self.relationships_as_a + self.relationships_as_b
+
+    @property
+    def avatar(self) -> "Image | None":
+        """Return the active primary image used as the person's avatar."""
+        active_primary = (
+            image
+            for image in self.images
+            if image.is_primary and image.deleted_at is None
+        )
+        return min(active_primary, key=lambda image: (image.sort_order, image.created_at), default=None)
 
 
 # ==============================================================================

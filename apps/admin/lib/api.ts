@@ -101,6 +101,8 @@ export const authApi = {
 export const personsApi = {
   list: (params?: Record<string, unknown>) =>
     api.get("/persons", { params }),
+  adminList: (params?: Record<string, unknown>) =>
+    api.get("/persons/admin", { params }),
   get: (idOrSlug: string) => api.get(`/persons/${idOrSlug}`),
   create: (data: unknown) => api.post("/persons", data),
   update: (id: string, data: unknown) => api.patch(`/persons/${id}`, data),
@@ -137,6 +139,21 @@ export const sourcesApi = {
     api.get("/sources/historical-sources", { params }),
   images: (params?: Record<string, unknown>) =>
     api.get("/sources/images", { params }),
+  uploadAvatar: (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return api.post<{
+      url: string;
+      thumbnail_url: string;
+      storage_key: string;
+      width_px: number;
+      height_px: number;
+      file_size_bytes: number;
+      mime_type: string;
+    }>("/sources/images/upload", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
   documents: (params?: Record<string, unknown>) =>
     api.get("/sources/documents", { params }),
 };

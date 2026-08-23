@@ -9,12 +9,16 @@ from __future__ import annotations
 
 import uuid
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, ForeignKey, Index, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.domain.base import Base, BaseModel
+
+if TYPE_CHECKING:
+    from src.domain.hagiography.models import Person
 
 
 # ==============================================================================
@@ -263,6 +267,8 @@ class Image(BaseModel, Base):
     height_px: Mapped[int | None] = mapped_column(Integer, nullable=True)
     file_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     mime_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    person: Mapped["Person | None"] = relationship("Person", back_populates="images")
 
 
 # ==============================================================================
