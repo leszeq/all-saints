@@ -5,6 +5,7 @@ import {
   LEGACY_ERA_PERIODS,
   LEGACY_SEARCH_PATRONAGES,
   PATRONAGE_GROUPS,
+  PERSON_TYPE_DESCRIPTIONS,
   PERSON_TYPE_LABELS,
   TIME_PERIODS,
 } from "@/lib/utils";
@@ -29,7 +30,8 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
   const requestedPatronage = params.patronage || LEGACY_SEARCH_PATRONAGES[params.search || ""] || "";
   const patronageFilter = requestedPatronage in PATRONAGE_GROUPS ? requestedPatronage : "";
   const search = patronageFilter ? "" : params.search || "";
-  const typeFilter = params.type || "";
+  const requestedType = params.type || "";
+  const typeFilter = requestedType in PERSON_TYPE_LABELS ? requestedType : "";
   const requestedPeriod = params.period || LEGACY_ERA_PERIODS[params.era || ""] || "";
   const periodFilter = requestedPeriod in TIME_PERIODS ? requestedPeriod : "";
   const eraFilter = periodFilter ? "" : params.era || "";
@@ -38,6 +40,12 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
     : null;
   const activePatronage = patronageFilter
     ? PATRONAGE_GROUPS[patronageFilter as keyof typeof PATRONAGE_GROUPS]
+    : null;
+  const activeType = typeFilter
+    ? {
+        label: PERSON_TYPE_LABELS[typeFilter],
+        description: PERSON_TYPE_DESCRIPTIONS[typeFilter],
+      }
     : null;
   const page = Number(params.page || "1");
 
@@ -91,6 +99,7 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
         {/* Type Select */}
         <select
           name="type"
+          aria-label="Typ osoby"
           defaultValue={typeFilter}
           className="w-full md:w-48 rounded-xl border border-gold-500/30 bg-gray-50/50 px-3 py-2.5 text-sm text-gray-900 focus:border-gold-500 focus:outline-none"
         >
@@ -99,11 +108,12 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
           <option value="blessed">Błogosławieni</option>
           <option value="venerable">Czcigodni Boży</option>
           <option value="servant_of_god">Słudzy Boży</option>
-          <option value="candidate">Kandydaci</option>
+          <option value="candidate">Kandydaci (status redakcyjny)</option>
         </select>
 
         <select
           name="patronage"
+          aria-label="Patronat"
           defaultValue={patronageFilter}
           className="w-full rounded-xl border border-gold-500/30 bg-gray-50/50 px-3 py-2.5 text-sm text-gray-900 focus:border-gold-500 focus:outline-none md:w-48"
         >
@@ -116,6 +126,7 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
         {/* Timeline Period Select */}
         <select
           name="period"
+          aria-label="Okres historyczny"
           defaultValue={periodFilter}
           className="w-full md:w-48 rounded-xl border border-gold-500/30 bg-gray-50/50 px-3 py-2.5 text-sm text-gray-900 focus:border-gold-500 focus:outline-none"
         >
@@ -132,6 +143,19 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
           Filtruj
         </button>
       </form>
+
+      {activeType && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gold-500/25 bg-gold-50/60 px-4 py-3">
+          <p className="text-sm text-burgundy-900">
+            <span className="font-semibold">{activeType.label}</span>
+            <span className="mx-2 text-gold-500">·</span>
+            {activeType.description}
+          </p>
+          <Link href="/swieci" className="text-xs font-semibold text-burgundy-700 hover:underline">
+            Wyczyść typ
+          </Link>
+        </div>
+      )}
 
       {activePeriod && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gold-500/25 bg-gold-50/60 px-4 py-3">

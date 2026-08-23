@@ -49,7 +49,7 @@ class PersonType(StrEnum):
     BLESSED = "blessed"                     # Błogosławiony
     VENERABLE = "venerable"                 # Czcigodny
     SERVANT_OF_GOD = "servant_of_god"       # Sługa Boży
-    CANDIDATE = "candidate"                 # Kandydat (causa otwarta)
+    CANDIDATE = "candidate"                 # Wewnętrzny kandydat redakcyjny, przed otwarciem causa
 
 
 class Gender(StrEnum):

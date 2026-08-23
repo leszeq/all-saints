@@ -22,7 +22,15 @@ export const PERSON_TYPE_LABELS: Record<string, string> = {
   blessed: "Błogosławiony/a",
   venerable: "Czcigodny/a",
   servant_of_god: "Sługa Boży/a",
-  candidate: "Kandydat/ka na ołtarze",
+  candidate: "Kandydat/ka (status redakcyjny)",
+};
+
+export const PERSON_TYPE_DESCRIPTIONS: Record<string, string> = {
+  saint: "Osoby kanonizowane",
+  blessed: "Osoby beatyfikowane",
+  venerable: "Osoby, których heroiczność cnót została uznana",
+  servant_of_god: "Osoby z formalnie rozpoczętym procesem beatyfikacyjnym",
+  candidate: "Wewnętrzna lista kandydatów przed formalnym rozpoczęciem procesu",
 };
 
 export const ERA_LABELS: Record<string, string> = {

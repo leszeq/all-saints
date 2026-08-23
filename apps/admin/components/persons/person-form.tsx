@@ -288,7 +288,7 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
               <option value="blessed">Błogosławiony/a</option>
               <option value="venerable">Czcigodny/a</option>
               <option value="servant_of_god">Sługa Boży/a</option>
-              <option value="candidate">Kandydat/ka</option>
+              <option value="candidate">Kandydat/ka (status redakcyjny)</option>
             </select>
           </div>
 

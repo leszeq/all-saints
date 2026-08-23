@@ -32,7 +32,7 @@ export const PERSON_TYPE_LABELS: Record<string, string> = {
   blessed: "Błogosławiony/a",
   venerable: "Czcigodny/a",
   servant_of_god: "Sługa Boży/a",
-  candidate: "Kandydat/ka",
+  candidate: "Kandydat/ka (status redakcyjny)",
 };
 
 export const ERA_LABELS: Record<string, string> = {
