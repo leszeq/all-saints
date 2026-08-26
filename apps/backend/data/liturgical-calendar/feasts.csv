@@ -1,4 +1,4 @@
-calendar_code,person_slug,month,day,rank,liturgical_color,is_primary,source_title,source_url,notes
+calendar_code,person_slug,month,day,rank,liturgical_color,is_primary,source_title,source_url,notes,observance_slug
 roman_universal,sw-tomasz-z-akwinu,1,28,memorial,white,true,USCCB Liturgical Calendar 2026,https://www.usccb.org/resources/2026cal.pdf,General Roman Calendar
 roman_universal,sw-jozef,3,19,solemnity,white,true,USCCB Liturgical Calendar 2026,https://www.usccb.org/resources/2026cal.pdf,General Roman Calendar
 roman_universal,sw-rita-z-cascii,5,22,opt_memorial,white,true,USCCB Liturgical Calendar 2026,https://www.usccb.org/resources/2026cal.pdf,General Roman Calendar
@@ -21,7 +21,7 @@ roman_universal,sw-jozef-kalasanty,8,25,opt_memorial,white,false,USCCB Liturgica
 roman_martyrology,sw-maria-od-jezusa-ukrzyzowanego-mala-arabka,8,25,commemoration,white,false,ILG — patroni dnia 25 sierpnia,https://www.brewiarz.katolik.pl/czytelnia/swieci/08-25c.php3,Wpis katalogu hagiograficznego; nie jest obchodem Ogólnego Kalendarza Rzymskiego
 roman_martyrology,bl-maria-del-transito-od-jezusa-sakramentalnego,8,25,commemoration,white,false,ILG — patroni dnia 25 sierpnia,https://www.brewiarz.katolik.pl/czytelnia/swieci/08-25d.php3,Wpis katalogu hagiograficznego; nie jest obchodem Ogólnego Kalendarza Rzymskiego
 roman_martyrology,sw-maria-troncatti,8,25,commemoration,white,false,ILG — patroni dnia 25 sierpnia,https://www.brewiarz.katolik.pl/czytelnia/swieci/08-25e.php3,Wpis katalogu hagiograficznego; status świętej po kanonizacji 19 października 2025 roku
-roman_pl,najswietsza-maryja-panna-czestochowska,8,26,solemnity,white,true,Konferencja Episkopatu Polski — uroczystość NMP Częstochowskiej,https://episkopat.pl/doc/180886.26-sierpnia-maryja-czestochowska-opiekunka-narodu-polskiego,Uroczystość obchodzona 26 sierpnia we wszystkich polskich diecezjach
+roman_pl,,8,26,solemnity,white,true,Konferencja Episkopatu Polski — uroczystość NMP Częstochowskiej,https://episkopat.pl/doc/180886.26-sierpnia-maryja-czestochowska-opiekunka-narodu-polskiego,Uroczystość obchodzona 26 sierpnia we wszystkich polskich diecezjach,najswietsza-maryja-panna-czestochowska
 roman_martyrology,sw-joanna-elzbieta-bichier-des-ages,8,26,commemoration,white,false,ILG — patroni dnia 26 sierpnia,https://brewiarz.pl/czytelnia/swieci/08-26b.php3,Wpis katalogu hagiograficznego; dies natalis 26 sierpnia
 roman_martyrology,sw-teresa-od-jezusa-jornet-e-ibars,8,26,commemoration,white,false,ILG — patroni dnia 26 sierpnia,https://brewiarz.pl/czytelnia/swieci/08-26c.php3,Wpis katalogu hagiograficznego; dies natalis 26 sierpnia
 roman_martyrology,bl-maria-od-aniolow-ginard-marti,8,26,commemoration,red,false,ILG — patroni dnia 26 sierpnia,https://brewiarz.pl/czytelnia/swieci/08-26d.php3,Męczennica zmarła 26 sierpnia; własne wspomnienie liturgiczne zostało wyznaczone na 30 sierpnia

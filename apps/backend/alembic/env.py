@@ -69,6 +69,7 @@ from src.domain.sources.models import (  # noqa: F401
 from src.domain.liturgy.models import (  # noqa: F401
     Feast,
     LiturgicalCalendar,
+    LiturgicalObservance,
 )
 
 # Alembic Config

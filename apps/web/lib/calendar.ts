@@ -23,6 +23,21 @@ export interface CalendarPerson {
   patronages: CalendarPatronage[];
 }
 
+export interface LiturgicalObservance {
+  id: string;
+  slug: string;
+  title_pl: string;
+  title_en?: string | null;
+  latin_title?: string | null;
+  observance_type: string;
+  summary_pl?: string | null;
+  description_pl?: string | null;
+  iconographic_attributes?: string | null;
+  is_featured: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface LiturgicalCalendarInfo {
   id: string;
   code: string;
@@ -45,7 +60,8 @@ export interface CalendarEntry {
   notes?: string | null;
   source_title?: string | null;
   source_url?: string | null;
-  person: CalendarPerson;
+  person: CalendarPerson | null;
+  observance: LiturgicalObservance | null;
   calendar: LiturgicalCalendarInfo;
   created_at: string;
   updated_at: string;
@@ -88,14 +104,40 @@ export const FEAST_RANK_SHORT_LABELS: Record<string, string> = {
   commemoration: "Wspomnienie",
 };
 
-export function formatCalendarPersonCount(count: number): string {
-  if (count === 1) return "1 postać";
+export const OBSERVANCE_TYPE_LABELS: Record<string, string> = {
+  lord: "Święto Pańskie",
+  marian: "Obchód maryjny",
+  church: "Obchód Kościoła",
+  mystery: "Misterium wiary",
+  other: "Obchód liturgiczny",
+};
+
+export function calendarEntryTitle(entry: CalendarEntry): string {
+  return entry.person?.canonical_name ?? entry.observance?.title_pl ?? "Nieznany obchód";
+}
+
+export function calendarEntrySummary(entry: CalendarEntry): string | null {
+  return entry.person?.summary_pl ?? entry.observance?.summary_pl ?? null;
+}
+
+export function calendarEntryHref(entry: CalendarEntry): string {
+  if (entry.person) return `/swieci/${entry.person.slug}`;
+  if (entry.observance) return `/kalendarz/obchody/${entry.observance.slug}`;
+  return "/kalendarz";
+}
+
+export function calendarEntryAvatar(entry: CalendarEntry): SaintAvatarData | null {
+  return entry.person?.avatar ?? null;
+}
+
+export function formatCalendarEntryCount(count: number): string {
+  if (count === 1) return "1 wpis";
   const lastTwoDigits = count % 100;
   const lastDigit = count % 10;
   if (lastDigit >= 2 && lastDigit <= 4 && !(lastTwoDigits >= 12 && lastTwoDigits <= 14)) {
-    return `${count} postacie`;
+    return `${count} wpisy`;
   }
-  return `${count} postaci`;
+  return `${count} wpisów`;
 }
 
 export function formatCalendarDate(value: string, options?: Intl.DateTimeFormatOptions) {

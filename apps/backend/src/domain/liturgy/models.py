@@ -1,8 +1,4 @@
-"""
-Liturgy domain models.
-
-Covers: LiturgicalCalendar, Feast, PersonFeast (association).
-"""
+"""Liturgy domain models for calendars, observances, and dated entries."""
 
 from __future__ import annotations
 
@@ -11,6 +7,7 @@ from enum import StrEnum
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     ForeignKey,
     Index,
     Integer,
@@ -48,6 +45,16 @@ class CalendarScope(StrEnum):
     DIOCESAN = "diocesan"
     RELIGIOUS = "religious"  # Religious order calendar
     LOCAL = "local"
+
+
+class ObservanceType(StrEnum):
+    """Kind of a non-person liturgical observance."""
+
+    LORD = "lord"
+    MARIAN = "marian"
+    CHURCH = "church"
+    MYSTERY = "mystery"
+    OTHER = "other"
 
 
 # ==============================================================================
@@ -95,13 +102,48 @@ class LiturgicalCalendar(BaseModel, Base):
 
 
 # ==============================================================================
+# NON-PERSON LITURGICAL OBSERVANCE
+# ==============================================================================
+
+
+class LiturgicalObservance(BaseModel, Base):
+    """A Marian title, feast of the Lord, or another non-person celebration."""
+
+    __tablename__ = "liturgical_observances"
+    __table_args__ = (
+        UniqueConstraint("slug", name="uq_liturgical_observance_slug"),
+        Index("ix_liturgical_observances_type", "observance_type"),
+        {"comment": "Non-person liturgical observances"},
+    )
+
+    slug: Mapped[str] = mapped_column(String(300), nullable=False)
+    title_pl: Mapped[str] = mapped_column(String(500), nullable=False)
+    title_en: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    latin_title: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    observance_type: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False,
+        default=ObservanceType.OTHER,
+        server_default=text("'other'"),
+    )
+    summary_pl: Mapped[str | None] = mapped_column(Text, nullable=True)
+    description_pl: Mapped[str | None] = mapped_column(Text, nullable=True)
+    iconographic_attributes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_featured: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+
+    feasts: Mapped[list[Feast]] = relationship("Feast", back_populates="observance")
+
+
+# ==============================================================================
 # FEAST
 # ==============================================================================
 
 
 class Feast(BaseModel, Base):
     """
-    A liturgical feast day for a person on a specific calendar.
+    A liturgical entry for exactly one person or non-person observance.
 
     A person may have different feast dates in different calendars
     (e.g. universal vs. Polish national calendar).
@@ -109,7 +151,12 @@ class Feast(BaseModel, Base):
 
     __tablename__ = "feasts"
     __table_args__ = (
+        CheckConstraint(
+            "(person_id IS NOT NULL) <> (observance_id IS NOT NULL)",
+            name="ck_feasts_exactly_one_target",
+        ),
         Index("ix_feasts_person_id", "person_id"),
+        Index("ix_feasts_observance_id", "observance_id"),
         Index("ix_feasts_calendar_id", "calendar_id"),
         Index("ix_feasts_day_of_year", "day_of_year"),
         Index("ix_feasts_month", "month"),
@@ -121,7 +168,22 @@ class Feast(BaseModel, Base):
             "month",
             "day",
             unique=True,
-            postgresql_where=text("deleted_at IS NULL AND month IS NOT NULL AND day IS NOT NULL"),
+            postgresql_where=text(
+                "deleted_at IS NULL AND person_id IS NOT NULL "
+                "AND month IS NOT NULL AND day IS NOT NULL"
+            ),
+        ),
+        Index(
+            "uq_feasts_active_observance_calendar_date",
+            "observance_id",
+            "calendar_id",
+            "month",
+            "day",
+            unique=True,
+            postgresql_where=text(
+                "deleted_at IS NULL AND observance_id IS NOT NULL "
+                "AND month IS NOT NULL AND day IS NOT NULL"
+            ),
         ),
         Index(
             "uq_feasts_active_primary_calendar_date",
@@ -137,10 +199,15 @@ class Feast(BaseModel, Base):
         {"comment": "Liturgical feast days"},
     )
 
-    person_id: Mapped[uuid.UUID] = mapped_column(
+    person_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("persons.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
+    )
+    observance_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("liturgical_observances.id", ondelete="CASCADE"),
+        nullable=True,
     )
     calendar_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -176,7 +243,7 @@ class Feast(BaseModel, Base):
         Boolean,
         nullable=False,
         default=False,
-        comment="Editorially selected primary person for this date and calendar",
+        comment="Editorially selected primary entry for this date and calendar",
     )
 
     # Metadata
@@ -186,7 +253,10 @@ class Feast(BaseModel, Base):
     source_url: Mapped[str | None] = mapped_column(String(2000), nullable=True)
 
     # Relationships
-    person: Mapped[Person] = relationship("Person")
+    person: Mapped[Person | None] = relationship("Person")
+    observance: Mapped[LiturgicalObservance | None] = relationship(
+        "LiturgicalObservance", back_populates="feasts"
+    )
     calendar: Mapped[LiturgicalCalendar] = relationship(
         "LiturgicalCalendar", back_populates="feasts"
     )

@@ -10,9 +10,10 @@ from pydantic import ValidationError
 
 from src.application.services.calendar_service import CalendarService
 from src.domain.hagiography.models import Person
-from src.domain.liturgy.models import Feast, LiturgicalCalendar
+from src.domain.liturgy.models import Feast, LiturgicalCalendar, LiturgicalObservance
 from src.infrastructure.db.import_catalogue_persons import read_person_rows
 from src.infrastructure.db.import_liturgical_calendar import read_rows
+from src.infrastructure.db.import_liturgical_observances import read_observance_rows
 from src.presentation.api.v1.calendar.schemas import FeastEntryCreateSchema
 
 DATA_DIRECTORY = Path(__file__).parents[2] / "data" / "liturgical-calendar"
@@ -58,6 +59,32 @@ def _feast(person: Person, calendar: LiturgicalCalendar, *, primary: bool = Fals
     return feast
 
 
+def _observance_feast(
+    title: str, calendar: LiturgicalCalendar, *, primary: bool = False
+) -> Feast:
+    observance = LiturgicalObservance(
+        id=uuid.uuid4(),
+        slug=title.lower().replace(" ", "-"),
+        title_pl=title,
+        observance_type="marian",
+        is_featured=True,
+    )
+    feast = Feast(
+        id=uuid.uuid4(),
+        observance_id=observance.id,
+        calendar_id=calendar.id,
+        month=8,
+        day=26,
+        rank="solemnity",
+        is_moveable=False,
+        is_primary=primary,
+        is_suppressed=False,
+    )
+    feast.observance = observance
+    feast.calendar = calendar
+    return feast
+
+
 def test_merge_prefers_explicit_primary_and_deduplicates_local_assignment() -> None:
     universal = _calendar("roman_universal")
     polish = _calendar("roman_pl")
@@ -88,9 +115,33 @@ def test_create_schema_accepts_leap_day_and_rejects_impossible_date() -> None:
         "day": 29,
     }
     assert FeastEntryCreateSchema(**payload).day == 29
+    observance_payload = {
+        "observance_id": uuid.uuid4(),
+        "calendar_code": "roman_pl",
+        "month": 2,
+        "day": 29,
+    }
+    assert FeastEntryCreateSchema(**observance_payload).person_id is None
 
     with pytest.raises(ValidationError):
         FeastEntryCreateSchema(**{**payload, "day": 30})
+
+    with pytest.raises(ValidationError):
+        FeastEntryCreateSchema(**{**payload, "observance_id": uuid.uuid4()})
+
+    with pytest.raises(ValidationError):
+        FeastEntryCreateSchema(calendar_code="roman_pl", month=2, day=29)
+
+
+def test_merge_supports_non_person_observance() -> None:
+    polish = _calendar("roman_pl")
+    mary = _observance_feast("Najświętsza Maryja Panna Częstochowska", polish, primary=True)
+
+    entries = CalendarService._merge_and_sort([mary], "roman_pl")
+
+    assert entries == [mary]
+    assert entries[0].person is None
+    assert entries[0].observance.title_pl == "Najświętsza Maryja Panna Częstochowska"
 
 
 def test_csv_reader_normalizes_import_fields(tmp_path: Path) -> None:
@@ -175,18 +226,22 @@ def test_august_25_dataset_contains_current_statuses_and_recognition_dates() -> 
 
 def test_august_26_dataset_separates_polish_solemnity_from_martyrology() -> None:
     people = read_person_rows(DATA_DIRECTORY / "persons-08-26.csv")
+    observances = read_observance_rows(DATA_DIRECTORY / "observances.csv")
     entries = [
         row
         for row in read_rows(DATA_DIRECTORY / "feasts.csv")
         if row["month"] == 8 and row["day"] == 26
     ]
 
-    assert len(people) == 4
+    assert len(people) == 3
+    assert len(observances) == 1
     assert len(entries) == 4
     primary = next(entry for entry in entries if entry["is_primary"])
-    assert primary["person_slug"] == "najswietsza-maryja-panna-czestochowska"
+    assert primary["person_slug"] is None
+    assert primary["observance_slug"] == "najswietsza-maryja-panna-czestochowska"
     assert primary["calendar_code"] == "roman_pl"
     assert primary["rank"] == "solemnity"
+    assert observances[0]["observance_type"] == "marian"
     assert all(
         entry["calendar_code"] == "roman_martyrology"
         for entry in entries

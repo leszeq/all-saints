@@ -79,3 +79,8 @@ export const fetchLiturgicalCalendars = async () => {
   const { data } = await publicApi.get("/calendar/calendars");
   return data;
 };
+
+export const fetchLiturgicalObservance = async (slug: string) => {
+  const { data } = await publicApi.get(`/calendar/observances/by-slug/${slug}`);
+  return data;
+};

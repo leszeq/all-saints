@@ -16,6 +16,8 @@ from src.application.services.calendar_service import (
     CalendarService,
     FeastConflictError,
     FeastNotFoundError,
+    ObservanceConflictError,
+    ObservanceNotFoundError,
 )
 from src.domain.identity.models import User
 from src.domain.liturgy.models import Feast, LiturgicalCalendar
@@ -28,6 +30,9 @@ from src.presentation.api.v1.calendar.schemas import (
     FeastEntrySchema,
     FeastEntryUpdateSchema,
     LiturgicalCalendarSchema,
+    LiturgicalObservanceCreateSchema,
+    LiturgicalObservanceSchema,
+    LiturgicalObservanceUpdateSchema,
 )
 
 router = APIRouter()
@@ -69,6 +74,96 @@ async def list_calendars(
         LiturgicalCalendarSchema.model_validate(calendar)
         for calendar in await service.list_calendars()
     ]
+
+
+@router.get(
+    "/observances",
+    response_model=list[LiturgicalObservanceSchema],
+    summary="List non-person liturgical observances",
+)
+async def list_observances(
+    db: AsyncSession = Depends(get_db_session),
+) -> list[LiturgicalObservanceSchema]:
+    service = CalendarService(db)
+    return [
+        LiturgicalObservanceSchema.model_validate(observance)
+        for observance in await service.list_observances()
+    ]
+
+
+@router.get(
+    "/observances/by-slug/{slug}",
+    response_model=LiturgicalObservanceSchema,
+    summary="Get a non-person liturgical observance",
+)
+async def get_observance(
+    slug: str,
+    db: AsyncSession = Depends(get_db_session),
+) -> LiturgicalObservanceSchema:
+    service = CalendarService(db)
+    try:
+        observance = await service.get_observance(slug)
+    except ObservanceNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return LiturgicalObservanceSchema.model_validate(observance)
+
+
+@router.post(
+    "/observances",
+    response_model=LiturgicalObservanceSchema,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a non-person liturgical observance",
+)
+async def create_observance(
+    data: LiturgicalObservanceCreateSchema,
+    db: AsyncSession = Depends(get_db_session),
+    _user: User = Depends(require_permission("calendar", "create")),
+) -> LiturgicalObservanceSchema:
+    service = CalendarService(db)
+    try:
+        observance = await service.create_observance(data)
+    except ObservanceConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    return LiturgicalObservanceSchema.model_validate(observance)
+
+
+@router.patch(
+    "/observances/{observance_id}",
+    response_model=LiturgicalObservanceSchema,
+    summary="Update a non-person liturgical observance",
+)
+async def update_observance(
+    observance_id: uuid.UUID,
+    data: LiturgicalObservanceUpdateSchema,
+    db: AsyncSession = Depends(get_db_session),
+    _user: User = Depends(require_permission("calendar", "update")),
+) -> LiturgicalObservanceSchema:
+    service = CalendarService(db)
+    try:
+        observance = await service.update_observance(observance_id, data)
+    except ObservanceNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ObservanceConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    return LiturgicalObservanceSchema.model_validate(observance)
+
+
+@router.delete(
+    "/observances/{observance_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a non-person liturgical observance",
+)
+async def delete_observance(
+    observance_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db_session),
+    _user: User = Depends(require_permission("calendar", "delete")),
+) -> Response:
+    service = CalendarService(db)
+    try:
+        await service.delete_observance(observance_id)
+    except ObservanceNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get(

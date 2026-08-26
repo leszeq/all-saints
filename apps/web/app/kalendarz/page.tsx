@@ -4,6 +4,7 @@ import { BookOpen, CalendarDays, ChevronLeft, ChevronRight, Layers3 } from "luci
 
 import { fetchCalendarMonth, fetchLiturgicalCalendars } from "@/lib/api";
 import {
+  calendarEntryTitle,
   type CalendarDay,
   type CalendarMonth,
   currentWarsawDate,
@@ -18,7 +19,7 @@ import {
 export const metadata: Metadata = {
   title: "Kalendarz liturgiczny | Encyklopedia Świętych",
   description:
-    "Święci i błogosławieni przypisani do kolejnych dni roku w kalendarzu powszechnym i polskim.",
+    "Osoby i obchody przypisane do kolejnych dni roku w kalendarzu powszechnym i polskim.",
 };
 
 export const revalidate = 300;
@@ -109,7 +110,7 @@ export default async function LiturgicalCalendarPage({ searchParams }: PageProps
                   : "Wpisy pochodzą z wybranego kalendarza bez nakładania kalendarzy lokalnych."}
                 {monthData.includes_martyrology
                   ? " Osobno dołączamy postacie z Martyrologium Rzymskiego."
-                  : ""} Każdy dzień może prowadzić do wielu postaci.
+                  : ""} Każdy dzień może prowadzić do wielu osób i obchodów.
               </p>
             </div>
             <div className="flex gap-6 text-sm">
@@ -186,7 +187,7 @@ export default async function LiturgicalCalendarPage({ searchParams }: PageProps
                     {primary ? (
                       <div className="mt-4">
                         <p className="line-clamp-2 font-serif text-base font-semibold leading-5 text-charcoal group-hover:text-burgundy-700">
-                          {primary.person.canonical_name}
+                          {calendarEntryTitle(primary)}
                         </p>
                         <p className="mt-2 text-[10px] font-semibold uppercase tracking-wide text-gold-800">
                           {FEAST_RANK_SHORT_LABELS[primary.rank] ?? primary.rank}

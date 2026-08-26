@@ -1,7 +1,10 @@
 # Dane kalendarza liturgicznego
 
-Plik `feasts.csv` jest idempotentnym, wersjonowanym źródłem przypisań postaci do
-stałych dat. Nie przechowujemy osobnych pustych rekordów dla każdego dnia:
+Plik `feasts.csv` jest idempotentnym, wersjonowanym źródłem przypisań osób lub
+obchodów liturgicznych do stałych dat. Osoby pozostają w katalogu
+hagiograficznym, natomiast tytuły maryjne, święta Pańskie i inne obchody
+niebędące osobami trafiają do `observances.csv`. Nie przechowujemy osobnych
+pustych rekordów dla każdego dnia:
 endpoint miesiąca generuje pełny kalendarz cywilny, dzięki czemu obejmuje 365
 lub 366 dni i poprawnie uwzględnia 29 lutego.
 
@@ -24,6 +27,8 @@ przypisanymi do 24 sierpnia w katalogu hagiograficznym.
 
 - `calendar_code` — stabilny kod kalendarza,
 - `person_slug` — slug istniejącej i opublikowanej postaci,
+- `observance_slug` — slug obchodu z `observances.csv`; w jednym wierszu podaje
+  się dokładnie jedno z pól `person_slug` i `observance_slug`,
 - `month`, `day` — stała data wspomnienia,
 - `rank` — `solemnity`, `feast`, `memorial`, `opt_memorial` albo `commemoration`,
 - `liturgical_color` — opcjonalny kolor liturgiczny,
@@ -41,20 +46,21 @@ python -m src.infrastructure.db.import_liturgical_calendar \
 
 python -m src.infrastructure.db.import_liturgical_calendar \
   data/liturgical-calendar/feasts.csv \
+  --observances data/liturgical-calendar/observances.csv \
   --persons data/liturgical-calendar/persons-08-24.csv \
   --persons data/liturgical-calendar/persons-08-25.csv \
   --persons data/liturgical-calendar/persons-08-26.csv
 ```
 
-Opcję `--persons` można powtórzyć dla kolejnych partii redakcyjnych. Ponowny
-import aktualizuje istniejące przypisania i nie tworzy duplikatów.
-Wiersze odwołujące się do nieistniejącej postaci lub kalendarza są raportowane
-jako `skipped_missing_relations`.
+Opcje `--persons` i `--observances` można powtarzać dla kolejnych partii
+redakcyjnych. Ponowny import aktualizuje istniejące rekordy i przypisania bez
+tworzenia duplikatów. Wiersze odwołujące się do nieistniejącej osoby, obchodu
+lub kalendarza są raportowane jako `skipped_missing_relations`.
 
 ## Dobór głównej postaci
 
 API porządkuje wpisy według: ręcznego `is_primary`, wybranego kalendarza
-lokalnego, wyróżnienia redakcyjnego postaci, rangi liturgicznej i nazwy. Pozwala
+lokalnego, wyróżnienia redakcyjnego celu, rangi liturgicznej i nazwy. Pozwala
 to później zastąpić wyróżnienie redakcyjne wynikiem analityki odwiedzin bez
 zmiany kontraktu API.
 

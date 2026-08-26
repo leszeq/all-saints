@@ -24,6 +24,10 @@ from src.infrastructure.db.import_catalogue_persons import (
     import_person_rows,
     read_person_rows,
 )
+from src.infrastructure.db.import_liturgical_observances import (
+    import_observance_rows,
+    read_observance_rows,
+)
 from src.infrastructure.db.session import get_engine
 
 
@@ -57,10 +61,17 @@ def read_rows(path: Path) -> list[dict[str, object]]:
                 raise ValueError(f"Wiersz {line_number}: nieznana ranga {rank!r}")
             if color and color not in valid_colors:
                 raise ValueError(f"Wiersz {line_number}: nieznany kolor {color!r}")
+            person_slug = (raw.get("person_slug") or "").strip()
+            observance_slug = (raw.get("observance_slug") or "").strip()
+            if bool(person_slug) == bool(observance_slug):
+                raise ValueError(
+                    f"Wiersz {line_number}: podaj dokładnie person_slug albo observance_slug"
+                )
 
             rows.append(
                 {
-                    "person_slug": raw["person_slug"].strip(),
+                    "person_slug": person_slug or None,
+                    "observance_slug": observance_slug or None,
                     "calendar_code": raw["calendar_code"].strip(),
                     "month": month,
                     "day": day,
@@ -83,31 +94,59 @@ async def import_rows(rows: list[dict[str, object]], *, dry_run: bool = False) -
     transaction = await connection.begin()
     try:
         for row in rows:
-            resolved = (
+            calendar_id = (
                 await connection.execute(
                     text(
                         """
-                        SELECT p.id AS person_id, c.id AS calendar_id
-                        FROM persons p
-                        CROSS JOIN liturgical_calendars c
-                        WHERE p.slug = :person_slug
-                          AND p.deleted_at IS NULL
-                          AND c.code = :calendar_code
+                        SELECT c.id
+                        FROM liturgical_calendars c
+                        WHERE c.code = :calendar_code
                           AND c.deleted_at IS NULL
                           AND c.is_active = true
                         """
                     ),
                     row,
                 )
-            ).mappings().one_or_none()
-            if resolved is None:
+            ).scalar_one_or_none()
+            if calendar_id is None:
+                result.skipped += 1
+                continue
+
+            person_id = None
+            observance_id = None
+            if row["person_slug"]:
+                person_id = (
+                    await connection.execute(
+                        text(
+                            """
+                            SELECT id FROM persons
+                            WHERE slug = :person_slug AND deleted_at IS NULL
+                            """
+                        ),
+                        row,
+                    )
+                ).scalar_one_or_none()
+            else:
+                observance_id = (
+                    await connection.execute(
+                        text(
+                            """
+                            SELECT id FROM liturgical_observances
+                            WHERE slug = :observance_slug AND deleted_at IS NULL
+                            """
+                        ),
+                        row,
+                    )
+                ).scalar_one_or_none()
+            if person_id is None and observance_id is None:
                 result.skipped += 1
                 continue
 
             values = {
                 **row,
-                "person_id": resolved["person_id"],
-                "calendar_id": resolved["calendar_id"],
+                "person_id": person_id,
+                "observance_id": observance_id,
+                "calendar_id": calendar_id,
             }
             if values["is_primary"]:
                 await connection.execute(
@@ -125,20 +164,32 @@ async def import_rows(rows: list[dict[str, object]], *, dry_run: bool = False) -
                     values,
                 )
 
+            existing_query = (
+                text(
+                    """
+                    SELECT id FROM feasts
+                    WHERE person_id = :target_id
+                      AND calendar_id = :calendar_id
+                      AND month = :month AND day = :day AND deleted_at IS NULL
+                    """
+                )
+                if person_id is not None
+                else text(
+                    """
+                    SELECT id FROM feasts
+                    WHERE observance_id = :target_id
+                      AND calendar_id = :calendar_id
+                      AND month = :month AND day = :day AND deleted_at IS NULL
+                    """
+                )
+            )
             existing_id = (
                 await connection.execute(
-                    text(
-                        """
-                        SELECT id
-                        FROM feasts
-                        WHERE person_id = :person_id
-                          AND calendar_id = :calendar_id
-                          AND month = :month
-                          AND day = :day
-                          AND deleted_at IS NULL
-                        """
-                    ),
-                    values,
+                    existing_query,
+                    {
+                        **values,
+                        "target_id": person_id if person_id is not None else observance_id,
+                    },
                 )
             ).scalar_one_or_none()
 
@@ -147,11 +198,11 @@ async def import_rows(rows: list[dict[str, object]], *, dry_run: bool = False) -
                     text(
                         """
                         INSERT INTO feasts (
-                            id, person_id, calendar_id, month, day, day_of_year,
+                            id, person_id, observance_id, calendar_id, month, day, day_of_year,
                             is_moveable, rank, liturgical_color, is_primary,
                             is_suppressed, source_title, source_url, notes
                         ) VALUES (
-                            :id, :person_id, :calendar_id, :month, :day, :day_of_year,
+                            :id, :person_id, :observance_id, :calendar_id, :month, :day, :day_of_year,
                             false, :rank, :liturgical_color, :is_primary,
                             false, :source_title, :source_url, :notes
                         )
@@ -202,6 +253,13 @@ async def _main() -> None:
         default=[],
         help="Repeatable catalogue-person CSV imported before calendar assignments",
     )
+    parser.add_argument(
+        "--observances",
+        type=Path,
+        action="append",
+        default=[],
+        help="Repeatable non-person observance CSV imported before calendar assignments",
+    )
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
@@ -213,6 +271,13 @@ async def _main() -> None:
         )
         for person_path in args.persons
     ]
+    observance_results = [
+        await import_observance_rows(
+            read_observance_rows(observance_path),
+            dry_run=args.dry_run,
+        )
+        for observance_path in args.observances
+    ]
     rows = read_rows(args.path)
     result = await import_rows(rows, dry_run=args.dry_run)
     mode = "DRY RUN" if args.dry_run else "IMPORTED"
@@ -222,8 +287,15 @@ async def _main() -> None:
         if person_results
         else ""
     )
+    observance_summary = (
+        f"observances_created={sum(item.created for item in observance_results)}, "
+        f"observances_updated={sum(item.updated for item in observance_results)}, "
+        if observance_results
+        else ""
+    )
     print(
-        f"{mode}: {person_summary}created={result.created}, updated={result.updated}, "
+        f"{mode}: {person_summary}{observance_summary}created={result.created}, "
+        f"updated={result.updated}, "
         f"skipped_missing_relations={result.skipped}"
     )
 

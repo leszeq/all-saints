@@ -14,6 +14,9 @@ import {
 } from "lucide-react";
 import { fetchCalendarToday, fetchOrders, fetchPersons } from "@/lib/api";
 import {
+  calendarEntryHref,
+  calendarEntrySummary,
+  calendarEntryTitle,
   type CalendarDay,
   FEAST_RANK_LABELS,
   formatCalendarDate,
@@ -131,12 +134,12 @@ export default async function HomePage() {
             </div>
             <div className="p-7 md:p-9">
               <p className="editorial-label">Główne wspomnienie · {calendarDay?.calendar_name ?? "Kalendarz liturgiczny"}</p>
-              <h2 className="mt-3 font-serif text-3xl font-semibold text-charcoal">{primaryCommemoration?.person.canonical_name ?? "Dzień czeka na opracowanie"}</h2>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600">{primaryCommemoration?.person.summary_pl ?? "Redakcja nie przypisała jeszcze zweryfikowanej postaci do dzisiejszej daty."}</p>
+              <h2 className="mt-3 font-serif text-3xl font-semibold text-charcoal">{primaryCommemoration ? calendarEntryTitle(primaryCommemoration) : "Dzień czeka na opracowanie"}</h2>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600">{primaryCommemoration ? calendarEntrySummary(primaryCommemoration) ?? "Opis tego wpisu jest obecnie opracowywany przez redakcję." : "Redakcja nie przypisała jeszcze zweryfikowanego wpisu do dzisiejszej daty."}</p>
               {primaryCommemoration && (
                 <div className="mt-5 flex flex-wrap gap-2">
                   <span className="rounded-full border border-gold-200 bg-gold-50 px-3 py-1 text-xs text-gold-800">{FEAST_RANK_LABELS[primaryCommemoration.rank] ?? primaryCommemoration.rank}</span>
-                  {primaryCommemoration.person.patronages.slice(0, 2).map((patronage) => <span key={patronage.id} className="rounded-full border border-gold-200 bg-gold-50 px-3 py-1 text-xs text-gold-800">{patronage.name_pl}</span>)}
+                  {primaryCommemoration.person?.patronages.slice(0, 2).map((patronage) => <span key={patronage.id} className="rounded-full border border-gold-200 bg-gold-50 px-3 py-1 text-xs text-gold-800">{patronage.name_pl}</span>)}
                 </div>
               )}
             </div>
@@ -161,7 +164,7 @@ export default async function HomePage() {
           <div id="kalendarz">
             <div className="flex items-center justify-between"><div><p className="editorial-label">Kalendarz liturgiczny</p><h2 className="mt-3 font-serif text-3xl font-semibold">Dzisiaj wspominamy</h2></div><Link href="/kalendarz" aria-label="Otwórz kalendarz liturgiczny"><CalendarDays className="h-7 w-7 text-gold-700" strokeWidth={1.4} /></Link></div>
             <div className="mt-7 divide-y divide-[#ded8cd] border-y border-[#ded8cd]">
-              {calendarDay?.entries.length ? calendarDay.entries.slice(0, 4).map((entry, index) => <Link key={entry.id} href={`/swieci/${entry.person.slug}`} className="group flex items-center gap-5 py-5"><span className="flex h-11 w-11 items-center justify-center rounded-full border border-gold-200 bg-gold-50 font-serif text-lg text-gold-800">{index + 1}</span><span className="flex-1"><span className="block font-serif text-xl font-semibold">{entry.person.canonical_name}</span><span className="mt-1 block text-xs text-stone-500">{FEAST_RANK_LABELS[entry.rank] ?? entry.rank} · {entry.calendar.name}</span></span><ChevronRight className="h-4 w-4 text-stone-400 group-hover:text-burgundy-700" /></Link>) : <div className="py-8 text-sm leading-6 text-stone-500">Brak zweryfikowanych wpisów na dzisiejszy dzień. Kalendarz jest sukcesywnie uzupełniany przez redakcję.</div>}
+              {calendarDay?.entries.length ? calendarDay.entries.slice(0, 4).map((entry, index) => <Link key={entry.id} href={calendarEntryHref(entry)} className="group flex items-center gap-5 py-5"><span className="flex h-11 w-11 items-center justify-center rounded-full border border-gold-200 bg-gold-50 font-serif text-lg text-gold-800">{index + 1}</span><span className="flex-1"><span className="block font-serif text-xl font-semibold">{calendarEntryTitle(entry)}</span><span className="mt-1 block text-xs text-stone-500">{FEAST_RANK_LABELS[entry.rank] ?? entry.rank} · {entry.calendar.name}</span></span><ChevronRight className="h-4 w-4 text-stone-400 group-hover:text-burgundy-700" /></Link>) : <div className="py-8 text-sm leading-6 text-stone-500">Brak zweryfikowanych wpisów na dzisiejszy dzień. Kalendarz jest sukcesywnie uzupełniany przez redakcję.</div>}
             </div>
             <Link href={calendarDay ? `/kalendarz/${calendarDay.date}` : "/kalendarz"} className="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-burgundy-700">Pełna lista dnia <ChevronRight className="h-4 w-4" /></Link>
           </div>

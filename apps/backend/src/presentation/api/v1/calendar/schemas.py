@@ -8,7 +8,7 @@ from datetime import date, datetime
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
 
 from src.domain.hagiography.models import Gender, LiturgicalColor, PersonType
-from src.domain.liturgy.models import CalendarScope, FeastRank
+from src.domain.liturgy.models import CalendarScope, FeastRank, ObservanceType
 from src.presentation.api.v1.persons.schemas import (
     PersonAvatarSchema,
     PersonPatronageSchema,
@@ -47,10 +47,53 @@ class CalendarPersonSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class LiturgicalObservanceBaseSchema(BaseModel):
+    """Shared editorial content for a non-person liturgical observance."""
+
+    slug: str = Field(..., min_length=2, max_length=300, pattern=r"^[a-z0-9-]+$")
+    title_pl: str = Field(..., min_length=2, max_length=500)
+    title_en: str | None = Field(None, max_length=500)
+    latin_title: str | None = Field(None, max_length=500)
+    observance_type: ObservanceType
+    summary_pl: str | None = None
+    description_pl: str | None = None
+    iconographic_attributes: str | None = None
+    is_featured: bool = False
+
+
+class LiturgicalObservanceCreateSchema(LiturgicalObservanceBaseSchema):
+    """Create a Marian, Lord's, or other non-person observance."""
+
+
+class LiturgicalObservanceUpdateSchema(BaseModel):
+    """Editable fields of a non-person observance."""
+
+    slug: str | None = Field(None, min_length=2, max_length=300, pattern=r"^[a-z0-9-]+$")
+    title_pl: str | None = Field(None, min_length=2, max_length=500)
+    title_en: str | None = Field(None, max_length=500)
+    latin_title: str | None = Field(None, max_length=500)
+    observance_type: ObservanceType | None = None
+    summary_pl: str | None = None
+    description_pl: str | None = None
+    iconographic_attributes: str | None = None
+    is_featured: bool | None = None
+
+
+class LiturgicalObservanceSchema(LiturgicalObservanceBaseSchema):
+    """Public representation of a non-person liturgical observance."""
+
+    id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class FeastEntryCreateSchema(BaseModel):
     """Create a fixed-date commemoration in a selected calendar."""
 
-    person_id: uuid.UUID
+    person_id: uuid.UUID | None = None
+    observance_id: uuid.UUID | None = None
     calendar_code: str = Field(default="roman_pl", min_length=2, max_length=50)
     month: int = Field(..., ge=1, le=12)
     day: int = Field(..., ge=1, le=31)
@@ -64,8 +107,10 @@ class FeastEntryCreateSchema(BaseModel):
 
     @model_validator(mode="after")
     def validate_fixed_date(self) -> FeastEntryCreateSchema:
-        """Validate month/day against a leap year so 29 February remains legal."""
+        """Validate the date and require exactly one kind of calendar target."""
         date(2000, self.month, self.day)
+        if (self.person_id is None) == (self.observance_id is None):
+            raise ValueError("Wpis musi wskazywać dokładnie jedną osobę albo obchód liturgiczny")
         return self
 
 
@@ -98,7 +143,8 @@ class FeastEntrySchema(BaseModel):
     notes: str | None = None
     source_title: str | None = None
     source_url: str | None = None
-    person: CalendarPersonSchema
+    person: CalendarPersonSchema | None = None
+    observance: LiturgicalObservanceSchema | None = None
     calendar: LiturgicalCalendarSchema
     created_at: datetime
     updated_at: datetime

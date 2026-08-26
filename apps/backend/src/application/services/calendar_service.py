@@ -7,15 +7,22 @@ import uuid
 from collections import defaultdict
 from datetime import UTC, date, datetime
 
-from sqlalchemy import select, update
+from sqlalchemy import and_, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
 from src.domain.hagiography.models import Person
-from src.domain.liturgy.models import Feast, FeastRank, LiturgicalCalendar
+from src.domain.liturgy.models import (
+    Feast,
+    FeastRank,
+    LiturgicalCalendar,
+    LiturgicalObservance,
+)
 from src.presentation.api.v1.calendar.schemas import (
     FeastEntryCreateSchema,
     FeastEntryUpdateSchema,
+    LiturgicalObservanceCreateSchema,
+    LiturgicalObservanceUpdateSchema,
 )
 
 RANK_PRIORITY: dict[str, int] = {
@@ -36,7 +43,15 @@ class FeastNotFoundError(ValueError):
 
 
 class FeastConflictError(ValueError):
-    """Raised when a person is already assigned to a calendar date."""
+    """Raised when a target is already assigned to a calendar date."""
+
+
+class ObservanceNotFoundError(ValueError):
+    """Raised when a non-person liturgical observance cannot be found."""
+
+
+class ObservanceConflictError(ValueError):
+    """Raised when an observance slug is already in use."""
 
 
 class CalendarService:
@@ -71,6 +86,82 @@ class CalendarService:
             raise CalendarNotFoundError(f"Nie znaleziono kalendarza: {code}")
         return calendar
 
+    async def list_observances(self) -> list[LiturgicalObservance]:
+        """Return active non-person observances for editorial and public views."""
+        result = await self.db.execute(
+            select(LiturgicalObservance)
+            .where(LiturgicalObservance.deleted_at.is_(None))
+            .order_by(LiturgicalObservance.title_pl.asc())
+        )
+        return list(result.scalars().all())
+
+    async def get_observance(self, id_or_slug: uuid.UUID | str) -> LiturgicalObservance:
+        """Resolve an active observance by UUID or stable public slug."""
+        criterion = (
+            LiturgicalObservance.id == id_or_slug
+            if isinstance(id_or_slug, uuid.UUID)
+            else LiturgicalObservance.slug == id_or_slug
+        )
+        result = await self.db.execute(
+            select(LiturgicalObservance).where(
+                criterion,
+                LiturgicalObservance.deleted_at.is_(None),
+            )
+        )
+        observance = result.scalar_one_or_none()
+        if observance is None:
+            raise ObservanceNotFoundError("Obchód liturgiczny nie istnieje")
+        return observance
+
+    async def _ensure_observance_slug_available(
+        self, slug: str, *, exclude_id: uuid.UUID | None = None
+    ) -> None:
+        query = select(LiturgicalObservance.id).where(LiturgicalObservance.slug == slug)
+        if exclude_id is not None:
+            query = query.where(LiturgicalObservance.id != exclude_id)
+        if (await self.db.execute(query)).scalar_one_or_none() is not None:
+            raise ObservanceConflictError("Slug obchodu liturgicznego jest już zajęty")
+
+    async def create_observance(
+        self, data: LiturgicalObservanceCreateSchema
+    ) -> LiturgicalObservance:
+        """Create a non-person observance without entering it into the person catalogue."""
+        await self._ensure_observance_slug_available(data.slug)
+        observance = LiturgicalObservance(**data.model_dump(mode="json"))
+        self.db.add(observance)
+        await self.db.commit()
+        return await self.get_observance(observance.id)
+
+    async def update_observance(
+        self,
+        observance_id: uuid.UUID,
+        data: LiturgicalObservanceUpdateSchema,
+    ) -> LiturgicalObservance:
+        """Update editorial content of a non-person observance."""
+        observance = await self.get_observance(observance_id)
+        changes = data.model_dump(exclude_unset=True, mode="json")
+        if slug := changes.get("slug"):
+            await self._ensure_observance_slug_available(slug, exclude_id=observance.id)
+        for field, value in changes.items():
+            setattr(observance, field, value)
+        await self.db.commit()
+        return await self.get_observance(observance.id)
+
+    async def delete_observance(self, observance_id: uuid.UUID) -> None:
+        """Soft-delete an observance and its active calendar assignments."""
+        observance = await self.get_observance(observance_id)
+        now = datetime.now(UTC)
+        await self.db.execute(
+            update(Feast)
+            .where(
+                Feast.observance_id == observance.id,
+                Feast.deleted_at.is_(None),
+            )
+            .values(is_primary=False, deleted_at=now, updated_at=now)
+        )
+        observance.deleted_at = now
+        await self.db.commit()
+
     async def _calendar_codes(
         self,
         code: str,
@@ -98,7 +189,8 @@ class CalendarService:
         query = (
             select(Feast)
             .join(Feast.calendar)
-            .join(Feast.person)
+            .outerjoin(Feast.person)
+            .outerjoin(Feast.observance)
             .where(
                 Feast.deleted_at.is_(None),
                 Feast.is_suppressed.is_(False),
@@ -107,43 +199,74 @@ class CalendarService:
                 LiturgicalCalendar.code.in_(calendar_codes),
                 LiturgicalCalendar.deleted_at.is_(None),
                 LiturgicalCalendar.is_active.is_(True),
-                Person.deleted_at.is_(None),
+                or_(
+                    and_(
+                        Feast.person_id.is_not(None),
+                        Person.deleted_at.is_(None),
+                    ),
+                    and_(
+                        Feast.observance_id.is_not(None),
+                        LiturgicalObservance.deleted_at.is_(None),
+                    ),
+                ),
             )
             .options(
                 joinedload(Feast.calendar),
                 selectinload(Feast.person).selectinload(Person.images),
                 selectinload(Feast.person).selectinload(Person.patronages),
+                joinedload(Feast.observance),
             )
         )
         if day is not None:
             query = query.where(Feast.day == day)
         if public_only:
-            query = query.where(Person.status == "published")
+            query = query.where(
+                or_(
+                    and_(Feast.person_id.is_not(None), Person.status == "published"),
+                    Feast.observance_id.is_not(None),
+                )
+            )
 
         result = await self.db.execute(query)
         return list(result.scalars().unique().all())
 
     @staticmethod
     def _merge_and_sort(entries: list[Feast], selected_code: str) -> list[Feast]:
-        """Prefer the selected local calendar, deduplicate people, then rank display order."""
+        """Prefer local assignments, deduplicate targets, then rank display order."""
 
         def calendar_priority(feast: Feast) -> int:
             return 0 if feast.calendar.code == selected_code else 1
 
         preferred = sorted(entries, key=calendar_priority)
 
-        by_person: dict[uuid.UUID, Feast] = {}
+        by_target: dict[tuple[str, uuid.UUID], Feast] = {}
         for feast in preferred:
-            by_person.setdefault(feast.person_id, feast)
+            if feast.person_id is not None:
+                target_key = ("person", feast.person_id)
+            elif feast.observance_id is not None:
+                target_key = ("observance", feast.observance_id)
+            else:  # The database constraint prevents this; keep sorting defensive.
+                continue
+            by_target.setdefault(target_key, feast)
+
+        def target_is_featured(feast: Feast) -> bool:
+            if feast.person is not None:
+                return feast.person.is_featured
+            return bool(feast.observance and feast.observance.is_featured)
+
+        def target_title(feast: Feast) -> str:
+            if feast.person is not None:
+                return feast.person.canonical_name
+            return feast.observance.title_pl if feast.observance is not None else ""
 
         return sorted(
-            by_person.values(),
+            by_target.values(),
             key=lambda feast: (
                 0 if feast.is_primary else 1,
                 calendar_priority(feast),
-                0 if feast.person.is_featured else 1,
+                0 if target_is_featured(feast) else 1,
                 RANK_PRIORITY.get(feast.rank, 99),
-                feast.person.canonical_name.casefold(),
+                target_title(feast).casefold(),
             ),
         )
 
@@ -215,14 +338,20 @@ class CalendarService:
     async def _assert_unique_assignment(
         self,
         *,
-        person_id: uuid.UUID,
+        person_id: uuid.UUID | None,
+        observance_id: uuid.UUID | None,
         calendar_id: uuid.UUID,
         month: int,
         day: int,
         exclude_id: uuid.UUID | None = None,
     ) -> None:
+        target_criterion = (
+            Feast.person_id == person_id
+            if person_id is not None
+            else Feast.observance_id == observance_id
+        )
         query = select(Feast.id).where(
-            Feast.person_id == person_id,
+            target_criterion,
             Feast.calendar_id == calendar_id,
             Feast.month == month,
             Feast.day == day,
@@ -231,7 +360,7 @@ class CalendarService:
         if exclude_id is not None:
             query = query.where(Feast.id != exclude_id)
         if (await self.db.execute(query)).scalar_one_or_none() is not None:
-            raise FeastConflictError("Ta osoba jest już przypisana do tej daty i kalendarza")
+            raise FeastConflictError("Ten cel jest już przypisany do tej daty i kalendarza")
 
     async def get_entry(self, entry_id: uuid.UUID) -> Feast:
         """Load one active entry with all public response relationships."""
@@ -242,6 +371,7 @@ class CalendarService:
                 joinedload(Feast.calendar),
                 selectinload(Feast.person).selectinload(Person.images),
                 selectinload(Feast.person).selectinload(Person.patronages),
+                joinedload(Feast.observance),
             )
         )
         entry = result.scalar_one_or_none()
@@ -252,12 +382,21 @@ class CalendarService:
     async def create_entry(self, data: FeastEntryCreateSchema) -> Feast:
         """Create a fixed commemoration and maintain the one-primary invariant."""
         selected = await self.get_calendar(data.calendar_code)
-        person = await self.db.get(Person, data.person_id)
-        if person is None or person.deleted_at is not None:
-            raise FeastNotFoundError("Osoba nie istnieje")
+        person: Person | None = None
+        observance: LiturgicalObservance | None = None
+        if data.person_id is not None:
+            person = await self.db.get(Person, data.person_id)
+            if person is None or person.deleted_at is not None:
+                raise FeastNotFoundError("Osoba nie istnieje")
+        elif data.observance_id is not None:
+            try:
+                observance = await self.get_observance(data.observance_id)
+            except ObservanceNotFoundError as exc:
+                raise FeastNotFoundError(str(exc)) from exc
 
         await self._assert_unique_assignment(
-            person_id=person.id,
+            person_id=person.id if person else None,
+            observance_id=observance.id if observance else None,
             calendar_id=selected.id,
             month=data.month,
             day=data.day,
@@ -266,7 +405,8 @@ class CalendarService:
             await self._clear_primary(selected.id, data.month, data.day)
 
         entry = Feast(
-            person_id=person.id,
+            person_id=person.id if person else None,
+            observance_id=observance.id if observance else None,
             calendar_id=selected.id,
             month=data.month,
             day=data.day,
@@ -299,6 +439,7 @@ class CalendarService:
 
         await self._assert_unique_assignment(
             person_id=entry.person_id,
+            observance_id=entry.observance_id,
             calendar_id=selected.id,
             month=month,
             day=day,
