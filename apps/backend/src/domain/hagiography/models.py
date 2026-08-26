@@ -69,6 +69,13 @@ class PublicationStatus(StrEnum):
     ARCHIVED = "archived"
 
 
+class PersonSort(StrEnum):
+    """Supported ordering modes for public person listings."""
+
+    NAME_ASC = "name_asc"
+    UPDATED_DESC = "updated_desc"
+
+
 class LiturgicalColor(StrEnum):
     """Liturgical colour for the feast day."""
 

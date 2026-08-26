@@ -40,20 +40,27 @@ const fallbackPersons = [
   { id: "3", slug: "bl-jerzy-popieluszko", name: "Bł. Jerzy Popiełuszko", years: "1947–1984", summary: "Kapłan, męczennik i duszpasterz ludzi pracy.", avatar: null },
 ];
 
+const formatLifeYears = (birthYear: unknown, deathYear: unknown) => {
+  const normalizedBirth = typeof birthYear === "number" && birthYear !== 0 ? birthYear : null;
+  const normalizedDeath = typeof deathYear === "number" && deathYear !== 0 ? deathYear : null;
+  if (normalizedBirth === null && normalizedDeath === null) return "Daty w opracowaniu";
+  return `${normalizedBirth ?? "?"}–${normalizedDeath ?? "?"}`;
+};
+
 export default async function HomePage() {
-  let persons: Array<Record<string, unknown>> = [];
+  let recentPersons: Array<Record<string, unknown>> = [];
   let totalPersons = 0;
   let calendarDay: CalendarDay | null = null;
   let featuredOrders: ReligiousOrder[] = [];
 
   const [personsResult, totalResult, calendarResult, ordersResult] = await Promise.allSettled([
-    fetchPersons({ per_page: 6, is_featured: true }),
+    fetchPersons({ per_page: 3, sort: "updated_desc" }),
     fetchPersons({ per_page: 1 }),
     fetchCalendarToday(),
     fetchOrders({ featured: true }),
   ]);
   if (personsResult.status === "fulfilled") {
-    persons = personsResult.value?.items ?? [];
+    recentPersons = personsResult.value?.items ?? [];
   }
   if (totalResult.status === "fulfilled") {
     totalPersons = totalResult.value?.total ?? 0;
@@ -65,12 +72,12 @@ export default async function HomePage() {
     featuredOrders = (ordersResult.value as ReligiousOrder[]).slice(0, 3);
   }
 
-  const featured = persons.length
-    ? persons.slice(0, 3).map((person) => ({
+  const recentlyUpdated = recentPersons.length
+    ? recentPersons.map((person) => ({
         id: String(person.id),
         slug: String(person.slug),
         name: String(person.canonical_name),
-        years: person.birth_year || person.death_year ? `${person.birth_year ?? "?"}–${person.death_year ?? "?"}` : "Daty w opracowaniu",
+        years: formatLifeYears(person.birth_year, person.death_year),
         summary: String(person.summary_pl || "Profil jest obecnie opracowywany przez redakcję."),
         avatar: (person.avatar as SaintAvatarData | null) ?? null,
       }))
@@ -200,7 +207,7 @@ export default async function HomePage() {
         <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
           <div className="flex items-end justify-between gap-4"><div><p className="editorial-label">Praca redakcji</p><h2 className="mt-3 font-serif text-4xl font-semibold">Ostatnio opracowane</h2></div><Link href="/swieci" className="hidden items-center gap-1 text-sm font-semibold text-burgundy-700 sm:inline-flex">Wszystkie profile <ChevronRight className="h-4 w-4" /></Link></div>
           <div className="mt-9 grid gap-5 md:grid-cols-3">
-            {featured.map((person) => (
+            {recentlyUpdated.map((person) => (
               <Link key={person.id} href={`/swieci/${person.slug}`} className="surface-card group flex min-h-72 flex-col p-6 transition-transform hover:-translate-y-1">
                 <div className="flex items-start justify-between gap-4"><SaintAvatar name={person.name} avatar={person.avatar} className="h-16 w-16 text-lg" /><span className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-700">Zweryfikowany</span></div>
                 <div className="mt-auto pt-12"><p className="text-xs text-gold-800">{person.years}</p><h3 className="mt-2 font-serif text-2xl font-semibold text-charcoal group-hover:text-burgundy-700">{person.name}</h3><p className="mt-3 line-clamp-3 text-sm leading-6 text-stone-600">{person.summary}</p></div>

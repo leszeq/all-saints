@@ -25,6 +25,7 @@ from src.domain.hagiography.models import (
     EraPeriod,
     Gender,
     PatronageGroup,
+    PersonSort,
     PersonType,
     PublicationStatus,
 )
@@ -62,6 +63,7 @@ async def list_persons(
     patronage: PatronageGroup | None = Query(None, description="Public patronage discovery group"),
     country_id: uuid.UUID | None = None,
     is_featured: bool | None = None,
+    sort: PersonSort = PersonSort.NAME_ASC,
     db: AsyncSession = Depends(get_db_session),
 ) -> PersonListResponseSchema:
     """List persons with optional filters."""
@@ -78,6 +80,7 @@ async def list_persons(
         country_id=country_id,
         is_featured=is_featured,
         published_only=True,
+        sort=sort,
     )
 
     pages = -(-total // per_page) if total > 0 else 1

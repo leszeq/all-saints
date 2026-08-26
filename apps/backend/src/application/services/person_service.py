@@ -24,6 +24,7 @@ from src.domain.hagiography.models import (
     PatronageGroup,
     Person,
     PersonOrder,
+    PersonSort,
     PersonType,
     PersonVersion,
     PublicationStatus,
@@ -328,6 +329,7 @@ class PersonService:
         country_id: uuid.UUID | None = None,
         is_featured: bool | None = None,
         published_only: bool = False,
+        sort: PersonSort = PersonSort.NAME_ASC,
     ) -> tuple[list[Person], int]:
         """List persons with full-text search, filtering, and pagination."""
         query = (
@@ -385,7 +387,11 @@ class PersonService:
         total = total_res.scalar_one()
 
         # Paginate
-        query = query.order_by(Person.canonical_name.asc()).offset((page - 1) * per_page).limit(per_page)
+        if sort == PersonSort.UPDATED_DESC:
+            query = query.order_by(Person.updated_at.desc(), Person.canonical_name.asc())
+        else:
+            query = query.order_by(Person.canonical_name.asc())
+        query = query.offset((page - 1) * per_page).limit(per_page)
         res = await self.db.execute(query)
         persons = list(res.scalars().all())
 
