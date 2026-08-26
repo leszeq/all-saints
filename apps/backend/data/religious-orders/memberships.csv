@@ -1,0 +1,13 @@
+person_slug,order_slug,membership_type,is_founder,entry_date,exit_date,notes
+sw-benedykt-z-nursji,benedyktyni,founder,true,,,"Ojciec zachodniej tradycji benedyktyńskiej; rodzina nie jest jednym scentralizowanym zakonem."
+sw-franciszek-z-asyzu,bracia-mniejsi,founder,true,1209,,Założyciel pierwotnej wspólnoty Braci Mniejszych.
+sw-franciszek-z-asyzu,franciszkanie-konwentualni,founder,true,1209,,Wspólny założyciel gałęzi pierwszego zakonu franciszkańskiego.
+sw-maksymilian-maria-kolbe,franciszkanie-konwentualni,friar,false,,,Kapłan Zakonu Braci Mniejszych Konwentualnych.
+sw-tomasz-z-akwinu,dominikanie,friar,false,1244,,Brat Zakonu Kaznodziejskiego.
+sw-roza-z-limy,dominikanie,lay_member,false,,,Tercjarka dominikańska żyjąca duchowością Zakonu w świecie.
+sw-teresa-z-avili,karmelici-bosi,founder,true,1562,,Reformatorka Karmelu i założycielka terezjańskiej gałęzi żeńskiej.
+sw-teresa-benedykta-od-krzyza-edyta-stein,karmelici-bosi,nun,false,1933,1942,Karmelitanka bosa w klasztorach w Kolonii i Echt.
+sw-rita-z-cascii,augustianie,nun,false,,,Mniszka augustiańska w klasztorze św. Marii Magdaleny w Cascii.
+sw-augustyn-z-hippony,augustianie,spiritual_patron,false,,,Ojciec duchowy i autor Reguły; zakon w obecnej formie powstał w XIII wieku.
+sw-kamil-de-lellis,kamilianie,founder,true,1582,,Założyciel Posługujących Chorym.
+sw-faustyna-kowalska,siostry-matki-bozej-milosierdzia,sister,false,1925,1938,Członkini zgromadzenia i jego duchowa współzałożycielka.

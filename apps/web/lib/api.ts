@@ -23,8 +23,13 @@ export const fetchCountries = async () => {
   return data;
 };
 
-export const fetchOrders = async () => {
-  const { data } = await publicApi.get("/orders");
+export const fetchOrders = async (params?: Record<string, unknown>) => {
+  const { data } = await publicApi.get("/orders", { params });
+  return data;
+};
+
+export const fetchOrderDetail = async (idOrSlug: string) => {
+  const { data } = await publicApi.get(`/orders/${idOrSlug}`);
   return data;
 };
 
@@ -35,14 +40,22 @@ export const fetchCategories = async () => {
 
 export const fetchCalendarToday = async (calendarCode = "roman_pl") => {
   const { data } = await publicApi.get("/calendar/today", {
-    params: { calendar_code: calendarCode, include_universal: true },
+    params: {
+      calendar_code: calendarCode,
+      include_universal: true,
+      include_martyrology: true,
+    },
   });
   return data;
 };
 
 export const fetchCalendarDay = async (date: string, calendarCode = "roman_pl") => {
   const { data } = await publicApi.get(`/calendar/day/${date}`, {
-    params: { calendar_code: calendarCode, include_universal: true },
+    params: {
+      calendar_code: calendarCode,
+      include_universal: true,
+      include_martyrology: true,
+    },
   });
   return data;
 };
@@ -53,7 +66,11 @@ export const fetchCalendarMonth = async (
   calendarCode = "roman_pl",
 ) => {
   const { data } = await publicApi.get(`/calendar/month/${year}/${month}`, {
-    params: { calendar_code: calendarCode, include_universal: true },
+    params: {
+      calendar_code: calendarCode,
+      include_universal: true,
+      include_martyrology: true,
+    },
   });
   return data;
 };

@@ -39,6 +39,7 @@ def _day_response(
     entries: list[Feast],
     *,
     include_universal: bool,
+    include_martyrology: bool,
 ) -> CalendarDaySchema:
     serialized = [FeastEntrySchema.model_validate(entry) for entry in entries]
     return CalendarDaySchema(
@@ -46,6 +47,9 @@ def _day_response(
         calendar_code=calendar.code,
         calendar_name=calendar.name,
         includes_universal=include_universal and calendar.code != "roman_universal",
+        includes_martyrology=(
+            include_martyrology and calendar.code != "roman_martyrology"
+        ),
         primary=serialized[0] if serialized else None,
         entries=serialized,
         total=len(serialized),
@@ -76,10 +80,17 @@ async def list_calendars(
 async def get_today(
     calendar_code: str = Query("roman_pl", max_length=50),
     include_universal: bool = True,
+    include_martyrology: bool = True,
     db: AsyncSession = Depends(get_db_session),
 ) -> CalendarDaySchema:
     value = datetime.now(ZoneInfo("Europe/Warsaw")).date()
-    return await _get_day_response(value, calendar_code, include_universal, db)
+    return await _get_day_response(
+        value,
+        calendar_code,
+        include_universal,
+        include_martyrology,
+        db,
+    )
 
 
 @router.get(
@@ -91,15 +102,23 @@ async def get_day(
     value: date,
     calendar_code: str = Query("roman_pl", max_length=50),
     include_universal: bool = True,
+    include_martyrology: bool = True,
     db: AsyncSession = Depends(get_db_session),
 ) -> CalendarDaySchema:
-    return await _get_day_response(value, calendar_code, include_universal, db)
+    return await _get_day_response(
+        value,
+        calendar_code,
+        include_universal,
+        include_martyrology,
+        db,
+    )
 
 
 async def _get_day_response(
     value: date,
     calendar_code: str,
     include_universal: bool,
+    include_martyrology: bool,
     db: AsyncSession,
 ) -> CalendarDaySchema:
     service = CalendarService(db)
@@ -108,6 +127,7 @@ async def _get_day_response(
             value,
             calendar_code=calendar_code,
             include_universal=include_universal,
+            include_martyrology=include_martyrology,
         )
     except CalendarNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
@@ -116,6 +136,7 @@ async def _get_day_response(
         calendar,
         entries,
         include_universal=include_universal,
+        include_martyrology=include_martyrology,
     )
 
 
@@ -130,6 +151,7 @@ async def get_month(
     month: Annotated[int, Path(ge=1, le=12)],
     calendar_code: str = Query("roman_pl", max_length=50),
     include_universal: bool = True,
+    include_martyrology: bool = True,
     db: AsyncSession = Depends(get_db_session),
 ) -> CalendarMonthSchema:
     service = CalendarService(db)
@@ -139,6 +161,7 @@ async def get_month(
             month=month,
             calendar_code=calendar_code,
             include_universal=include_universal,
+            include_martyrology=include_martyrology,
         )
     except (CalendarNotFoundError, ValueError) as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
@@ -149,6 +172,7 @@ async def get_month(
             selected,
             grouped.get(day, []),
             include_universal=include_universal,
+            include_martyrology=include_martyrology,
         )
         for day in range(1, civil_calendar.monthrange(year, month)[1] + 1)
     ]
@@ -158,6 +182,9 @@ async def get_month(
         calendar_code=selected.code,
         calendar_name=selected.name,
         includes_universal=include_universal and selected.code != "roman_universal",
+        includes_martyrology=(
+            include_martyrology and selected.code != "roman_martyrology"
+        ),
         days=days,
     )
 

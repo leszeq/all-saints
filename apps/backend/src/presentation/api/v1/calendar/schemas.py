@@ -113,6 +113,7 @@ class CalendarDaySchema(BaseModel):
     calendar_code: str
     calendar_name: str
     includes_universal: bool
+    includes_martyrology: bool
     primary: FeastEntrySchema | None
     entries: list[FeastEntrySchema]
     total: int
@@ -126,4 +127,5 @@ class CalendarMonthSchema(BaseModel):
     calendar_code: str
     calendar_name: str
     includes_universal: bool
+    includes_martyrology: bool
     days: list[CalendarDaySchema]

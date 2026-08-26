@@ -7,6 +7,18 @@ import { personsApi } from "@/lib/api";
 import { SaintAvatar } from "@/components/persons/saint-avatar";
 import { cn, ERA_LABELS, formatDateTime, PERSON_STATUS_COLORS, PERSON_STATUS_LABELS, PERSON_TYPE_COLORS, PERSON_TYPE_LABELS } from "@/lib/utils";
 
+function formatRecognitionDate(value?: string | null, year?: number | null) {
+  if (value && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return new Intl.DateTimeFormat("pl-PL", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(new Date(`${value}T00:00:00Z`));
+  }
+  return value || (year ? String(year) : "—");
+}
+
 export default function PersonDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -195,6 +207,24 @@ export default function PersonDetailPage() {
               <div>
                 <span className="text-xs text-muted-foreground block">Rok śmierci</span>
                 <span className="font-medium text-foreground">{person.death_year ?? "—"}</span>
+              </div>
+              <div>
+                <span className="text-xs text-muted-foreground block">Beatyfikacja</span>
+                <span className="font-medium text-foreground">
+                  {formatRecognitionDate(
+                    person.beatification?.beatification_date,
+                    person.beatification?.beatification_year,
+                  )}
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-muted-foreground block">Kanonizacja</span>
+                <span className="font-medium text-foreground">
+                  {formatRecognitionDate(
+                    person.canonization?.canonization_date,
+                    person.canonization?.canonization_year,
+                  )}
+                </span>
               </div>
             </div>
           </div>

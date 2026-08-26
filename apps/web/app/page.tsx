@@ -12,7 +12,7 @@ import {
   Search,
   Sparkles,
 } from "lucide-react";
-import { fetchCalendarToday, fetchPersons } from "@/lib/api";
+import { fetchCalendarToday, fetchOrders, fetchPersons } from "@/lib/api";
 import {
   type CalendarDay,
   FEAST_RANK_LABELS,
@@ -20,6 +20,7 @@ import {
 } from "@/lib/calendar";
 import { PATRONAGE_GROUPS, TIME_PERIODS } from "@/lib/utils";
 import { SaintAvatar, type SaintAvatarData } from "@/components/saint-avatar";
+import { formatOrderMemberCount, orderMonogram, type ReligiousOrder } from "@/lib/orders";
 
 export const revalidate = 60;
 
@@ -40,11 +41,13 @@ export default async function HomePage() {
   let persons: Array<Record<string, unknown>> = [];
   let totalPersons = 0;
   let calendarDay: CalendarDay | null = null;
+  let featuredOrders: ReligiousOrder[] = [];
 
-  const [personsResult, totalResult, calendarResult] = await Promise.allSettled([
+  const [personsResult, totalResult, calendarResult, ordersResult] = await Promise.allSettled([
     fetchPersons({ per_page: 6, is_featured: true }),
     fetchPersons({ per_page: 1 }),
     fetchCalendarToday(),
+    fetchOrders({ featured: true }),
   ]);
   if (personsResult.status === "fulfilled") {
     persons = personsResult.value?.items ?? [];
@@ -54,6 +57,9 @@ export default async function HomePage() {
   }
   if (calendarResult.status === "fulfilled") {
     calendarDay = calendarResult.value as CalendarDay;
+  }
+  if (ordersResult.status === "fulfilled") {
+    featuredOrders = (ordersResult.value as ReligiousOrder[]).slice(0, 3);
   }
 
   const featured = persons.length
@@ -169,7 +175,23 @@ export default async function HomePage() {
         </section>
 
         <section id="zakony" className="bg-burgundy-800 py-16 text-white">
-          <div className="mx-auto flex max-w-7xl flex-col gap-8 px-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8"><div className="max-w-2xl"><p className="text-xs font-bold uppercase tracking-[0.16em] text-gold-300">Zakony i zgromadzenia</p><h2 className="mt-3 font-serif text-4xl font-semibold">Wspólnoty, które kształtowały historię</h2><p className="mt-4 text-sm leading-6 text-burgundy-100">Odkrywaj postacie przez duchowość benedyktyńską, franciszkańską, dominikańską i wiele innych tradycji.</p></div><div className="grid grid-cols-3 gap-3 text-center text-xs"><span className="rounded-lg border border-white/15 bg-white/5 px-5 py-4">Benedyktyni</span><span className="rounded-lg border border-white/15 bg-white/5 px-5 py-4">Franciszkanie</span><span className="rounded-lg border border-white/15 bg-white/5 px-5 py-4">Dominikanie</span></div></div>
+          <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[1fr_1.2fr] lg:items-center lg:px-8">
+            <div className="max-w-2xl"><p className="text-xs font-bold uppercase tracking-[0.16em] text-gold-300">Zakony i zgromadzenia</p><h2 className="mt-3 font-serif text-4xl font-semibold">Wspólnoty, które kształtowały historię</h2><p className="mt-4 text-sm leading-6 text-burgundy-100">Odkrywaj postacie przez duchowość benedyktyńską, franciszkańską, dominikańską i wiele innych tradycji.</p><Link href="/zakony" className="mt-7 inline-flex h-11 items-center gap-2 rounded-lg border border-gold-300/40 px-5 text-sm font-semibold text-gold-100 hover:bg-white/5">Pełny katalog wspólnot <ArrowRight className="h-4 w-4" /></Link></div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {(featuredOrders.length ? featuredOrders : [
+                { id: "benedyktyni", slug: "benedyktyni", name: "Benedyktyni", abbreviation: "OSB", member_count: 0 },
+                { id: "franciszkanie", slug: "bracia-mniejsi", name: "Franciszkanie", abbreviation: "OFM", member_count: 0 },
+                { id: "dominikanie", slug: "dominikanie", name: "Dominikanie", abbreviation: "OP", member_count: 0 },
+              ] as ReligiousOrder[]).map((order) => (
+                <Link key={order.id} href={`/zakony/${order.slug}`} className="group rounded-xl border border-white/15 bg-white/5 p-5 transition-colors hover:border-gold-300/50 hover:bg-white/10">
+                  <span className="flex h-12 min-w-12 w-fit items-center justify-center rounded-lg border border-gold-300/30 px-2 font-serif text-sm font-semibold text-gold-200">{orderMonogram(order)}</span>
+                  <h3 className="mt-5 font-serif text-lg font-semibold leading-tight">{order.name}</h3>
+                  <p className="mt-2 text-[10px] uppercase tracking-wide text-burgundy-200">{formatOrderMemberCount(order.member_count)}</p>
+                  <ChevronRight className="mt-4 h-4 w-4 text-gold-300 transition-transform group-hover:translate-x-1" />
+                </Link>
+              ))}
+            </div>
+          </div>
         </section>
 
         <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">

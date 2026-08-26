@@ -20,6 +20,10 @@ from sqlalchemy import text
 
 from src.domain.hagiography.models import LiturgicalColor
 from src.domain.liturgy.models import FeastRank
+from src.infrastructure.db.import_catalogue_persons import (
+    import_person_rows,
+    read_person_rows,
+)
 from src.infrastructure.db.session import get_engine
 
 
@@ -191,14 +195,35 @@ async def import_rows(rows: list[dict[str, object]], *, dry_run: bool = False) -
 async def _main() -> None:
     parser = argparse.ArgumentParser(description="Import liturgical feast assignments from CSV")
     parser.add_argument("path", type=Path)
+    parser.add_argument(
+        "--persons",
+        type=Path,
+        action="append",
+        default=[],
+        help="Repeatable catalogue-person CSV imported before calendar assignments",
+    )
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
+    person_results = [
+        await import_person_rows(
+            read_person_rows(person_path),
+            source_label=str(person_path),
+            dry_run=args.dry_run,
+        )
+        for person_path in args.persons
+    ]
     rows = read_rows(args.path)
     result = await import_rows(rows, dry_run=args.dry_run)
     mode = "DRY RUN" if args.dry_run else "IMPORTED"
+    person_summary = (
+        f"persons_created={sum(item.created for item in person_results)}, "
+        f"persons_existing={sum(item.existing for item in person_results)}, "
+        if person_results
+        else ""
+    )
     print(
-        f"{mode}: created={result.created}, updated={result.updated}, "
+        f"{mode}: {person_summary}created={result.created}, updated={result.updated}, "
         f"skipped_missing_relations={result.skipped}"
     )
 

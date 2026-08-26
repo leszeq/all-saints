@@ -2,7 +2,7 @@ import Link from "next/link";
 import { BookOpenText } from "lucide-react";
 
 const groups = [
-  { title: "Odkrywaj", links: [["Katalog świętych", "/swieci"], ["Patronaty", "/#odkrywaj"], ["Kalendarz", "/kalendarz"], ["Epoki", "/#epoki"]] },
+  { title: "Odkrywaj", links: [["Katalog świętych", "/swieci"], ["Patronaty", "/#odkrywaj"], ["Kalendarz", "/kalendarz"], ["Zakony i zgromadzenia", "/zakony"], ["Epoki", "/#epoki"]] },
   { title: "Projekt", links: [["Metodologia", "/#metodologia"], ["Źródła i zasady", "/#zrodla"], ["Kontakt", "mailto:redakcja@encyklopediaswietych.pl"]] },
 ];
 

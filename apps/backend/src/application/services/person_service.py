@@ -15,12 +15,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.domain.hagiography.models import (
+    Beatification,
+    Canonization,
     Era,
     EraPeriod,
     Gender,
     Patronage,
     PatronageGroup,
     Person,
+    PersonOrder,
     PersonType,
     PersonVersion,
     PublicationStatus,
@@ -29,6 +32,8 @@ from src.domain.identity.models import User
 from src.domain.sources.models import Image
 from src.presentation.api.v1.persons.schemas import (
     PersonAvatarInputSchema,
+    PersonBeatificationInputSchema,
+    PersonCanonizationInputSchema,
     PersonCreateSchema,
     PersonPatronageInputSchema,
     PersonUpdateSchema,
@@ -124,6 +129,52 @@ class PersonService:
                 )
             )
 
+    @staticmethod
+    def _beatification_has_content(data: PersonBeatificationInputSchema) -> bool:
+        return bool(data.beatification_date or data.beatification_year)
+
+    @staticmethod
+    def _canonization_has_content(data: PersonCanonizationInputSchema) -> bool:
+        return bool(data.canonization_date or data.canonization_year)
+
+    async def _sync_beatification(
+        self,
+        person: Person,
+        data: PersonBeatificationInputSchema | None,
+    ) -> None:
+        """Create, update or remove the person's beatification record."""
+        current = person.beatification
+        if data is None or not self._beatification_has_content(data):
+            if current is not None:
+                await self.db.delete(current)
+            return
+
+        if current is None:
+            current = Beatification(person_id=person.id)
+            self.db.add(current)
+            person.beatification = current
+        current.beatification_date = data.beatification_date
+        current.beatification_year = data.beatification_year
+
+    async def _sync_canonization(
+        self,
+        person: Person,
+        data: PersonCanonizationInputSchema | None,
+    ) -> None:
+        """Create, update or remove the person's canonization record."""
+        current = person.canonization
+        if data is None or not self._canonization_has_content(data):
+            if current is not None:
+                await self.db.delete(current)
+            return
+
+        if current is None:
+            current = Canonization(person_id=person.id)
+            self.db.add(current)
+            person.canonization = current
+        current.canonization_date = data.canonization_date
+        current.canonization_year = data.canonization_year
+
     async def _generate_unique_slug(self, name: str, person_id: uuid.UUID | None = None) -> str:
         """Generate a URL-safe unique slug for a person."""
         base_slug = slugify(name) or "person"
@@ -190,6 +241,22 @@ class PersonService:
             await self._sync_avatar(person, data.avatar)
         if data.patronages:
             await self._replace_patronages(person, data.patronages)
+        if data.beatification and self._beatification_has_content(data.beatification):
+            self.db.add(
+                Beatification(
+                    person_id=person.id,
+                    beatification_date=data.beatification.beatification_date,
+                    beatification_year=data.beatification.beatification_year,
+                )
+            )
+        if data.canonization and self._canonization_has_content(data.canonization):
+            self.db.add(
+                Canonization(
+                    person_id=person.id,
+                    canonization_date=data.canonization.canonization_date,
+                    canonization_year=data.canonization.canonization_year,
+                )
+            )
 
         # Create initial version snapshot
         version_snapshot = PersonVersion(
@@ -204,7 +271,17 @@ class PersonService:
 
         await self.db.commit()
         await self.db.refresh(person)
-        await self.db.refresh(person, attribute_names=["images", "state_of_life", "patronages"])
+        await self.db.refresh(
+            person,
+            attribute_names=[
+                "images",
+                "state_of_life",
+                "patronages",
+                "orders",
+                "beatification",
+                "canonization",
+            ],
+        )
         return person
 
     async def get_by_id_or_slug(self, identifier: str) -> Person | None:
@@ -215,6 +292,9 @@ class PersonService:
                 selectinload(Person.images),
                 selectinload(Person.state_of_life),
                 selectinload(Person.patronages),
+                selectinload(Person.orders).selectinload(PersonOrder.order),
+                selectinload(Person.beatification),
+                selectinload(Person.canonization),
             )
             .where(Person.deleted_at.is_(None))
         )
@@ -338,9 +418,17 @@ class PersonService:
         """Update person record and create version snapshot."""
         avatar_was_set = "avatar" in data.model_fields_set
         patronages_were_set = "patronages" in data.model_fields_set
+        beatification_was_set = "beatification" in data.model_fields_set
+        canonization_was_set = "canonization" in data.model_fields_set
         update_dict = data.model_dump(
             exclude_unset=True,
-            exclude={"avatar", "patronages", "change_summary"},
+            exclude={
+                "avatar",
+                "patronages",
+                "beatification",
+                "canonization",
+                "change_summary",
+            },
         )
 
         if "canonical_name" in update_dict and update_dict["canonical_name"] != person.canonical_name:
@@ -354,6 +442,10 @@ class PersonService:
             await self._sync_avatar(person, data.avatar)
         if patronages_were_set:
             await self._replace_patronages(person, data.patronages or [])
+        if beatification_was_set:
+            await self._sync_beatification(person, data.beatification)
+        if canonization_was_set:
+            await self._sync_canonization(person, data.canonization)
 
         person.version += 1
         person.updated_at = datetime.now(UTC)
@@ -371,7 +463,19 @@ class PersonService:
 
         await self.db.commit()
         await self.db.refresh(person)
-        await self.db.refresh(person, attribute_names=["images", "state_of_life", "patronages"])
+        await self.db.refresh(
+            person,
+            attribute_names=[
+                "images",
+                "state_of_life",
+                "patronages",
+                "orders",
+                "beatification",
+                "canonization",
+            ],
+        )
+        for membership in person.orders:
+            await self.db.refresh(membership, attribute_names=["order"])
         return person
 
     async def soft_delete_person(self, person: Person, user_id: uuid.UUID | None = None) -> None:
@@ -391,6 +495,9 @@ class PersonService:
                 selectinload(Person.images),
                 selectinload(Person.state_of_life),
                 selectinload(Person.patronages),
+                selectinload(Person.orders).selectinload(PersonOrder.order),
+                selectinload(Person.beatification),
+                selectinload(Person.canonization),
             )
             .where(Person.id == person_id)
         )
@@ -412,8 +519,20 @@ class PersonService:
             )
             await self.db.commit()
             await self.db.refresh(person)
-            await self.db.refresh(person, attribute_names=["images", "state_of_life", "patronages"])
-        return person
+            await self.db.refresh(
+                person,
+                attribute_names=[
+                    "images",
+                    "state_of_life",
+                    "patronages",
+                    "orders",
+                    "beatification",
+                    "canonization",
+                ],
+            )
+            for membership in person.orders:
+                await self.db.refresh(membership, attribute_names=["order"])
+            return person
 
     async def get_person_versions(self, person_id: uuid.UUID) -> list[PersonVersion]:
         """Fetch version history for a person."""

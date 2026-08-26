@@ -3,20 +3,36 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
+  BadgeCheck,
   BookOpen,
+  CalendarDays,
   Crown,
   Heart,
   HeartHandshake,
+  Landmark,
   Sparkles,
 } from "lucide-react";
 import { fetchPersonDetail } from "@/lib/api";
 import { ERA_LABELS, PERSON_TYPE_LABELS } from "@/lib/utils";
 import { SaintAvatar, type SaintAvatarData } from "@/components/saint-avatar";
+import { MEMBERSHIP_TYPE_LABELS } from "@/lib/orders";
 
 interface PageProps {
   params: Promise<{
     slug: string;
   }>;
+}
+
+function formatRecognitionDate(value?: string | null, year?: number | null) {
+  if (value && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return new Intl.DateTimeFormat("pl-PL", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(new Date(`${value}T00:00:00Z`));
+  }
+  return value || (year ? String(year) : null);
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -65,6 +81,16 @@ export default async function PersonDetailPage({ params }: PageProps) {
     deathDate: person.death_year ? String(person.death_year) : undefined,
     image: (person.avatar as SaintAvatarData | null)?.url || undefined,
   };
+  const beatification = person.beatification as Record<string, unknown> | null;
+  const canonization = person.canonization as Record<string, unknown> | null;
+  const beatificationLabel = formatRecognitionDate(
+    beatification?.beatification_date as string | null,
+    beatification?.beatification_year as number | null,
+  );
+  const canonizationLabel = formatRecognitionDate(
+    canonization?.canonization_date as string | null,
+    canonization?.canonization_year as number | null,
+  );
 
   return (
     <article className="pb-16 space-y-12">
@@ -166,6 +192,49 @@ export default async function PersonDetailPage({ params }: PageProps) {
           </div>
         )}
 
+        {(beatificationLabel || canonizationLabel) && (
+          <section className="rounded-2xl border border-gold-500/25 bg-[#fffdf8] p-6 shadow-sm sm:p-8">
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gold-500/30 bg-gold-50 text-gold-700">
+                <BadgeCheck className="h-5 w-5" />
+              </span>
+              <div>
+                <h2 className="font-serif text-2xl font-bold text-burgundy-900">
+                  Droga do chwały ołtarzy
+                </h2>
+                <p className="mt-1 text-sm leading-6 text-stone-600">
+                  Udokumentowane daty oficjalnego ogłoszenia przez Kościół.
+                </p>
+              </div>
+            </div>
+
+            <dl className="mt-6 grid gap-3 sm:grid-cols-2">
+              {beatificationLabel && (
+                <div className="rounded-xl border border-[#ded8cd] bg-white px-4 py-4">
+                  <dt className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em] text-gold-800">
+                    <CalendarDays className="h-4 w-4" />
+                    Beatyfikacja
+                  </dt>
+                  <dd className="mt-2 font-serif text-xl font-semibold text-burgundy-950">
+                    {beatificationLabel}
+                  </dd>
+                </div>
+              )}
+              {canonizationLabel && (
+                <div className="rounded-xl border border-[#ded8cd] bg-white px-4 py-4">
+                  <dt className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em] text-gold-800">
+                    <CalendarDays className="h-4 w-4" />
+                    Kanonizacja
+                  </dt>
+                  <dd className="mt-2 font-serif text-xl font-semibold text-burgundy-950">
+                    {canonizationLabel}
+                  </dd>
+                </div>
+              )}
+            </dl>
+          </section>
+        )}
+
         {/* Biography */}
         <div className="rounded-2xl border border-gold-500/20 bg-white p-6 sm:p-8 shadow-sm space-y-4">
           <h2 className="font-serif text-2xl font-bold text-burgundy-900 flex items-center gap-2 border-b border-gray-100 pb-3">
@@ -198,6 +267,37 @@ export default async function PersonDetailPage({ params }: PageProps) {
                 </li>
               ))}
             </ul>
+          </section>
+        )}
+
+        {/* Religious communities */}
+        {Array.isArray(person.orders) && person.orders.length > 0 && (
+          <section className="rounded-2xl border border-gold-500/20 bg-white p-6 shadow-sm sm:p-8">
+            <h2 className="flex items-center gap-2 font-serif text-2xl font-bold text-burgundy-900">
+              <Landmark className="h-5 w-5 text-gold-600" />
+              Zakony i zgromadzenia
+            </h2>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              {(person.orders as Array<Record<string, unknown>>).map((membership) => {
+                const order = membership.order as Record<string, unknown>;
+                return (
+                  <Link
+                    key={String(order.id)}
+                    href={`/zakony/${String(order.slug)}`}
+                    className="group rounded-xl border border-[#ded8cd] bg-[#fffdf8] p-4 transition-colors hover:border-gold-400 hover:bg-gold-50"
+                  >
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-gold-800">
+                      {MEMBERSHIP_TYPE_LABELS[String(membership.membership_type)] ?? String(membership.membership_type)}
+                    </p>
+                    <h3 className="mt-1 font-serif text-lg font-semibold text-charcoal group-hover:text-burgundy-700">
+                      {String(order.name)}
+                      {Boolean(order.abbreviation) && <span className="ml-2 text-sm text-stone-500">{String(order.abbreviation)}</span>}
+                    </h3>
+                    {Boolean(membership.notes) && <p className="mt-2 line-clamp-2 text-xs leading-5 text-stone-600">{String(membership.notes)}</p>}
+                  </Link>
+                );
+              })}
+            </div>
           </section>
         )}
 

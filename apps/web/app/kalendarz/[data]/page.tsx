@@ -9,6 +9,7 @@ import {
   type CalendarDay,
   currentWarsawDate,
   FEAST_RANK_LABELS,
+  formatCalendarPersonCount,
   formatCalendarDate,
   isValidCalendarDate,
   shiftDate,
@@ -51,6 +52,7 @@ export default async function CalendarDayPage({ params, searchParams }: PageProp
       calendar_code: "roman_pl",
       calendar_name: "Kalendarz Polski",
       includes_universal: true,
+      includes_martyrology: true,
       primary: null,
       entries: [],
       total: 0,
@@ -119,7 +121,7 @@ export default async function CalendarDayPage({ params, searchParams }: PageProp
               <div>
                 <div className="flex items-center justify-between gap-4">
                   <div><p className="editorial-label">Pełna lista dnia</p><h2 className="mt-2 font-serif text-3xl font-semibold">Pozostali wspominani</h2></div>
-                  <span className="text-sm text-stone-500">{day.total} {day.total === 1 ? "postać" : "postacie"}</span>
+                  <span className="text-sm text-stone-500">{formatCalendarPersonCount(remaining.length)}</span>
                 </div>
                 {remaining.length > 0 ? (
                   <div className="mt-6 divide-y divide-[#ded8cd] border-y border-[#ded8cd]">
@@ -144,7 +146,11 @@ export default async function CalendarDayPage({ params, searchParams }: PageProp
                 <div className="surface-card p-5">
                   <Layers3 className="h-5 w-5 text-gold-700" />
                   <h3 className="mt-4 font-serif text-lg font-semibold">Zakres kalendarza</h3>
-                  <p className="mt-2 text-xs leading-5 text-stone-600">{day.calendar_name}{day.includes_universal ? " wraz z wpisami kalendarza powszechnego" : ""}.</p>
+                  <p className="mt-2 text-xs leading-5 text-stone-600">
+                    {day.calendar_name}
+                    {day.includes_universal ? " wraz z obchodami kalendarza powszechnego" : ""}
+                    {day.includes_martyrology ? " oraz osobną warstwą Martyrologium Rzymskiego" : ""}.
+                  </p>
                 </div>
                 {primary.source_url && (
                   <div className="surface-card p-5">

@@ -40,6 +40,7 @@ function emptyMonth(year: number, month: number): CalendarMonth {
       calendar_code: "roman_pl",
       calendar_name: "Kalendarz Polski",
       includes_universal: true,
+      includes_martyrology: true,
       primary: null,
       entries: [],
       total: 0,
@@ -51,6 +52,7 @@ function emptyMonth(year: number, month: number): CalendarMonth {
     calendar_code: "roman_pl",
     calendar_name: "Kalendarz Polski",
     includes_universal: true,
+    includes_martyrology: true,
     days,
   };
 }
@@ -103,8 +105,11 @@ export default async function LiturgicalCalendarPage({ searchParams }: PageProps
               </h1>
               <p className="mt-4 max-w-2xl text-sm leading-6 text-stone-600">
                 {monthData.includes_universal
-                  ? "Wpisy wybranego kalendarza uzupełniamy wspomnieniami Ogólnego Kalendarza Rzymskiego."
-                  : "Wpisy pochodzą z wybranego kalendarza bez nakładania kalendarzy lokalnych."} Każdy dzień może prowadzić do wielu postaci.
+                  ? "Wpisy wybranego kalendarza uzupełniamy obchodami Ogólnego Kalendarza Rzymskiego."
+                  : "Wpisy pochodzą z wybranego kalendarza bez nakładania kalendarzy lokalnych."}
+                {monthData.includes_martyrology
+                  ? " Osobno dołączamy postacie z Martyrologium Rzymskiego."
+                  : ""} Każdy dzień może prowadzić do wielu postaci.
               </p>
             </div>
             <div className="flex gap-6 text-sm">

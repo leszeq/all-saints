@@ -56,6 +56,7 @@ export interface CalendarDay {
   calendar_code: string;
   calendar_name: string;
   includes_universal: boolean;
+  includes_martyrology: boolean;
   primary: CalendarEntry | null;
   entries: CalendarEntry[];
   total: number;
@@ -67,6 +68,7 @@ export interface CalendarMonth {
   calendar_code: string;
   calendar_name: string;
   includes_universal: boolean;
+  includes_martyrology: boolean;
   days: CalendarDay[];
 }
 
@@ -85,6 +87,16 @@ export const FEAST_RANK_SHORT_LABELS: Record<string, string> = {
   opt_memorial: "Dowolne",
   commemoration: "Wspomnienie",
 };
+
+export function formatCalendarPersonCount(count: number): string {
+  if (count === 1) return "1 postać";
+  const lastTwoDigits = count % 100;
+  const lastDigit = count % 10;
+  if (lastDigit >= 2 && lastDigit <= 4 && !(lastTwoDigits >= 12 && lastTwoDigits <= 14)) {
+    return `${count} postacie`;
+  }
+  return `${count} postaci`;
+}
 
 export function formatCalendarDate(value: string, options?: Intl.DateTimeFormatOptions) {
   const [year, month, day] = value.split("-").map(Number);

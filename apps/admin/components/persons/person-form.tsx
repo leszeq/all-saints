@@ -26,6 +26,10 @@ const personSchema = z.object({
   era: z.string().optional(),
   birth_year: z.number().int().min(-5000).max(2100).optional().nullable(),
   death_year: z.number().int().min(-5000).max(2100).optional().nullable(),
+  beatification_date: z.string().optional(),
+  beatification_year: z.number().int().min(1).max(2100).optional().nullable(),
+  canonization_date: z.string().optional(),
+  canonization_year: z.number().int().min(1).max(2100).optional().nullable(),
   birth_country_id: z.string().optional().nullable(),
   death_country_id: z.string().optional().nullable(),
   state_of_life_id: z.string().optional().nullable(),
@@ -68,9 +72,21 @@ function normalizePersonPayload(data: PersonFormData, isEdit: boolean) {
     avatar_license,
     avatar_photographer,
     avatar_source_url,
+    beatification_date,
+    beatification_year,
+    canonization_date,
+    canonization_year,
     ...personFields
   } = data;
   const normalizedAvatarUrl = optionalText(avatar_url);
+  const beatification = {
+    beatification_date: optionalText(beatification_date),
+    beatification_year: Number.isFinite(beatification_year) ? beatification_year : null,
+  };
+  const canonization = {
+    canonization_date: optionalText(canonization_date),
+    canonization_year: Number.isFinite(canonization_year) ? canonization_year : null,
+  };
 
   return {
     ...personFields,
@@ -97,6 +113,8 @@ function normalizePersonPayload(data: PersonFormData, isEdit: boolean) {
           source_url: optionalText(avatar_source_url),
         }
       : null,
+    beatification: Object.values(beatification).some(Boolean) ? beatification : null,
+    canonization: Object.values(canonization).some(Boolean) ? canonization : null,
     ...(isEdit ? { change_summary: optionalText(change_summary) } : {}),
   };
 }
@@ -430,6 +448,51 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
               </button>
             </div>
           )}
+
+          <div className="border-t border-border pt-5 sm:col-span-2">
+            <h3 className="text-sm font-semibold text-foreground">Droga do chwały ołtarzy</h3>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              Wpisz dokładną datę, gdy jest udokumentowana. Jeśli źródło podaje tylko rok, pozostaw datę pustą i uzupełnij pole roku.
+            </p>
+          </div>
+
+          <section className="space-y-4 rounded-xl border border-border bg-muted/20 p-4">
+            <h4 className="text-sm font-semibold text-foreground">Beatyfikacja</h4>
+            <div>
+              <label className={labelCls}>Dokładna data</label>
+              <input type="date" {...register("beatification_date")} className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Rok (gdy brak dokładnej daty)</label>
+              <input
+                type="number"
+                {...register("beatification_year", {
+                  setValueAs: (value) => value === "" ? null : Number(value),
+                })}
+                className={inputCls}
+                placeholder="np. 1993"
+              />
+            </div>
+          </section>
+
+          <section className="space-y-4 rounded-xl border border-border bg-muted/20 p-4">
+            <h4 className="text-sm font-semibold text-foreground">Kanonizacja</h4>
+            <div>
+              <label className={labelCls}>Dokładna data</label>
+              <input type="date" {...register("canonization_date")} className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Rok (gdy brak dokładnej daty)</label>
+              <input
+                type="number"
+                {...register("canonization_year", {
+                  setValueAs: (value) => value === "" ? null : Number(value),
+                })}
+                className={inputCls}
+                placeholder="np. 2000"
+              />
+            </div>
+          </section>
         </div>
       )}
 

@@ -72,13 +72,19 @@ class CalendarService:
         return calendar
 
     async def _calendar_codes(
-        self, code: str, include_universal: bool
+        self,
+        code: str,
+        include_universal: bool,
+        include_martyrology: bool,
     ) -> tuple[LiturgicalCalendar, list[str]]:
         selected = await self.get_calendar(code)
         codes = [selected.code]
         if include_universal and selected.code != "roman_universal":
             await self.get_calendar("roman_universal")
             codes.append("roman_universal")
+        if include_martyrology and selected.code != "roman_martyrology":
+            await self.get_calendar("roman_martyrology")
+            codes.append("roman_martyrology")
         return selected, codes
 
     async def _query_fixed_entries(
@@ -147,9 +153,14 @@ class CalendarService:
         *,
         calendar_code: str = "roman_pl",
         include_universal: bool = True,
+        include_martyrology: bool = True,
     ) -> tuple[LiturgicalCalendar, list[Feast]]:
         """Return merged and ordered fixed commemorations for one date."""
-        selected, codes = await self._calendar_codes(calendar_code, include_universal)
+        selected, codes = await self._calendar_codes(
+            calendar_code,
+            include_universal,
+            include_martyrology,
+        )
         entries = await self._query_fixed_entries(
             calendar_codes=codes,
             month=value.month,
@@ -164,10 +175,15 @@ class CalendarService:
         month: int,
         calendar_code: str = "roman_pl",
         include_universal: bool = True,
+        include_martyrology: bool = True,
     ) -> tuple[LiturgicalCalendar, dict[int, list[Feast]]]:
         """Return every assigned commemoration grouped by day of month."""
         date(year, month, 1)
-        selected, codes = await self._calendar_codes(calendar_code, include_universal)
+        selected, codes = await self._calendar_codes(
+            calendar_code,
+            include_universal,
+            include_martyrology,
+        )
         entries = await self._query_fixed_entries(calendar_codes=codes, month=month)
         grouped: dict[int, list[Feast]] = defaultdict(list)
         for feast in entries:

@@ -86,6 +86,30 @@ class PersonPatronageInputSchema(BaseModel):
     is_official: bool = False
 
 
+class PersonBeatificationInputSchema(BaseModel):
+    """Editable beatification facts; partial dates may use the year only."""
+
+    beatification_date: str | None = Field(None, max_length=50)
+    beatification_year: int | None = Field(None, ge=1, le=2100)
+
+    @field_validator("beatification_date", mode="before")
+    @classmethod
+    def normalize_date(cls, value: object) -> object:
+        return _blank_as_none(value)
+
+
+class PersonCanonizationInputSchema(BaseModel):
+    """Editable canonization facts; partial dates may use the year only."""
+
+    canonization_date: str | None = Field(None, max_length=50)
+    canonization_year: int | None = Field(None, ge=1, le=2100)
+
+    @field_validator("canonization_date", mode="before")
+    @classmethod
+    def normalize_date(cls, value: object) -> object:
+        return _blank_as_none(value)
+
+
 class PersonBaseSchema(BaseModel):
     """Base fields for Person payload."""
 
@@ -128,6 +152,8 @@ class PersonBaseSchema(BaseModel):
     external_ids: dict[str, Any] | None = None
     avatar: PersonAvatarInputSchema | None = None
     patronages: list[PersonPatronageInputSchema] = Field(default_factory=list)
+    beatification: PersonBeatificationInputSchema | None = None
+    canonization: PersonCanonizationInputSchema | None = None
 
     @field_validator(*OPTIONAL_UUID_FIELDS, "era", "liturgical_color", mode="before")
     @classmethod
@@ -208,6 +234,8 @@ class PersonUpdateSchema(BaseModel):
     external_ids: dict[str, Any] | None = None
     avatar: PersonAvatarInputSchema | None = None
     patronages: list[PersonPatronageInputSchema] | None = None
+    beatification: PersonBeatificationInputSchema | None = None
+    canonization: PersonCanonizationInputSchema | None = None
     change_summary: str | None = Field(None, description="Optional description of changes for version log")
 
     @field_validator(*OPTIONAL_UUID_FIELDS, "era", "liturgical_color", mode="before")
@@ -283,6 +311,52 @@ class PersonPatronageSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class PersonReligiousCommunitySchema(BaseModel):
+    """Religious community linked from a public person profile."""
+
+    id: uuid.UUID
+    slug: str
+    name: str
+    abbreviation: str | None = None
+    community_type: str
+    spiritual_family: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PersonOrderMembershipSchema(BaseModel):
+    """A person's documented membership in a religious community."""
+
+    entry_date: str | None = None
+    exit_date: str | None = None
+    is_founder: bool
+    membership_type: str
+    notes: str | None = None
+    order: PersonReligiousCommunitySchema
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PersonBeatificationSchema(BaseModel):
+    """Beatification facts shown on a person profile when documented."""
+
+    id: uuid.UUID
+    beatification_date: str | None = None
+    beatification_year: int | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PersonCanonizationSchema(BaseModel):
+    """Canonization facts shown on a person profile when documented."""
+
+    id: uuid.UUID
+    canonization_date: str | None = None
+    canonization_year: int | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class PersonDetailSchema(PersonListItemSchema):
     """Complete detail schema for single record view."""
 
@@ -304,6 +378,9 @@ class PersonDetailSchema(PersonListItemSchema):
     state_of_life_id: uuid.UUID | None = None
     state_of_life: PersonStateOfLifeSchema | None = None
     patronages: list[PersonPatronageSchema] = Field(default_factory=list)
+    orders: list[PersonOrderMembershipSchema] = Field(default_factory=list)
+    beatification: PersonBeatificationSchema | None = None
+    canonization: PersonCanonizationSchema | None = None
 
     biography_pl: str | None = None
     summary_en: str | None = None

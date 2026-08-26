@@ -963,9 +963,13 @@ class PersonOrder(Base):
     entry_date: Mapped[str | None] = mapped_column(String(50), nullable=True)
     exit_date: Mapped[str | None] = mapped_column(String(50), nullable=True)
     is_founder: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    membership_type: Mapped[str] = mapped_column(String(40), nullable=False, default="member")
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     person: Mapped["Person"] = relationship("Person", back_populates="orders")
-    order: Mapped["ReligiousOrder"] = relationship("ReligiousOrder")
+    order: Mapped["ReligiousOrder"] = relationship(
+        "ReligiousOrder", back_populates="memberships"
+    )
 
 
 class PersonCategory(Base):

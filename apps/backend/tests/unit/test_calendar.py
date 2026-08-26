@@ -11,8 +11,11 @@ from pydantic import ValidationError
 from src.application.services.calendar_service import CalendarService
 from src.domain.hagiography.models import Person
 from src.domain.liturgy.models import Feast, LiturgicalCalendar
+from src.infrastructure.db.import_catalogue_persons import read_person_rows
 from src.infrastructure.db.import_liturgical_calendar import read_rows
 from src.presentation.api.v1.calendar.schemas import FeastEntryCreateSchema
+
+DATA_DIRECTORY = Path(__file__).parents[2] / "data" / "liturgical-calendar"
 
 
 def _person(name: str, *, featured: bool = False) -> Person:
@@ -104,3 +107,104 @@ def test_csv_reader_normalizes_import_fields(tmp_path: Path) -> None:
     assert rows[0]["day_of_year"] == 60
     assert rows[0]["is_primary"] is True
     assert rows[0]["liturgical_color"] == "white"
+
+
+def test_august_24_dataset_contains_primary_feast_and_individual_blesseds() -> None:
+    people = read_person_rows(DATA_DIRECTORY / "persons-08-24.csv")
+    entries = [
+        row
+        for row in read_rows(DATA_DIRECTORY / "feasts.csv")
+        if row["month"] == 8 and row["day"] == 24
+    ]
+
+    assert len(people) == 9
+    assert len(entries) == 9
+    primary = next(entry for entry in entries if entry["is_primary"])
+    assert primary["person_slug"] == "sw-bartlomiej-apostol"
+    assert primary["rank"] == "feast"
+    assert primary["calendar_code"] == "roman_universal"
+    assert all(
+        entry["calendar_code"] == "roman_martyrology"
+        for entry in entries
+        if not entry["is_primary"]
+    )
+    assert {
+        "bl-czeslaw-jozwiak",
+        "bl-edward-kazmierski",
+        "bl-edward-klinik",
+        "bl-franciszek-kesy",
+        "bl-jarogniew-wojciechowski",
+    } <= {person["slug"] for person in people}
+    emilia = next(person for person in people if person["slug"] == "sw-emilia-de-vialar")
+    poznan_martyr = next(person for person in people if person["slug"] == "bl-czeslaw-jozwiak")
+    assert emilia["canonization_date"] == "1951-06-24"
+    assert emilia["beatification_year"] == "1939"
+    assert poznan_martyr["beatification_date"] == "1999-06-13"
+
+
+def test_august_25_dataset_contains_current_statuses_and_recognition_dates() -> None:
+    people = read_person_rows(DATA_DIRECTORY / "persons-08-25.csv")
+    entries = [
+        row
+        for row in read_rows(DATA_DIRECTORY / "feasts.csv")
+        if row["month"] == 8 and row["day"] == 25
+    ]
+
+    assert len(people) == 5
+    assert len(entries) == 5
+    primary = next(entry for entry in entries if entry["is_primary"])
+    assert primary["person_slug"] == "sw-ludwik-ix-krol-francji"
+    assert primary["rank"] == "opt_memorial"
+    assert {
+        entry["person_slug"]
+        for entry in entries
+        if entry["calendar_code"] == "roman_universal"
+    } == {"sw-ludwik-ix-krol-francji", "sw-jozef-kalasanty"}
+
+    troncatti = next(person for person in people if person["slug"] == "sw-maria-troncatti")
+    mariam = next(
+        person
+        for person in people
+        if person["slug"] == "sw-maria-od-jezusa-ukrzyzowanego-mala-arabka"
+    )
+    assert troncatti["person_type"] == "saint"
+    assert troncatti["canonization_date"] == "2025-10-19"
+    assert troncatti["beatification_date"] == "2012-11-24"
+    assert mariam["canonization_date"] == "2015-05-17"
+
+
+def test_august_26_dataset_separates_polish_solemnity_from_martyrology() -> None:
+    people = read_person_rows(DATA_DIRECTORY / "persons-08-26.csv")
+    entries = [
+        row
+        for row in read_rows(DATA_DIRECTORY / "feasts.csv")
+        if row["month"] == 8 and row["day"] == 26
+    ]
+
+    assert len(people) == 4
+    assert len(entries) == 4
+    primary = next(entry for entry in entries if entry["is_primary"])
+    assert primary["person_slug"] == "najswietsza-maryja-panna-czestochowska"
+    assert primary["calendar_code"] == "roman_pl"
+    assert primary["rank"] == "solemnity"
+    assert all(
+        entry["calendar_code"] == "roman_martyrology"
+        for entry in entries
+        if not entry["is_primary"]
+    )
+
+    teresa = next(
+        person
+        for person in people
+        if person["slug"] == "sw-teresa-od-jezusa-jornet-e-ibars"
+    )
+    maria = next(
+        person
+        for person in people
+        if person["slug"] == "bl-maria-od-aniolow-ginard-marti"
+    )
+    assert teresa["birth_year"] == "1843"
+    assert teresa["beatification_date"] == "1958-04-27"
+    assert teresa["canonization_date"] == "1974-01-27"
+    assert maria["person_type"] == "blessed"
+    assert maria["beatification_date"] == "2005-10-29"

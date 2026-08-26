@@ -9,7 +9,7 @@ const navigation = [
   { href: "/swieci", label: "Katalog świętych" },
   { href: "/#odkrywaj", label: "Patronaty" },
   { href: "/kalendarz", label: "Kalendarz" },
-  { href: "/#zakony", label: "Zakony" },
+  { href: "/zakony", label: "Zakony" },
   { href: "/#epoki", label: "Epoki" },
 ];
 

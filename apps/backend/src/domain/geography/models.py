@@ -27,7 +27,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.domain.base import Base, BaseModel
 
 if TYPE_CHECKING:
-    from src.domain.hagiography.models import Person
+    from src.domain.hagiography.models import PersonOrder
 
 
 # ==============================================================================
@@ -60,6 +60,18 @@ class OrderCharism(StrEnum):
     EDUCATIONAL = "educational"
     CHARITABLE = "charitable"
     MILITARY = "military"
+    OTHER = "other"
+
+
+class ReligiousCommunityType(StrEnum):
+    """Canonical form of a religious community or institute."""
+
+    RELIGIOUS_ORDER = "religious_order"
+    CONGREGATION = "congregation"
+    MONASTIC_FAMILY = "monastic_family"
+    SOCIETY_APOSTOLIC_LIFE = "society_apostolic_life"
+    SECULAR_INSTITUTE = "secular_institute"
+    FEDERATION = "federation"
     OTHER = "other"
 
 
@@ -252,14 +264,21 @@ class ReligiousOrder(BaseModel, Base):
     __tablename__ = "religious_orders"
     __table_args__ = (
         Index("ix_religious_orders_abbreviation", "abbreviation"),
+        Index("ix_religious_orders_spiritual_family", "spiritual_family"),
+        Index("ix_religious_orders_featured", "is_featured"),
         {"comment": "Catholic religious orders and congregations"},
     )
 
     # Names
+    slug: Mapped[str] = mapped_column(String(500), nullable=False, unique=True)
     name: Mapped[str] = mapped_column(String(500), nullable=False)
     name_la: Mapped[str | None] = mapped_column(String(500), nullable=True)
     name_local: Mapped[str | None] = mapped_column(String(500), nullable=True)
     abbreviation: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    community_type: Mapped[str] = mapped_column(
+        String(40), nullable=False, default=ReligiousCommunityType.RELIGIOUS_ORDER
+    )
+    spiritual_family: Mapped[str | None] = mapped_column(String(80), nullable=True)
 
     # Founding
     founded_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -273,6 +292,7 @@ class ReligiousOrder(BaseModel, Base):
         nullable=True,
         comment="FK to persons.id – set after person is created",
     )
+    founder_name: Mapped[str | None] = mapped_column(String(500), nullable=True)
     suppressed_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Charism & description
@@ -281,15 +301,26 @@ class ReligiousOrder(BaseModel, Base):
     )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     description_en: Mapped[str | None] = mapped_column(Text, nullable=True)
+    history: Mapped[str | None] = mapped_column(Text, nullable=True)
+    mission: Mapped[str | None] = mapped_column(Text, nullable=True)
+    motto: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    website_url: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    source_title: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    source_url: Mapped[str | None] = mapped_column(String(2000), nullable=True)
 
     # Papally approved
     papal_approval_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_suppressed: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False
     )
+    is_featured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     # Relationships
     founded_place: Mapped["Place | None"] = relationship("Place")
+    memberships: Mapped[list[PersonOrder]] = relationship(
+        "PersonOrder", back_populates="order", cascade="all, delete-orphan"
+    )
 
 
 # ==============================================================================

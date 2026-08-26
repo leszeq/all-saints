@@ -189,6 +189,7 @@ STATES_OF_LIFE: list[tuple[str, str, str]] = [
 
 LITURGICAL_CALENDARS: list[tuple[str, str, str, str]] = [
     ("roman_universal", "Ogólny Kalendarz Rzymski", "roman", "universal"),
+    ("roman_martyrology", "Martyrologium Rzymskie", "roman", "universal"),
     ("roman_pl", "Kalendarz Polski", "roman", "national"),
     ("roman_dominican", "Kalendarz Dominikański", "roman", "religious"),
     ("roman_franciscan", "Kalendarz Franciszkański", "roman", "religious"),

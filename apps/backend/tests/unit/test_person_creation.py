@@ -98,6 +98,50 @@ def test_person_content_fields_and_state_of_life_are_exposed_in_detail() -> None
     assert payload.state_of_life.name_pl == "Zakonnica"
 
 
+def test_person_recognition_dates_are_editable_and_exposed_in_detail() -> None:
+    create_payload = PersonCreateSchema.model_validate(
+        {
+            **ADMIN_PAYLOAD,
+            "beatification": {
+                "beatification_date": "2011-05-01",
+                "beatification_year": 2011,
+            },
+            "canonization": {
+                "canonization_date": "2014-04-27",
+                "canonization_year": 2014,
+            },
+        }
+    )
+    now = "2026-08-25T12:00:00Z"
+    detail = PersonDetailSchema.model_validate(
+        {
+            "id": uuid.uuid4(),
+            "slug": "sw-jan-pawel-ii",
+            "canonical_name": "Św. Jan Paweł II",
+            "person_type": "saint",
+            "status": "published",
+            "gender": "male",
+            "is_featured": True,
+            "beatification": {
+                "id": uuid.uuid4(),
+                **create_payload.beatification.model_dump(),
+            },
+            "canonization": {
+                "id": uuid.uuid4(),
+                **create_payload.canonization.model_dump(),
+            },
+            "version": 1,
+            "created_at": now,
+            "updated_at": now,
+        }
+    )
+
+    assert detail.beatification is not None
+    assert detail.beatification.beatification_date == "2011-05-01"
+    assert detail.canonization is not None
+    assert detail.canonization.canonization_date == "2014-04-27"
+
+
 @pytest.mark.asyncio
 async def test_person_service_creates_json_safe_initial_snapshot() -> None:
     stored: list[object] = []
