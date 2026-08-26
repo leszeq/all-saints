@@ -7,7 +7,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from src.domain.sources.models import DocumentType, ImageLicense, SourceType
 
@@ -101,6 +101,42 @@ class HistoricalSourceUpdateSchema(BaseModel):
 
 class HistoricalSourceSchema(HistoricalSourceCreateSchema):
     id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ==============================================================================
+# PERSON SOURCE LINKS
+# ==============================================================================
+
+
+class PersonSourceCreateSchema(BaseModel):
+    """Attach exactly one bibliographic or historical source to a person."""
+
+    bibliography_id: uuid.UUID | None = None
+    historical_source_id: uuid.UUID | None = None
+    page_reference: str | None = Field(None, max_length=200)
+    quote: str | None = None
+    relevance_score: int | None = Field(None, ge=1, le=5)
+    is_primary: bool = False
+    notes: str | None = None
+
+    @model_validator(mode="after")
+    def validate_single_source(self) -> PersonSourceCreateSchema:
+        if (self.bibliography_id is None) == (self.historical_source_id is None):
+            raise ValueError("Wybierz dokładnie jedno źródło")
+        return self
+
+
+class PersonSourceSchema(PersonSourceCreateSchema):
+    """A source assignment enriched with the selected source metadata."""
+
+    id: uuid.UUID
+    person_id: uuid.UUID
+    bibliography: BibliographySchema | None = None
+    historical_source: HistoricalSourceSchema | None = None
     created_at: datetime
     updated_at: datetime
 

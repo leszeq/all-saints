@@ -56,7 +56,6 @@ async def list_persons(
     per_page: Annotated[int, Query(ge=1, le=100)] = 20,
     search: str | None = Query(None, max_length=200),
     person_type: PersonType | None = None,
-    status_filter: PublicationStatus | None = Query(None, alias="status"),
     gender: Gender | None = None,
     era: Era | None = None,
     period: EraPeriod | None = Query(None, description="Timeline group spanning one or more eras"),
@@ -72,13 +71,13 @@ async def list_persons(
         per_page=per_page,
         search=search,
         person_type=person_type,
-        status=status_filter,
         gender=gender,
         era=era,
         period=period,
         patronage=patronage,
         country_id=country_id,
         is_featured=is_featured,
+        published_only=True,
     )
 
     pages = -(-total // per_page) if total > 0 else 1
@@ -147,6 +146,27 @@ async def list_persons_for_admin(
     )
 
 
+@router.get(
+    "/admin/{id_or_slug}",
+    response_model=PersonDetailSchema,
+    summary="Get person detail for the editorial panel",
+    description="Protected detail view that also exposes draft and review records.",
+)
+async def get_person_for_admin(
+    id_or_slug: str,
+    db: AsyncSession = Depends(get_db_session),
+    _user: User = Depends(require_permission("persons", "read")),
+) -> PersonDetailSchema:
+    """Fetch any active person for editorial work."""
+    person = await PersonService(db).get_by_id_or_slug(id_or_slug)
+    if person is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Osoba nie została znaleziona",
+        )
+    return PersonDetailSchema.model_validate(person)
+
+
 @router.post(
     "",
     response_model=PersonDetailSchema,
@@ -184,7 +204,7 @@ async def get_person(
 ) -> PersonDetailSchema:
     """Fetch person details."""
     service = PersonService(db)
-    person = await service.get_by_id_or_slug(id_or_slug)
+    person = await service.get_by_id_or_slug(id_or_slug, published_only=True)
 
     if not person:
         raise HTTPException(

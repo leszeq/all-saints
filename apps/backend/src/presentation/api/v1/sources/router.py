@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
+from datetime import UTC, datetime
 
 from fastapi import (
     APIRouter,
@@ -18,11 +19,19 @@ from fastapi import (
     UploadFile,
     status,
 )
-from sqlalchemy import select, update
+from sqlalchemy import or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
+from src.domain.hagiography.models import Person
 from src.domain.identity.models import User
-from src.domain.sources.models import Bibliography, Document, HistoricalSource, Image
+from src.domain.sources.models import (
+    Bibliography,
+    Document,
+    HistoricalSource,
+    Image,
+    PersonSource,
+)
 from src.infrastructure.db.session import get_db_session
 from src.infrastructure.storage.avatar_storage import (
     MAX_AVATAR_BYTES,
@@ -42,6 +51,8 @@ from src.presentation.api.v1.sources.schemas import (
     ImageCreateSchema,
     ImageSchema,
     ImageUploadSchema,
+    PersonSourceCreateSchema,
+    PersonSourceSchema,
 )
 
 router = APIRouter()
@@ -107,6 +118,142 @@ async def create_historical_source(
     await db.commit()
     await db.refresh(src)
     return HistoricalSourceSchema.model_validate(src)
+
+
+# ==============================================================================
+# PERSON SOURCE LINKS
+# ==============================================================================
+
+
+@router.get(
+    "/person-links/{person_id}",
+    response_model=list[PersonSourceSchema],
+    summary="List sources assigned to a person",
+)
+async def list_person_sources(
+    person_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db_session),
+    _user: User = Depends(require_permission("sources", "read")),
+) -> list[PersonSourceSchema]:
+    """Return active bibliography and historical-source assignments."""
+    result = await db.execute(
+        select(PersonSource)
+        .options(
+            selectinload(PersonSource.bibliography),
+            selectinload(PersonSource.historical_source),
+        )
+        .where(
+            PersonSource.person_id == person_id,
+            PersonSource.deleted_at.is_(None),
+            or_(
+                PersonSource.bibliography.has(Bibliography.deleted_at.is_(None)),
+                PersonSource.historical_source.has(HistoricalSource.deleted_at.is_(None)),
+            ),
+        )
+        .order_by(PersonSource.is_primary.desc(), PersonSource.created_at.asc())
+    )
+    return [PersonSourceSchema.model_validate(link) for link in result.scalars().all()]
+
+
+@router.post(
+    "/person-links/{person_id}",
+    response_model=PersonSourceSchema,
+    status_code=status.HTTP_201_CREATED,
+    summary="Assign a source to a person",
+)
+async def create_person_source(
+    person_id: uuid.UUID,
+    data: PersonSourceCreateSchema,
+    db: AsyncSession = Depends(get_db_session),
+    _user: User = Depends(require_permission("sources", "create")),
+) -> PersonSourceSchema:
+    """Create a non-duplicated source assignment used by data-quality scoring."""
+    person = (
+        await db.execute(
+            select(Person).where(Person.id == person_id, Person.deleted_at.is_(None))
+        )
+    ).scalar_one_or_none()
+    if person is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Osoba nie istnieje")
+
+    source_model = Bibliography if data.bibliography_id is not None else HistoricalSource
+    source_id = data.bibliography_id or data.historical_source_id
+    source = (
+        await db.execute(
+            select(source_model).where(
+                source_model.id == source_id,
+                source_model.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if source is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Źródło nie istnieje")
+
+    source_field = (
+        PersonSource.bibliography_id
+        if data.bibliography_id is not None
+        else PersonSource.historical_source_id
+    )
+    existing = (
+        await db.execute(
+            select(PersonSource).where(
+                PersonSource.person_id == person_id,
+                source_field == source_id,
+                PersonSource.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="To źródło jest już przypisane do postaci",
+        )
+
+    link = PersonSource(person_id=person_id, **data.model_dump())
+    db.add(link)
+    await db.commit()
+
+    result = await db.execute(
+        select(PersonSource)
+        .options(
+            selectinload(PersonSource.bibliography),
+            selectinload(PersonSource.historical_source),
+        )
+        .where(PersonSource.id == link.id)
+    )
+    return PersonSourceSchema.model_validate(result.scalar_one())
+
+
+@router.delete(
+    "/person-links/{person_id}/{link_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    response_model=None,
+    summary="Remove a source assignment from a person",
+)
+async def delete_person_source(
+    person_id: uuid.UUID,
+    link_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db_session),
+    _user: User = Depends(require_permission("sources", "delete")),
+) -> None:
+    """Soft-delete one source assignment without deleting the source itself."""
+    link = (
+        await db.execute(
+            select(PersonSource).where(
+                PersonSource.id == link_id,
+                PersonSource.person_id == person_id,
+                PersonSource.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if link is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Przypisanie źródła nie istnieje",
+        )
+    link.deleted_at = datetime.now(UTC)
+    await db.commit()
 
 
 # ==============================================================================

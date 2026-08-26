@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import {
   BookOpenText,
   Bot,
@@ -19,7 +20,7 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { API_BASE_URL } from "@/lib/api";
+import { API_BASE_URL, editorialApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -27,6 +28,7 @@ interface NavItem {
   label: string;
   icon: LucideIcon;
   badge?: string;
+  dynamicBadge?: "editorial-queue";
   external?: boolean;
 }
 
@@ -34,7 +36,7 @@ const sections: Array<{ title: string; items: NavItem[] }> = [
   { title: "Redakcja", items: [
     { href: "/dashboard", label: "Pulpit", icon: CircleGauge },
     { href: "/dashboard/persons", label: "Osoby i święci", icon: BookOpenText },
-    { label: "Kolejka redakcyjna", icon: FileSearch, badge: "84" },
+    { href: "/dashboard/review", label: "Kolejka redakcyjna", icon: FileSearch, dynamicBadge: "editorial-queue" },
   ] },
   { title: "Jakość danych", items: [
     { label: "Problemy jakości", icon: Database, badge: "126" },
@@ -60,6 +62,11 @@ const sections: Array<{ title: string; items: NavItem[] }> = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const dashboardQuery = useQuery({
+    queryKey: ["editorial", "dashboard"],
+    queryFn: () => editorialApi.dashboard(),
+  });
+  const queueCount = dashboardQuery.data?.data.queue_counts.total;
 
   return (
     <aside className="flex h-screen w-[260px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
@@ -75,7 +82,8 @@ export function Sidebar() {
             <ul className="space-y-0.5">
               {section.items.map((item) => {
                 const active = item.href && !item.external ? pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href)) : false;
-                const content = <><item.icon className="h-4 w-4 shrink-0" strokeWidth={1.7} /><span className="min-w-0 flex-1 truncate">{item.label}</span>{item.badge && <span className="rounded-full bg-white/8 px-2 py-0.5 text-[9px] text-sidebar-foreground/60">{item.badge}</span>}{!item.href && !item.badge && <ChevronRight className="h-3 w-3 text-sidebar-foreground/25" />}</>;
+                const badge = item.dynamicBadge === "editorial-queue" ? queueCount : item.badge;
+                const content = <><item.icon className="h-4 w-4 shrink-0" strokeWidth={1.7} /><span className="min-w-0 flex-1 truncate">{item.label}</span>{badge !== undefined && <span className="rounded-full bg-white/8 px-2 py-0.5 text-[9px] text-sidebar-foreground/60">{badge}</span>}{!item.href && !item.badge && <ChevronRight className="h-3 w-3 text-sidebar-foreground/25" />}</>;
                 const navClassName = cn("relative flex h-9 items-center gap-2.5 rounded-md px-2.5 text-[12px] font-medium transition-colors", active ? "bg-white/[0.07] text-white before:absolute before:-left-3 before:h-5 before:w-0.5 before:bg-sidebar-accent" : "text-sidebar-foreground/67 hover:bg-white/[0.04] hover:text-white");
                 return <li key={item.label}>{item.href ? (item.external ? <a href={item.href} target="_blank" rel="noreferrer" className={navClassName}>{content}</a> : <Link href={item.href} className={navClassName}>{content}</Link>) : <span className="flex h-9 cursor-default items-center gap-2.5 rounded-md px-2.5 text-[12px] font-medium text-sidebar-foreground/48" title="Moduł przewidziany w kolejnym etapie">{content}</span>}</li>;
               })}
@@ -84,7 +92,7 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="border-t border-sidebar-border px-5 py-4"><div className="flex items-center gap-2 text-[10px] text-sidebar-foreground/45"><span className="status-dot bg-emerald-500" />API połączone</div><p className="mt-1 text-[9px] text-sidebar-foreground/25">v1.0 · środowisko lokalne</p></div>
+      <div className="border-t border-sidebar-border px-5 py-4"><div className="flex items-center gap-2 text-[10px] text-sidebar-foreground/45"><span className={cn("status-dot", dashboardQuery.isError ? "bg-rose-500" : dashboardQuery.data ? "bg-emerald-500" : "bg-amber-500")} />{dashboardQuery.isError ? "API niedostępne" : dashboardQuery.data ? "API połączone" : "Łączenie z API…"}</div><p className="mt-1 text-[9px] text-sidebar-foreground/25">v1.0 · środowisko lokalne</p></div>
     </aside>
   );
 }

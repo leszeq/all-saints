@@ -23,12 +23,12 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from loguru import logger
 from prometheus_fastapi_instrumentator import Instrumentator
+from starlette.middleware.base import RequestResponseEndpoint
 
 from src.core.config import settings
 from src.core.logging import setup_logging
 from src.infrastructure.cache.redis_client import check_redis_connection, close_redis_pool
 from src.infrastructure.db.session import check_db_connection, close_db_connections
-
 
 # ==============================================================================
 # LIFESPAN (startup / shutdown)
@@ -130,6 +130,7 @@ Bearer JWT token wymagany dla większości endpointów.
         openapi_tags=[
             {"name": "auth", "description": "Logowanie, tokeny JWT i konto bieżącego użytkownika"},
             {"name": "persons", "description": "Osoby, święci, wersjonowanie i workflow publikacyjny"},
+            {"name": "editorial", "description": "Pulpit redakcyjny, jakość danych i kolejka recenzji"},
             {"name": "calendar", "description": "Kalendarze liturgiczne, wspomnienia i widoki dnia"},
             {"name": "geography", "description": "Kraje, miejsca, diecezje i kościoły"},
             {"name": "taxonomy", "description": "Kategorie, tagi, stany życia i zawody"},
@@ -190,7 +191,7 @@ def _setup_middleware(app: FastAPI) -> None:
     # Security headers + request ID + timing
     @app.middleware("http")
     async def security_and_logging_middleware(
-        request: Request, call_next: Any
+        request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
         """
         Add security headers, request ID, and timing to every response.
@@ -255,7 +256,6 @@ def _setup_middleware(app: FastAPI) -> None:
 
 def _setup_exception_handlers(app: FastAPI) -> None:
     """Register global exception handlers."""
-    from fastapi import HTTPException
     from fastapi.exceptions import RequestValidationError
     from sqlalchemy.exc import IntegrityError
 
@@ -334,7 +334,3 @@ def _include_routers(app: FastAPI) -> None:
 
 
 app = create_app()
-
-
-# Fix type hint in middleware
-from typing import Any  # noqa: E402

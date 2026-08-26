@@ -271,6 +271,7 @@ class PersonListItemSchema(BaseModel):
     slug: str
     canonical_name: str
     canonical_name_en: str | None = None
+    latin_name: str | None = None
     person_type: PersonType
     status: PublicationStatus
     gender: Gender

@@ -284,8 +284,13 @@ class PersonService:
         )
         return person
 
-    async def get_by_id_or_slug(self, identifier: str) -> Person | None:
-        """Fetch person by UUID or slug."""
+    async def get_by_id_or_slug(
+        self,
+        identifier: str,
+        *,
+        published_only: bool = False,
+    ) -> Person | None:
+        """Fetch a person by UUID or slug, optionally limiting access to public records."""
         stmt = (
             select(Person)
             .options(
@@ -298,6 +303,8 @@ class PersonService:
             )
             .where(Person.deleted_at.is_(None))
         )
+        if published_only:
+            stmt = stmt.where(Person.status == PublicationStatus.PUBLISHED.value)
         try:
             val_uuid = uuid.UUID(identifier)
             stmt = stmt.where(Person.id == val_uuid)
@@ -320,6 +327,7 @@ class PersonService:
         patronage: PatronageGroup | None = None,
         country_id: uuid.UUID | None = None,
         is_featured: bool | None = None,
+        published_only: bool = False,
     ) -> tuple[list[Person], int]:
         """List persons with full-text search, filtering, and pagination."""
         query = (
@@ -328,10 +336,13 @@ class PersonService:
             .where(Person.deleted_at.is_(None))
         )
 
+        if published_only:
+            query = query.where(Person.status == PublicationStatus.PUBLISHED.value)
+
         # Filters
         if person_type:
             query = query.where(Person.person_type == person_type.value)
-        if status:
+        if status and not published_only:
             query = query.where(Person.status == status.value)
         if gender:
             query = query.where(Person.gender == gender.value)

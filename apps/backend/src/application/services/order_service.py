@@ -45,7 +45,7 @@ class OrderService:
         catalogue_person = and_(
             Person.id == PersonOrder.person_id,
             Person.deleted_at.is_(None),
-            Person.status != PublicationStatus.ARCHIVED.value,
+            Person.status == PublicationStatus.PUBLISHED.value,
         )
         query = (
             select(ReligiousOrder, func.count(func.distinct(Person.id)).label("member_count"))
@@ -118,7 +118,7 @@ class OrderService:
         )
         if public_members_only:
             memberships_query = memberships_query.where(
-                Person.status != PublicationStatus.ARCHIVED.value
+                Person.status == PublicationStatus.PUBLISHED.value
             )
         memberships = list((await self.db.execute(memberships_query)).scalars().unique().all())
         return order, memberships

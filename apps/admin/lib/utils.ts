@@ -60,6 +60,12 @@ export const PERSON_STATUS_COLORS: Record<string, string> = {
   archived: "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400",
 };
 
+export const GENDER_LABELS: Record<string, string> = {
+  male: "Mężczyzna",
+  female: "Kobieta",
+  unknown: "Nieznana",
+};
+
 export const PERSON_TYPE_COLORS: Record<string, string> = {
   saint: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
   blessed: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400",

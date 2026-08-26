@@ -130,6 +130,7 @@ async def test_semantic_search_uses_asyncpg_compatible_vector_cast() -> None:
     assert results == []
     assert "CAST(:query_vector AS vector)" in statement
     assert ":query_vector::vector" not in statement
+    assert "p.status = 'published'" in statement
 
 
 def test_ai_mutation_endpoints_require_bearer_auth() -> None:

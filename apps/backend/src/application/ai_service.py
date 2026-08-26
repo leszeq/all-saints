@@ -20,7 +20,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.hagiography.embedding_model import PersonEmbedding
-from src.domain.hagiography.models import Person
+from src.domain.hagiography.models import Person, PublicationStatus
 from src.infrastructure.ai.embeddings import (
     EmbeddingService,
     build_person_embedding_text,
@@ -216,6 +216,7 @@ class AIService:
         # 1 - cosine_distance gives us cosine similarity (higher = more similar)
         where_clauses = [
             "p.deleted_at IS NULL",
+            "p.status = 'published'",
             "pe.embedding IS NOT NULL",
         ]
         params: dict[str, Any] = {
@@ -291,7 +292,15 @@ class AIService:
             List of similar persons sorted by similarity (desc).
         """
         # Load the reference person's embedding
-        stmt = select(PersonEmbedding).where(PersonEmbedding.person_id == person_id)
+        stmt = (
+            select(PersonEmbedding)
+            .join(Person, Person.id == PersonEmbedding.person_id)
+            .where(
+                PersonEmbedding.person_id == person_id,
+                Person.deleted_at.is_(None),
+                Person.status == PublicationStatus.PUBLISHED.value,
+            )
+        )
         result = await self._db.execute(stmt)
         ref_embedding = result.scalar_one_or_none()
 
@@ -325,6 +334,7 @@ class AIService:
             FROM persons p
             INNER JOIN person_embeddings pe ON pe.person_id = p.id
             WHERE p.deleted_at IS NULL
+              AND p.status = 'published'
               AND pe.person_id != :exclude_id
               AND pe.embedding IS NOT NULL
               AND vector_norm(pe.embedding) > 0

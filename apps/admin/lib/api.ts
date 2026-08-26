@@ -1,5 +1,11 @@
 // Centralny klient HTTP dla wszystkich wywołań API
 import axios from "axios";
+import type {
+  EditorialDashboard,
+  EditorialPriority,
+  EditorialQueueResponse,
+  PublicationStatus,
+} from "@/lib/editorial";
 
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -103,12 +109,28 @@ export const personsApi = {
     api.get("/persons", { params }),
   adminList: (params?: Record<string, unknown>) =>
     api.get("/persons/admin", { params }),
-  get: (idOrSlug: string) => api.get(`/persons/${idOrSlug}`),
+  get: (idOrSlug: string) => api.get(`/persons/admin/${idOrSlug}`),
   create: (data: unknown) => api.post("/persons", data),
   update: (id: string, data: unknown) => api.patch(`/persons/${id}`, data),
   delete: (id: string) => api.delete(`/persons/${id}`),
   restore: (id: string) => api.post(`/persons/${id}/restore`),
   versions: (id: string) => api.get(`/persons/${id}/versions`),
+};
+
+export const editorialApi = {
+  dashboard: () => api.get<EditorialDashboard>("/editorial/dashboard"),
+  queue: (params?: {
+    page?: number;
+    per_page?: number;
+    search?: string;
+    status?: "draft" | "review";
+    priority?: EditorialPriority;
+  }) => api.get<EditorialQueueResponse>("/editorial/queue", { params }),
+  transition: (id: string, targetStatus: PublicationStatus, note?: string) =>
+    api.post(`/editorial/queue/${id}/transition`, {
+      target_status: targetStatus,
+      ...(note ? { note } : {}),
+    }),
 };
 
 export const geographyApi = {
@@ -137,6 +159,12 @@ export const sourcesApi = {
     api.get("/sources/bibliography", { params }),
   historicalSources: (params?: Record<string, unknown>) =>
     api.get("/sources/historical-sources", { params }),
+  personSources: (personId: string) =>
+    api.get(`/sources/person-links/${personId}`),
+  assignPersonSource: (personId: string, data: unknown) =>
+    api.post(`/sources/person-links/${personId}`, data),
+  removePersonSource: (personId: string, linkId: string) =>
+    api.delete(`/sources/person-links/${personId}/${linkId}`),
   images: (params?: Record<string, unknown>) =>
     api.get("/sources/images", { params }),
   uploadAvatar: (file: File) => {

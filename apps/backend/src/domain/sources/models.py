@@ -11,8 +11,8 @@ import uuid
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, ForeignKey, Index, Integer, Numeric, String, Text
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy import Boolean, ForeignKey, Index, Integer, String, Text
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.domain.base import Base, BaseModel
@@ -125,7 +125,7 @@ class Bibliography(BaseModel, Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationships
-    person_sources: Mapped[list["PersonSource"]] = relationship(
+    person_sources: Mapped[list[PersonSource]] = relationship(
         "PersonSource", back_populates="bibliography"
     )
 
@@ -164,6 +164,10 @@ class HistoricalSource(BaseModel, Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     digitization_url: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     is_digitized: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    person_sources: Mapped[list[PersonSource]] = relationship(
+        "PersonSource", back_populates="historical_source"
+    )
 
 
 # ==============================================================================
@@ -206,8 +210,11 @@ class PersonSource(BaseModel, Base):
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    bibliography: Mapped["Bibliography | None"] = relationship(
+    bibliography: Mapped[Bibliography | None] = relationship(
         "Bibliography", back_populates="person_sources"
+    )
+    historical_source: Mapped[HistoricalSource | None] = relationship(
+        "HistoricalSource", back_populates="person_sources"
     )
 
 
@@ -268,7 +275,7 @@ class Image(BaseModel, Base):
     file_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     mime_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
-    person: Mapped["Person | None"] = relationship("Person", back_populates="images")
+    person: Mapped[Person | None] = relationship("Person", back_populates="images")
 
 
 # ==============================================================================

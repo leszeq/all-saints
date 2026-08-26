@@ -23,6 +23,7 @@ from src.main import app
 from src.presentation.api.v1.persons.schemas import (
     PersonCreateSchema,
     PersonDetailSchema,
+    PersonListItemSchema,
     PersonUpdateSchema,
 )
 
@@ -98,6 +99,26 @@ def test_person_content_fields_and_state_of_life_are_exposed_in_detail() -> None
     assert payload.state_of_life.name_pl == "Zakonnica"
 
 
+def test_latin_name_is_exposed_in_person_lists() -> None:
+    now = "2026-08-26T12:00:00Z"
+    payload = PersonListItemSchema.model_validate(
+        {
+            "id": uuid.uuid4(),
+            "slug": "sw-jan-pawel-ii",
+            "canonical_name": "Św. Jan Paweł II",
+            "latin_name": "Sanctus Ioannes Paulus II",
+            "person_type": "saint",
+            "status": "published",
+            "gender": "male",
+            "is_featured": False,
+            "created_at": now,
+            "updated_at": now,
+        }
+    )
+
+    assert payload.latin_name == "Sanctus Ioannes Paulus II"
+
+
 def test_person_recognition_dates_are_editable_and_exposed_in_detail() -> None:
     create_payload = PersonCreateSchema.model_validate(
         {
@@ -161,9 +182,15 @@ async def test_person_service_creates_json_safe_initial_snapshot() -> None:
     service._generate_unique_slug = AsyncMock(return_value="sw-jan-pawel-ii")
     user_id = uuid.uuid4()
 
-    person = await service.create_person(PersonCreateSchema.model_validate(ADMIN_PAYLOAD), user_id)
+    person = await service.create_person(
+        PersonCreateSchema.model_validate(
+            {**ADMIN_PAYLOAD, "latin_name": "Sanctus Ioannes Paulus II"}
+        ),
+        user_id,
+    )
 
     assert person.slug == "sw-jan-pawel-ii"
+    assert person.latin_name == "Sanctus Ioannes Paulus II"
     snapshot = next(model for model in stored if isinstance(model, PersonVersion))
     assert snapshot.changed_by_id == user_id
     assert snapshot.snapshot["id"] == str(person.id)

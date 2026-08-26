@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowLeft, FileImage, ImagePlus, Info, Loader2, Save, Upload, X } from "lucide-react";
+import { ArrowLeft, BookOpenText, FileImage, ImagePlus, Info, Loader2, Save, Upload, X } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getApiErrorMessage, personsApi, geographyApi, sourcesApi, taxonomyApi } from "@/lib/api";
 import { cn, ERA_LABELS } from "@/lib/utils";
 import { SaintAvatar } from "@/components/persons/saint-avatar";
+import { PersonSourcesEditor } from "@/components/persons/person-sources-editor";
 
 const optionalMediaUrl = z.string().optional().refine(
   (value) => !value || value.startsWith("/") || /^https?:\/\//i.test(value),
@@ -152,6 +153,7 @@ const TABS = [
   { id: "dates", label: "Daty i miejsca" },
   { id: "biography", label: "Biografia" },
   { id: "devotion", label: "Kult i ikonografia" },
+  { id: "sources", label: "Źródła" },
   { id: "avatar", label: "Avatar" },
 ];
 
@@ -559,6 +561,22 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
             </p>
           </div>
         </div>
+      )}
+
+      {/* ─── Tab: Sources ────────────────────────────────────────────────── */}
+      {activeTab === "sources" && (
+        isEdit && personId ? (
+          <PersonSourcesEditor personId={personId} />
+        ) : (
+          <div className="rounded-xl border border-dashed border-border bg-muted/20 p-8 text-center">
+            <BookOpenText className="mx-auto h-7 w-7 text-primary" />
+            <h3 className="mt-3 text-sm font-semibold text-foreground">Najpierw utwórz rekord osoby</h3>
+            <p className="mx-auto mt-1 max-w-lg text-xs leading-5 text-muted-foreground">
+              Źródła można przypisać po pierwszym zapisie, gdy postać otrzyma własny identyfikator.
+              Po utworzeniu rekordu otwórz jego edycję i wróć do tej zakładki.
+            </p>
+          </div>
+        )
       )}
 
       {/* ─── Tab: Avatar ───────────────────────────────────────────────── */}

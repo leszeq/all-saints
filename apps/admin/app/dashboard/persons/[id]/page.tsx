@@ -2,10 +2,10 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Edit, History } from "lucide-react";
-import { personsApi } from "@/lib/api";
+import { ArrowLeft, BookOpenText, Edit, History } from "lucide-react";
+import { personsApi, sourcesApi } from "@/lib/api";
 import { SaintAvatar } from "@/components/persons/saint-avatar";
-import { cn, ERA_LABELS, formatDateTime, PERSON_STATUS_COLORS, PERSON_STATUS_LABELS, PERSON_TYPE_COLORS, PERSON_TYPE_LABELS } from "@/lib/utils";
+import { cn, ERA_LABELS, formatDateTime, GENDER_LABELS, PERSON_STATUS_COLORS, PERSON_STATUS_LABELS, PERSON_TYPE_COLORS, PERSON_TYPE_LABELS } from "@/lib/utils";
 
 function formatRecognitionDate(value?: string | null, year?: number | null) {
   if (value && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
@@ -34,8 +34,14 @@ export default function PersonDetailPage() {
     queryFn: () => personsApi.versions(id),
   });
 
+  const { data: sourcesData } = useQuery({
+    queryKey: ["person-sources", id],
+    queryFn: () => sourcesApi.personSources(id),
+  });
+
   const person = personData?.data;
   const versions = versionsData?.data ?? [];
+  const personSources = sourcesData?.data ?? [];
 
   if (isLoading) {
     return (
@@ -178,6 +184,42 @@ export default function PersonDetailPage() {
             </section>
           </div>
 
+          <section className="rounded-xl border border-border bg-card p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
+                  <BookOpenText className="h-4 w-4 text-primary" /> Źródła merytoryczne
+                </h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Powiązania uwzględniane przy ocenie kompletności rekordu.
+                </p>
+              </div>
+              <button
+                onClick={() => router.push(`/dashboard/persons/${id}/edit`)}
+                className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-accent"
+              >
+                Zarządzaj
+              </button>
+            </div>
+            {personSources.length ? (
+              <ul className="mt-4 divide-y divide-border">
+                {personSources.map((link: Record<string, unknown>) => {
+                  const source = (link.bibliography ?? link.historical_source) as Record<string, unknown> | null;
+                  return (
+                    <li key={String(link.id)} className="py-3 first:pt-0 last:pb-0">
+                      <p className="text-sm font-medium text-foreground">{String(source?.title ?? "Nieznane źródło")}</p>
+                      {Boolean(link.page_reference) && (
+                        <p className="mt-1 text-xs text-muted-foreground">Odwołanie: {String(link.page_reference)}</p>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="mt-4 text-sm text-muted-foreground">Brak przypisanych źródeł merytorycznych.</p>
+            )}
+          </section>
+
           {/* Dates & Details */}
           <div className="rounded-xl border border-border bg-card p-6 space-y-4">
             <h2 className="text-base font-semibold text-foreground">
@@ -186,7 +228,9 @@ export default function PersonDetailPage() {
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-xs text-muted-foreground block">Płeć</span>
-                <span className="font-medium text-foreground">{person.gender}</span>
+                <span className="font-medium text-foreground">
+                  {GENDER_LABELS[person.gender] ?? person.gender ?? "—"}
+                </span>
               </div>
               <div>
                 <span className="text-xs text-muted-foreground block">Era</span>
