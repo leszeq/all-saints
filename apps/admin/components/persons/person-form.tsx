@@ -205,8 +205,11 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
   const createMutation = useMutation({
     mutationFn: async (data: PersonFormData) =>
       personsApi.create(await preparePersonPayload(data, false, avatarFile)),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["persons"] });
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["persons"] }),
+        queryClient.invalidateQueries({ queryKey: ["editorial"] }),
+      ]);
       router.push("/dashboard/persons");
     },
   });
@@ -214,8 +217,13 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
   const updateMutation = useMutation({
     mutationFn: async (data: PersonFormData) =>
       personsApi.update(personId!, await preparePersonPayload(data, true, avatarFile)),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["persons"] });
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["persons"] }),
+        queryClient.invalidateQueries({ queryKey: ["person", personId] }),
+        queryClient.invalidateQueries({ queryKey: ["person-versions", personId] }),
+        queryClient.invalidateQueries({ queryKey: ["editorial"] }),
+      ]);
       router.push(`/dashboard/persons/${personId}`);
     },
   });

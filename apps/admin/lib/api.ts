@@ -163,6 +163,8 @@ export const sourcesApi = {
     api.get(`/sources/person-links/${personId}`),
   assignPersonSource: (personId: string, data: unknown) =>
     api.post(`/sources/person-links/${personId}`, data),
+  createPersonWebSource: (personId: string, data: unknown) =>
+    api.post(`/sources/person-links/${personId}/web`, data),
   removePersonSource: (personId: string, linkId: string) =>
     api.delete(`/sources/person-links/${personId}/${linkId}`),
   images: (params?: Record<string, unknown>) =>

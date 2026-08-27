@@ -8,7 +8,10 @@ import pytest
 from pydantic import ValidationError
 
 from src.main import app
-from src.presentation.api.v1.sources.schemas import PersonSourceCreateSchema
+from src.presentation.api.v1.sources.schemas import (
+    PersonSourceCreateSchema,
+    PersonWebSourceCreateSchema,
+)
 
 
 def test_person_source_requires_exactly_one_source_kind() -> None:
@@ -27,14 +30,32 @@ def test_person_source_requires_exactly_one_source_kind() -> None:
         )
 
 
+def test_person_web_source_requires_http_url() -> None:
+    source = PersonWebSourceCreateSchema(
+        title="Oficjalny biogram",
+        url="https://example.org/saint",
+    )
+
+    assert str(source.url) == "https://example.org/saint"
+    with pytest.raises(ValidationError):
+        PersonWebSourceCreateSchema(
+            title="Nieprawidłowe źródło",
+            url="ftp://example.org/saint",
+        )
+
+
 def test_person_source_management_is_exposed_as_protected_api() -> None:
     schema = app.openapi()
     list_operation = schema["paths"]["/api/v1/sources/person-links/{person_id}"]["get"]
     create_operation = schema["paths"]["/api/v1/sources/person-links/{person_id}"]["post"]
+    create_web_operation = schema["paths"][
+        "/api/v1/sources/person-links/{person_id}/web"
+    ]["post"]
     delete_operation = schema["paths"][
         "/api/v1/sources/person-links/{person_id}/{link_id}"
     ]["delete"]
 
     assert list_operation["security"] == [{"HTTPBearer": []}]
     assert create_operation["security"] == [{"HTTPBearer": []}]
+    assert create_web_operation["security"] == [{"HTTPBearer": []}]
     assert delete_operation["security"] == [{"HTTPBearer": []}]

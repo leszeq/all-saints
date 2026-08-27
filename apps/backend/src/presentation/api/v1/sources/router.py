@@ -31,6 +31,7 @@ from src.domain.sources.models import (
     HistoricalSource,
     Image,
     PersonSource,
+    SourceType,
 )
 from src.infrastructure.db.session import get_db_session
 from src.infrastructure.storage.avatar_storage import (
@@ -53,6 +54,7 @@ from src.presentation.api.v1.sources.schemas import (
     ImageUploadSchema,
     PersonSourceCreateSchema,
     PersonSourceSchema,
+    PersonWebSourceCreateSchema,
 )
 
 router = APIRouter()
@@ -210,6 +212,88 @@ async def create_person_source(
         )
 
     link = PersonSource(person_id=person_id, **data.model_dump())
+    db.add(link)
+    await db.commit()
+
+    result = await db.execute(
+        select(PersonSource)
+        .options(
+            selectinload(PersonSource.bibliography),
+            selectinload(PersonSource.historical_source),
+        )
+        .where(PersonSource.id == link.id)
+    )
+    return PersonSourceSchema.model_validate(result.scalar_one())
+
+
+@router.post(
+    "/person-links/{person_id}/web",
+    response_model=PersonSourceSchema,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create and assign a website source to a person",
+)
+async def create_person_web_source(
+    person_id: uuid.UUID,
+    data: PersonWebSourceCreateSchema,
+    db: AsyncSession = Depends(get_db_session),
+    _user: User = Depends(require_permission("sources", "create")),
+) -> PersonSourceSchema:
+    """Create or reuse a URL source and attach it in one transaction."""
+    person = (
+        await db.execute(
+            select(Person).where(Person.id == person_id, Person.deleted_at.is_(None))
+        )
+    ).scalar_one_or_none()
+    if person is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Osoba nie istnieje")
+
+    normalized_url = str(data.url)
+    bibliography = (
+        await db.execute(
+            select(Bibliography).where(
+                Bibliography.url == normalized_url,
+                Bibliography.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+
+    if bibliography is None:
+        bibliography = Bibliography(
+            source_type=SourceType.WEBSITE,
+            title=data.title,
+            url=normalized_url,
+            authors=data.authors,
+            publisher=data.publisher,
+            year=data.year,
+            language=data.language,
+            reliability_score=data.reliability_score,
+        )
+        db.add(bibliography)
+        await db.flush()
+
+    existing = (
+        await db.execute(
+            select(PersonSource).where(
+                PersonSource.person_id == person_id,
+                PersonSource.bibliography_id == bibliography.id,
+                PersonSource.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Ten link jest już przypisany do postaci",
+        )
+
+    link = PersonSource(
+        person_id=person_id,
+        bibliography_id=bibliography.id,
+        page_reference=data.page_reference,
+        relevance_score=data.relevance_score,
+        is_primary=data.is_primary,
+        notes=data.notes,
+    )
     db.add(link)
     await db.commit()
 
