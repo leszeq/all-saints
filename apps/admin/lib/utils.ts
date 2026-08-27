@@ -73,3 +73,72 @@ export const PERSON_TYPE_COLORS: Record<string, string> = {
   servant_of_god: "bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-400",
   candidate: "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400",
 };
+
+export const SOURCE_TYPE_LABELS: Record<string, string> = {
+  book: "Książka",
+  article: "Artykuł",
+  encyclopedia: "Encyklopedia",
+  website: "Strona WWW",
+  manuscript: "Rękopis",
+  archive: "Archiwum",
+  document: "Dokument",
+  hagiography: "Hagiografia",
+  vita: "Żywot",
+  other: "Inne",
+};
+
+export const IMAGE_LICENSE_LABELS: Record<string, string> = {
+  public_domain: "Domena publiczna",
+  cc_by: "CC BY",
+  cc_by_sa: "CC BY-SA",
+  cc_by_nc: "CC BY-NC",
+  cc_by_nc_sa: "CC BY-NC-SA",
+  all_rights_reserved: "Wszelkie prawa zastrzeżone",
+  fair_use: "Dozwolony użytek",
+  unknown: "Nieznana",
+};
+
+export const DOCUMENT_TYPE_LABELS: Record<string, string> = {
+  decree: "Dekret",
+  bull: "Bulla",
+  encyclical: "Encyklika",
+  biography: "Biografia",
+  letter: "List",
+  vita: "Żywot",
+  process: "Akta procesu",
+  other: "Inny",
+};
+
+export const CHURCH_TYPE_LABELS: Record<string, string> = {
+  parish: "Parafia",
+  cathedral: "Katedra",
+  basilica: "Bazylika",
+  chapel: "Kaplica",
+  monastery: "Klasztor",
+  sanctuary: "Sanktuarium",
+  shrine: "Miejsce kultu",
+  pilgrimage_site: "Miejsce pielgrzymkowe",
+  other: "Inne",
+};
+
+export const ORDER_CHARISM_LABELS: Record<string, string> = {
+  contemplative: "Kontemplacyjny",
+  apostolic: "Apostolski",
+  mendicant: "Żebraczy",
+  monastic: "Monastyczny",
+  missionary: "Misyjny",
+  educational: "Edukacyjny",
+  charitable: "Charytatywny",
+  military: "Rycerski",
+  other: "Inny",
+};
+
+export const COMMUNITY_TYPE_LABELS: Record<string, string> = {
+  religious_order: "Zakon",
+  congregation: "Zgromadzenie",
+  monastic_family: "Rodzina monastyczna",
+  society_apostolic_life: "Stowarzyszenie życia apostolskiego",
+  secular_institute: "Instytut świecki",
+  federation: "Federacja",
+  other: "Inne",
+};

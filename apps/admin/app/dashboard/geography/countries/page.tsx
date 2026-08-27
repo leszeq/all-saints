@@ -1,12 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Globe, Plus, Search } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft, Search } from "lucide-react";
 import { geographyApi } from "@/lib/api";
 
 export default function CountriesPage() {
-  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
 
   const { data, isLoading } = useQuery({
@@ -25,6 +25,12 @@ export default function CountriesPage() {
             Słownik państw i regionów historycznych
           </p>
         </div>
+        <Link
+          href="/dashboard/geography"
+          className="inline-flex h-10 items-center gap-2 rounded-lg border border-border px-4 text-sm font-semibold hover:bg-accent"
+        >
+          <ArrowLeft className="h-4 w-4" /> Panel geografii
+        </Link>
       </div>
 
       <div className="relative max-w-md">

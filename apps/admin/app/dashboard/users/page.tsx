@@ -1,7 +1,6 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { UserCheck, Users } from "lucide-react";
 import { usersApi } from "@/lib/api";
 import { formatDateTime } from "@/lib/utils";
 

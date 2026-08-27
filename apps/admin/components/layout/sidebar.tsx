@@ -48,10 +48,10 @@ const sections: Array<{ title: string; items: NavItem[] }> = [
     { label: "Sugestie", icon: Tags, badge: "236" },
   ] },
   { title: "Źródła i dane", items: [
-    { label: "Źródła i media", icon: Library },
-    { href: "/dashboard/geography/countries", label: "Geografia", icon: Globe2 },
+    { href: "/dashboard/sources", label: "Źródła i media", icon: Library },
+    { href: "/dashboard/geography", label: "Geografia", icon: Globe2 },
     { href: "/dashboard/orders", label: "Zakony", icon: ShieldCheck },
-    { label: "Słowniki", icon: Tags },
+    { href: "/dashboard/dictionaries", label: "Słowniki", icon: Tags },
   ] },
   { title: "Administracja", items: [
     { href: "/dashboard/users", label: "Użytkownicy", icon: Users },
