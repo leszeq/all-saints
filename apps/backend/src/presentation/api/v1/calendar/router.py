@@ -77,6 +77,25 @@ async def list_calendars(
 
 
 @router.get(
+    "/persons/{person_id}/entries",
+    response_model=list[FeastEntrySchema],
+    summary="List calendar assignments for a person",
+    description="Protected editorial lookup used by the admin person form.",
+)
+async def list_person_entries(
+    person_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db_session),
+    _user: User = Depends(require_permission("calendar", "read")),
+) -> list[FeastEntrySchema]:
+    service = CalendarService(db)
+    try:
+        entries = await service.list_person_entries(person_id)
+    except FeastNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return [FeastEntrySchema.model_validate(entry) for entry in entries]
+
+
+@router.get(
     "/observances",
     response_model=list[LiturgicalObservanceSchema],
     summary="List non-person liturgical observances",

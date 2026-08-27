@@ -2,10 +2,34 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, BookOpenText, Edit, History } from "lucide-react";
-import { personsApi, sourcesApi } from "@/lib/api";
+import { ArrowLeft, BookOpenText, CalendarDays, Edit, History } from "lucide-react";
+import { calendarApi, personsApi, sourcesApi } from "@/lib/api";
 import { SaintAvatar } from "@/components/persons/saint-avatar";
-import { cn, ERA_LABELS, formatDateTime, GENDER_LABELS, PERSON_STATUS_COLORS, PERSON_STATUS_LABELS, PERSON_TYPE_COLORS, PERSON_TYPE_LABELS } from "@/lib/utils";
+import {
+  cn,
+  ERA_LABELS,
+  FEAST_RANK_LABELS,
+  formatDateTime,
+  GENDER_LABELS,
+  LITURGICAL_COLOR_LABELS,
+  PERSON_STATUS_COLORS,
+  PERSON_STATUS_LABELS,
+  PERSON_TYPE_COLORS,
+  PERSON_TYPE_LABELS,
+} from "@/lib/utils";
+
+interface PersonFeastEntry {
+  id: string;
+  month?: number | null;
+  day?: number | null;
+  rank?: string | null;
+  liturgical_color?: string | null;
+  is_primary?: boolean;
+  calendar?: {
+    code?: string | null;
+    name?: string | null;
+  } | null;
+}
 
 function formatRecognitionDate(value?: string | null, year?: number | null) {
   if (value && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
@@ -17,6 +41,15 @@ function formatRecognitionDate(value?: string | null, year?: number | null) {
     }).format(new Date(`${value}T00:00:00Z`));
   }
   return value || (year ? String(year) : "—");
+}
+
+function formatFeastDate(month?: number | null, day?: number | null) {
+  if (!month || !day) return "—";
+  return new Intl.DateTimeFormat("pl-PL", {
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(2000, month - 1, day)));
 }
 
 export default function PersonDetailPage() {
@@ -39,9 +72,20 @@ export default function PersonDetailPage() {
     queryFn: () => sourcesApi.personSources(id),
   });
 
+  const { data: feastData } = useQuery({
+    queryKey: ["calendar", "person-feasts", id],
+    queryFn: () => calendarApi.personEntries(id),
+  });
+
   const person = personData?.data;
   const versions = versionsData?.data ?? [];
   const personSources = sourcesData?.data ?? [];
+  const feastEntries = (feastData?.data ?? []) as PersonFeastEntry[];
+  const primaryFeast =
+    feastEntries.find((entry) => entry.calendar?.code === "roman_pl") ??
+    feastEntries.find((entry) => entry.is_primary) ??
+    feastEntries[0] ??
+    null;
 
   if (isLoading) {
     return (
@@ -226,6 +270,38 @@ export default function PersonDetailPage() {
               Metadane Hagiograficzne
             </h2>
             <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="col-span-2 rounded-lg border border-primary/15 bg-primary/5 p-4">
+                <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <CalendarDays className="h-3.5 w-3.5 text-primary" />
+                  Wspomnienie liturgiczne
+                </span>
+                {primaryFeast ? (
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span className="font-medium text-foreground">
+                      {formatFeastDate(primaryFeast.month, primaryFeast.day)}
+                    </span>
+                    <span className="text-muted-foreground">·</span>
+                    <span className="text-foreground/80">
+                      {FEAST_RANK_LABELS[String(primaryFeast.rank)] ?? String(primaryFeast.rank)}
+                    </span>
+                    {primaryFeast.liturgical_color && (
+                      <>
+                        <span className="text-muted-foreground">·</span>
+                        <span className="text-foreground/80">
+                          {LITURGICAL_COLOR_LABELS[primaryFeast.liturgical_color] ?? primaryFeast.liturgical_color}
+                        </span>
+                      </>
+                    )}
+                    <span className="text-muted-foreground">
+                      {primaryFeast.calendar?.name ?? ""}
+                    </span>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Brak ręcznie przypisanego dnia wspomnienia w kalendarzu.
+                  </p>
+                )}
+              </div>
               <div>
                 <span className="text-xs text-muted-foreground block">Płeć</span>
                 <span className="font-medium text-foreground">

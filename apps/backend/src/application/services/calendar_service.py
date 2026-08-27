@@ -379,6 +379,36 @@ class CalendarService:
             raise FeastNotFoundError("Wpis kalendarza nie istnieje")
         return entry
 
+    async def list_person_entries(self, person_id: uuid.UUID) -> list[Feast]:
+        """Return all active liturgical calendar assignments for one person."""
+        person = await self.db.get(Person, person_id)
+        if person is None or person.deleted_at is not None:
+            raise FeastNotFoundError("Osoba nie istnieje")
+
+        result = await self.db.execute(
+            select(Feast)
+            .join(Feast.calendar)
+            .where(
+                Feast.person_id == person_id,
+                Feast.deleted_at.is_(None),
+                LiturgicalCalendar.deleted_at.is_(None),
+                LiturgicalCalendar.is_active.is_(True),
+            )
+            .options(
+                joinedload(Feast.calendar),
+                selectinload(Feast.person).selectinload(Person.images),
+                selectinload(Feast.person).selectinload(Person.patronages),
+                joinedload(Feast.observance),
+            )
+            .order_by(
+                LiturgicalCalendar.scope.asc(),
+                LiturgicalCalendar.name.asc(),
+                Feast.month.asc(),
+                Feast.day.asc(),
+            )
+        )
+        return list(result.scalars().unique().all())
+
     async def create_entry(self, data: FeastEntryCreateSchema) -> Feast:
         """Create a fixed commemoration and maintain the one-primary invariant."""
         selected = await self.get_calendar(data.calendar_code)

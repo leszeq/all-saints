@@ -1,21 +1,55 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowLeft, BookOpenText, FileImage, ImagePlus, Info, Loader2, Save, Upload, X } from "lucide-react";
+import { ArrowLeft, BookOpenText, CalendarDays, FileImage, ImagePlus, Info, Loader2, Save, Upload, X } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getApiErrorMessage, personsApi, geographyApi, sourcesApi, taxonomyApi } from "@/lib/api";
-import { cn, ERA_LABELS } from "@/lib/utils";
+import { calendarApi, getApiErrorMessage, personsApi, geographyApi, sourcesApi, taxonomyApi } from "@/lib/api";
+import { cn, ERA_LABELS, FEAST_RANK_LABELS, LITURGICAL_COLOR_LABELS } from "@/lib/utils";
 import { SaintAvatar } from "@/components/persons/saint-avatar";
 import { PersonSourcesEditor } from "@/components/persons/person-sources-editor";
+
+const FEAST_RANK_VALUES = ["solemnity", "feast", "memorial", "opt_memorial", "commemoration"] as const;
+const LITURGICAL_COLOR_VALUES = ["white", "red", "green", "violet", "rose", "black", "gold"] as const;
+const LITURGICAL_COLOR_FORM_VALUES = ["", ...LITURGICAL_COLOR_VALUES] as const;
+
+const MONTH_OPTIONS = [
+  [1, "Styczeń"],
+  [2, "Luty"],
+  [3, "Marzec"],
+  [4, "Kwiecień"],
+  [5, "Maj"],
+  [6, "Czerwiec"],
+  [7, "Lipiec"],
+  [8, "Sierpień"],
+  [9, "Wrzesień"],
+  [10, "Październik"],
+  [11, "Listopad"],
+  [12, "Grudzień"],
+] as const;
 
 const optionalMediaUrl = z.string().optional().refine(
   (value) => !value || value.startsWith("/") || /^https?:\/\//i.test(value),
   "Podaj adres HTTP(S) lub ścieżkę zaczynającą się od /",
 );
+
+const optionalHttpUrl = z.string().optional().refine(
+  (value) => !value || /^https?:\/\//i.test(value),
+  "Podaj pełny adres HTTP(S)",
+);
+
+function optionalText(value?: string | null) {
+  const normalized = value?.trim();
+  return normalized ? normalized : null;
+}
+
+function isRealRecurringDate(month: number, day: number) {
+  const value = new Date(Date.UTC(2000, month - 1, day));
+  return value.getUTCMonth() === month - 1 && value.getUTCDate() === day;
+}
 
 const personSchema = z.object({
   canonical_name: z.string().min(2, "Minimum 2 znaki"),
@@ -54,39 +88,101 @@ const personSchema = z.object({
   ]),
   avatar_photographer: z.string().optional(),
   avatar_source_url: optionalMediaUrl,
+  feast_calendar_code: z.string().optional(),
+  feast_month: z.number().int().min(1).max(12).optional().nullable(),
+  feast_day: z.number().int().min(1).max(31).optional().nullable(),
+  feast_rank: z.enum(FEAST_RANK_VALUES),
+  feast_liturgical_color: z.enum(LITURGICAL_COLOR_FORM_VALUES).optional(),
+  feast_is_primary: z.boolean(),
+  feast_source_title: z.string().optional(),
+  feast_source_url: optionalHttpUrl,
+  feast_notes: z.string().optional(),
   change_summary: z.string().optional(),
+}).superRefine((data, ctx) => {
+  const hasMonth = data.feast_month !== null && data.feast_month !== undefined;
+  const hasDay = data.feast_day !== null && data.feast_day !== undefined;
+
+  if (hasMonth !== hasDay) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Uzupełnij miesiąc i dzień wspomnienia albo pozostaw oba pola puste.",
+      path: hasMonth ? ["feast_day"] : ["feast_month"],
+    });
+  }
+
+  if (hasMonth && hasDay && !isRealRecurringDate(data.feast_month!, data.feast_day!)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Podana data wspomnienia nie istnieje w kalendarzu.",
+      path: ["feast_day"],
+    });
+  }
+
+  if ((hasMonth || hasDay) && !optionalText(data.feast_calendar_code)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Wybierz kalendarz liturgiczny.",
+      path: ["feast_calendar_code"],
+    });
+  }
 });
 
 type PersonFormData = z.infer<typeof personSchema>;
 
+interface FeastEntryResponse {
+  id: string;
+  month?: number | null;
+  day?: number | null;
+  rank?: string | null;
+  liturgical_color?: string | null;
+  is_primary?: boolean;
+  notes?: string | null;
+  source_title?: string | null;
+  source_url?: string | null;
+  calendar?: {
+    code?: string | null;
+    name?: string | null;
+  } | null;
+}
+
+const PERSON_FORM_ONLY_FIELDS = [
+  "change_summary",
+  "avatar_url",
+  "avatar_thumbnail_url",
+  "avatar_title",
+  "avatar_license",
+  "avatar_photographer",
+  "avatar_source_url",
+  "beatification_date",
+  "beatification_year",
+  "canonization_date",
+  "canonization_year",
+  "feast_calendar_code",
+  "feast_month",
+  "feast_day",
+  "feast_rank",
+  "feast_liturgical_color",
+  "feast_is_primary",
+  "feast_source_title",
+  "feast_source_url",
+  "feast_notes",
+] as const satisfies readonly (keyof PersonFormData)[];
+
 function normalizePersonPayload(data: PersonFormData, isEdit: boolean) {
-  const optionalText = (value?: string | null) => {
-    const normalized = value?.trim();
-    return normalized ? normalized : null;
-  };
   const optionalId = (value?: string | null) => value || null;
-  const {
-    change_summary,
-    avatar_url,
-    avatar_thumbnail_url,
-    avatar_title,
-    avatar_license,
-    avatar_photographer,
-    avatar_source_url,
-    beatification_date,
-    beatification_year,
-    canonization_date,
-    canonization_year,
-    ...personFields
-  } = data;
-  const normalizedAvatarUrl = optionalText(avatar_url);
+  const personFields: Partial<PersonFormData> = { ...data };
+  for (const field of PERSON_FORM_ONLY_FIELDS) {
+    delete personFields[field];
+  }
+
+  const normalizedAvatarUrl = optionalText(data.avatar_url);
   const beatification = {
-    beatification_date: optionalText(beatification_date),
-    beatification_year: Number.isFinite(beatification_year) ? beatification_year : null,
+    beatification_date: optionalText(data.beatification_date),
+    beatification_year: Number.isFinite(data.beatification_year) ? data.beatification_year : null,
   };
   const canonization = {
-    canonization_date: optionalText(canonization_date),
-    canonization_year: Number.isFinite(canonization_year) ? canonization_year : null,
+    canonization_date: optionalText(data.canonization_date),
+    canonization_year: Number.isFinite(data.canonization_year) ? data.canonization_year : null,
   };
 
   return {
@@ -107,16 +203,16 @@ function normalizePersonPayload(data: PersonFormData, isEdit: boolean) {
     avatar: normalizedAvatarUrl
       ? {
           url: normalizedAvatarUrl,
-          thumbnail_url: optionalText(avatar_thumbnail_url),
-          title: optionalText(avatar_title),
-          license: avatar_license,
-          photographer: optionalText(avatar_photographer),
-          source_url: optionalText(avatar_source_url),
+          thumbnail_url: optionalText(data.avatar_thumbnail_url),
+          title: optionalText(data.avatar_title),
+          license: data.avatar_license,
+          photographer: optionalText(data.avatar_photographer),
+          source_url: optionalText(data.avatar_source_url),
         }
       : null,
     beatification: Object.values(beatification).some(Boolean) ? beatification : null,
     canonization: Object.values(canonization).some(Boolean) ? canonization : null,
-    ...(isEdit ? { change_summary: optionalText(change_summary) } : {}),
+    ...(isEdit ? { change_summary: optionalText(data.change_summary) } : {}),
   };
 }
 
@@ -129,7 +225,6 @@ async function preparePersonPayload(
   if (!avatarFile) return payload;
 
   const upload = await sourcesApi.uploadAvatar(avatarFile);
-  const optionalText = (value?: string | null) => value?.trim() || null;
   return {
     ...payload,
     avatar: {
@@ -146,6 +241,46 @@ async function preparePersonPayload(
       mime_type: upload.data.mime_type,
     },
   };
+}
+
+function buildFeastPayload(personId: string, data: PersonFormData, includeTarget: boolean) {
+  if (data.feast_month === null || data.feast_month === undefined || data.feast_day === null || data.feast_day === undefined) {
+    return null;
+  }
+
+  return {
+    ...(includeTarget ? { person_id: personId } : {}),
+    calendar_code: optionalText(data.feast_calendar_code) ?? "roman_pl",
+    month: data.feast_month,
+    day: data.feast_day,
+    rank: data.feast_rank,
+    liturgical_color: data.feast_liturgical_color || null,
+    is_primary: data.feast_is_primary,
+    source_title: optionalText(data.feast_source_title),
+    source_url: optionalText(data.feast_source_url),
+    notes: optionalText(data.feast_notes),
+  };
+}
+
+async function syncPersonFeast(
+  personId: string,
+  data: PersonFormData,
+  existingEntryId: string | null,
+) {
+  const createPayload = buildFeastPayload(personId, data, true);
+  if (createPayload) {
+    if (existingEntryId) {
+      const updatePayload = buildFeastPayload(personId, data, false);
+      return calendarApi.updateEntry(existingEntryId, updatePayload);
+    }
+    return calendarApi.createEntry(createPayload);
+  }
+
+  if (existingEntryId) {
+    return calendarApi.deleteEntry(existingEntryId);
+  }
+
+  return null;
 }
 
 const TABS = [
@@ -170,6 +305,7 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFileError, setAvatarFileError] = useState<string | null>(null);
+  const hydratedFeastPersonIdRef = useRef<string | null>(null);
 
   const countriesQuery = useQuery({
     queryKey: ["countries"],
@@ -181,14 +317,38 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
     queryFn: () => taxonomyApi.statesOfLife(),
     staleTime: Infinity,
   });
+  const calendarsQuery = useQuery({
+    queryKey: ["liturgical-calendars"],
+    queryFn: () => calendarApi.calendars(),
+    staleTime: Infinity,
+  });
+  const feastEntriesQuery = useQuery({
+    queryKey: ["calendar", "person-feasts", personId],
+    queryFn: () => calendarApi.personEntries(personId!),
+    enabled: Boolean(isEdit && personId),
+  });
 
   const countries = countriesQuery.data?.data ?? [];
   const statesOfLife = statesQuery.data?.data ?? [];
+  const calendars = calendarsQuery.data?.data ?? [];
+  const feastEntries = useMemo(
+    () => (feastEntriesQuery.data?.data ?? []) as FeastEntryResponse[],
+    [feastEntriesQuery.data?.data],
+  );
+  const activeFeastEntry = useMemo(
+    () =>
+      feastEntries.find((entry) => entry.calendar?.code === "roman_pl") ??
+      feastEntries.find((entry) => entry.is_primary) ??
+      feastEntries[0] ??
+      null,
+    [feastEntries],
+  );
 
   const {
     register,
     handleSubmit,
     control,
+    setValue,
     formState: { errors, isDirty },
   } = useForm<PersonFormData>({
     resolver: zodResolver(personSchema),
@@ -198,31 +358,49 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
       gender: "unknown",
       is_featured: false,
       avatar_license: "unknown",
+      feast_calendar_code: "roman_pl",
+      feast_month: null,
+      feast_day: null,
+      feast_rank: "memorial",
+      feast_liturgical_color: "",
+      feast_is_primary: false,
+      feast_source_title: "",
+      feast_source_url: "",
+      feast_notes: "",
       ...defaultValues,
     },
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: PersonFormData) =>
-      personsApi.create(await preparePersonPayload(data, false, avatarFile)),
+    mutationFn: async (data: PersonFormData) => {
+      const response = await personsApi.create(await preparePersonPayload(data, false, avatarFile));
+      await syncPersonFeast(response.data.id, data, null);
+      return response;
+    },
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["persons"] }),
         queryClient.invalidateQueries({ queryKey: ["editorial"] }),
+        queryClient.invalidateQueries({ queryKey: ["calendar"] }),
       ]);
       router.push("/dashboard/persons");
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (data: PersonFormData) =>
-      personsApi.update(personId!, await preparePersonPayload(data, true, avatarFile)),
+    mutationFn: async (data: PersonFormData) => {
+      const response = await personsApi.update(personId!, await preparePersonPayload(data, true, avatarFile));
+      await syncPersonFeast(personId!, data, activeFeastEntry?.id ?? null);
+      return response;
+    },
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["persons"] }),
         queryClient.invalidateQueries({ queryKey: ["person", personId] }),
         queryClient.invalidateQueries({ queryKey: ["person-versions", personId] }),
         queryClient.invalidateQueries({ queryKey: ["editorial"] }),
+        queryClient.invalidateQueries({ queryKey: ["calendar"] }),
+        queryClient.invalidateQueries({ queryKey: ["calendar", "person-feasts", personId] }),
       ]);
       router.push(`/dashboard/persons/${personId}`);
     },
@@ -240,6 +418,8 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
   const errorCls = "mt-1 text-xs text-destructive";
   const avatarUrl = useWatch({ control, name: "avatar_url" });
   const canonicalName = useWatch({ control, name: "canonical_name" }) || "Nowa postać";
+  const feastMonth = useWatch({ control, name: "feast_month" });
+  const feastDay = useWatch({ control, name: "feast_day" });
   const avatarDisplayUrl = avatarPreview || avatarUrl || null;
 
   useEffect(() => {
@@ -247,6 +427,37 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
       if (avatarPreview) URL.revokeObjectURL(avatarPreview);
     };
   }, [avatarPreview]);
+
+  useEffect(() => {
+    if (
+      !isEdit ||
+      !personId ||
+      hydratedFeastPersonIdRef.current === personId ||
+      feastEntriesQuery.isLoading
+    ) {
+      return;
+    }
+
+    if (activeFeastEntry) {
+      setValue("feast_calendar_code", activeFeastEntry.calendar?.code ?? "roman_pl", { shouldDirty: false });
+      setValue("feast_month", activeFeastEntry.month ?? null, { shouldDirty: false });
+      setValue("feast_day", activeFeastEntry.day ?? null, { shouldDirty: false });
+      setValue("feast_rank", (activeFeastEntry.rank as PersonFormData["feast_rank"]) ?? "memorial", { shouldDirty: false });
+      setValue("feast_liturgical_color", (activeFeastEntry.liturgical_color as PersonFormData["feast_liturgical_color"]) ?? "", { shouldDirty: false });
+      setValue("feast_is_primary", Boolean(activeFeastEntry.is_primary), { shouldDirty: false });
+      setValue("feast_source_title", activeFeastEntry.source_title ?? "", { shouldDirty: false });
+      setValue("feast_source_url", activeFeastEntry.source_url ?? "", { shouldDirty: false });
+      setValue("feast_notes", activeFeastEntry.notes ?? "", { shouldDirty: false });
+    }
+
+    hydratedFeastPersonIdRef.current = personId;
+  }, [
+    activeFeastEntry,
+    feastEntriesQuery.isLoading,
+    isEdit,
+    personId,
+    setValue,
+  ]);
 
   const selectAvatarFile = (file?: File) => {
     setAvatarFileError(null);
@@ -267,6 +478,15 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
     setAvatarFile(null);
     setAvatarPreview(null);
     setAvatarFileError(null);
+  };
+
+  const clearFeastDate = () => {
+    setValue("feast_month", null, { shouldDirty: true, shouldValidate: true });
+    setValue("feast_day", null, { shouldDirty: true, shouldValidate: true });
+    setValue("feast_is_primary", false, { shouldDirty: true });
+    setValue("feast_source_title", "", { shouldDirty: true });
+    setValue("feast_source_url", "", { shouldDirty: true, shouldValidate: true });
+    setValue("feast_notes", "", { shouldDirty: true });
   };
 
   return (
@@ -384,6 +604,164 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
               Wyróżnij na stronie głównej (featured)
             </label>
           </div>
+
+          <section className="space-y-4 border-t border-border pt-5 sm:col-span-2">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <CalendarDays className="h-4 w-4 text-primary" />
+                  Wspomnienie liturgiczne
+                </h3>
+                <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">
+                  To pole tworzy powiązanie z kalendarzem liturgicznym. Publiczny portal pokaże wpis dopiero wtedy, gdy sama osoba ma status „Opublikowany”.
+                </p>
+              </div>
+              {(activeFeastEntry || feastMonth || feastDay) && (
+                <button
+                  type="button"
+                  onClick={clearFeastDate}
+                  className="self-start rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  Wyczyść wspomnienie
+                </button>
+              )}
+            </div>
+
+            {feastEntriesQuery.isLoading && isEdit && (
+              <p className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                Ładowanie aktualnych powiązań kalendarza…
+              </p>
+            )}
+
+            {feastEntries.length > 1 && (
+              <p className="rounded-lg border border-primary/15 bg-primary/5 px-3 py-2 text-xs leading-5 text-muted-foreground">
+                Ta osoba ma {feastEntries.length} aktywne wpisy w kalendarzach. Formularz edytuje domyślnie wpis z Kalendarza Polskiego albo główny wpis dnia.
+              </p>
+            )}
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="lg:col-span-2">
+                <label className={labelCls}>Kalendarz</label>
+                <select {...register("feast_calendar_code")} className={inputCls}>
+                  {calendars.length === 0 && (
+                    <>
+                      <option value="roman_pl">Kalendarz Polski</option>
+                      <option value="roman_universal">Ogólny Kalendarz Rzymski</option>
+                      <option value="roman_martyrology">Martyrologium Rzymskie</option>
+                    </>
+                  )}
+                  {calendars.map((calendar: Record<string, string>) => (
+                    <option key={calendar.code} value={calendar.code}>
+                      {calendar.name}
+                    </option>
+                  ))}
+                </select>
+                {errors.feast_calendar_code && <p className={errorCls}>{errors.feast_calendar_code.message}</p>}
+                {calendarsQuery.isError && (
+                  <button type="button" onClick={() => calendarsQuery.refetch()} className="mt-1 text-xs text-primary hover:underline">
+                    Spróbuj pobrać listę kalendarzy ponownie
+                  </button>
+                )}
+              </div>
+
+              <div>
+                <label className={labelCls}>Miesiąc</label>
+                <select
+                  {...register("feast_month", {
+                    setValueAs: (value) => value === "" ? null : Number(value),
+                  })}
+                  className={inputCls}
+                >
+                  <option value="">—</option>
+                  {MONTH_OPTIONS.map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+                {errors.feast_month && <p className={errorCls}>{errors.feast_month.message}</p>}
+              </div>
+
+              <div>
+                <label className={labelCls}>Dzień</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={31}
+                  {...register("feast_day", {
+                    setValueAs: (value) => value === "" ? null : Number(value),
+                  })}
+                  className={inputCls}
+                  placeholder="np. 22"
+                />
+                {errors.feast_day && <p className={errorCls}>{errors.feast_day.message}</p>}
+              </div>
+
+              <div className="lg:col-span-2">
+                <label className={labelCls}>Ranga liturgiczna</label>
+                <select {...register("feast_rank")} className={inputCls}>
+                  {FEAST_RANK_VALUES.map((rank) => (
+                    <option key={rank} value={rank}>
+                      {FEAST_RANK_LABELS[rank]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className={labelCls}>Kolor liturgiczny</label>
+                <select {...register("feast_liturgical_color")} className={inputCls}>
+                  <option value="">—</option>
+                  {LITURGICAL_COLOR_VALUES.map((color) => (
+                    <option key={color} value={color}>
+                      {LITURGICAL_COLOR_LABELS[color]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2 pt-7">
+                <input
+                  type="checkbox"
+                  id="feast_is_primary"
+                  {...register("feast_is_primary")}
+                  className="h-4 w-4 rounded border-input accent-primary"
+                />
+                <label htmlFor="feast_is_primary" className="text-sm text-foreground">
+                  Główne wspomnienie dnia
+                </label>
+              </div>
+
+              <div className="lg:col-span-2">
+                <label className={labelCls}>Tytuł źródła kalendarzowego</label>
+                <input
+                  {...register("feast_source_title")}
+                  className={inputCls}
+                  placeholder="np. Kalendarz liturgiczny diecezji / Martyrologium Romanum"
+                />
+              </div>
+
+              <div className="lg:col-span-2">
+                <label className={labelCls}>Link do źródła kalendarzowego</label>
+                <input
+                  {...register("feast_source_url")}
+                  className={inputCls}
+                  placeholder="https://…"
+                />
+                {errors.feast_source_url && <p className={errorCls}>{errors.feast_source_url.message}</p>}
+              </div>
+
+              <div className="sm:col-span-2 lg:col-span-4">
+                <label className={labelCls}>Notatka redakcyjna</label>
+                <textarea
+                  {...register("feast_notes")}
+                  rows={3}
+                  className={cn(inputCls, "resize-y")}
+                  placeholder="Np. wspomnienie w kalendarzu polskim, obchód lokalny, różnice względem Martyrologium…"
+                />
+              </div>
+            </div>
+          </section>
         </div>
       )}
 

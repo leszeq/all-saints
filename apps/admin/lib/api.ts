@@ -133,6 +133,16 @@ export const editorialApi = {
     }),
 };
 
+export const calendarApi = {
+  calendars: () => api.get("/calendar/calendars"),
+  personEntries: (personId: string) =>
+    api.get(`/calendar/persons/${personId}/entries`),
+  createEntry: (data: unknown) => api.post("/calendar/entries", data),
+  updateEntry: (entryId: string, data: unknown) =>
+    api.patch(`/calendar/entries/${entryId}`, data),
+  deleteEntry: (entryId: string) => api.delete(`/calendar/entries/${entryId}`),
+};
+
 export const geographyApi = {
   countries: (params?: Record<string, unknown>) =>
     api.get("/geography/countries", { params }),

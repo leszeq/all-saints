@@ -66,6 +66,24 @@ export const GENDER_LABELS: Record<string, string> = {
   unknown: "Nieznana",
 };
 
+export const FEAST_RANK_LABELS: Record<string, string> = {
+  solemnity: "Uroczystość",
+  feast: "Święto",
+  memorial: "Wspomnienie obowiązkowe",
+  opt_memorial: "Wspomnienie dowolne",
+  commemoration: "Wspomnienie",
+};
+
+export const LITURGICAL_COLOR_LABELS: Record<string, string> = {
+  white: "Biały",
+  red: "Czerwony",
+  green: "Zielony",
+  violet: "Fioletowy",
+  rose: "Różowy",
+  black: "Czarny",
+  gold: "Złoty",
+};
+
 export const PERSON_TYPE_COLORS: Record<string, string> = {
   saint: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
   blessed: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400",
