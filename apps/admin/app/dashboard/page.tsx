@@ -120,6 +120,7 @@ export default function DashboardPage() {
     label: string;
     value: number;
     detail: string;
+    href: string;
     icon: ElementType;
     tone: string;
   }> = [
@@ -127,6 +128,7 @@ export default function DashboardPage() {
       label: "Do recenzji",
       value: dashboard.queue_counts.review,
       detail: "rekordy oczekujące na decyzję",
+      href: "/dashboard/review?status=review",
       icon: Clock3,
       tone: metricTones.review,
     },
@@ -134,13 +136,15 @@ export default function DashboardPage() {
       label: "Szkice",
       value: dashboard.queue_counts.draft,
       detail: "rekordy w przygotowaniu",
+      href: "/dashboard/review?status=draft",
       icon: FileWarning,
       tone: metricTones.draft,
     },
     {
       label: "Wymagają uwagi",
-      value: dashboard.attention_count,
+      value: dashboard.queue_counts.attention,
       detail: "profile z istotnymi brakami danych",
+      href: "/dashboard/review?attention=1",
       icon: AlertTriangle,
       tone: metricTones.quality,
     },
@@ -148,6 +152,7 @@ export default function DashboardPage() {
       label: "Licencje do sprawdzenia",
       value: dashboard.unknown_license_images,
       detail: "obrazy z nieznanym statusem licencji",
+      href: "/dashboard/sources?license=unknown#media",
       icon: ImageOff,
       tone: metricTones.license,
     },
@@ -181,8 +186,13 @@ export default function DashboardPage() {
       </header>
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Kolejki operacyjne">
-        {metrics.map(({ label, value, detail, icon: Icon, tone }) => (
-          <div key={label} className="admin-card p-4">
+        {metrics.map(({ label, value, detail, href, icon: Icon, tone }) => (
+          <Link
+            key={label}
+            href={href}
+            className="admin-card group p-4 transition-colors hover:border-primary/40 hover:bg-primary/[0.03]"
+            aria-label={`${label}: ${value.toLocaleString("pl-PL")}. Otwórz powiązany widok.`}
+          >
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-medium text-muted-foreground">{label}</p>
@@ -192,8 +202,11 @@ export default function DashboardPage() {
                 <Icon className="h-4 w-4" />
               </span>
             </div>
-            <p className="mt-3 text-[11px] text-muted-foreground">{detail}</p>
-          </div>
+            <p className="mt-3 inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+              {detail}
+              <ArrowRight className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
+            </p>
+          </Link>
         ))}
       </section>
 

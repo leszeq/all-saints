@@ -125,6 +125,7 @@ export const editorialApi = {
     search?: string;
     status?: "draft" | "review";
     priority?: EditorialPriority;
+    attention?: boolean;
   }) => api.get<EditorialQueueResponse>("/editorial/queue", { params }),
   transition: (id: string, targetStatus: PublicationStatus, note?: string) =>
     api.post(`/editorial/queue/${id}/transition`, {

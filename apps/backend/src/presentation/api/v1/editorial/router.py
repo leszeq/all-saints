@@ -51,6 +51,7 @@ async def list_editorial_queue(
     search: str | None = Query(None, max_length=200),
     status_filter: PublicationStatus | None = Query(None, alias="status"),
     priority: EditorialPriority | None = None,
+    attention: bool = Query(False, description="Show only records requiring editorial attention"),
     db: AsyncSession = Depends(get_db_session),
     _user: User = Depends(require_permission("persons", "read")),
 ) -> EditorialQueueResponseSchema:
@@ -65,6 +66,7 @@ async def list_editorial_queue(
         search=search,
         status_filter=status_filter,
         priority_filter=priority,
+        attention_only=attention,
     )
 
 
@@ -90,4 +92,3 @@ async def transition_editorial_record(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except EditorialTransitionError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
-

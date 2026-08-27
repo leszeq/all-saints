@@ -7,6 +7,7 @@ from __future__ import annotations
 import asyncio
 import uuid
 from datetime import UTC, datetime
+from typing import Annotated
 
 from fastapi import (
     APIRouter,
@@ -30,6 +31,7 @@ from src.domain.sources.models import (
     Document,
     HistoricalSource,
     Image,
+    ImageLicense,
     PersonSource,
     SourceType,
 )
@@ -409,12 +411,16 @@ async def get_uploaded_image(
 @router.get("/images", response_model=list[ImageSchema], summary="List images")
 async def list_images(
     person_id: uuid.UUID | None = None,
+    license: ImageLicense | None = Query(None),
+    limit: Annotated[int, Query(ge=1, le=500)] = 100,
     db: AsyncSession = Depends(get_db_session),
 ) -> list[ImageSchema]:
     query = select(Image).where(Image.deleted_at.is_(None))
     if person_id:
         query = query.where(Image.person_id == person_id)
-    query = query.order_by(Image.is_primary.desc(), Image.sort_order.asc()).limit(100)
+    if license is not None:
+        query = query.where(Image.license == license.value)
+    query = query.order_by(Image.is_primary.desc(), Image.sort_order.asc()).limit(limit)
     res = await db.execute(query)
     return [ImageSchema.model_validate(i) for i in res.scalars().all()]
 

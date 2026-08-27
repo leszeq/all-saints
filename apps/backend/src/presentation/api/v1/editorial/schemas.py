@@ -65,6 +65,7 @@ class EditorialQueueCountsSchema(BaseModel):
     total: int
     draft: int
     review: int
+    attention: int
     urgent: int
     high: int
     normal: int

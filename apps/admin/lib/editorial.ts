@@ -45,6 +45,7 @@ export interface EditorialQueueCounts {
   total: number;
   draft: number;
   review: number;
+  attention: number;
   urgent: number;
   high: number;
   normal: number;

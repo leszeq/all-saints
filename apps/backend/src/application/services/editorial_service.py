@@ -362,16 +362,18 @@ class EditorialService:
                 func.count(Person.id),
                 func.count(Person.id).filter(Person.status == PublicationStatus.DRAFT.value),
                 func.count(Person.id).filter(Person.status == PublicationStatus.REVIEW.value),
+                func.count(Person.id).filter(priority_score >= 4),
                 func.count(Person.id).filter(priority_score >= 7),
                 func.count(Person.id).filter(and_(priority_score >= 4, priority_score < 7)),
                 func.count(Person.id).filter(priority_score < 4),
             ).where(queue_filter)
         )
-        total, draft, review, urgent, high, normal = result.one()
+        total, draft, review, attention, urgent, high, normal = result.one()
         return EditorialQueueCountsSchema(
             total=total,
             draft=draft,
             review=review,
+            attention=attention,
             urgent=urgent,
             high=high,
             normal=normal,
@@ -385,6 +387,7 @@ class EditorialService:
         search: str | None = None,
         status_filter: PublicationStatus | None = None,
         priority_filter: EditorialPriority | None = None,
+        attention_only: bool = False,
     ) -> EditorialQueueResponseSchema:
         """Return paginated draft/review records ordered by computed urgency."""
         *_, priority_score = self._quality_expressions()
@@ -410,6 +413,8 @@ class EditorialService:
             query = query.where(and_(priority_score >= 4, priority_score < 7))
         elif priority_filter == EditorialPriority.NORMAL:
             query = query.where(priority_score < 4)
+        if attention_only:
+            query = query.where(priority_score >= 4)
 
         count_result = await self.db.execute(
             select(func.count()).select_from(query.order_by(None).subquery())
