@@ -57,7 +57,7 @@ const sections: Array<{ title: string; items: NavItem[] }> = [
   { title: "Administracja", items: [
     { href: "/dashboard/users", label: "Użytkownicy", icon: Users },
     { href: `${API_BASE_URL}/docs`, label: "Dokumentacja API", icon: Braces, external: true },
-    { label: "Ustawienia", icon: Settings },
+    { href: "/dashboard/settings", label: "Ustawienia", icon: Settings },
   ] },
 ];
 

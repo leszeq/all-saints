@@ -12,7 +12,7 @@ Endpoints:
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
@@ -23,8 +23,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.core.security import JWTService, PasswordHasher, is_strong_password, jwt_service, password_hasher
-from src.domain.identity.models import RefreshToken, Role, RolePermission, User, UserRole, UserStatus
+from src.core.config import settings
+from src.core.security import JWTService, is_strong_password, jwt_service, password_hasher
+from src.domain.identity.models import (
+    RefreshToken,
+    Role,
+    RolePermission,
+    User,
+    UserRole,
+    UserStatus,
+)
 from src.infrastructure.db.session import get_db_session
 
 router = APIRouter()
@@ -76,6 +84,13 @@ class ChangePasswordRequest(BaseModel):
     new_password: str = Field(..., min_length=8)
 
 
+class UpdateProfileRequest(BaseModel):
+    """Editable fields of the current user's profile."""
+
+    full_name: str | None = Field(None, min_length=2, max_length=300)
+    preferred_language: str | None = Field(None, min_length=2, max_length=10)
+
+
 # ==============================================================================
 # DEPENDENCIES
 # ==============================================================================
@@ -113,7 +128,7 @@ async def get_current_user(
     try:
         payload = jwt_service.verify_access_token(token)
     except JWTError:
-        raise credentials_exception
+        raise credentials_exception from None
 
     # Load user
     result = await db.execute(
@@ -238,8 +253,7 @@ async def login(
         # Increment failed attempts
         user.failed_login_attempts += 1
         if user.failed_login_attempts >= 10:
-            from datetime import timedelta
-            user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=15)
+            user.locked_until = datetime.now(UTC) + timedelta(minutes=15)
             logger.warning(f"Account locked: {user.email} (too many failed attempts)")
         await db.commit()
         raise auth_error
@@ -247,7 +261,7 @@ async def login(
     # Reset failed attempts on successful login
     user.failed_login_attempts = 0
     user.locked_until = None
-    user.last_login_at = datetime.now(timezone.utc)
+    user.last_login_at = datetime.now(UTC)
 
     # Collect role names
     role_names = [ur.role.name for ur in user.roles if ur.role]
@@ -306,8 +320,6 @@ async def refresh_token(
     db: AsyncSession = Depends(get_db_session),
 ) -> TokenResponse:
     """Issue a new access token using the refresh token cookie."""
-    from src.core.security import JWTService
-
     if not refresh_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -370,7 +382,6 @@ async def logout(
 ) -> None:
     """Revoke the refresh token and clear the cookie."""
     if refresh_token:
-        from src.core.security import JWTService
         token_hash = JWTService.hash_refresh_token(refresh_token)
 
         result = await db.execute(
@@ -379,7 +390,7 @@ async def logout(
         stored_token = result.scalar_one_or_none()
 
         if stored_token:
-            stored_token.revoked_at = datetime.now(timezone.utc)
+            stored_token.revoked_at = datetime.now(UTC)
             await db.commit()
 
     response.delete_cookie(key="refresh_token", path="/api/v1/auth")
@@ -393,6 +404,38 @@ async def logout(
 )
 async def get_me(current_user: User = Depends(get_current_user)) -> UserProfileResponse:
     """Return the current user's profile."""
+    return UserProfileResponse(
+        id=str(current_user.id),
+        email=current_user.email,
+        full_name=current_user.full_name,
+        status=current_user.status,
+        roles=[ur.role.name for ur in current_user.roles if ur.role],
+        preferred_language=current_user.preferred_language,
+        last_login_at=current_user.last_login_at,
+    )
+
+
+@router.patch(
+    "/me",
+    response_model=UserProfileResponse,
+    summary="Update current user profile",
+    description="Update editable profile fields for the currently authenticated user.",
+)
+async def update_me(
+    data: UpdateProfileRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> UserProfileResponse:
+    """Update the current user's own profile."""
+    if data.full_name is not None:
+        current_user.full_name = data.full_name.strip()
+    if data.preferred_language is not None:
+        current_user.preferred_language = data.preferred_language.strip().lower()
+
+    current_user.updated_at = datetime.now(UTC)
+    await db.commit()
+    await db.refresh(current_user)
+
     return UserProfileResponse(
         id=str(current_user.id),
         email=current_user.email,
@@ -435,11 +478,7 @@ async def change_password(
 
     # Update password
     current_user.hashed_password = password_hasher.hash(data.new_password)
-    current_user.password_changed_at = datetime.now(timezone.utc)
+    current_user.password_changed_at = datetime.now(UTC)
     await db.commit()
 
     logger.info(f"Password changed for user: {current_user.email}")
-
-
-# Fix import for settings in cookie
-from src.core.config import settings  # noqa: E402

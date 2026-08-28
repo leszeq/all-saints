@@ -16,6 +16,7 @@ interface AuthState {
   accessToken: string | null;
   isAuthenticated: boolean;
   setAuth: (user: User, token: string) => void;
+  updateUser: (user: Partial<User>) => void;
   logout: () => void;
   hasRole: (role: string) => boolean;
   isAdmin: () => boolean;
@@ -31,6 +32,11 @@ export const useAuthStore = create<AuthState>()(
       setAuth: (user, token) => {
         localStorage.setItem("access_token", token);
         set({ user, accessToken: token, isAuthenticated: true });
+      },
+
+      updateUser: (user) => {
+        const currentUser = get().user;
+        if (currentUser) set({ user: { ...currentUser, ...user } });
       },
 
       logout: () => {

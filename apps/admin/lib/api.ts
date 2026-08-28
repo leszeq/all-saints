@@ -8,6 +8,7 @@ import type {
   EditorialQueueResponse,
   PublicationStatus,
 } from "@/lib/editorial";
+import type { ApplicationSettings, UserProfile } from "@/lib/settings";
 
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -19,7 +20,7 @@ export const api = axios.create({
 });
 
 interface ApiErrorPayload {
-  detail?: string;
+  detail?: string | { message?: string; errors?: string[] };
   message?: string;
   details?: Array<{ field?: string; message?: string }>;
 }
@@ -41,7 +42,12 @@ export function getApiErrorMessage(error: unknown): string {
   }
 
   if (payload?.message) return payload.message;
-  if (payload?.detail) return payload.detail;
+  if (typeof payload?.detail === "string") return payload.detail;
+  if (payload?.detail && typeof payload.detail === "object") {
+    const detailMessage = payload.detail.message;
+    const detailErrors = payload.detail.errors;
+    return [detailMessage, ...(detailErrors ?? [])].filter(Boolean).join(" · ") || "API zwróciło nieprawidłowe dane.";
+  }
   if (!error.response) return "Nie udało się połączyć z API. Sprawdź, czy backend działa na porcie 8000.";
   return `Zapis nie powiódł się (HTTP ${error.response.status}).`;
 }
@@ -101,7 +107,9 @@ export const authApi = {
       password,
     }),
   logout: () => api.post("/auth/logout"),
-  me: () => api.get("/auth/me"),
+  me: () => api.get<UserProfile>("/auth/me"),
+  updateProfile: (data: { full_name?: string; preferred_language?: string }) =>
+    api.patch<UserProfile>("/auth/me", data),
   changePassword: (currentPassword: string, newPassword: string) =>
     api.post("/auth/change-password", { current_password: currentPassword, new_password: newPassword }),
 };
@@ -152,6 +160,10 @@ export const aiApi = {
     api.post("/ai/batch/embed", null, { params }),
   batchTags: (params?: { only_untagged?: boolean }) =>
     api.post("/ai/batch/tag", null, { params }),
+};
+
+export const settingsApi = {
+  get: () => api.get<ApplicationSettings>("/settings"),
 };
 
 export const calendarApi = {
