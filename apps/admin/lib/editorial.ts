@@ -60,6 +60,96 @@ export interface EditorialQueueResponse {
   pages: number;
 }
 
+export interface EditorialQualitySummary {
+  records_with_issues: number;
+  total_issues: number;
+  duplicate_groups: number;
+  duplicate_records: number;
+  source_items_to_review: number;
+  bibliography_sources: number;
+  historical_sources: number;
+  person_source_links: number;
+  documented_persons: number;
+  undocumented_persons: number;
+  unknown_license_images: number;
+}
+
+export interface EditorialQualityIssueBreakdown {
+  code: string;
+  label: string;
+  severity: "critical" | "warning" | string;
+  count: number;
+}
+
+export interface EditorialQualityRecord {
+  id: string;
+  slug: string;
+  canonical_name: string;
+  person_type: string;
+  status: PublicationStatus;
+  avatar?: EditorialAvatar | null;
+  updated_at: string;
+  completeness_score: number;
+  source_count: number;
+  image_count: number;
+  unknown_license_count: number;
+  priority: EditorialPriority;
+  issues: EditorialIssue[];
+}
+
+export interface EditorialDuplicatePerson {
+  id: string;
+  slug: string;
+  canonical_name: string;
+  person_type: string;
+  status: PublicationStatus;
+  birth_year?: number | null;
+  death_year?: number | null;
+  updated_at: string;
+  avatar?: EditorialAvatar | null;
+  source_count: number;
+  image_count: number;
+}
+
+export interface EditorialDuplicateGroup {
+  key: string;
+  confidence: number;
+  reason: string;
+  persons: EditorialDuplicatePerson[];
+}
+
+export interface EditorialSourceVerificationStats {
+  bibliography_sources: number;
+  historical_sources: number;
+  person_source_links: number;
+  documented_persons: number;
+  undocumented_persons: number;
+  images: number;
+  unknown_license_images: number;
+}
+
+export interface EditorialSourceVerificationItem {
+  id: string;
+  item_type: string;
+  title: string;
+  issue: string;
+  severity: "critical" | "warning" | string;
+  related_person_id?: string | null;
+  related_person_name?: string | null;
+  source_url?: string | null;
+  updated_at: string;
+}
+
+export interface EditorialQualityReport {
+  generated_at: string;
+  summary: EditorialQualitySummary;
+  issue_breakdown: EditorialQualityIssueBreakdown[];
+  problem_records: EditorialQualityRecord[];
+  duplicate_groups: EditorialDuplicateGroup[];
+  source_stats: EditorialSourceVerificationStats;
+  source_verification_items: EditorialSourceVerificationItem[];
+}
+
 export interface EditorialDashboard {
   generated_at: string;
   total_persons: number;

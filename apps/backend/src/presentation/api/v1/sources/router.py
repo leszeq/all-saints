@@ -20,11 +20,11 @@ from fastapi import (
     UploadFile,
     status,
 )
-from sqlalchemy import or_, select, update
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.domain.hagiography.models import Person
+from src.domain.hagiography.models import Person, PublicationStatus
 from src.domain.identity.models import User
 from src.domain.sources.models import (
     Bibliography,
@@ -57,6 +57,7 @@ from src.presentation.api.v1.sources.schemas import (
     PersonSourceCreateSchema,
     PersonSourceSchema,
     PersonWebSourceCreateSchema,
+    SourceStatsSchema,
 )
 
 router = APIRouter()
@@ -65,6 +66,85 @@ router = APIRouter()
 # ==============================================================================
 # BIBLIOGRAPHY
 # ==============================================================================
+
+
+@router.get("/stats", response_model=SourceStatsSchema, summary="Get public source statistics")
+async def get_source_stats(
+    db: AsyncSession = Depends(get_db_session),
+) -> SourceStatsSchema:
+    published_person_filter = (
+        Person.deleted_at.is_(None),
+        Person.status == PublicationStatus.PUBLISHED.value,
+    )
+    active_person_source_filter = (
+        PersonSource.deleted_at.is_(None),
+        or_(
+            and_(
+                PersonSource.bibliography_id.is_not(None),
+                PersonSource.bibliography.has(Bibliography.deleted_at.is_(None)),
+            ),
+            and_(
+                PersonSource.historical_source_id.is_not(None),
+                PersonSource.historical_source.has(HistoricalSource.deleted_at.is_(None)),
+            ),
+        ),
+    )
+
+    total_published_persons = (
+        await db.execute(select(func.count(Person.id)).where(*published_person_filter))
+    ).scalar_one()
+    documented_persons = (
+        await db.execute(
+            select(func.count(func.distinct(PersonSource.person_id)))
+            .join(Person, Person.id == PersonSource.person_id)
+            .where(*published_person_filter, *active_person_source_filter)
+        )
+    ).scalar_one()
+    person_source_links = (
+        await db.execute(
+            select(func.count(PersonSource.id))
+            .join(Person, Person.id == PersonSource.person_id)
+            .where(*published_person_filter, *active_person_source_filter)
+        )
+    ).scalar_one()
+    bibliography_sources = (
+        await db.execute(
+            select(func.count(Bibliography.id)).where(Bibliography.deleted_at.is_(None))
+        )
+    ).scalar_one()
+    historical_sources = (
+        await db.execute(
+            select(func.count(HistoricalSource.id)).where(HistoricalSource.deleted_at.is_(None))
+        )
+    ).scalar_one()
+    images = (
+        await db.execute(
+            select(func.count(Image.id))
+            .join(Person, Person.id == Image.person_id)
+            .where(*published_person_filter, Image.deleted_at.is_(None))
+        )
+    ).scalar_one()
+    unknown_license_images = (
+        await db.execute(
+            select(func.count(Image.id))
+            .join(Person, Person.id == Image.person_id)
+            .where(
+                *published_person_filter,
+                Image.deleted_at.is_(None),
+                Image.license == ImageLicense.UNKNOWN.value,
+            )
+        )
+    ).scalar_one()
+
+    return SourceStatsSchema(
+        bibliography_sources=bibliography_sources,
+        historical_sources=historical_sources,
+        person_source_links=person_source_links,
+        documented_persons=documented_persons,
+        total_published_persons=total_published_persons,
+        images=images,
+        unknown_license_images=unknown_license_images,
+    )
 
 
 @router.get("/bibliography", response_model=list[BibliographySchema], summary="List bibliography entries")

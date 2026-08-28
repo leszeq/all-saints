@@ -28,7 +28,7 @@ interface NavItem {
   label: string;
   icon: LucideIcon;
   badge?: string;
-  dynamicBadge?: "editorial-queue";
+  dynamicBadge?: "editorial-queue" | "quality-issues" | "quality-duplicates" | "quality-sources";
   external?: boolean;
 }
 
@@ -39,9 +39,9 @@ const sections: Array<{ title: string; items: NavItem[] }> = [
     { href: "/dashboard/review", label: "Kolejka redakcyjna", icon: FileSearch, dynamicBadge: "editorial-queue" },
   ] },
   { title: "Jakość danych", items: [
-    { label: "Problemy jakości", icon: Database, badge: "126" },
-    { label: "Duplikaty", icon: Network, badge: "17" },
-    { label: "Weryfikacja źródeł", icon: ShieldCheck },
+    { href: "/dashboard/quality/issues", label: "Problemy jakości", icon: Database, dynamicBadge: "quality-issues" },
+    { href: "/dashboard/quality/duplicates", label: "Duplikaty", icon: Network, dynamicBadge: "quality-duplicates" },
+    { href: "/dashboard/quality/sources", label: "Weryfikacja źródeł", icon: ShieldCheck, dynamicBadge: "quality-sources" },
   ] },
   { title: "AI", items: [
     { label: "Centrum AI", icon: Bot },
@@ -66,7 +66,21 @@ export function Sidebar() {
     queryKey: ["editorial", "dashboard"],
     queryFn: () => editorialApi.dashboard(),
   });
+  const qualityQuery = useQuery({
+    queryKey: ["editorial", "quality"],
+    queryFn: () => editorialApi.quality(),
+    staleTime: 60_000,
+  });
   const queueCount = dashboardQuery.data?.data.queue_counts.total;
+  const qualitySummary = qualityQuery.data?.data.summary;
+
+  const getDynamicBadge = (kind: NavItem["dynamicBadge"]) => {
+    if (kind === "editorial-queue") return queueCount;
+    if (kind === "quality-issues") return qualitySummary?.records_with_issues;
+    if (kind === "quality-duplicates") return qualitySummary?.duplicate_groups;
+    if (kind === "quality-sources") return qualitySummary?.source_items_to_review;
+    return undefined;
+  };
 
   return (
     <aside className="flex h-screen w-[260px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
@@ -82,7 +96,7 @@ export function Sidebar() {
             <ul className="space-y-0.5">
               {section.items.map((item) => {
                 const active = item.href && !item.external ? pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href)) : false;
-                const badge = item.dynamicBadge === "editorial-queue" ? queueCount : item.badge;
+                const badge = item.dynamicBadge ? getDynamicBadge(item.dynamicBadge) : item.badge;
                 const content = <><item.icon className="h-4 w-4 shrink-0" strokeWidth={1.7} /><span className="min-w-0 flex-1 truncate">{item.label}</span>{badge !== undefined && <span className="rounded-full bg-white/8 px-2 py-0.5 text-[9px] text-sidebar-foreground/60">{badge}</span>}{!item.href && !item.badge && <ChevronRight className="h-3 w-3 text-sidebar-foreground/25" />}</>;
                 const navClassName = cn("relative flex h-9 items-center gap-2.5 rounded-md px-2.5 text-[12px] font-medium transition-colors", active ? "bg-white/[0.07] text-white before:absolute before:-left-3 before:h-5 before:w-0.5 before:bg-sidebar-accent" : "text-sidebar-foreground/67 hover:bg-white/[0.04] hover:text-white");
                 return <li key={item.label}>{item.href ? (item.external ? <a href={item.href} target="_blank" rel="noreferrer" className={navClassName}>{content}</a> : <Link href={item.href} className={navClassName}>{content}</Link>) : <span className="flex h-9 cursor-default items-center gap-2.5 rounded-md px-2.5 text-[12px] font-medium text-sidebar-foreground/48" title="Moduł przewidziany w kolejnym etapie">{content}</span>}</li>;

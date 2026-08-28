@@ -20,6 +20,7 @@ from src.presentation.api.v1.auth.router import require_permission
 from src.presentation.api.v1.editorial.schemas import (
     EditorialDashboardSchema,
     EditorialPriority,
+    EditorialQualityReportSchema,
     EditorialQueueResponseSchema,
     EditorialTransitionResponseSchema,
     EditorialTransitionSchema,
@@ -38,6 +39,18 @@ async def get_editorial_dashboard(
     _user: User = Depends(require_permission("persons", "read")),
 ) -> EditorialDashboardSchema:
     return await EditorialService(db).dashboard()
+
+
+@router.get(
+    "/quality",
+    response_model=EditorialQualityReportSchema,
+    summary="Get data quality centre report",
+)
+async def get_data_quality_report(
+    db: AsyncSession = Depends(get_db_session),
+    _user: User = Depends(require_permission("persons", "read")),
+) -> EditorialQualityReportSchema:
+    return await EditorialService(db).quality_report()
 
 
 @router.get(

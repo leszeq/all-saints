@@ -71,6 +71,11 @@ def test_completeness_score_has_a_transparent_100_point_breakdown():
     assert {criterion.key: criterion.weight for criterion in criteria}["sources"] == 15
 
 
+def test_duplicate_key_normalizes_hagiographic_prefixes_and_diacritics():
+    assert EditorialService._normalize_duplicate_key("Św. Rita z Cascii") == "rita z cascii"
+    assert EditorialService._normalize_duplicate_key("Błogosławiony Jerzy Popiełuszko") == "jerzy popieluszko"
+
+
 @pytest.mark.asyncio
 async def test_transition_moves_draft_to_review_and_records_editor(monkeypatch):
     person = make_person()

@@ -215,6 +215,18 @@ class ImageUploadSchema(BaseModel):
     mime_type: str = "image/webp"
 
 
+class SourceStatsSchema(BaseModel):
+    """Public source statistics displayed in the reader-facing portal."""
+
+    bibliography_sources: int
+    historical_sources: int
+    person_source_links: int
+    documented_persons: int
+    total_published_persons: int
+    images: int
+    unknown_license_images: int
+
+
 # ==============================================================================
 # DOCUMENT SCHEMAS
 # ==============================================================================

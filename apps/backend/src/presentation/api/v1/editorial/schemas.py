@@ -82,6 +82,112 @@ class EditorialQueueResponseSchema(BaseModel):
     pages: int
 
 
+class EditorialQualitySummarySchema(BaseModel):
+    """Top-level counters for the data quality centre."""
+
+    records_with_issues: int
+    total_issues: int
+    duplicate_groups: int
+    duplicate_records: int
+    source_items_to_review: int
+    bibliography_sources: int
+    historical_sources: int
+    person_source_links: int
+    documented_persons: int
+    undocumented_persons: int
+    unknown_license_images: int
+
+
+class EditorialQualityIssueBreakdownSchema(BaseModel):
+    """Aggregated count for one data-quality issue code."""
+
+    code: str
+    label: str
+    severity: str
+    count: int
+
+
+class EditorialQualityRecordSchema(BaseModel):
+    """One person record with editorial quality metadata."""
+
+    id: uuid.UUID
+    slug: str
+    canonical_name: str
+    person_type: str
+    status: PublicationStatus
+    avatar: PersonAvatarSchema | None = None
+    updated_at: datetime
+    completeness_score: int = Field(ge=0, le=100)
+    source_count: int
+    image_count: int
+    unknown_license_count: int
+    priority: EditorialPriority
+    issues: list[EditorialIssueSchema]
+
+
+class EditorialDuplicatePersonSchema(BaseModel):
+    """One record inside a potential duplicate group."""
+
+    id: uuid.UUID
+    slug: str
+    canonical_name: str
+    person_type: str
+    status: PublicationStatus
+    birth_year: int | None = None
+    death_year: int | None = None
+    updated_at: datetime
+    avatar: PersonAvatarSchema | None = None
+    source_count: int
+    image_count: int
+
+
+class EditorialDuplicateGroupSchema(BaseModel):
+    """Potential duplicate group detected from normalized names."""
+
+    key: str
+    confidence: int = Field(ge=0, le=100)
+    reason: str
+    persons: list[EditorialDuplicatePersonSchema]
+
+
+class EditorialSourceVerificationStatsSchema(BaseModel):
+    """Real source and citation counts used to explain public statistics."""
+
+    bibliography_sources: int
+    historical_sources: int
+    person_source_links: int
+    documented_persons: int
+    undocumented_persons: int
+    images: int
+    unknown_license_images: int
+
+
+class EditorialSourceVerificationItemSchema(BaseModel):
+    """One source, source assignment, or image requiring editorial verification."""
+
+    id: uuid.UUID
+    item_type: str
+    title: str
+    issue: str
+    severity: str
+    related_person_id: uuid.UUID | None = None
+    related_person_name: str | None = None
+    source_url: str | None = None
+    updated_at: datetime
+
+
+class EditorialQualityReportSchema(BaseModel):
+    """Complete report powering the data quality centre in the admin panel."""
+
+    generated_at: datetime
+    summary: EditorialQualitySummarySchema
+    issue_breakdown: list[EditorialQualityIssueBreakdownSchema]
+    problem_records: list[EditorialQualityRecordSchema]
+    duplicate_groups: list[EditorialDuplicateGroupSchema]
+    source_stats: EditorialSourceVerificationStatsSchema
+    source_verification_items: list[EditorialSourceVerificationItemSchema]
+
+
 class EditorialStatusCountSchema(BaseModel):
     """Number of person records in a publication state."""
 

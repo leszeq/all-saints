@@ -15,8 +15,10 @@ from src.application.services.person_service import (
 from src.domain.hagiography.models import (
     Era,
     EraPeriod,
+    Gender,
     PatronageGroup,
     Person,
+    PersonType,
     PersonVersion,
 )
 from src.main import app
@@ -117,6 +119,45 @@ def test_latin_name_is_exposed_in_person_lists() -> None:
     )
 
     assert payload.latin_name == "Sanctus Ioannes Paulus II"
+
+
+def test_patronages_and_iconographic_attributes_are_exposed_in_person_lists() -> None:
+    now = "2026-08-28T12:00:00Z"
+    payload = PersonListItemSchema.model_validate(
+        {
+            "id": uuid.uuid4(),
+            "slug": "sw-rita-z-cascii",
+            "canonical_name": "Św. Rita z Cascii",
+            "latin_name": "Sancta Rita de Cassia",
+            "person_type": "saint",
+            "status": "published",
+            "gender": "female",
+            "iconographic_attributes": "róże; cierń na czole",
+            "patronages": [
+                {
+                    "id": uuid.uuid4(),
+                    "patronage_type": "family",
+                    "name_pl": "Małżeństwa",
+                    "is_official": True,
+                },
+                {
+                    "id": uuid.uuid4(),
+                    "patronage_type": "illness",
+                    "name_pl": "Sprawy beznadziejne",
+                    "is_official": False,
+                },
+            ],
+            "is_featured": False,
+            "created_at": now,
+            "updated_at": now,
+        }
+    )
+
+    assert payload.iconographic_attributes == "róże; cierń na czole"
+    assert [patronage.name_pl for patronage in payload.patronages] == [
+        "Małżeństwa",
+        "Sprawy beznadziejne",
+    ]
 
 
 def test_person_recognition_dates_are_editable_and_exposed_in_detail() -> None:
@@ -249,3 +290,51 @@ def test_patronage_groups_are_structured_and_exposed_by_the_api() -> None:
 
     public_parameters = schema["paths"]["/api/v1/persons"]["get"]["parameters"]
     assert any(parameter["name"] == "patronage" for parameter in public_parameters)
+
+
+@pytest.mark.asyncio
+async def test_person_service_accepts_public_multi_select_filters() -> None:
+    count_result = MagicMock()
+    count_result.scalar_one.return_value = 0
+    rows_result = MagicMock()
+    rows_result.scalars.return_value.all.return_value = []
+    db = MagicMock()
+    db.execute = AsyncMock(side_effect=[count_result, rows_result])
+
+    await PersonService(db).list_persons(
+        person_type=[PersonType.SAINT, PersonType.BLESSED],
+        gender=[Gender.MALE, Gender.FEMALE],
+        period=[EraPeriod.MEDIEVAL, EraPeriod.MODERN],
+        patronage=[PatronageGroup.HEALTH, PatronageGroup.FAMILY],
+        published_only=True,
+    )
+
+    statement = db.execute.await_args_list[0].args[0]
+    params = set()
+    for value in statement.compile().params.values():
+        if isinstance(value, list):
+            params.update(value)
+        else:
+            params.add(value)
+
+    assert {"saint", "blessed", "male", "female", "published"}.issubset(params)
+    assert {"medieval", "modern", "contemporary"}.issubset(params)
+    assert {"illness", "healthcare", "family"}.issubset(params)
+
+
+@pytest.mark.asyncio
+async def test_person_service_searches_patronages_and_iconographic_attributes() -> None:
+    count_result = MagicMock()
+    count_result.scalar_one.return_value = 0
+    rows_result = MagicMock()
+    rows_result.scalars.return_value.all.return_value = []
+    db = MagicMock()
+    db.execute = AsyncMock(side_effect=[count_result, rows_result])
+
+    await PersonService(db).list_persons(search="róża", published_only=True)
+
+    statement = db.execute.await_args_list[0].args[0]
+    compiled = str(statement)
+
+    assert "iconographic_attributes" in compiled
+    assert "patronages" in compiled

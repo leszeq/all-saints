@@ -59,6 +59,21 @@ PATRONAGE_GROUP_TYPES: dict[PatronageGroup, tuple[str, ...]] = {
 }
 
 
+def _enum_values(value: object | list[object] | tuple[object, ...] | set[object] | None) -> list[str]:
+    """Normalize a single enum/query value or a multi-select value list."""
+    if value is None:
+        return []
+    if isinstance(value, list | tuple | set):
+        raw_values = value
+    else:
+        raw_values = (value,)
+    return [
+        item.value if hasattr(item, "value") else str(item)
+        for item in raw_values
+        if item is not None
+    ]
+
+
 class PersonService:
     """Service handling Person domain operations."""
 
@@ -320,12 +335,12 @@ class PersonService:
         page: int = 1,
         per_page: int = 20,
         search: str | None = None,
-        person_type: PersonType | None = None,
+        person_type: PersonType | list[PersonType] | None = None,
         status: PublicationStatus | None = None,
-        gender: Gender | None = None,
-        era: Era | None = None,
-        period: EraPeriod | None = None,
-        patronage: PatronageGroup | None = None,
+        gender: Gender | list[Gender] | None = None,
+        era: Era | list[Era] | None = None,
+        period: EraPeriod | list[EraPeriod] | None = None,
+        patronage: PatronageGroup | list[PatronageGroup] | None = None,
         country_id: uuid.UUID | None = None,
         is_featured: bool | None = None,
         published_only: bool = False,
@@ -334,7 +349,7 @@ class PersonService:
         """List persons with full-text search, filtering, and pagination."""
         query = (
             select(Person)
-            .options(selectinload(Person.images))
+            .options(selectinload(Person.images), selectinload(Person.patronages))
             .where(Person.deleted_at.is_(None))
         )
 
@@ -342,24 +357,35 @@ class PersonService:
             query = query.where(Person.status == PublicationStatus.PUBLISHED.value)
 
         # Filters
-        if person_type:
-            query = query.where(Person.person_type == person_type.value)
+        person_type_values = _enum_values(person_type)
+        if person_type_values:
+            query = query.where(Person.person_type.in_(person_type_values))
         if status and not published_only:
             query = query.where(Person.status == status.value)
-        if gender:
-            query = query.where(Person.gender == gender.value)
-        if period:
-            query = query.where(
-                Person.era.in_([era.value for era in ERA_PERIOD_ERAS[period]])
-            )
-        elif era:
-            query = query.where(Person.era == era.value)
-        if patronage:
+        gender_values = _enum_values(gender)
+        if gender_values:
+            query = query.where(Person.gender.in_(gender_values))
+        period_values = _enum_values(period)
+        era_values = _enum_values(era)
+        if period_values:
+            period_eras: set[str] = set()
+            for period_value in period_values:
+                period_eras.update(
+                    era.value for era in ERA_PERIOD_ERAS[EraPeriod(period_value)]
+                )
+            query = query.where(Person.era.in_(sorted(period_eras)))
+        elif era_values:
+            query = query.where(Person.era.in_(era_values))
+        patronage_values = _enum_values(patronage)
+        if patronage_values:
+            patronage_types: set[str] = set()
+            for patronage_value in patronage_values:
+                patronage_types.update(PATRONAGE_GROUP_TYPES[PatronageGroup(patronage_value)])
             query = query.where(
                 Person.patronages.any(
                     and_(
                         Patronage.deleted_at.is_(None),
-                        Patronage.patronage_type.in_(PATRONAGE_GROUP_TYPES[patronage]),
+                        Patronage.patronage_type.in_(sorted(patronage_types)),
                     )
                 )
             )
@@ -373,11 +399,29 @@ class PersonService:
         # Search (Full-text search fallback to LIKE for multi-word queries)
         if search and search.strip():
             term = search.strip()
+            like_term = f"%{term}%"
             query = query.where(
                 or_(
-                    Person.canonical_name.ilike(f"%{term}%"),
-                    Person.latin_name.ilike(f"%{term}%"),
-                    Person.summary_pl.ilike(f"%{term}%"),
+                    Person.canonical_name.ilike(like_term),
+                    Person.canonical_name_en.ilike(like_term),
+                    Person.latin_name.ilike(like_term),
+                    Person.original_name.ilike(like_term),
+                    Person.surnames.ilike(like_term),
+                    Person.religious_name.ilike(like_term),
+                    Person.summary_pl.ilike(like_term),
+                    Person.biography_pl.ilike(like_term),
+                    Person.iconographic_attributes.ilike(like_term),
+                    Person.patronages.any(
+                        and_(
+                            Patronage.deleted_at.is_(None),
+                            or_(
+                                Patronage.name_pl.ilike(like_term),
+                                Patronage.name_en.ilike(like_term),
+                                Patronage.description.ilike(like_term),
+                                Patronage.patronage_type.ilike(like_term),
+                            ),
+                        )
+                    ),
                 )
             )
 

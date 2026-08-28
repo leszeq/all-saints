@@ -3,9 +3,27 @@ import axios from "axios";
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+const serializeParams = (params: Record<string, unknown>) => {
+  const searchParams = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") return;
+    const values = Array.isArray(value) ? value : [value];
+    values.forEach((item) => {
+      if (item === undefined || item === null || item === "") return;
+      searchParams.append(key, String(item));
+    });
+  });
+
+  return searchParams.toString();
+};
+
 export const publicApi = axios.create({
   baseURL: `${API_BASE_URL}/api/v1`,
   headers: { "Content-Type": "application/json" },
+  paramsSerializer: {
+    serialize: serializeParams,
+  },
 });
 
 export const fetchPersons = async (params?: Record<string, unknown>) => {
@@ -35,6 +53,11 @@ export const fetchOrderDetail = async (idOrSlug: string) => {
 
 export const fetchCategories = async () => {
   const { data } = await publicApi.get("/taxonomy/categories");
+  return data;
+};
+
+export const fetchSourceStats = async () => {
+  const { data } = await publicApi.get("/sources/stats");
   return data;
 };
 

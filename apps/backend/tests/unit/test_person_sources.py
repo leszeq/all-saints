@@ -59,3 +59,12 @@ def test_person_source_management_is_exposed_as_protected_api() -> None:
     assert create_operation["security"] == [{"HTTPBearer": []}]
     assert create_web_operation["security"] == [{"HTTPBearer": []}]
     assert delete_operation["security"] == [{"HTTPBearer": []}]
+
+
+def test_source_statistics_are_public_and_quality_report_is_protected() -> None:
+    schema = app.openapi()
+    source_stats = schema["paths"]["/api/v1/sources/stats"]["get"]
+    quality_report = schema["paths"]["/api/v1/editorial/quality"]["get"]
+
+    assert "security" not in source_stats
+    assert quality_report["security"] == [{"HTTPBearer": []}]

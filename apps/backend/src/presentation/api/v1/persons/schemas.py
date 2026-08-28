@@ -264,6 +264,19 @@ class PersonAvatarSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class PersonPatronageSchema(BaseModel):
+    """Patronage returned on public person lists and profiles."""
+
+    id: uuid.UUID
+    patronage_type: str
+    name_pl: str
+    name_en: str | None = None
+    description: str | None = None
+    is_official: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class PersonListItemSchema(BaseModel):
     """Lightweight schema for paginated lists."""
 
@@ -279,6 +292,8 @@ class PersonListItemSchema(BaseModel):
     birth_year: int | None = None
     death_year: int | None = None
     summary_pl: str | None = None
+    iconographic_attributes: str | None = None
+    patronages: list[PersonPatronageSchema] = Field(default_factory=list)
     liturgical_color: LiturgicalColor | None = None
     is_featured: bool
     avatar: PersonAvatarSchema | None = None
@@ -295,19 +310,6 @@ class PersonStateOfLifeSchema(BaseModel):
     name_pl: str
     name_en: str
     name_la: str | None = None
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class PersonPatronageSchema(BaseModel):
-    """Patronage returned on the public person profile."""
-
-    id: uuid.UUID
-    patronage_type: str
-    name_pl: str
-    name_en: str | None = None
-    description: str | None = None
-    is_official: bool
 
     model_config = ConfigDict(from_attributes=True)
 

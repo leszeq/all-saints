@@ -12,7 +12,7 @@ import {
   Search,
   Sparkles,
 } from "lucide-react";
-import { fetchCalendarToday, fetchOrders, fetchPersons } from "@/lib/api";
+import { fetchCalendarToday, fetchOrders, fetchPersons, fetchSourceStats } from "@/lib/api";
 import {
   calendarEntryHref,
   calendarEntrySummary,
@@ -50,14 +50,16 @@ const formatLifeYears = (birthYear: unknown, deathYear: unknown) => {
 export default async function HomePage() {
   let recentPersons: Array<Record<string, unknown>> = [];
   let totalPersons = 0;
+  let sourceAssignments: number | null = null;
   let calendarDay: CalendarDay | null = null;
   let featuredOrders: ReligiousOrder[] = [];
 
-  const [personsResult, totalResult, calendarResult, ordersResult] = await Promise.allSettled([
+  const [personsResult, totalResult, calendarResult, ordersResult, sourceStatsResult] = await Promise.allSettled([
     fetchPersons({ per_page: 3, sort: "updated_desc" }),
     fetchPersons({ per_page: 1 }),
     fetchCalendarToday(),
     fetchOrders({ featured: true }),
+    fetchSourceStats(),
   ]);
   if (personsResult.status === "fulfilled") {
     recentPersons = personsResult.value?.items ?? [];
@@ -70,6 +72,9 @@ export default async function HomePage() {
   }
   if (ordersResult.status === "fulfilled") {
     featuredOrders = (ordersResult.value as ReligiousOrder[]).slice(0, 3);
+  }
+  if (sourceStatsResult.status === "fulfilled") {
+    sourceAssignments = Number(sourceStatsResult.value?.person_source_links ?? 0);
   }
 
   const recentlyUpdated = recentPersons.length
@@ -127,7 +132,7 @@ export default async function HomePage() {
             <p className="mt-4 text-sm leading-6 text-stone-600">Profile przechodzą przez proces redakcyjny, weryfikację danych i kontrolę bibliografii.</p>
             <div className="mt-8 grid grid-cols-2 gap-6 border-t border-[#ded8cd] pt-6">
               <div><p className="font-serif text-2xl font-semibold text-burgundy-700">{totalPersons || "12 456"}</p><p className="mt-1 text-xs text-stone-500">opracowanych postaci</p></div>
-              <div><p className="font-serif text-2xl font-semibold text-burgundy-700">1 248</p><p className="mt-1 text-xs text-stone-500">udokumentowanych źródeł</p></div>
+              <div><p className="font-serif text-2xl font-semibold text-burgundy-700">{sourceAssignments?.toLocaleString("pl-PL") ?? "—"}</p><p className="mt-1 text-xs text-stone-500">przypisanych źródeł</p></div>
             </div>
           </aside>
         </div>

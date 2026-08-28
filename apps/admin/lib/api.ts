@@ -3,6 +3,7 @@ import axios from "axios";
 import type {
   EditorialDashboard,
   EditorialPriority,
+  EditorialQualityReport,
   EditorialQueueResponse,
   PublicationStatus,
 } from "@/lib/editorial";
@@ -119,6 +120,7 @@ export const personsApi = {
 
 export const editorialApi = {
   dashboard: () => api.get<EditorialDashboard>("/editorial/dashboard"),
+  quality: () => api.get<EditorialQualityReport>("/editorial/quality"),
   queue: (params?: {
     page?: number;
     per_page?: number;
