@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import type { ElementType } from "react";
+import { useRouter } from "next/navigation";
+import type { ElementType, KeyboardEvent, MouseEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -54,6 +55,45 @@ const sourceTypeLabels: Record<string, string> = {
   image: "Obraz",
   person_source: "Przypis do postaci",
 };
+
+const sourceSectionHrefs: Record<string, string> = {
+  bibliography: "/dashboard/sources#bibliography",
+  historical_source: "/dashboard/sources#historical-sources",
+  image: "/dashboard/sources#media",
+  person_source: "/dashboard/sources#bibliography",
+};
+
+function sourceVerificationTarget(item: EditorialSourceVerificationItem) {
+  if (item.related_person_id) {
+    const hash = item.item_type === "image" ? "avatar" : "sources";
+    return {
+      href: `/dashboard/persons/${item.related_person_id}/edit#${hash}`,
+      label: item.item_type === "image" ? "Edytuj avatar" : "Edytuj źródła",
+      hint:
+        item.item_type === "image"
+          ? "Otworzy formularz osoby w zakładce Avatar."
+          : "Otworzy formularz osoby w zakładce Źródła.",
+    };
+  }
+
+  if (item.item_type === "image" && item.issue.toLowerCase().includes("licencj")) {
+    return {
+      href: "/dashboard/sources?license=unknown#media",
+      label: "Sprawdź media",
+      hint: "Otworzy media z filtrem obrazów bez zweryfikowanej licencji.",
+    };
+  }
+
+  return {
+    href: sourceSectionHrefs[item.item_type] ?? "/dashboard/sources",
+    label: "Otwórz sekcję",
+    hint: "Otworzy sekcję Źródła i media, w której można uzupełnić dane źródłowe.",
+  };
+}
+
+function stopRowNavigation(event: MouseEvent<HTMLElement>) {
+  event.stopPropagation();
+}
 
 function MetricCard({
   label,
@@ -277,7 +317,18 @@ function DuplicatesPanel({ groups }: { groups: EditorialDuplicateGroup[] }) {
 }
 
 function SourcesPanel({ report }: { report: EditorialQualityReport }) {
+  const router = useRouter();
   const { source_stats: stats, source_verification_items: items } = report;
+  const navigateToTarget = (href: string) => router.push(href);
+  const handleRowKeyDown = (
+    event: KeyboardEvent<HTMLTableRowElement>,
+    href: string,
+  ) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      navigateToTarget(href);
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -324,43 +375,81 @@ function SourcesPanel({ report }: { report: EditorialQualityReport }) {
                   <th className="px-4 py-3">Problem</th>
                   <th className="px-4 py-3">Powiązana postać</th>
                   <th className="px-4 py-3">Źródło URL</th>
-                  <th className="px-4 py-3">Aktualizacja</th>
+                  <th className="px-4 py-3 text-right">Dokąd przejść</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {items.map((item: EditorialSourceVerificationItem) => (
-                  <tr key={`${item.item_type}:${item.id}:${item.issue}`} className="align-top hover:bg-muted/20">
-                    <td className="px-4 py-4">
-                      <p className="font-medium">{item.title}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{sourceTypeLabels[item.item_type] ?? item.item_type}</p>
-                    </td>
-                    <td className="px-4 py-4">
-                      <span className={cn("rounded-md border px-2 py-1 text-[10px]", severityTone[item.severity] ?? "border-border bg-muted text-muted-foreground")}>
-                        {item.issue}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4">
-                      {item.related_person_id ? (
-                        <Link href={`/dashboard/persons/${item.related_person_id}`} className="text-xs font-medium text-primary hover:underline">
-                          {item.related_person_name}
+                {items.map((item: EditorialSourceVerificationItem) => {
+                  const target = sourceVerificationTarget(item);
+
+                  return (
+                    <tr
+                      key={`${item.item_type}:${item.id}:${item.issue}`}
+                      role="link"
+                      tabIndex={0}
+                      title={target.hint}
+                      onClick={() => navigateToTarget(target.href)}
+                      onKeyDown={(event) => handleRowKeyDown(event, target.href)}
+                      className="cursor-pointer align-top transition-colors hover:bg-muted/30 focus-visible:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    >
+                      <td className="px-4 py-4">
+                        <Link
+                          href={target.href}
+                          onClick={stopRowNavigation}
+                          className="font-medium hover:text-primary"
+                        >
+                          {item.title}
                         </Link>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-4">
-                      {item.source_url ? (
-                        <a href={item.source_url} target="_blank" rel="noreferrer" className="inline-flex max-w-72 items-center gap-1 text-xs text-primary hover:underline">
-                          <ExternalLink className="h-3 w-3 shrink-0" />
-                          <span className="truncate">{item.source_url}</span>
-                        </a>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">Brak</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-4 text-xs text-muted-foreground">{formatDateTime(item.updated_at)}</td>
-                  </tr>
-                ))}
+                        <p className="mt-1 text-xs text-muted-foreground">{sourceTypeLabels[item.item_type] ?? item.item_type}</p>
+                        <p className="mt-1 text-[10px] text-muted-foreground">{target.hint}</p>
+                      </td>
+                      <td className="px-4 py-4">
+                        <span className={cn("rounded-md border px-2 py-1 text-[10px]", severityTone[item.severity] ?? "border-border bg-muted text-muted-foreground")}>
+                          {item.issue}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4">
+                        {item.related_person_id ? (
+                          <Link
+                            href={`/dashboard/persons/${item.related_person_id}`}
+                            onClick={stopRowNavigation}
+                            className="text-xs font-medium text-primary hover:underline"
+                          >
+                            {item.related_person_name}
+                          </Link>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-4">
+                        {item.source_url ? (
+                          <a
+                            href={item.source_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={stopRowNavigation}
+                            className="inline-flex max-w-72 items-center gap-1 text-xs text-primary hover:underline"
+                          >
+                            <ExternalLink className="h-3 w-3 shrink-0" />
+                            <span className="truncate">{item.source_url}</span>
+                          </a>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Brak</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 text-right">
+                        <Link
+                          href={target.href}
+                          onClick={stopRowNavigation}
+                          className="inline-flex h-8 items-center gap-1 rounded-md border border-border px-2.5 text-xs font-semibold hover:bg-accent"
+                        >
+                          {target.label} <ArrowRight className="h-3.5 w-3.5" />
+                        </Link>
+                        <p className="mt-2 text-[10px] text-muted-foreground">{formatDateTime(item.updated_at)}</p>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

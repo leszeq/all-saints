@@ -219,7 +219,7 @@ export function SourcesClient({
       )}
 
       <section className="grid gap-5 xl:grid-cols-2">
-        <article className="admin-card overflow-hidden">
+        <article id="bibliography" className="admin-card scroll-mt-6 overflow-hidden">
           <div className="border-b border-border px-5 py-4">
             <h2 className="text-sm font-semibold">Bibliografia</h2>
             <p className="mt-1 text-xs text-muted-foreground">Opracowania, artykuły, strony WWW i pozycje encyklopedyczne.</p>
@@ -280,7 +280,7 @@ export function SourcesClient({
           </div>
         </article>
 
-        <article className="admin-card overflow-hidden">
+        <article id="historical-sources" className="admin-card scroll-mt-6 overflow-hidden">
           <div className="border-b border-border px-5 py-4">
             <h2 className="text-sm font-semibold">Źródła historyczne</h2>
             <p className="mt-1 text-xs text-muted-foreground">Rękopisy, archiwa, repozytoria i pierwotne świadectwa.</p>

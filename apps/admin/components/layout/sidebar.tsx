@@ -20,7 +20,7 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { API_BASE_URL, editorialApi } from "@/lib/api";
+import { API_BASE_URL, aiApi, editorialApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -28,7 +28,8 @@ interface NavItem {
   label: string;
   icon: LucideIcon;
   badge?: string;
-  dynamicBadge?: "editorial-queue" | "quality-issues" | "quality-duplicates" | "quality-sources";
+  dynamicBadge?: "editorial-queue" | "quality-issues" | "quality-duplicates" | "quality-sources" | "ai-suggestions";
+  exact?: boolean;
   external?: boolean;
 }
 
@@ -44,8 +45,8 @@ const sections: Array<{ title: string; items: NavItem[] }> = [
     { href: "/dashboard/quality/sources", label: "Weryfikacja źródeł", icon: ShieldCheck, dynamicBadge: "quality-sources" },
   ] },
   { title: "AI", items: [
-    { label: "Centrum AI", icon: Bot },
-    { label: "Sugestie", icon: Tags, badge: "236" },
+    { href: "/dashboard/ai", label: "Centrum AI", icon: Bot, exact: true },
+    { href: "/dashboard/ai/suggestions", label: "Sugestie", icon: Tags, dynamicBadge: "ai-suggestions" },
   ] },
   { title: "Źródła i dane", items: [
     { href: "/dashboard/sources", label: "Źródła i media", icon: Library },
@@ -71,14 +72,23 @@ export function Sidebar() {
     queryFn: () => editorialApi.quality(),
     staleTime: 60_000,
   });
+  const aiSuggestionsQuery = useQuery({
+    queryKey: ["ai", "suggestions", "sidebar"],
+    queryFn: () => aiApi.suggestions({ limit: 1 }),
+    staleTime: 60_000,
+  });
   const queueCount = dashboardQuery.data?.data.queue_counts.total;
   const qualitySummary = qualityQuery.data?.data.summary;
+  const aiSuggestionCount = aiSuggestionsQuery.data
+    ? aiSuggestionsQuery.data.data.pending_review + aiSuggestionsQuery.data.data.ready_to_generate
+    : undefined;
 
   const getDynamicBadge = (kind: NavItem["dynamicBadge"]) => {
     if (kind === "editorial-queue") return queueCount;
     if (kind === "quality-issues") return qualitySummary?.records_with_issues;
     if (kind === "quality-duplicates") return qualitySummary?.duplicate_groups;
     if (kind === "quality-sources") return qualitySummary?.source_items_to_review;
+    if (kind === "ai-suggestions") return aiSuggestionCount;
     return undefined;
   };
 
@@ -95,7 +105,9 @@ export function Sidebar() {
             <h2 className="mb-1.5 px-2 text-[9px] font-bold uppercase tracking-[0.17em] text-sidebar-foreground/35">{section.title}</h2>
             <ul className="space-y-0.5">
               {section.items.map((item) => {
-                const active = item.href && !item.external ? pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href)) : false;
+                const active = item.href && !item.external
+                  ? pathname === item.href || (!item.exact && item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`))
+                  : false;
                 const badge = item.dynamicBadge ? getDynamicBadge(item.dynamicBadge) : item.badge;
                 const content = <><item.icon className="h-4 w-4 shrink-0" strokeWidth={1.7} /><span className="min-w-0 flex-1 truncate">{item.label}</span>{badge !== undefined && <span className="rounded-full bg-white/8 px-2 py-0.5 text-[9px] text-sidebar-foreground/60">{badge}</span>}{!item.href && !item.badge && <ChevronRight className="h-3 w-3 text-sidebar-foreground/25" />}</>;
                 const navClassName = cn("relative flex h-9 items-center gap-2.5 rounded-md px-2.5 text-[12px] font-medium transition-colors", active ? "bg-white/[0.07] text-white before:absolute before:-left-3 before:h-5 before:w-0.5 before:bg-sidebar-accent" : "text-sidebar-foreground/67 hover:bg-white/[0.04] hover:text-white");

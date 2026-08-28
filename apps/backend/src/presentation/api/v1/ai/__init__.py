@@ -3,10 +3,13 @@ AI API Router – /api/v1/ai
 
 Endpoints:
 - GET  /status          – AI module status and coverage
+- GET  /dashboard       – Admin AI centre metrics
+- GET  /suggestions     – Editorial AI suggestions queue
 - POST /embeddings/{id} – Generate/refresh embedding for a person
 - GET  /search          – Semantic search over person embeddings
 - GET  /related/{id}    – Find similar persons by embedding
 - POST /summarize/{id}  – Generate AI biography summary
+- POST /tag/{id}        – Generate AI tag suggestions for a person
 - POST /batch/embed     – Trigger bulk embedding generation (admin only)
 - POST /batch/tag       – Trigger bulk auto-tagging (admin only)
 """
@@ -14,6 +17,7 @@ Endpoints:
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -21,9 +25,14 @@ from loguru import logger
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.application.ai_service import AIService
+from src.application.ai_service import (
+    AIDashboardResult,
+    AIService,
+    AISuggestionResult,
+)
 from src.domain.identity.models import User
 from src.infrastructure.ai.embeddings import EmbeddingUnavailableError
+from src.infrastructure.ai.summarizer import TaggingUnavailableError
 from src.infrastructure.db.session import get_db_session as get_db
 from src.presentation.api.v1.auth.router import require_permission
 
@@ -97,6 +106,77 @@ class BatchTaskResponse(BaseModel):
     status: str = "queued"
 
 
+class TaggingResponse(BaseModel):
+    """AI tag extraction result."""
+
+    person_id: str
+    tags: list[str]
+    total: int
+    provider: str
+
+
+class AISuggestionItem(BaseModel):
+    """One editorial AI suggestion or generation task."""
+
+    id: str
+    person_id: str
+    person_slug: str
+    person_name: str
+    kind: str = Field(description="embedding, summary or tags")
+    status: str = Field(description="pending_review, ready_to_generate or blocked")
+    title: str
+    description: str
+    current_value: str | None = None
+    suggested_value: str | None = None
+    confidence: int = Field(ge=0, le=100)
+    reason: str
+    action: str
+    action_href: str
+    updated_at: datetime
+
+
+class AISuggestionsResponse(BaseModel):
+    """Paginated-ish AI suggestions queue response."""
+
+    items: list[AISuggestionItem]
+    total: int
+    pending_review: int
+    ready_to_generate: int
+    blocked: int
+
+
+class AIFeatureStatusItem(BaseModel):
+    """Operational state of one AI capability."""
+
+    key: str
+    label: str
+    status: str
+    description: str
+    detail: str
+
+
+class AIDashboardResponse(BaseModel):
+    """Admin AI centre dashboard response."""
+
+    generated_at: datetime
+    embedding_provider: str
+    embedding_model: str
+    embedding_dimensions: int
+    summary_provider: str
+    total_persons: int
+    published_persons: int
+    total_embeddings: int
+    missing_embeddings: int
+    coverage_percent: float
+    ai_summaries: int
+    ai_tags: int
+    pending_suggestions: int
+    blocked_suggestions: int
+    last_generated_at: str | None = None
+    feature_statuses: list[AIFeatureStatusItem]
+    recent_suggestions: list[AISuggestionItem]
+
+
 # ==============================================================================
 # DEPENDENCY – AI Service
 # ==============================================================================
@@ -107,9 +187,113 @@ async def get_ai_service(db: Annotated[AsyncSession, Depends(get_db)]) -> AIServ
     return AIService(db)
 
 
+def _map_suggestion(item: AISuggestionResult) -> AISuggestionItem:
+    """Convert service-layer suggestion dataclass into an API schema."""
+    return AISuggestionItem(
+        id=item.id,
+        person_id=str(item.person_id),
+        person_slug=item.person_slug,
+        person_name=item.person_name,
+        kind=item.kind,
+        status=item.status,
+        title=item.title,
+        description=item.description,
+        current_value=item.current_value,
+        suggested_value=item.suggested_value,
+        confidence=item.confidence,
+        reason=item.reason,
+        action=item.action,
+        action_href=item.action_href,
+        updated_at=item.updated_at,
+    )
+
+
+def _map_dashboard(result: AIDashboardResult) -> AIDashboardResponse:
+    """Convert service-layer dashboard dataclass into an API schema."""
+    return AIDashboardResponse(
+        generated_at=result.generated_at,
+        embedding_provider=result.embedding_provider,
+        embedding_model=result.embedding_model,
+        embedding_dimensions=result.embedding_dimensions,
+        summary_provider=result.summary_provider,
+        total_persons=result.total_persons,
+        published_persons=result.published_persons,
+        total_embeddings=result.total_embeddings,
+        missing_embeddings=result.missing_embeddings,
+        coverage_percent=result.coverage_percent,
+        ai_summaries=result.ai_summaries,
+        ai_tags=result.ai_tags,
+        pending_suggestions=result.pending_suggestions,
+        blocked_suggestions=result.blocked_suggestions,
+        last_generated_at=result.last_generated_at,
+        feature_statuses=[
+            AIFeatureStatusItem(
+                key=item.key,
+                label=item.label,
+                status=item.status,
+                description=item.description,
+                detail=item.detail,
+            )
+            for item in result.feature_statuses
+        ],
+        recent_suggestions=[_map_suggestion(item) for item in result.recent_suggestions],
+    )
+
+
 # ==============================================================================
 # ENDPOINTS
 # ==============================================================================
+
+
+@router.get(
+    "/dashboard",
+    response_model=AIDashboardResponse,
+    summary="Admin AI Centre",
+    description="Returns live AI coverage, provider state and recent editorial AI tasks.",
+)
+async def get_ai_dashboard(
+    ai_service: Annotated[AIService, Depends(get_ai_service)],
+    _user: Annotated[User, Depends(require_permission("persons", "read"))],
+) -> AIDashboardResponse:
+    """Get operational AI metrics for the admin panel."""
+    return _map_dashboard(await ai_service.get_admin_dashboard())
+
+
+@router.get(
+    "/suggestions",
+    response_model=AISuggestionsResponse,
+    summary="AI Suggestions Queue",
+    description=(
+        "Lists AI-generated proposals and AI-generation tasks for editorial review. "
+        "Suggestions never overwrite approved editorial content automatically."
+    ),
+)
+async def list_ai_suggestions(
+    ai_service: Annotated[AIService, Depends(get_ai_service)],
+    _user: Annotated[User, Depends(require_permission("persons", "read"))],
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    kind: Annotated[
+        str | None,
+        Query(pattern="^(embedding|summary|tags)$"),
+    ] = None,
+    status_filter: Annotated[
+        str | None,
+        Query(alias="status", pattern="^(pending_review|ready_to_generate|blocked)$"),
+    ] = None,
+) -> AISuggestionsResponse:
+    """List actionable AI suggestions and generation tasks."""
+    result = await ai_service.list_ai_suggestions(
+        kind_filter=kind,
+        status_filter=status_filter,
+        limit=limit,
+    )
+    return AISuggestionsResponse(
+        items=[_map_suggestion(item) for item in result.items],
+        total=result.total,
+        pending_review=result.pending_review,
+        ready_to_generate=result.ready_to_generate,
+        blocked=result.blocked,
+    )
 
 
 @router.get(
@@ -297,6 +481,37 @@ async def generate_summary(
         person_id=str(person_id),
         summary=summary,
         word_count=len(summary.split()) if summary else 0,
+        provider=ai_service.summary_provider,
+    )
+
+
+@router.post(
+    "/tag/{person_id}",
+    response_model=TaggingResponse,
+    summary="Generate Person Tag Suggestions",
+    description=(
+        "Generate AI tag suggestions for a single person. "
+        "The suggestions are stored in ai_tags and must be reviewed by an editor."
+    ),
+)
+async def generate_tags(
+    person_id: uuid.UUID,
+    ai_service: Annotated[AIService, Depends(get_ai_service)],
+    _user: Annotated[User, Depends(require_permission("persons", "update"))],
+) -> TaggingResponse:
+    """Generate or regenerate AI tag suggestions for a single person."""
+    try:
+        tags = await ai_service.extract_person_tags(person_id)
+    except TaggingUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+
+    return TaggingResponse(
+        person_id=str(person_id),
+        tags=tags,
+        total=len(tags),
         provider=ai_service.summary_provider,
     )
 

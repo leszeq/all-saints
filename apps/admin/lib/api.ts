@@ -1,5 +1,6 @@
 // Centralny klient HTTP dla wszystkich wywołań API
 import axios from "axios";
+import type { AiDashboard, AiSuggestionsResponse } from "@/lib/ai";
 import type {
   EditorialDashboard,
   EditorialPriority,
@@ -134,6 +135,23 @@ export const editorialApi = {
       target_status: targetStatus,
       ...(note ? { note } : {}),
     }),
+};
+
+export const aiApi = {
+  dashboard: () => api.get<AiDashboard>("/ai/dashboard"),
+  suggestions: (params?: {
+    limit?: number;
+    kind?: "embedding" | "summary" | "tags";
+    status?: "pending_review" | "ready_to_generate" | "blocked";
+  }) => api.get<AiSuggestionsResponse>("/ai/suggestions", { params }),
+  generateEmbedding: (personId: string) => api.post(`/ai/embeddings/${personId}`),
+  generateSummary: (personId: string, maxWords = 100) =>
+    api.post(`/ai/summarize/${personId}`, null, { params: { max_words: maxWords } }),
+  generateTags: (personId: string) => api.post(`/ai/tag/${personId}`),
+  batchEmbeddings: (params?: { overwrite_existing?: boolean; batch_size?: number }) =>
+    api.post("/ai/batch/embed", null, { params }),
+  batchTags: (params?: { only_untagged?: boolean }) =>
+    api.post("/ai/batch/tag", null, { params }),
 };
 
 export const calendarApi = {

@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm, useWatch } from "react-hook-form";
+import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowLeft, BookOpenText, CalendarDays, FileImage, ImagePlus, Info, Loader2, Save, Upload, X } from "lucide-react";
+import { ArrowLeft, BookOpenText, CalendarDays, FileImage, HeartHandshake, ImagePlus, Info, Loader2, Plus, Save, Trash2, Upload, X } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { calendarApi, getApiErrorMessage, personsApi, geographyApi, sourcesApi, taxonomyApi } from "@/lib/api";
 import { cn, ERA_LABELS, FEAST_RANK_LABELS, LITURGICAL_COLOR_LABELS } from "@/lib/utils";
@@ -15,6 +15,21 @@ import { PersonSourcesEditor } from "@/components/persons/person-sources-editor"
 const FEAST_RANK_VALUES = ["solemnity", "feast", "memorial", "opt_memorial", "commemoration"] as const;
 const LITURGICAL_COLOR_VALUES = ["white", "red", "green", "violet", "rose", "black", "gold"] as const;
 const LITURGICAL_COLOR_FORM_VALUES = ["", ...LITURGICAL_COLOR_VALUES] as const;
+
+const PATRONAGE_TYPE_OPTIONS = [
+  { value: "illness", label: "Choroba / dolegliwość" },
+  { value: "healthcare", label: "Chorzy, lekarze i opiekunowie" },
+  { value: "family", label: "Rodzina, małżeństwo, dzieci" },
+  { value: "profession", label: "Zawód / profesja" },
+  { value: "work", label: "Praca i codzienne obowiązki" },
+  { value: "travel", label: "Podróżni i pielgrzymi" },
+  { value: "country", label: "Kraj" },
+  { value: "city", label: "Miasto" },
+  { value: "diocese", label: "Diecezja / wspólnota lokalna" },
+  { value: "group", label: "Grupa osób" },
+  { value: "cause", label: "Sprawa / intencja" },
+  { value: "other", label: "Inne" },
+] as const;
 
 const MONTH_OPTIONS = [
   [1, "Styczeń"],
@@ -97,6 +112,13 @@ const personSchema = z.object({
   feast_source_title: z.string().optional(),
   feast_source_url: optionalHttpUrl,
   feast_notes: z.string().optional(),
+  patronages: z.array(z.object({
+    patronage_type: z.string().min(2, "Wybierz typ patronatu"),
+    name_pl: z.string().min(2, "Podaj, komu lub czemu patronuje dana osoba"),
+    name_en: z.string().optional(),
+    description: z.string().optional(),
+    is_official: z.boolean(),
+  })),
   change_summary: z.string().optional(),
 }).superRefine((data, ctx) => {
   const hasMonth = data.feast_month !== null && data.feast_month !== undefined;
@@ -168,6 +190,18 @@ const PERSON_FORM_ONLY_FIELDS = [
   "feast_notes",
 ] as const satisfies readonly (keyof PersonFormData)[];
 
+function normalizePatronages(patronages: PersonFormData["patronages"]) {
+  return patronages
+    .map((patronage) => ({
+      patronage_type: patronage.patronage_type.trim(),
+      name_pl: patronage.name_pl.trim(),
+      name_en: optionalText(patronage.name_en),
+      description: optionalText(patronage.description),
+      is_official: patronage.is_official,
+    }))
+    .filter((patronage) => patronage.patronage_type && patronage.name_pl);
+}
+
 function normalizePersonPayload(data: PersonFormData, isEdit: boolean) {
   const optionalId = (value?: string | null) => value || null;
   const personFields: Partial<PersonFormData> = { ...data };
@@ -200,6 +234,7 @@ function normalizePersonPayload(data: PersonFormData, isEdit: boolean) {
     biography_pl: optionalText(data.biography_pl),
     prayers: optionalText(data.prayers),
     iconographic_attributes: optionalText(data.iconographic_attributes),
+    patronages: normalizePatronages(data.patronages),
     avatar: normalizedAvatarUrl
       ? {
           url: normalizedAvatarUrl,
@@ -287,6 +322,7 @@ const TABS = [
   { id: "basic", label: "Dane podstawowe" },
   { id: "dates", label: "Daty i miejsca" },
   { id: "biography", label: "Biografia" },
+  { id: "patronages", label: "Patronaty" },
   { id: "devotion", label: "Kult i ikonografia" },
   { id: "sources", label: "Źródła" },
   { id: "avatar", label: "Avatar" },
@@ -367,8 +403,18 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
       feast_source_title: "",
       feast_source_url: "",
       feast_notes: "",
+      patronages: [],
       ...defaultValues,
     },
+  });
+
+  const {
+    fields: patronageFields,
+    append: appendPatronage,
+    remove: removePatronage,
+  } = useFieldArray({
+    control,
+    name: "patronages",
   });
 
   const createMutation = useMutation({
@@ -421,6 +467,20 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
   const feastMonth = useWatch({ control, name: "feast_month" });
   const feastDay = useWatch({ control, name: "feast_day" });
   const avatarDisplayUrl = avatarPreview || avatarUrl || null;
+
+  useEffect(() => {
+    const syncTabFromHash = () => {
+      const hash = window.location.hash.replace("#", "");
+      if (TABS.some((tab) => tab.id === hash)) {
+        setActiveTab(hash);
+      }
+    };
+
+    syncTabFromHash();
+    window.addEventListener("hashchange", syncTabFromHash);
+
+    return () => window.removeEventListener("hashchange", syncTabFromHash);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -489,6 +549,12 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
     setValue("feast_notes", "", { shouldDirty: true });
   };
 
+  const selectTab = (tabId: string) => {
+    setActiveTab(tabId);
+    const nextUrl = `${window.location.pathname}${window.location.search}#${tabId}`;
+    window.history.replaceState(null, "", nextUrl);
+  };
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {/* Tabs */}
@@ -497,7 +563,7 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
           <button
             key={tab.id}
             type="button"
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => selectTab(tab.id)}
             className={cn(
               "rounded-md px-4 py-1.5 text-sm font-medium transition-all",
               activeTab === tab.id
@@ -913,6 +979,155 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
                 className={inputCls}
                 placeholder="np. Uzupełniono biogram..."
               />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ─── Tab: Patronages ───────────────────────────────────────────── */}
+      {activeTab === "patronages" && (
+        <div className="space-y-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                <HeartHandshake className="h-4 w-4 text-primary" />
+                Patronaty
+              </h3>
+              <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">
+                Dodaj informacje, komu lub czemu dana osoba patronuje. Typ patronatu
+                pomaga później filtrować katalog publiczny, np. chorzy, rodzina,
+                praca albo podróżni.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() =>
+                appendPatronage({
+                  patronage_type: "other",
+                  name_pl: "",
+                  name_en: "",
+                  description: "",
+                  is_official: false,
+                })
+              }
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Dodaj patronat
+            </button>
+          </div>
+
+          {patronageFields.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border bg-muted/20 p-8 text-center">
+              <HeartHandshake className="mx-auto h-7 w-7 text-primary" />
+              <h3 className="mt-3 text-sm font-semibold text-foreground">Brak patronatów</h3>
+              <p className="mx-auto mt-1 max-w-lg text-xs leading-5 text-muted-foreground">
+                Dodaj pierwszy patronat, np. „chorych”, „spraw beznadziejnych”,
+                „podróżnych” albo konkretny kraj, miasto czy zawód.
+              </p>
+              <button
+                type="button"
+                onClick={() =>
+                  appendPatronage({
+                    patronage_type: "other",
+                    name_pl: "",
+                    name_en: "",
+                    description: "",
+                    is_official: false,
+                  })
+                }
+                className="mt-4 inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-border px-3 text-xs font-semibold hover:bg-accent"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Dodaj patronat
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {patronageFields.map((field, index) => (
+                <section key={field.id} className="rounded-xl border border-border bg-muted/15 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h4 className="text-sm font-semibold text-foreground">
+                        Patronat #{index + 1}
+                      </h4>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Wpisz konkretną grupę, sprawę, miejsce lub zawód.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removePatronage(index)}
+                      className="inline-flex h-8 items-center justify-center gap-1 rounded-md border border-border px-2.5 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Usuń
+                    </button>
+                  </div>
+
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className={labelCls}>Typ patronatu *</label>
+                      <select
+                        {...register(`patronages.${index}.patronage_type` as const)}
+                        className={inputCls}
+                      >
+                        {PATRONAGE_TYPE_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      {errors.patronages?.[index]?.patronage_type && (
+                        <p className={errorCls}>{errors.patronages?.[index]?.patronage_type?.message}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className={labelCls}>Patron / patronka od *</label>
+                      <input
+                        {...register(`patronages.${index}.name_pl` as const)}
+                        className={inputCls}
+                        placeholder="np. spraw beznadziejnych, chorych, podróżnych"
+                      />
+                      {errors.patronages?.[index]?.name_pl && (
+                        <p className={errorCls}>{errors.patronages?.[index]?.name_pl?.message}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className={labelCls}>Nazwa EN</label>
+                      <input
+                        {...register(`patronages.${index}.name_en` as const)}
+                        className={inputCls}
+                        placeholder="np. hopeless causes"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-7">
+                      <input
+                        type="checkbox"
+                        id={`patronage-official-${field.id}`}
+                        {...register(`patronages.${index}.is_official` as const)}
+                        className="h-4 w-4 rounded border-input accent-primary"
+                      />
+                      <label htmlFor={`patronage-official-${field.id}`} className="text-sm text-foreground">
+                        Patronat oficjalnie potwierdzony
+                      </label>
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className={labelCls}>Opis / notatka redakcyjna</label>
+                      <textarea
+                        {...register(`patronages.${index}.description` as const)}
+                        rows={3}
+                        className={cn(inputCls, "resize-y")}
+                        placeholder="Np. zakres patronatu, lokalna tradycja, źródło informacji lub uwagi do weryfikacji…"
+                      />
+                    </div>
+                  </div>
+                </section>
+              ))}
             </div>
           )}
         </div>

@@ -44,6 +44,8 @@ const PATRONAGE_TYPE_LABELS: Record<string, string> = {
   country: "kraj",
   city: "miasto",
   diocese: "diecezja",
+  group: "grupa osób",
+  cause: "sprawa",
   other: "inne",
 };
 

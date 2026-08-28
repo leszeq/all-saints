@@ -138,12 +138,24 @@ def test_ai_mutation_endpoints_require_bearer_auth() -> None:
     paths = (
         "/api/v1/ai/embeddings/{person_id}",
         "/api/v1/ai/summarize/{person_id}",
+        "/api/v1/ai/tag/{person_id}",
         "/api/v1/ai/batch/embed",
         "/api/v1/ai/batch/tag",
     )
 
     for path in paths:
         assert schema["paths"][path]["post"]["security"] == [{"HTTPBearer": []}]
+
+
+def test_ai_admin_endpoints_require_bearer_auth() -> None:
+    schema = app.openapi()
+    paths = (
+        "/api/v1/ai/dashboard",
+        "/api/v1/ai/suggestions",
+    )
+
+    for path in paths:
+        assert schema["paths"][path]["get"]["security"] == [{"HTTPBearer": []}]
 
 
 def test_search_result_accepts_negative_cosine_similarity() -> None:

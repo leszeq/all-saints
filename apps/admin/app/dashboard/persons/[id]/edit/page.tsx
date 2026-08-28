@@ -76,6 +76,15 @@ export default function EditPersonPage() {
             biography_pl: person.biography_pl ?? "",
             prayers: person.prayers ?? "",
             iconographic_attributes: person.iconographic_attributes ?? "",
+            patronages: Array.isArray(person.patronages)
+              ? person.patronages.map((patronage: Record<string, unknown>) => ({
+                  patronage_type: String(patronage.patronage_type ?? "other"),
+                  name_pl: String(patronage.name_pl ?? ""),
+                  name_en: String(patronage.name_en ?? ""),
+                  description: String(patronage.description ?? ""),
+                  is_official: Boolean(patronage.is_official),
+                }))
+              : [],
             is_featured: person.is_featured ?? false,
             avatar_url: person.avatar?.url ?? "",
             avatar_thumbnail_url: person.avatar?.thumbnail_url ?? "",

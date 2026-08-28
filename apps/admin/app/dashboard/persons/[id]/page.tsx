@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, BookOpenText, CalendarDays, Edit, History } from "lucide-react";
+import { ArrowLeft, BookOpenText, CalendarDays, Edit, HeartHandshake, History } from "lucide-react";
 import { calendarApi, personsApi, sourcesApi } from "@/lib/api";
 import { SaintAvatar } from "@/components/persons/saint-avatar";
 import {
@@ -30,6 +30,21 @@ interface PersonFeastEntry {
     name?: string | null;
   } | null;
 }
+
+const PATRONAGE_TYPE_LABELS: Record<string, string> = {
+  illness: "Choroba",
+  healthcare: "Opieka zdrowotna",
+  family: "Rodzina",
+  profession: "Zawód",
+  work: "Praca",
+  travel: "Podróż",
+  country: "Kraj",
+  city: "Miasto",
+  diocese: "Diecezja",
+  group: "Grupa osób",
+  cause: "Sprawa / intencja",
+  other: "Inne",
+};
 
 function formatRecognitionDate(value?: string | null, year?: number | null) {
   if (value && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
@@ -110,6 +125,10 @@ export default function PersonDetailPage() {
       </div>
     );
   }
+
+  const patronages = Array.isArray(person.patronages)
+    ? (person.patronages as Array<Record<string, unknown>>)
+    : [];
 
   return (
     <div className="space-y-6">
@@ -227,6 +246,58 @@ export default function PersonDetailPage() {
               )}
             </section>
           </div>
+
+          <section className="rounded-xl border border-border bg-card p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
+                  <HeartHandshake className="h-4 w-4 text-primary" /> Patronaty
+                </h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Informacje wykorzystywane w katalogu publicznym i eksploracji według patronatu.
+                </p>
+              </div>
+              <button
+                onClick={() => router.push(`/dashboard/persons/${id}/edit#patronages`)}
+                className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-accent"
+              >
+                Zarządzaj
+              </button>
+            </div>
+            {patronages.length ? (
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                {patronages.map((patronage) => (
+                  <article
+                    key={String(patronage.id)}
+                    className="rounded-lg border border-border bg-muted/25 p-4"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-semibold text-foreground">
+                        {String(patronage.name_pl)}
+                      </span>
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                        {PATRONAGE_TYPE_LABELS[String(patronage.patronage_type)] ?? String(patronage.patronage_type)}
+                      </span>
+                      {Boolean(patronage.is_official) && (
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
+                          oficjalny
+                        </span>
+                      )}
+                    </div>
+                    {Boolean(patronage.description) && (
+                      <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                        {String(patronage.description)}
+                      </p>
+                    )}
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-4 text-sm text-muted-foreground">
+                Brak przypisanych patronatów.
+              </p>
+            )}
+          </section>
 
           <section className="rounded-xl border border-border bg-card p-6">
             <div className="flex items-center justify-between gap-3">
