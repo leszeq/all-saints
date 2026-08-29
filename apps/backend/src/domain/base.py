@@ -11,10 +11,9 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, Integer, String, func, text
+from sqlalchemy import DateTime, Integer, func, text
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import DeclarativeBase, Mapped, MappedColumn, mapped_column
-
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 # ==============================================================================
 # DECLARATIVE BASE
@@ -47,7 +46,6 @@ class UUIDMixin:
         primary_key=True,
         default=uuid.uuid4,
         server_default=text("gen_random_uuid()"),
-        index=True,
     )
 
 
@@ -84,7 +82,6 @@ class SoftDeleteMixin:
         DateTime(timezone=True),
         nullable=True,
         default=None,
-        index=True,
     )
 
     @property

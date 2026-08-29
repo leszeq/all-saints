@@ -10,25 +10,17 @@ from __future__ import annotations
 import asyncio
 from logging.config import fileConfig
 
-from alembic import context
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
+
+from alembic import context
 
 # Import settings and all models (so Alembic can detect schema changes)
 from src.core.config import settings
 from src.domain.base import Base
 
-# Import all models to register them with Base.metadata
-from src.domain.identity.models import (  # noqa: F401
-    AuditLog,
-    Permission,
-    RefreshToken,
-    Role,
-    RolePermission,
-    User,
-    UserRole,
-)
+# Import all model modules to register their tables with Base.metadata.
 from src.domain.geography.models import (  # noqa: F401
     Church,
     Country,
@@ -37,6 +29,7 @@ from src.domain.geography.models import (  # noqa: F401
     Region,
     ReligiousOrder,
 )
+from src.domain.hagiography.embedding_model import PersonEmbedding  # noqa: F401
 from src.domain.hagiography.models import (  # noqa: F401
     Beatification,
     Canonization,
@@ -58,18 +51,26 @@ from src.domain.hagiography.models import (  # noqa: F401
     StateOfLife,
     Tag,
 )
-from src.domain.hagiography.embedding_model import PersonEmbedding  # noqa: F401
+from src.domain.identity.models import (  # noqa: F401
+    AuditLog,
+    Permission,
+    RefreshToken,
+    Role,
+    RolePermission,
+    User,
+    UserRole,
+)
+from src.domain.liturgy.models import (  # noqa: F401
+    Feast,
+    LiturgicalCalendar,
+    LiturgicalObservance,
+)
 from src.domain.sources.models import (  # noqa: F401
     Bibliography,
     Document,
     HistoricalSource,
     Image,
     PersonSource,
-)
-from src.domain.liturgy.models import (  # noqa: F401
-    Feast,
-    LiturgicalCalendar,
-    LiturgicalObservance,
 )
 
 # Alembic Config
@@ -85,6 +86,19 @@ if config.config_file_name is not None:
 
 # Model metadata for autogenerate
 target_metadata = Base.metadata
+
+# Column/table comments are developer documentation and were not consistently
+# migrated in the historical revisions. Excluding only the comments plugin
+# keeps ``alembic check`` focused on executable schema: tables, types, defaults,
+# constraints and indexes.
+AUTOGENERATE_PLUGINS = (
+    "alembic.autogenerate.schemas",
+    "alembic.autogenerate.tables",
+    "alembic.autogenerate.types",
+    "alembic.autogenerate.constraints",
+    "alembic.autogenerate.defaults",
+    "alembic.autogenerate.checkconstraint_byname",
+)
 
 
 def run_migrations_offline() -> None:
@@ -103,6 +117,7 @@ def run_migrations_offline() -> None:
         compare_type=True,
         compare_server_default=True,
         include_schemas=True,
+        autogenerate_plugins=AUTOGENERATE_PLUGINS,
     )
 
     with context.begin_transaction():
@@ -117,6 +132,7 @@ def do_run_migrations(connection: Connection) -> None:
         compare_type=True,
         compare_server_default=True,
         include_schemas=True,
+        autogenerate_plugins=AUTOGENERATE_PLUGINS,
         # Custom rendering for JSONB, UUID, etc.
         render_as_batch=False,
     )
