@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.services.editorial_service import (
+    EditorialAuthorizationError,
     EditorialNotFoundError,
     EditorialService,
     EditorialTransitionError,
@@ -100,7 +101,10 @@ async def transition_editorial_record(
             data.target_status,
             user_id=current_user.id,
             note=data.note,
+            can_publish=current_user.has_permission("persons", "publish"),
         )
+    except EditorialAuthorizationError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     except EditorialNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except EditorialTransitionError as exc:

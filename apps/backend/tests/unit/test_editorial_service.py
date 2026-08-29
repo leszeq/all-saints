@@ -8,6 +8,7 @@ import pytest
 
 from src.application.services import editorial_service as editorial_module
 from src.application.services.editorial_service import (
+    EditorialAuthorizationError,
     EditorialService,
     EditorialTransitionError,
 )
@@ -103,6 +104,7 @@ async def test_transition_moves_draft_to_review_and_records_editor(monkeypatch):
     assert update.status == PublicationStatus.REVIEW
     assert "draft → review" in update.change_summary
     assert person_service.update_person.await_args.kwargs["user_id"] == editor_id
+    assert person_service.update_person.await_args.kwargs["allow_status_change"] is True
 
 
 @pytest.mark.asyncio
@@ -116,4 +118,34 @@ async def test_transition_rejects_skipping_review(monkeypatch):
             person.id,
             PublicationStatus.PUBLISHED,
             user_id=uuid4(),
+        )
+
+
+@pytest.mark.asyncio
+async def test_publish_transition_requires_dedicated_permission(monkeypatch):
+    person = make_person(status=PublicationStatus.REVIEW.value)
+    person_service = SimpleNamespace(get_by_id_or_slug=AsyncMock(return_value=person))
+    monkeypatch.setattr(editorial_module, "PersonService", lambda _db: person_service)
+
+    with pytest.raises(EditorialAuthorizationError, match="persons:publish"):
+        await EditorialService(SimpleNamespace()).transition(
+            person.id,
+            PublicationStatus.PUBLISHED,
+            user_id=uuid4(),
+            can_publish=False,
+        )
+
+
+@pytest.mark.asyncio
+async def test_unpublish_transition_requires_dedicated_permission(monkeypatch):
+    person = make_person(status=PublicationStatus.PUBLISHED.value)
+    person_service = SimpleNamespace(get_by_id_or_slug=AsyncMock(return_value=person))
+    monkeypatch.setattr(editorial_module, "PersonService", lambda _db: person_service)
+
+    with pytest.raises(EditorialAuthorizationError, match="persons:publish"):
+        await EditorialService(SimpleNamespace()).transition(
+            person.id,
+            PublicationStatus.REVIEW,
+            user_id=uuid4(),
+            can_publish=False,
         )

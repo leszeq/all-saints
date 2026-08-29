@@ -59,6 +59,10 @@ PATRONAGE_GROUP_TYPES: dict[PatronageGroup, tuple[str, ...]] = {
 }
 
 
+class PersonStatusChangeError(ValueError):
+    """Raised when CRUD attempts to bypass the editorial workflow."""
+
+
 def _enum_values(value: object | list[object] | tuple[object, ...] | set[object] | None) -> list[str]:
     """Normalize a single enum/query value or a multi-select value list."""
     if value is None:
@@ -211,6 +215,10 @@ class PersonService:
 
     async def create_person(self, data: PersonCreateSchema, user_id: uuid.UUID | None = None) -> Person:
         """Create a new person record."""
+        if data.status != PublicationStatus.DRAFT:
+            raise PersonStatusChangeError(
+                "Nowy rekord musi rozpocząć proces redakcyjny jako szkic"
+            )
         slug = await self._generate_unique_slug(data.canonical_name)
 
         person = Person(
@@ -475,8 +483,22 @@ class PersonService:
         person: Person,
         data: PersonUpdateSchema,
         user_id: uuid.UUID | None = None,
+        *,
+        allow_status_change: bool = False,
     ) -> Person:
         """Update person record and create version snapshot."""
+        status_was_set = "status" in data.model_fields_set
+        if status_was_set:
+            requested_status = data.status.value if data.status is not None else None
+            current_status = (
+                person.status.value if hasattr(person.status, "value") else str(person.status)
+            )
+            if requested_status is None:
+                raise PersonStatusChangeError("Status rekordu nie może być pusty")
+            if requested_status != current_status and not allow_status_change:
+                raise PersonStatusChangeError(
+                    "Status rekordu można zmienić wyłącznie przez workflow redakcyjny"
+                )
         avatar_was_set = "avatar" in data.model_fields_set
         patronages_were_set = "patronages" in data.model_fields_set
         beatification_was_set = "beatification" in data.model_fields_set

@@ -11,6 +11,7 @@ from src.application.services.person_service import (
     ERA_PERIOD_ERAS,
     PATRONAGE_GROUP_TYPES,
     PersonService,
+    PersonStatusChangeError,
 )
 from src.domain.hagiography.models import (
     Era,
@@ -20,6 +21,7 @@ from src.domain.hagiography.models import (
     Person,
     PersonType,
     PersonVersion,
+    PublicationStatus,
 )
 from src.main import app
 from src.presentation.api.v1.persons.schemas import (
@@ -236,6 +238,65 @@ async def test_person_service_creates_json_safe_initial_snapshot() -> None:
     assert snapshot.changed_by_id == user_id
     assert snapshot.snapshot["id"] == str(person.id)
     assert snapshot.snapshot["birth_country_id"] is None
+
+
+@pytest.mark.asyncio
+async def test_person_service_rejects_creating_a_published_record() -> None:
+    service = PersonService(MagicMock())
+    payload = PersonCreateSchema.model_validate(
+        {**ADMIN_PAYLOAD, "status": PublicationStatus.PUBLISHED.value}
+    )
+
+    with pytest.raises(PersonStatusChangeError, match="szkic"):
+        await service.create_person(payload, uuid.uuid4())
+
+
+@pytest.mark.asyncio
+async def test_person_service_rejects_status_change_outside_workflow() -> None:
+    person = Person(
+        id=uuid.uuid4(),
+        slug="sw-jan-pawel-ii",
+        canonical_name="Św. Jan Paweł II",
+        person_type=PersonType.SAINT.value,
+        status=PublicationStatus.DRAFT.value,
+        gender=Gender.MALE.value,
+        version=1,
+    )
+
+    with pytest.raises(PersonStatusChangeError, match="workflow"):
+        await PersonService(MagicMock()).update_person(
+            person,
+            PersonUpdateSchema(status=PublicationStatus.PUBLISHED),
+            uuid.uuid4(),
+        )
+
+
+@pytest.mark.asyncio
+async def test_person_service_allows_unchanged_status_in_form_payload() -> None:
+    person = Person(
+        id=uuid.uuid4(),
+        slug="sw-jan-pawel-ii",
+        canonical_name="Św. Jan Paweł II",
+        person_type=PersonType.SAINT.value,
+        status=PublicationStatus.DRAFT.value,
+        gender=Gender.MALE.value,
+        version=1,
+    )
+    person.images = []
+    person.patronages = []
+    person.orders = []
+    db = MagicMock()
+    db.commit = AsyncMock()
+    db.refresh = AsyncMock()
+
+    result = await PersonService(db).update_person(
+        person,
+        PersonUpdateSchema(status=PublicationStatus.DRAFT, summary_pl="Nowy opis"),
+        uuid.uuid4(),
+    )
+
+    assert result.status == PublicationStatus.DRAFT.value
+    assert result.summary_pl == "Nowy opis"
 
 
 def test_openapi_contains_all_active_modules_and_bearer_auth() -> None:

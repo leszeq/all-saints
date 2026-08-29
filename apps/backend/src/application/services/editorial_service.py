@@ -64,6 +64,10 @@ class EditorialTransitionError(ValueError):
     """Raised when a publication transition is not allowed."""
 
 
+class EditorialAuthorizationError(ValueError):
+    """Raised when a workflow transition requires publication permission."""
+
+
 ALLOWED_TRANSITIONS: dict[str, set[str]] = {
     PublicationStatus.DRAFT.value: {PublicationStatus.REVIEW.value},
     PublicationStatus.REVIEW.value: {
@@ -1114,6 +1118,7 @@ class EditorialService:
         *,
         user_id: uuid.UUID,
         note: str | None = None,
+        can_publish: bool = False,
     ) -> EditorialTransitionResponseSchema:
         """Apply one allowed workflow transition and write a version snapshot."""
         person_service = PersonService(self.db)
@@ -1124,6 +1129,16 @@ class EditorialService:
         if target_status.value not in ALLOWED_TRANSITIONS.get(previous, set()):
             raise EditorialTransitionError(
                 f"Przejście {previous} → {target_status.value} nie jest dozwolone"
+            )
+        publication_states = {
+            PublicationStatus.PUBLISHED.value,
+            PublicationStatus.ARCHIVED.value,
+        }
+        if not can_publish and (
+            previous in publication_states or target_status.value in publication_states
+        ):
+            raise EditorialAuthorizationError(
+                "Ta operacja wymaga uprawnienia persons:publish"
             )
         if target_status == PublicationStatus.PUBLISHED:
             missing = []
@@ -1145,6 +1160,7 @@ class EditorialService:
             person,
             PersonUpdateSchema(status=target_status, change_summary=summary),
             user_id=user_id,
+            allow_status_change=True,
         )
         return EditorialTransitionResponseSchema(
             person_id=person.id,

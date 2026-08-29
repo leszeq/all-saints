@@ -19,7 +19,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.application.services.person_service import PersonService
+from src.application.services.person_service import PersonService, PersonStatusChangeError
 from src.domain.hagiography.models import (
     Era,
     EraPeriod,
@@ -191,7 +191,10 @@ async def create_person(
 ) -> PersonDetailSchema:
     """Create a new person record."""
     service = PersonService(db)
-    person = await service.create_person(data, user_id=current_user.id)
+    try:
+        person = await service.create_person(data, user_id=current_user.id)
+    except PersonStatusChangeError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     return PersonDetailSchema.model_validate(person)
 
 
@@ -240,7 +243,10 @@ async def update_person(
             detail="Osoba nie została znaleziona",
         )
 
-    updated_person = await service.update_person(person, data, user_id=current_user.id)
+    try:
+        updated_person = await service.update_person(person, data, user_id=current_user.id)
+    except PersonStatusChangeError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     return PersonDetailSchema.model_validate(updated_person)
 
 
