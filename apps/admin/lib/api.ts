@@ -138,9 +138,10 @@ export const editorialApi = {
     priority?: EditorialPriority;
     attention?: boolean;
   }) => api.get<EditorialQueueResponse>("/editorial/queue", { params }),
-  transition: (id: string, targetStatus: PublicationStatus, note?: string) =>
+  transition: (id: string, targetStatus: PublicationStatus, expectedVersion: number, note?: string) =>
     api.post(`/editorial/queue/${id}/transition`, {
       target_status: targetStatus,
+      expected_version: expectedVersion,
       ...(note ? { note } : {}),
     }),
 };

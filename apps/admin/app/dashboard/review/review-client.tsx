@@ -83,8 +83,8 @@ export function EditorialQueueClient({
   });
 
   const transitionMutation = useMutation({
-    mutationFn: ({ id, targetStatus }: { id: string; targetStatus: PublicationStatus }) =>
-      editorialApi.transition(id, targetStatus),
+    mutationFn: ({ id, targetStatus, version }: { id: string; targetStatus: PublicationStatus; version: number }) =>
+      editorialApi.transition(id, targetStatus, version),
     onMutate: () => setActionError(""),
     onSuccess: async () => {
       await Promise.all([
@@ -286,11 +286,11 @@ export function EditorialQueueClient({
                       <div className="flex justify-end gap-1.5">
                         <Link href={`/dashboard/persons/${item.id}/edit`} className="inline-flex h-8 items-center gap-1 rounded-md border border-border px-2.5 text-xs hover:bg-accent"><Edit3 className="h-3.5 w-3.5" /> Edytuj</Link>
                         {item.status === "draft" ? (
-                          <button disabled={mutationForItem} onClick={() => transitionMutation.mutate({ id: item.id, targetStatus: "review" })} className="inline-flex h-8 items-center gap-1 rounded-md bg-blue-600 px-2.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50">{mutationForItem ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />} Do recenzji</button>
+                          <button disabled={mutationForItem} onClick={() => transitionMutation.mutate({ id: item.id, targetStatus: "review", version: item.version })} className="inline-flex h-8 items-center gap-1 rounded-md bg-blue-600 px-2.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50">{mutationForItem ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />} Do recenzji</button>
                         ) : (
                           <>
-                            <button disabled={mutationForItem} onClick={() => transitionMutation.mutate({ id: item.id, targetStatus: "draft" })} className="inline-flex h-8 items-center gap-1 rounded-md border border-border px-2.5 text-xs hover:bg-accent disabled:opacity-50"><ArrowLeft className="h-3.5 w-3.5" /> Do szkicu</button>
-                            <button disabled={mutationForItem || !item.can_publish} title={!item.can_publish ? "Uzupełnij krytyczne braki przed publikacją" : "Opublikuj rekord"} onClick={() => transitionMutation.mutate({ id: item.id, targetStatus: "published" })} className="inline-flex h-8 items-center gap-1 rounded-md bg-emerald-600 px-2.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40">{mutationForItem ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} Publikuj</button>
+                            <button disabled={mutationForItem} onClick={() => transitionMutation.mutate({ id: item.id, targetStatus: "draft", version: item.version })} className="inline-flex h-8 items-center gap-1 rounded-md border border-border px-2.5 text-xs hover:bg-accent disabled:opacity-50"><ArrowLeft className="h-3.5 w-3.5" /> Do szkicu</button>
+                            <button disabled={mutationForItem || !item.can_publish} title={!item.can_publish ? "Uzupełnij krytyczne braki przed publikacją" : "Opublikuj rekord"} onClick={() => transitionMutation.mutate({ id: item.id, targetStatus: "published", version: item.version })} className="inline-flex h-8 items-center gap-1 rounded-md bg-emerald-600 px-2.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40">{mutationForItem ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} Publikuj</button>
                           </>
                         )}
                       </div>

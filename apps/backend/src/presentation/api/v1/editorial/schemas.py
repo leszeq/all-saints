@@ -48,6 +48,7 @@ class EditorialQueueItemSchema(BaseModel):
     canonical_name: str
     person_type: str
     status: PublicationStatus
+    version: int
     avatar: PersonAvatarSchema | None = None
     updated_at: datetime
     last_modified_by: PersonLastEditorSchema | None = None
@@ -241,6 +242,7 @@ class EditorialTransitionSchema(BaseModel):
 
     target_status: PublicationStatus
     note: str | None = Field(None, max_length=500)
+    expected_version: int | None = Field(None, ge=1)
 
     @model_validator(mode="after")
     def validate_target(self) -> EditorialTransitionSchema:

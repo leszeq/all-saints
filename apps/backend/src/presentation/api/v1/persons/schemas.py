@@ -237,6 +237,11 @@ class PersonUpdateSchema(BaseModel):
     beatification: PersonBeatificationInputSchema | None = None
     canonization: PersonCanonizationInputSchema | None = None
     change_summary: str | None = Field(None, description="Optional description of changes for version log")
+    expected_version: int | None = Field(
+        None,
+        ge=1,
+        description="Version loaded by the editor; stale values return HTTP 409",
+    )
 
     @field_validator(*OPTIONAL_UUID_FIELDS, "era", "liturgical_color", mode="before")
     @classmethod

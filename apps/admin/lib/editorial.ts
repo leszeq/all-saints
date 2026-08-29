@@ -25,6 +25,7 @@ export interface EditorialQueueItem {
   canonical_name: string;
   person_type: string;
   status: PublicationStatus;
+  version: number;
   avatar?: EditorialAvatar | null;
   updated_at: string;
   last_modified_by?: EditorialLastEditor | null;

@@ -55,6 +55,7 @@ export default function EditPersonPage() {
         <PersonForm
           personId={id}
           isEdit
+          expectedVersion={person.version}
           defaultValues={{
             canonical_name: person.canonical_name ?? "",
             canonical_name_en: person.canonical_name_en ?? "",

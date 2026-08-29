@@ -63,6 +63,18 @@ class PersonStatusChangeError(ValueError):
     """Raised when CRUD attempts to bypass the editorial workflow."""
 
 
+class PersonVersionConflictError(RuntimeError):
+    """Raised when an editor submits a stale person representation."""
+
+    def __init__(self, expected_version: int, current_version: int) -> None:
+        self.expected_version = expected_version
+        self.current_version = current_version
+        super().__init__(
+            f"Rekord ma już wersję {current_version}, a formularz wersję "
+            f"{expected_version}. Odśwież stronę i ponów zmiany."
+        )
+
+
 def _enum_values(value: object | list[object] | tuple[object, ...] | set[object] | None) -> list[str]:
     """Normalize a single enum/query value or a multi-select value list."""
     if value is None:
@@ -499,6 +511,22 @@ class PersonService:
                 raise PersonStatusChangeError(
                     "Status rekordu można zmienić wyłącznie przez workflow redakcyjny"
                 )
+
+        # Serialize modifications of the same row and refresh the version after
+        # waiting for another transaction. This closes the check/write race;
+        # expected_version additionally detects an editor submitting a stale form.
+        loaded_version = person.version
+        await self.db.refresh(
+            person,
+            attribute_names=["version"],
+            with_for_update=True,
+        )
+        expected_version = (
+            data.expected_version if data.expected_version is not None else loaded_version
+        )
+        if expected_version != person.version:
+            raise PersonVersionConflictError(expected_version, person.version)
+
         avatar_was_set = "avatar" in data.model_fields_set
         patronages_were_set = "patronages" in data.model_fields_set
         beatification_was_set = "beatification" in data.model_fields_set
@@ -511,6 +539,7 @@ class PersonService:
                 "beatification",
                 "canonization",
                 "change_summary",
+                "expected_version",
             },
         )
 

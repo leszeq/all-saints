@@ -332,9 +332,10 @@ interface PersonFormProps {
   personId?: string;
   defaultValues?: Partial<PersonFormData>;
   isEdit?: boolean;
+  expectedVersion?: number;
 }
 
-export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps) {
+export function PersonForm({ personId, defaultValues, isEdit, expectedVersion }: PersonFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("basic");
@@ -435,7 +436,10 @@ export function PersonForm({ personId, defaultValues, isEdit }: PersonFormProps)
 
   const updateMutation = useMutation({
     mutationFn: async (data: PersonFormData) => {
-      const response = await personsApi.update(personId!, await preparePersonPayload(data, true, avatarFile));
+      const response = await personsApi.update(personId!, {
+        ...(await preparePersonPayload(data, true, avatarFile)),
+        expected_version: expectedVersion,
+      });
       await syncPersonFeast(personId!, data, activeFeastEntry?.id ?? null);
       return response;
     },

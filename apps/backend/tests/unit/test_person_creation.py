@@ -12,6 +12,7 @@ from src.application.services.person_service import (
     PATRONAGE_GROUP_TYPES,
     PersonService,
     PersonStatusChangeError,
+    PersonVersionConflictError,
 )
 from src.domain.hagiography.models import (
     Era,
@@ -66,6 +67,12 @@ def test_person_update_schema_accepts_empty_optional_selects() -> None:
     assert payload.birth_country_id is None
     assert payload.death_country_id is None
     assert payload.state_of_life_id is None
+
+
+def test_person_update_schema_accepts_expected_version() -> None:
+    payload = PersonUpdateSchema.model_validate({"summary_pl": "Nowy opis", "expected_version": 7})
+
+    assert payload.expected_version == 7
 
 
 def test_person_content_fields_and_state_of_life_are_exposed_in_detail() -> None:
@@ -297,6 +304,30 @@ async def test_person_service_allows_unchanged_status_in_form_payload() -> None:
 
     assert result.status == PublicationStatus.DRAFT.value
     assert result.summary_pl == "Nowy opis"
+
+
+@pytest.mark.asyncio
+async def test_person_service_rejects_a_stale_expected_version() -> None:
+    person = Person(
+        id=uuid.uuid4(),
+        slug="sw-jan-pawel-ii",
+        canonical_name="Św. Jan Paweł II",
+        person_type=PersonType.SAINT.value,
+        status=PublicationStatus.DRAFT.value,
+        gender=Gender.MALE.value,
+        version=3,
+    )
+    db = MagicMock()
+    db.refresh = AsyncMock()
+
+    with pytest.raises(PersonVersionConflictError, match="wersję 3"):
+        await PersonService(db).update_person(
+            person,
+            PersonUpdateSchema(summary_pl="Nieaktualna zmiana", expected_version=2),
+            uuid.uuid4(),
+        )
+
+    db.commit.assert_not_called()
 
 
 def test_openapi_contains_all_active_modules_and_bearer_auth() -> None:

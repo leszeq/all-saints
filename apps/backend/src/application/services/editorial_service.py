@@ -347,6 +347,7 @@ class EditorialService:
             canonical_name=person.canonical_name,
             person_type=person.person_type,
             status=person.status,
+            version=person.version,
             avatar=(
                 PersonAvatarSchema.model_validate(person.avatar)
                 if person.avatar is not None
@@ -854,7 +855,7 @@ class EditorialService:
                     or_(
                         Image.license == ImageLicense.UNKNOWN.value,
                         self._missing_text(Image.source_url),
-                    ),
+                    )
                 )
                 .options(selectinload(Image.person))
                 .order_by(Image.updated_at.desc())
@@ -1119,6 +1120,7 @@ class EditorialService:
         user_id: uuid.UUID,
         note: str | None = None,
         can_publish: bool = False,
+        expected_version: int | None = None,
     ) -> EditorialTransitionResponseSchema:
         """Apply one allowed workflow transition and write a version snapshot."""
         person_service = PersonService(self.db)
@@ -1158,7 +1160,11 @@ class EditorialService:
         summary = note or f"Workflow redakcyjny: {previous} → {target_status.value}"
         person = await person_service.update_person(
             person,
-            PersonUpdateSchema(status=target_status, change_summary=summary),
+            PersonUpdateSchema(
+                status=target_status,
+                change_summary=summary,
+                expected_version=expected_version,
+            ),
             user_id=user_id,
             allow_status_change=True,
         )

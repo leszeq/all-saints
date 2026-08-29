@@ -14,6 +14,7 @@ from src.application.services.editorial_service import (
     EditorialService,
     EditorialTransitionError,
 )
+from src.application.services.person_service import PersonVersionConflictError
 from src.domain.hagiography.models import PublicationStatus
 from src.domain.identity.models import User
 from src.infrastructure.db.session import get_db_session
@@ -102,6 +103,7 @@ async def transition_editorial_record(
             user_id=current_user.id,
             note=data.note,
             can_publish=current_user.has_permission("persons", "publish"),
+            expected_version=data.expected_version,
         )
     except EditorialAuthorizationError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
@@ -109,3 +111,13 @@ async def transition_editorial_record(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except EditorialTransitionError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except PersonVersionConflictError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "message": str(exc),
+                "code": "person_version_conflict",
+                "expected_version": exc.expected_version,
+                "current_version": exc.current_version,
+            },
+        ) from exc
