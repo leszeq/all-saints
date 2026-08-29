@@ -11,7 +11,7 @@ import uuid
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Boolean, ForeignKey, Index, Integer, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -234,6 +234,14 @@ class Image(BaseModel, Base):
     __table_args__ = (
         Index("ix_images_person_id", "person_id"),
         Index("ix_images_is_primary", "is_primary"),
+        Index(
+            "uq_images_active_primary_person",
+            "person_id",
+            unique=True,
+            postgresql_where=text(
+                "person_id IS NOT NULL AND is_primary = true AND deleted_at IS NULL"
+            ),
+        ),
         {"comment": "Images associated with persons and entities"},
     )
 

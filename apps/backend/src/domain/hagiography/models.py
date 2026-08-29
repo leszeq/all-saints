@@ -243,6 +243,8 @@ class Person(BaseModel, Base):
 
     __tablename__ = "persons"
     __table_args__ = (
+        UniqueConstraint("slug"),
+        Index("ix_persons_slug", "slug"),
         Index("ix_persons_person_type", "person_type"),
         Index("ix_persons_gender", "gender"),
         Index("ix_persons_era", "era"),
@@ -317,8 +319,6 @@ class Person(BaseModel, Base):
     slug: Mapped[str] = mapped_column(
         String(600),
         nullable=False,
-        unique=True,
-        index=True,
         comment="URL-safe unique identifier",
     )
 

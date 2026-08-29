@@ -177,10 +177,7 @@ class RolePermission(Base):
     """Many-to-many association: Role ↔ Permission."""
 
     __tablename__ = "role_permissions"
-    __table_args__ = (
-        UniqueConstraint("role_id", "permission_id", name="uq_role_permission"),
-        {"comment": "Role to permission assignments"},
-    )
+    __table_args__ = ({"comment": "Role to permission assignments"},)
 
     role_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -329,10 +326,7 @@ class UserRole(Base):
     """Many-to-many association: User ↔ Role."""
 
     __tablename__ = "user_roles"
-    __table_args__ = (
-        UniqueConstraint("user_id", "role_id", name="uq_user_role"),
-        {"comment": "User to role assignments"},
-    )
+    __table_args__ = ({"comment": "User to role assignments"},)
 
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -431,6 +425,7 @@ class AuditLog(Base):
         Index("ix_audit_logs_user_id", "user_id"),
         Index("ix_audit_logs_resource", "resource_type", "resource_id"),
         Index("ix_audit_logs_created_at", "created_at"),
+        Index("ix_audit_logs_action", "action"),
         {"comment": "Immutable audit trail"},
     )
 
@@ -461,7 +456,6 @@ class AuditLog(Base):
     action: Mapped[str] = mapped_column(
         String(50),
         nullable=False,
-        index=True,
         comment="AuditAction enum value",
     )
 

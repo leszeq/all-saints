@@ -263,6 +263,7 @@ class ReligiousOrder(BaseModel, Base):
 
     __tablename__ = "religious_orders"
     __table_args__ = (
+        Index("uq_religious_orders_slug", "slug", unique=True),
         Index("ix_religious_orders_abbreviation", "abbreviation"),
         Index("ix_religious_orders_spiritual_family", "spiritual_family"),
         Index("ix_religious_orders_featured", "is_featured"),
@@ -270,7 +271,7 @@ class ReligiousOrder(BaseModel, Base):
     )
 
     # Names
-    slug: Mapped[str] = mapped_column(String(500), nullable=False, unique=True)
+    slug: Mapped[str] = mapped_column(String(500), nullable=False)
     name: Mapped[str] = mapped_column(String(500), nullable=False)
     name_la: Mapped[str | None] = mapped_column(String(500), nullable=True)
     name_local: Mapped[str | None] = mapped_column(String(500), nullable=True)
