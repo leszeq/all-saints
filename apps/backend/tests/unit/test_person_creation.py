@@ -415,7 +415,7 @@ async def test_person_service_accepts_public_multi_select_filters() -> None:
 
 
 @pytest.mark.asyncio
-async def test_person_service_searches_patronages_and_iconographic_attributes() -> None:
+async def test_person_service_uses_ranked_fts_and_indexed_fallbacks() -> None:
     count_result = MagicMock()
     count_result.scalar_one.return_value = 0
     rows_result = MagicMock()
@@ -425,8 +425,12 @@ async def test_person_service_searches_patronages_and_iconographic_attributes() 
 
     await PersonService(db).list_persons(search="róża", published_only=True)
 
-    statement = db.execute.await_args_list[0].args[0]
-    compiled = str(statement)
+    count_statement = db.execute.await_args_list[0].args[0]
+    result_statement = db.execute.await_args_list[1].args[0]
+    compiled = f"{count_statement}\n{result_statement}"
 
-    assert "iconographic_attributes" in compiled
+    assert "search_vector @@" in compiled
+    assert "websearch_to_tsquery" in compiled
+    assert "similarity" in compiled
+    assert "lower(persons.biography_pl)" not in compiled
     assert "patronages" in compiled

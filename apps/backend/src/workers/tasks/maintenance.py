@@ -18,13 +18,6 @@ def cleanup_expired_tokens() -> dict:
     return {"status": "completed"}
 
 
-@shared_task(name="src.workers.tasks.maintenance.refresh_search_vectors", queue="default")
-def refresh_search_vectors() -> dict:
-    """Refresh PostgreSQL full-text search vectors."""
-    logger.info("Refreshing search vectors")
-    return {"status": "completed"}
-
-
 @shared_task(name="src.workers.tasks.maintenance.update_statistics", queue="default")
 def update_statistics() -> dict:
     """Update database statistics for query planner."""

@@ -416,21 +416,30 @@ class PersonService:
         if is_featured is not None:
             query = query.where(Person.is_featured == is_featured)
 
-        # Search (Full-text search fallback to LIKE for multi-word queries)
+        search_score = None
         if search and search.strip():
             term = search.strip()
             like_term = f"%{term}%"
+            text_query = func.websearch_to_tsquery("simple", func.unaccent(term))
+            full_text_rank = func.coalesce(
+                func.ts_rank_cd(Person.search_vector, text_query),
+                0.0,
+            )
+            fuzzy_rank = func.greatest(
+                func.similarity(Person.canonical_name, term),
+                func.similarity(func.coalesce(Person.canonical_name_en, ""), term),
+                func.similarity(func.coalesce(Person.latin_name, ""), term),
+            )
+            search_score = full_text_rank + (fuzzy_rank * 0.25)
             query = query.where(
                 or_(
+                    Person.search_vector.op("@@")(text_query),
                     Person.canonical_name.ilike(like_term),
                     Person.canonical_name_en.ilike(like_term),
                     Person.latin_name.ilike(like_term),
-                    Person.original_name.ilike(like_term),
-                    Person.surnames.ilike(like_term),
-                    Person.religious_name.ilike(like_term),
-                    Person.summary_pl.ilike(like_term),
-                    Person.biography_pl.ilike(like_term),
-                    Person.iconographic_attributes.ilike(like_term),
+                    Person.canonical_name.op("%")(term),
+                    Person.canonical_name_en.op("%")(term),
+                    Person.latin_name.op("%")(term),
                     Person.patronages.any(
                         and_(
                             Patronage.deleted_at.is_(None),
@@ -451,7 +460,9 @@ class PersonService:
         total = total_res.scalar_one()
 
         # Paginate
-        if sort == PersonSort.UPDATED_DESC:
+        if search_score is not None:
+            query = query.order_by(search_score.desc(), Person.canonical_name.asc())
+        elif sort == PersonSort.UPDATED_DESC:
             query = query.order_by(Person.updated_at.desc(), Person.canonical_name.asc())
         else:
             query = query.order_by(Person.canonical_name.asc())

@@ -86,11 +86,6 @@ def create_celery_app() -> Celery:
                 "task": "src.workers.tasks.maintenance.cleanup_expired_tokens",
                 "schedule": crontab(hour=3, minute=0),
             },
-            # Update person search vectors every night
-            "refresh-search-vectors": {
-                "task": "src.workers.tasks.maintenance.refresh_search_vectors",
-                "schedule": crontab(hour=2, minute=0),
-            },
             # Database statistics update
             "update-statistics": {
                 "task": "src.workers.tasks.maintenance.update_statistics",

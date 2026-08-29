@@ -254,6 +254,24 @@ class Person(BaseModel, Base):
             "search_vector",
             postgresql_using="gin",
         ),
+        Index(
+            "ix_persons_canonical_name_trgm",
+            "canonical_name",
+            postgresql_using="gin",
+            postgresql_ops={"canonical_name": "gin_trgm_ops"},
+        ),
+        Index(
+            "ix_persons_canonical_name_en_trgm",
+            "canonical_name_en",
+            postgresql_using="gin",
+            postgresql_ops={"canonical_name_en": "gin_trgm_ops"},
+        ),
+        Index(
+            "ix_persons_latin_name_trgm",
+            "latin_name",
+            postgresql_using="gin",
+            postgresql_ops={"latin_name": "gin_trgm_ops"},
+        ),
         {"comment": "All persons in the hagiographic catalogue"},
     )
 
@@ -731,6 +749,24 @@ class Patronage(BaseModel, Base):
     __table_args__ = (
         Index("ix_patronages_person_id", "person_id"),
         Index("ix_patronages_type", "patronage_type"),
+        Index(
+            "ix_patronages_name_pl_trgm",
+            "name_pl",
+            postgresql_using="gin",
+            postgresql_ops={"name_pl": "gin_trgm_ops"},
+        ),
+        Index(
+            "ix_patronages_name_en_trgm",
+            "name_en",
+            postgresql_using="gin",
+            postgresql_ops={"name_en": "gin_trgm_ops"},
+        ),
+        Index(
+            "ix_patronages_description_trgm",
+            "description",
+            postgresql_using="gin",
+            postgresql_ops={"description": "gin_trgm_ops"},
+        ),
         {"comment": "Patronages attributed to persons"},
     )
 
