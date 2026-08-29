@@ -11,6 +11,7 @@ Endpoints:
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
@@ -19,6 +20,7 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from loguru import logger
 from pydantic import BaseModel, EmailStr, Field
+from redis.asyncio import Redis
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -33,6 +35,7 @@ from src.domain.identity.models import (
     UserRole,
     UserStatus,
 )
+from src.infrastructure.cache.redis_client import RateLimiter, get_redis
 from src.infrastructure.db.session import get_db_session
 
 router = APIRouter()
@@ -53,6 +56,51 @@ def _set_refresh_cookie(response: Response, raw_token: str) -> None:
         max_age=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
         path="/api/v1/auth",
     )
+
+
+async def _enforce_login_rate_limit(
+    credentials: LoginRequest,
+    request: Request,
+    response: Response,
+    redis: Redis,
+) -> None:
+    """Limit login attempts per source address and normalized account."""
+    client_ip = request.client.host if request.client else "unknown"
+    account_digest = hashlib.sha256(credentials.email.lower().encode()).hexdigest()
+    checks = (
+        ("ip", f"login:ip:{client_ip}", settings.RATE_LIMIT_LOGIN_IP),
+        ("account", f"login:account:{account_digest}", settings.RATE_LIMIT_LOGIN_ACCOUNT),
+    )
+    limiter = RateLimiter(redis)
+    remaining: list[int] = []
+
+    try:
+        for scope, identifier, limit in checks:
+            result = await limiter.check(
+                identifier=identifier,
+                limit=limit,
+                window_seconds=settings.RATE_LIMIT_LOGIN_WINDOW_SECONDS,
+            )
+            remaining.append(result.remaining)
+            if not result.allowed:
+                logger.warning("Login rate limit exceeded for scope={scope}", scope=scope)
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail="Zbyt wiele prób logowania. Spróbuj ponownie później.",
+                    headers={"Retry-After": str(result.retry_after)},
+                )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        # Authentication must remain available during a Redis incident. The
+        # persistent per-account lockout below remains the second line of defence.
+        logger.error(
+            "Login rate limiting unavailable: {error_type}",
+            error_type=type(exc).__name__,
+        )
+        return
+
+    response.headers["X-RateLimit-Remaining"] = str(min(remaining))
 
 
 # ==============================================================================
@@ -138,6 +186,7 @@ async def get_current_user(
 
     # Verify token
     from jwt import InvalidTokenError
+
     try:
         payload = jwt_service.verify_access_token(token)
     except InvalidTokenError:
@@ -190,6 +239,7 @@ def require_permission(resource: str, action: str) -> Callable[..., Awaitable[Us
         ):
             ...
     """
+
     async def _check(user: User = Depends(get_current_user)) -> User:
         if not user.has_permission(resource, action):
             raise HTTPException(
@@ -197,6 +247,7 @@ def require_permission(resource: str, action: str) -> Callable[..., Awaitable[Us
                 detail=f"Brak uprawnień: {resource}:{action}",
             )
         return user
+
     return _check
 
 
@@ -222,6 +273,7 @@ async def login(
     request: Request,
     response: Response,
     db: AsyncSession = Depends(get_db_session),
+    redis: Redis = Depends(get_redis),
 ) -> TokenResponse:
     """
     Authenticate a user and issue tokens.
@@ -229,13 +281,13 @@ async def login(
     The access token is returned in the response body.
     The refresh token is set as an HttpOnly cookie.
     """
+    await _enforce_login_rate_limit(credentials, request, response, redis)
+
     # Load user by email
     result = await db.execute(
         select(User)
         .options(
-            selectinload(User.roles)
-            .selectinload(UserRole.role)
-            .selectinload(Role.permissions)
+            selectinload(User.roles).selectinload(UserRole.role).selectinload(Role.permissions)
         )
         .where(User.email == credentials.email.lower())
         .where(User.deleted_at.is_(None))
@@ -342,9 +394,7 @@ async def refresh_token(
     result = await db.execute(
         select(RefreshToken)
         .options(
-            selectinload(RefreshToken.user)
-            .selectinload(User.roles)
-            .selectinload(UserRole.role)
+            selectinload(RefreshToken.user).selectinload(User.roles).selectinload(UserRole.role)
         )
         .where(RefreshToken.token_hash == token_hash)
         .with_for_update()
@@ -415,9 +465,7 @@ async def logout(
     if refresh_token:
         token_hash = JWTService.hash_refresh_token(refresh_token)
 
-        result = await db.execute(
-            select(RefreshToken).where(RefreshToken.token_hash == token_hash)
-        )
+        result = await db.execute(select(RefreshToken).where(RefreshToken.token_hash == token_hash))
         stored_token = result.scalar_one_or_none()
 
         if stored_token:

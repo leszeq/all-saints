@@ -12,9 +12,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import secrets
 from collections.abc import AsyncGenerator, Callable
-from functools import wraps
-from typing import Any, TypeVar
+from dataclasses import dataclass
+from typing import Any
 
 import redis.asyncio as aioredis
 from loguru import logger
@@ -22,7 +23,6 @@ from redis.asyncio import Redis
 from redis.asyncio.connection import ConnectionPool
 
 from src.core.config import settings
-
 
 # ==============================================================================
 # CONNECTION
@@ -113,7 +113,7 @@ class CacheService:
         """Build a namespaced cache key."""
         return f"saints:{namespace}:{key}"
 
-    async def get(self, namespace: str, key: str) -> Any | None:
+    async def get(self, namespace: str, key: str) -> Any | None:  # noqa: ANN401
         """
         Get a cached value.
 
@@ -134,7 +134,7 @@ class CacheService:
         self,
         namespace: str,
         key: str,
-        value: Any,
+        value: Any,  # noqa: ANN401 - cache accepts any JSON-serialisable value
         ttl: int = settings.CACHE_TTL_DEFAULT,
     ) -> bool:
         """
@@ -201,7 +201,7 @@ class CacheService:
         key: str,
         factory: Callable,
         ttl: int = settings.CACHE_TTL_DEFAULT,
-    ) -> Any:
+    ) -> Any:  # noqa: ANN401 - factory result is intentionally generic
         """
         Get from cache or compute and store.
 
@@ -223,7 +223,7 @@ class CacheService:
         return value
 
 
-def make_cache_key_from_params(**kwargs: Any) -> str:
+def make_cache_key_from_params(**kwargs: Any) -> str:  # noqa: ANN401
     """
     Generate a deterministic cache key from arbitrary parameters.
 
@@ -238,16 +238,81 @@ def make_cache_key_from_params(**kwargs: Any) -> str:
 # ==============================================================================
 
 
+@dataclass(frozen=True, slots=True)
+class RateLimitResult:
+    """Outcome of one rate-limit check."""
+
+    allowed: bool
+    remaining: int
+    retry_after: int
+
+
 class RateLimiter:
     """
     Redis-backed sliding window rate limiter.
 
-    Uses a sorted set to track request timestamps within a window.
+    The full read/trim/write/count operation is executed atomically in Redis.
+    Redis server time is used so that multiple API instances share one clock.
     """
+
+    _SLIDING_WINDOW_SCRIPT = """
+local key = KEYS[1]
+local request_limit = tonumber(ARGV[1])
+local window_ms = tonumber(ARGV[2])
+local member = ARGV[3]
+
+local redis_time = redis.call('TIME')
+local now_ms = redis_time[1] * 1000 + math.floor(redis_time[2] / 1000)
+local window_start = now_ms - window_ms
+
+redis.call('ZREMRANGEBYSCORE', key, 0, window_start)
+redis.call('ZADD', key, now_ms, member)
+local current_count = redis.call('ZCARD', key)
+redis.call('PEXPIRE', key, window_ms)
+
+local retry_after_ms = 0
+if current_count > request_limit then
+    local oldest = redis.call('ZRANGE', key, 0, 0, 'WITHSCORES')
+    if oldest[2] then
+        retry_after_ms = math.max(0, tonumber(oldest[2]) + window_ms - now_ms)
+    end
+end
+
+return {current_count, math.ceil(retry_after_ms / 1000)}
+"""
 
     def __init__(self, redis: Redis) -> None:
         """Initialize with Redis client."""
         self._redis = redis
+
+    async def check(
+        self,
+        identifier: str,
+        limit: int,
+        window_seconds: int,
+    ) -> RateLimitResult:
+        """Atomically record a request and return the current window state."""
+        if limit < 1 or window_seconds < 1:
+            raise ValueError("Rate limit and window must be positive")
+
+        key = f"saints:ratelimit:{identifier}"
+        result = await self._redis.eval(
+            self._SLIDING_WINDOW_SCRIPT,
+            1,
+            key,
+            limit,
+            window_seconds * 1000,
+            secrets.token_urlsafe(18),
+        )
+        current_count = int(result[0])
+        retry_after = int(result[1])
+        allowed = current_count <= limit
+
+        return RateLimitResult(
+            allowed=allowed,
+            remaining=max(0, limit - current_count),
+            retry_after=max(1, retry_after) if not allowed else retry_after,
+        )
 
     async def is_allowed(
         self,
@@ -266,21 +331,5 @@ class RateLimiter:
         Returns:
             Tuple of (is_allowed, remaining_requests).
         """
-        import time
-
-        key = f"saints:ratelimit:{identifier}"
-        now = time.time()
-        window_start = now - window_seconds
-
-        pipe = self._redis.pipeline()
-        pipe.zremrangebyscore(key, 0, window_start)
-        pipe.zadd(key, {str(now): now})
-        pipe.zcard(key)
-        pipe.expire(key, window_seconds)
-        results = await pipe.execute()
-
-        current_count = results[2]
-        remaining = max(0, limit - current_count)
-        is_allowed = current_count <= limit
-
-        return is_allowed, remaining
+        result = await self.check(identifier, limit, window_seconds)
+        return result.allowed, result.remaining

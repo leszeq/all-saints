@@ -8,11 +8,10 @@ from __future__ import annotations
 from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated
 
-from pydantic import AnyHttpUrl, EmailStr, PostgresDsn, RedisDsn, field_validator, model_validator
+from pydantic import EmailStr, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
-
 
 # ==============================================================================
 # ENUMS
@@ -74,7 +73,7 @@ class Settings(BaseSettings):
     BASE_DIR: Path = Path(__file__).resolve().parent.parent.parent
 
     # ── Backend Server ─────────────────────────────────────────────────────────
-    BACKEND_HOST: str = "0.0.0.0"
+    BACKEND_HOST: str = "0.0.0.0"  # noqa: S104 - API container listen address
     BACKEND_PORT: int = 8000
     BACKEND_WORKERS: int = 4
     BACKEND_RELOAD: bool = False
@@ -108,7 +107,7 @@ class Settings(BaseSettings):
     DATABASE_ECHO: bool = False
 
     @model_validator(mode="after")
-    def assemble_db_urls(self) -> "Settings":
+    def assemble_db_urls(self) -> Settings:
         """Build database URLs from components if not provided explicitly."""
         if not self.DATABASE_URL:
             self.DATABASE_URL = (
@@ -129,9 +128,9 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: str = ""
     REDIS_URL: str = "redis://localhost:6379/0"
 
-    CACHE_TTL_DEFAULT: int = 300       # 5 minutes
-    CACHE_TTL_PERSONS: int = 600       # 10 minutes
-    CACHE_TTL_STATIC: int = 3600       # 1 hour
+    CACHE_TTL_DEFAULT: int = 300  # 5 minutes
+    CACHE_TTL_PERSONS: int = 600  # 10 minutes
+    CACHE_TTL_STATIC: int = 3600  # 1 hour
 
     # ── Celery ─────────────────────────────────────────────────────────────────
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
@@ -161,6 +160,9 @@ class Settings(BaseSettings):
     RATE_LIMIT_PUBLIC: str = "100/minute"
     RATE_LIMIT_AUTHENTICATED: str = "1000/minute"
     RATE_LIMIT_ADMIN: str = "5000/minute"
+    RATE_LIMIT_LOGIN_IP: int = Field(default=30, ge=1)
+    RATE_LIMIT_LOGIN_ACCOUNT: int = Field(default=10, ge=1)
+    RATE_LIMIT_LOGIN_WINDOW_SECONDS: int = Field(default=60, ge=1)
 
     # ── Storage ────────────────────────────────────────────────────────────────
     STORAGE_BACKEND: StorageBackend = StorageBackend.MINIO
