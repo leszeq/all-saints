@@ -1,11 +1,15 @@
-.PHONY: help install dev prod test lint format migrate seed clean logs ps build
+.PHONY: help install setup dev dev-build dev-backend dev-db dev-detach stop \
+	prod-build prod-up prod-down migrate migrate-create migrate-down migrate-history \
+	seed reset-db test test-unit test-integration test-e2e test-coverage lint \
+	lint-backend lint-frontend format type-check type-check-backend \
+	type-check-frontend logs logs-backend logs-db ps shell-backend shell-db clean \
+	build export-xlsx export-pdf docs-serve docs-build openapi-export backup-db
 
 # ==============================================================================
 # CONFIGURATION
 # ==============================================================================
 COMPOSE_DEV=docker compose -f infrastructure/docker/docker-compose.yml
-COMPOSE_PROD=docker compose -f infrastructure/docker/docker-compose.prod.yml
-BACKEND=apps/backend
+BACKEND_RUN=$(COMPOSE_DEV) run --rm -T backend
 
 # Colours
 CYAN=\033[0;36m
@@ -68,13 +72,16 @@ stop: ## Stop all development services
 # PRODUCTION
 # ==============================================================================
 prod-build: ## Build production images
-	$(COMPOSE_PROD) build
+	@echo "$(YELLOW)Production Compose is not implemented yet.$(NC)"
+	@false
 
 prod-up: ## Start production stack
-	$(COMPOSE_PROD) up -d
+	@echo "$(YELLOW)Production Compose is not implemented yet.$(NC)"
+	@false
 
 prod-down: ## Stop production stack
-	$(COMPOSE_PROD) down
+	@echo "$(YELLOW)Production Compose is not implemented yet.$(NC)"
+	@false
 
 # ==============================================================================
 # DATABASE
@@ -97,8 +104,8 @@ seed: ## Seed the database with initial data
 reset-db: ## ⚠ Drop and recreate the database (DESTRUCTIVE!)
 	@echo "$(RED)⚠ This will DESTROY all data! Press Ctrl+C to abort...$(NC)"
 	@sleep 5
-	$(COMPOSE_DEV) exec db psql -U $$POSTGRES_USER -c "DROP DATABASE IF EXISTS $$POSTGRES_DB;"
-	$(COMPOSE_DEV) exec db psql -U $$POSTGRES_USER -c "CREATE DATABASE $$POSTGRES_DB;"
+	$(COMPOSE_DEV) exec -T db sh -c 'psql -U "$$POSTGRES_USER" -c "DROP DATABASE IF EXISTS $$POSTGRES_DB;"'
+	$(COMPOSE_DEV) exec -T db sh -c 'psql -U "$$POSTGRES_USER" -c "CREATE DATABASE $$POSTGRES_DB;"'
 	$(MAKE) migrate
 	$(MAKE) seed
 
@@ -106,40 +113,50 @@ reset-db: ## ⚠ Drop and recreate the database (DESTRUCTIVE!)
 # TESTING
 # ==============================================================================
 test: ## Run all backend tests
-	$(COMPOSE_DEV) run --rm backend pytest apps/backend/tests/ -v --cov=src --cov-report=term-missing
+	$(BACKEND_RUN) python -m pytest
 
 test-unit: ## Run unit tests only
-	$(COMPOSE_DEV) run --rm backend pytest apps/backend/tests/unit/ -v
+	$(BACKEND_RUN) python -m pytest -q -o addopts='' tests/unit
 
 test-integration: ## Run integration tests only
-	$(COMPOSE_DEV) run --rm backend pytest apps/backend/tests/integration/ -v
+	$(BACKEND_RUN) python -m pytest -q -o addopts='' tests/integration
 
-test-e2e: ## Run E2E tests (Playwright)
-	cd apps/admin && npx playwright test
+test-e2e: ## Planned: run Playwright smoke tests
+	@echo "$(YELLOW)Playwright E2E tests are not implemented yet.$(NC)"
+	@false
 
 test-coverage: ## Run tests with HTML coverage report
-	$(COMPOSE_DEV) run --rm backend pytest apps/backend/tests/ --cov=src --cov-report=html:htmlcov
+	$(BACKEND_RUN) python -m pytest --cov-report=html:htmlcov
 
 # ==============================================================================
 # CODE QUALITY
 # ==============================================================================
-lint: ## Run linters (ruff + mypy + eslint)
+lint: ## Run linters (Ruff + ESLint)
+	$(MAKE) lint-backend
+	$(MAKE) lint-frontend
+
+lint-backend: ## Run Ruff for backend source and tests
 	@echo "$(CYAN)Running Python linters...$(NC)"
-	cd $(BACKEND) && poetry run ruff check src/ tests/
-	cd $(BACKEND) && poetry run mypy src/
+	$(BACKEND_RUN) .venv/bin/ruff check src tests
+
+lint-frontend: ## Run ESLint for admin and public portal
 	@echo "$(CYAN)Running TypeScript linters...$(NC)"
 	cd apps/admin && npm run lint
 	cd apps/web && npm run lint
 
-format: ## Auto-format all code (black + ruff + prettier)
+format: ## Auto-format backend code
 	@echo "$(CYAN)Formatting Python code...$(NC)"
-	cd $(BACKEND) && poetry run black src/ tests/
-	cd $(BACKEND) && poetry run ruff check --fix src/ tests/
-	@echo "$(CYAN)Formatting TypeScript code...$(NC)"
-	cd apps/admin && npm run format
-	cd apps/web && npm run format
+	$(BACKEND_RUN) .venv/bin/black src tests
+	$(BACKEND_RUN) .venv/bin/ruff check --fix src tests
 
-type-check: ## Run TypeScript type checking
+type-check: ## Run backend and frontend type checking
+	$(MAKE) type-check-backend
+	$(MAKE) type-check-frontend
+
+type-check-backend: ## Run strict mypy for backend source
+	$(BACKEND_RUN) .venv/bin/mypy src
+
+type-check-frontend: ## Run TypeScript type checking
 	cd apps/admin && npm run type-check
 	cd apps/web && npm run type-check
 
@@ -162,7 +179,7 @@ shell-backend: ## Open shell in backend container
 	$(COMPOSE_DEV) exec backend bash
 
 shell-db: ## Open PostgreSQL shell
-	$(COMPOSE_DEV) exec db psql -U $${POSTGRES_USER} -d $${POSTGRES_DB}
+	$(COMPOSE_DEV) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"'
 
 clean: ## Remove all containers, volumes, and build artifacts
 	$(COMPOSE_DEV) down -v --remove-orphans
@@ -178,10 +195,12 @@ build: ## Build all Docker images
 # EXPORTS
 # ==============================================================================
 export-xlsx: ## Trigger Master.xlsx export
-	$(COMPOSE_DEV) exec backend python -m scripts.export xlsx
+	@echo "$(YELLOW)XLSX export is planned for Etap 7 and is not implemented yet.$(NC)"
+	@false
 
 export-pdf: ## Trigger Encyclopedia PDF export
-	$(COMPOSE_DEV) exec backend python -m scripts.export pdf
+	@echo "$(YELLOW)PDF export is planned for Etap 7 and is not implemented yet.$(NC)"
+	@false
 
 # ==============================================================================
 # DOCUMENTATION
@@ -193,12 +212,13 @@ docs-build: ## Build documentation
 	mkdocs build
 
 openapi-export: ## Export OpenAPI schema to file
-	$(COMPOSE_DEV) exec backend python -m scripts.export_openapi
+	@echo "$(YELLOW)OpenAPI file export is not implemented yet; use /docs or /openapi.json.$(NC)"
+	@false
 
 # ==============================================================================
 # BACKUP
 # ==============================================================================
 backup-db: ## Create database backup
 	@mkdir -p backups
-	$(COMPOSE_DEV) exec db pg_dump -U $${POSTGRES_USER} $${POSTGRES_DB} | gzip > backups/backup_$$(date +%Y%m%d_%H%M%S).sql.gz
+	$(COMPOSE_DEV) exec -T db sh -c 'pg_dump -U "$$POSTGRES_USER" "$$POSTGRES_DB"' | gzip > backups/backup_$$(date +%Y%m%d_%H%M%S).sql.gz
 	@echo "$(GREEN)✓ Backup created$(NC)"
