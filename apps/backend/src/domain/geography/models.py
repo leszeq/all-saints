@@ -95,9 +95,7 @@ class Country(BaseModel, Base):
     # Names in multiple languages
     name_pl: Mapped[str] = mapped_column(String(200), nullable=False)
     name_en: Mapped[str] = mapped_column(String(200), nullable=False)
-    name_la: Mapped[str | None] = mapped_column(
-        String(200), nullable=True, comment="Latin name"
-    )
+    name_la: Mapped[str | None] = mapped_column(String(200), nullable=True, comment="Latin name")
     name_local: Mapped[str | None] = mapped_column(
         String(200), nullable=True, comment="Name in the country's local language"
     )
@@ -126,11 +124,9 @@ class Country(BaseModel, Base):
     historical_period: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
     # Relationships
-    regions: Mapped[list["Region"]] = relationship("Region", back_populates="country")
-    places: Mapped[list["Place"]] = relationship("Place", back_populates="country")
-    dioceses: Mapped[list["Diocese"]] = relationship(
-        "Diocese", back_populates="country"
-    )
+    regions: Mapped[list[Region]] = relationship("Region", back_populates="country")
+    places: Mapped[list[Place]] = relationship("Place", back_populates="country")
+    dioceses: Mapped[list[Diocese]] = relationship("Diocese", back_populates="country")
 
 
 # ==============================================================================
@@ -156,8 +152,8 @@ class Region(BaseModel, Base):
     )
 
     # Relationships
-    country: Mapped["Country"] = relationship("Country", back_populates="regions")
-    places: Mapped[list["Place"]] = relationship("Place", back_populates="region")
+    country: Mapped[Country] = relationship("Country", back_populates="regions")
+    places: Mapped[list[Place]] = relationship("Place", back_populates="region")
 
 
 # ==============================================================================
@@ -188,13 +184,9 @@ class Diocese(BaseModel, Base):
     suppressed_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Relationships
-    country: Mapped["Country | None"] = relationship(
-        "Country", back_populates="dioceses"
-    )
-    places: Mapped[list["Place"]] = relationship("Place", back_populates="diocese")
-    churches: Mapped[list["Church"]] = relationship(
-        "Church", back_populates="diocese"
-    )
+    country: Mapped[Country | None] = relationship("Country", back_populates="dioceses")
+    places: Mapped[list[Place]] = relationship("Place", back_populates="diocese")
+    churches: Mapped[list[Church]] = relationship("Church", back_populates="diocese")
 
 
 # ==============================================================================
@@ -247,10 +239,10 @@ class Place(BaseModel, Base):
     )
 
     # Relationships
-    country: Mapped["Country | None"] = relationship("Country", back_populates="places")
-    region: Mapped["Region | None"] = relationship("Region", back_populates="places")
-    diocese: Mapped["Diocese | None"] = relationship("Diocese", back_populates="places")
-    churches: Mapped[list["Church"]] = relationship("Church", back_populates="place")
+    country: Mapped[Country | None] = relationship("Country", back_populates="places")
+    region: Mapped[Region | None] = relationship("Region", back_populates="places")
+    diocese: Mapped[Diocese | None] = relationship("Diocese", back_populates="places")
+    churches: Mapped[list[Church]] = relationship("Church", back_populates="place")
 
 
 # ==============================================================================
@@ -329,7 +321,7 @@ class ReligiousOrder(BaseModel, Base):
     )
 
     # Relationships
-    founded_place: Mapped["Place | None"] = relationship("Place")
+    founded_place: Mapped[Place | None] = relationship("Place")
     memberships: Mapped[list[PersonOrder]] = relationship(
         "PersonOrder", back_populates="order", cascade="all, delete-orphan"
     )
@@ -393,7 +385,5 @@ class Church(BaseModel, Base):
     )
 
     # Relationships
-    place: Mapped["Place | None"] = relationship("Place", back_populates="churches")
-    diocese: Mapped["Diocese | None"] = relationship(
-        "Diocese", back_populates="churches"
-    )
+    place: Mapped[Place | None] = relationship("Place", back_populates="churches")
+    diocese: Mapped[Diocese | None] = relationship("Diocese", back_populates="churches")

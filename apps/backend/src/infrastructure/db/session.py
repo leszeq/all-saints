@@ -25,13 +25,14 @@ from sqlalchemy.pool import NullPool
 
 from src.core.config import settings
 
-
 # ==============================================================================
 # ENGINE
 # ==============================================================================
 
 
-def _create_engine(database_url: str, *, echo: bool = False, use_null_pool: bool = False) -> AsyncEngine:
+def _create_engine(
+    database_url: str, *, echo: bool = False, use_null_pool: bool = False
+) -> AsyncEngine:
     """
     Create an async SQLAlchemy engine.
 
@@ -69,7 +70,7 @@ def _create_engine(database_url: str, *, echo: bool = False, use_null_pool: bool
     if settings.is_development:
 
         @event.listens_for(engine.sync_engine, "connect")
-        def on_connect(dbapi_connection: Any, connection_record: Any) -> None:
+        def on_connect(_dbapi_connection: object, _connection_record: object) -> None:
             logger.debug("Database connection established")
 
     return engine

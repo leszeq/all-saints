@@ -5,29 +5,24 @@ Geography API router (Countries, Dioceses, Places, Churches).
 from __future__ import annotations
 
 import uuid
-from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select
+from fastapi import APIRouter, Depends, Query, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.geography.models import Church, Country, Diocese, Place
 from src.domain.identity.models import User
 from src.infrastructure.db.session import get_db_session
-from src.presentation.api.v1.auth.router import get_current_user, require_permission
+from src.presentation.api.v1.auth.router import require_permission
 from src.presentation.api.v1.geography.schemas import (
     ChurchCreateSchema,
     ChurchSchema,
-    ChurchUpdateSchema,
     CountryCreateSchema,
     CountrySchema,
-    CountryUpdateSchema,
     DioceseCreateSchema,
     DioceseSchema,
-    DioceseUpdateSchema,
     PlaceCreateSchema,
     PlaceSchema,
-    PlaceUpdateSchema,
 )
 
 router = APIRouter()
@@ -45,13 +40,20 @@ async def list_countries(
 ) -> list[CountrySchema]:
     query = select(Country).where(Country.deleted_at.is_(None))
     if search:
-        query = query.where(Country.name_pl.ilike(f"%{search}%") | Country.name_en.ilike(f"%{search}%"))
+        query = query.where(
+            Country.name_pl.ilike(f"%{search}%") | Country.name_en.ilike(f"%{search}%")
+        )
     query = query.order_by(Country.name_pl.asc())
     res = await db.execute(query)
     return [CountrySchema.model_validate(c) for c in res.scalars().all()]
 
 
-@router.post("/countries", response_model=CountrySchema, status_code=status.HTTP_201_CREATED, summary="Create country")
+@router.post(
+    "/countries",
+    response_model=CountrySchema,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create country",
+)
 async def create_country(
     data: CountryCreateSchema,
     db: AsyncSession = Depends(get_db_session),
@@ -82,7 +84,12 @@ async def list_dioceses(
     return [DioceseSchema.model_validate(d) for d in res.scalars().all()]
 
 
-@router.post("/dioceses", response_model=DioceseSchema, status_code=status.HTTP_201_CREATED, summary="Create diocese")
+@router.post(
+    "/dioceses",
+    response_model=DioceseSchema,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create diocese",
+)
 async def create_diocese(
     data: DioceseCreateSchema,
     db: AsyncSession = Depends(get_db_session),
@@ -116,7 +123,12 @@ async def list_places(
     return [PlaceSchema.model_validate(p) for p in res.scalars().all()]
 
 
-@router.post("/places", response_model=PlaceSchema, status_code=status.HTTP_201_CREATED, summary="Create place")
+@router.post(
+    "/places",
+    response_model=PlaceSchema,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create place",
+)
 async def create_place(
     data: PlaceCreateSchema,
     db: AsyncSession = Depends(get_db_session),
@@ -150,7 +162,12 @@ async def list_churches(
     return [ChurchSchema.model_validate(c) for c in res.scalars().all()]
 
 
-@router.post("/churches", response_model=ChurchSchema, status_code=status.HTTP_201_CREATED, summary="Create church")
+@router.post(
+    "/churches",
+    response_model=ChurchSchema,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create church",
+)
 async def create_church(
     data: ChurchCreateSchema,
     db: AsyncSession = Depends(get_db_session),

@@ -13,7 +13,7 @@ Run with: python -m src.infrastructure.db.seed
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from loguru import logger
 from sqlalchemy import select
@@ -22,8 +22,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.config import settings
 from src.core.security import password_hasher
 from src.domain.geography import models as geography_models  # noqa: F401
+from src.domain.hagiography.models import StateOfLife
 from src.domain.identity.models import (
-    AuditAction,
     Permission,
     Role,
     RolePermission,
@@ -32,11 +32,9 @@ from src.domain.identity.models import (
     UserRole,
     UserStatus,
 )
-from src.domain.liturgy.models import CalendarScope, LiturgicalCalendar
-from src.domain.hagiography.models import StateOfLife
+from src.domain.liturgy.models import LiturgicalCalendar
 from src.domain.sources import models as source_models  # noqa: F401
 from src.infrastructure.db.session import enable_pgvector, get_engine
-from src.domain.base import Base
 
 # ==============================================================================
 # PERMISSIONS MATRIX
@@ -104,30 +102,61 @@ PERMISSIONS: list[tuple[str, str, str]] = [
 ROLE_PERMISSIONS: dict[str, list[tuple[str, str]]] = {
     SystemRole.SUPER_ADMIN: [(r, a) for r, a, _ in PERMISSIONS],  # All permissions
     SystemRole.ADMIN: [
-        ("persons", "read"), ("persons", "create"), ("persons", "update"),
-        ("persons", "delete"), ("persons", "publish"), ("persons", "restore"),
-        ("sources", "read"), ("sources", "create"), ("sources", "update"), ("sources", "delete"),
-        ("geography", "read"), ("geography", "create"), ("geography", "update"), ("geography", "delete"),
-        ("orders", "read"), ("orders", "create"), ("orders", "update"), ("orders", "delete"),
-        ("images", "read"), ("images", "create"), ("images", "update"), ("images", "delete"),
-        ("export", "read"), ("export", "create"),
+        ("persons", "read"),
+        ("persons", "create"),
+        ("persons", "update"),
+        ("persons", "delete"),
+        ("persons", "publish"),
+        ("persons", "restore"),
+        ("sources", "read"),
+        ("sources", "create"),
+        ("sources", "update"),
+        ("sources", "delete"),
+        ("geography", "read"),
+        ("geography", "create"),
+        ("geography", "update"),
+        ("geography", "delete"),
+        ("orders", "read"),
+        ("orders", "create"),
+        ("orders", "update"),
+        ("orders", "delete"),
+        ("images", "read"),
+        ("images", "create"),
+        ("images", "update"),
+        ("images", "delete"),
+        ("export", "read"),
+        ("export", "create"),
         ("import", "create"),
         ("users", "read"),
         ("audit", "read"),
-        ("translations", "read"), ("translations", "create"), ("translations", "update"),
-        ("calendar", "read"), ("calendar", "create"), ("calendar", "update"), ("calendar", "delete"),
+        ("translations", "read"),
+        ("translations", "create"),
+        ("translations", "update"),
+        ("calendar", "read"),
+        ("calendar", "create"),
+        ("calendar", "update"),
+        ("calendar", "delete"),
     ],
     SystemRole.EDITOR: [
-        ("persons", "read"), ("persons", "create"), ("persons", "update"),
-        ("sources", "read"), ("sources", "create"), ("sources", "update"),
-        ("geography", "read"), ("geography", "create"),
+        ("persons", "read"),
+        ("persons", "create"),
+        ("persons", "update"),
+        ("sources", "read"),
+        ("sources", "create"),
+        ("sources", "update"),
+        ("geography", "read"),
+        ("geography", "create"),
         ("orders", "read"),
-        ("images", "read"), ("images", "create"), ("images", "update"),
-        ("export", "read"), ("export", "create"),
+        ("images", "read"),
+        ("images", "create"),
+        ("images", "update"),
+        ("export", "read"),
+        ("export", "create"),
         ("calendar", "read"),
     ],
     SystemRole.REVIEWER: [
-        ("persons", "read"), ("persons", "update"),
+        ("persons", "read"),
+        ("persons", "update"),
         ("sources", "read"),
         ("geography", "read"),
         ("images", "read"),
@@ -136,7 +165,9 @@ ROLE_PERMISSIONS: dict[str, list[tuple[str, str]]] = {
     ],
     SystemRole.TRANSLATOR: [
         ("persons", "read"),
-        ("translations", "read"), ("translations", "create"), ("translations", "update"),
+        ("translations", "read"),
+        ("translations", "create"),
+        ("translations", "update"),
         ("geography", "read"),
         ("calendar", "read"),
     ],
@@ -239,7 +270,7 @@ async def seed_roles(
     """Create all system roles with their permissions."""
     logger.info("Seeding roles...")
     role_map: dict[str, Role] = {}
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     for role_name, (display_name, description) in ROLE_METADATA.items():
         result = await session.execute(select(Role).where(Role.name == role_name))
@@ -290,7 +321,7 @@ async def seed_admin_user(
 ) -> User:
     """Create the initial Super Admin user."""
     logger.info("Seeding admin user...")
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     result = await session.execute(
         select(User).where(User.email == settings.INITIAL_ADMIN_EMAIL.lower())
@@ -299,9 +330,7 @@ async def seed_admin_user(
     if user is None:
         user = User(
             email=settings.INITIAL_ADMIN_EMAIL.lower(),
-            hashed_password=password_hasher.hash(
-                settings.INITIAL_ADMIN_PASSWORD or "Admin123!"
-            ),
+            hashed_password=password_hasher.hash(settings.INITIAL_ADMIN_PASSWORD or "Admin123!"),
             full_name=settings.INITIAL_ADMIN_FULL_NAME,
             status=UserStatus.ACTIVE,
             is_verified=True,
@@ -336,9 +365,7 @@ async def seed_states_of_life(session: AsyncSession) -> None:
     """Create reference states of life."""
     logger.info("Seeding states of life...")
     for name_pl, name_en, name_la in STATES_OF_LIFE:
-        result = await session.execute(
-            select(StateOfLife).where(StateOfLife.name_pl == name_pl)
-        )
+        result = await session.execute(select(StateOfLife).where(StateOfLife.name_pl == name_pl))
         sol = result.scalar_one_or_none()
         if sol is None:
             session.add(

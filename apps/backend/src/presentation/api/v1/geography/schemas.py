@@ -6,10 +6,10 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, Field
 
-from src.domain.geography.models import ChurchType, OrderCharism
-
+from src.domain.geography.models import ChurchType
 
 # ==============================================================================
 # COUNTRY SCHEMAS

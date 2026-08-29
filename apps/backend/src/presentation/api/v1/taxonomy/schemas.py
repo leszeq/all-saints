@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict, Field
 
+from pydantic import BaseModel, ConfigDict, Field
 
 # ==============================================================================
 # CATEGORY SCHEMAS

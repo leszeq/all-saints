@@ -15,7 +15,6 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Boolean,
-    Date,
     ForeignKey,
     Index,
     Integer,
@@ -26,16 +25,14 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
-from sqlalchemy.orm import Mapped, MappedColumn, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.domain.base import Base, BaseModel
 
 if TYPE_CHECKING:
     from src.domain.geography.models import Country, Place, ReligiousOrder
     from src.domain.hagiography.embedding_model import PersonEmbedding
-    from src.domain.identity.models import User
-    from src.domain.sources.models import Image, Bibliography
-    from src.domain.liturgy.models import Feast
+    from src.domain.sources.models import Image
 
 
 # ==============================================================================
@@ -46,11 +43,11 @@ if TYPE_CHECKING:
 class PersonType(StrEnum):
     """Canonical status in the Church's hagiographic catalogue."""
 
-    SAINT = "saint"                         # Kanonizowany
-    BLESSED = "blessed"                     # Błogosławiony
-    VENERABLE = "venerable"                 # Czcigodny
-    SERVANT_OF_GOD = "servant_of_god"       # Sługa Boży
-    CANDIDATE = "candidate"                 # Wewnętrzny kandydat redakcyjny, przed otwarciem causa
+    SAINT = "saint"  # Kanonizowany
+    BLESSED = "blessed"  # Błogosławiony
+    VENERABLE = "venerable"  # Czcigodny
+    SERVANT_OF_GOD = "servant_of_god"  # Sługa Boży
+    CANDIDATE = "candidate"  # Wewnętrzny kandydat redakcyjny, przed otwarciem causa
 
 
 class Gender(StrEnum):
@@ -80,25 +77,25 @@ class PersonSort(StrEnum):
 class LiturgicalColor(StrEnum):
     """Liturgical colour for the feast day."""
 
-    WHITE = "white"       # Biały
-    RED = "red"           # Czerwony
-    GREEN = "green"       # Zielony
-    VIOLET = "violet"     # Fioletowy
-    ROSE = "rose"         # Różowy
-    BLACK = "black"       # Czarny (rare)
-    GOLD = "gold"         # Złoty
+    WHITE = "white"  # Biały
+    RED = "red"  # Czerwony
+    GREEN = "green"  # Zielony
+    VIOLET = "violet"  # Fioletowy
+    ROSE = "rose"  # Różowy
+    BLACK = "black"  # Czarny (rare)
+    GOLD = "gold"  # Złoty
 
 
 class Era(StrEnum):
     """Historical epoch."""
 
-    APOSTOLIC = "apostolic"           # I w.
-    EARLY_CHURCH = "early_church"     # II–V w.
-    LATE_ANTIQUITY = "late_antiquity" # V–VII w.
-    MEDIEVAL = "medieval"             # VIII–XV w.
-    EARLY_MODERN = "early_modern"     # XVI–XVIII w.
-    MODERN = "modern"                 # XIX–XX w.
-    CONTEMPORARY = "contemporary"     # XXI w.
+    APOSTOLIC = "apostolic"  # I w.
+    EARLY_CHURCH = "early_church"  # II–V w.
+    LATE_ANTIQUITY = "late_antiquity"  # V–VII w.
+    MEDIEVAL = "medieval"  # VIII–XV w.
+    EARLY_MODERN = "early_modern"  # XVI–XVIII w.
+    MODERN = "modern"  # XIX–XX w.
+    CONTEMPORARY = "contemporary"  # XXI w.
     UNKNOWN = "unknown"
 
 
@@ -106,9 +103,9 @@ class EraPeriod(StrEnum):
     """Public timeline groups spanning one or more historical eras."""
 
     EARLY_WITNESSES = "early_witnesses"  # I–V w.
-    MEDIEVAL = "medieval"                # VI–XV w.
-    RENEWAL = "renewal"                  # XVI–XVIII w.
-    MODERN = "modern"                    # XIX–XXI w.
+    MEDIEVAL = "medieval"  # VI–XV w.
+    RENEWAL = "renewal"  # XVI–XVIII w.
+    MODERN = "modern"  # XIX–XXI w.
 
 
 class PatronageGroup(StrEnum):
@@ -203,12 +200,10 @@ class Category(BaseModel, Base):
         Integer, nullable=False, default=0, server_default=text("0")
     )
 
-    parent: Mapped["Category | None"] = relationship(
+    parent: Mapped[Category | None] = relationship(
         "Category", remote_side="Category.id", back_populates="children"
     )
-    children: Mapped[list["Category"]] = relationship(
-        "Category", back_populates="parent"
-    )
+    children: Mapped[list[Category]] = relationship("Category", back_populates="parent")
 
 
 class Tag(BaseModel, Base):
@@ -334,9 +329,7 @@ class Person(BaseModel, Base):
         default=Gender.UNKNOWN,
         server_default=text("'unknown'"),
     )
-    era: Mapped[str | None] = mapped_column(
-        String(30), nullable=True, comment="Historical epoch"
-    )
+    era: Mapped[str | None] = mapped_column(String(30), nullable=True, comment="Historical epoch")
     century: Mapped[int | None] = mapped_column(
         SmallInteger,
         nullable=True,
@@ -434,9 +427,7 @@ class Person(BaseModel, Base):
         nullable=True,
         comment="AI-generated biography summary",
     )
-    ai_tags: Mapped[list | None] = mapped_column(
-        JSONB, nullable=True, comment="AI-generated tags"
-    )
+    ai_tags: Mapped[list | None] = mapped_column(JSONB, nullable=True, comment="AI-generated tags")
 
     # ── Metadata ───────────────────────────────────────────────────────────────
     is_featured: Mapped[bool] = mapped_column(
@@ -455,83 +446,69 @@ class Person(BaseModel, Base):
     )
 
     # ── Relationships ──────────────────────────────────────────────────────────
-    birth_place: Mapped["Place | None"] = relationship(
-        "Place", foreign_keys=[birth_place_id]
-    )
-    death_place: Mapped["Place | None"] = relationship(
-        "Place", foreign_keys=[death_place_id]
-    )
-    birth_country: Mapped["Country | None"] = relationship(
-        "Country", foreign_keys=[birth_country_id]
-    )
-    nationality: Mapped["Country | None"] = relationship(
-        "Country", foreign_keys=[nationality_id]
-    )
-    state_of_life: Mapped["StateOfLife | None"] = relationship("StateOfLife")
+    birth_place: Mapped[Place | None] = relationship("Place", foreign_keys=[birth_place_id])
+    death_place: Mapped[Place | None] = relationship("Place", foreign_keys=[death_place_id])
+    birth_country: Mapped[Country | None] = relationship("Country", foreign_keys=[birth_country_id])
+    nationality: Mapped[Country | None] = relationship("Country", foreign_keys=[nationality_id])
+    state_of_life: Mapped[StateOfLife | None] = relationship("StateOfLife")
 
-    canonization: Mapped["Canonization | None"] = relationship(
+    canonization: Mapped[Canonization | None] = relationship(
         "Canonization", back_populates="person", uselist=False
     )
-    beatification: Mapped["Beatification | None"] = relationship(
+    beatification: Mapped[Beatification | None] = relationship(
         "Beatification", back_populates="person", uselist=False
     )
-    miracles: Mapped[list["Miracle"]] = relationship(
-        "Miracle", back_populates="person"
-    )
-    patronages: Mapped[list["Patronage"]] = relationship(
-        "Patronage", back_populates="person"
-    )
-    translations: Mapped[list["PersonTranslation"]] = relationship(
+    miracles: Mapped[list[Miracle]] = relationship("Miracle", back_populates="person")
+    patronages: Mapped[list[Patronage]] = relationship("Patronage", back_populates="person")
+    translations: Mapped[list[PersonTranslation]] = relationship(
         "PersonTranslation", back_populates="person", cascade="all, delete-orphan"
     )
-    versions: Mapped[list["PersonVersion"]] = relationship(
+    versions: Mapped[list[PersonVersion]] = relationship(
         "PersonVersion", back_populates="person", order_by="PersonVersion.version_number"
     )
-    occupations: Mapped[list["PersonOccupation"]] = relationship(
+    occupations: Mapped[list[PersonOccupation]] = relationship(
         "PersonOccupation", back_populates="person"
     )
-    orders: Mapped[list["PersonOrder"]] = relationship(
-        "PersonOrder", back_populates="person"
-    )
-    categories: Mapped[list["PersonCategory"]] = relationship(
+    orders: Mapped[list[PersonOrder]] = relationship("PersonOrder", back_populates="person")
+    categories: Mapped[list[PersonCategory]] = relationship(
         "PersonCategory", back_populates="person"
     )
-    tags: Mapped[list["PersonTag"]] = relationship("PersonTag", back_populates="person")
-    images: Mapped[list["Image"]] = relationship(
+    tags: Mapped[list[PersonTag]] = relationship("PersonTag", back_populates="person")
+    images: Mapped[list[Image]] = relationship(
         "Image", back_populates="person", cascade="all, delete-orphan"
     )
 
     # AI embedding (one-to-one)
-    embedding: Mapped["PersonEmbedding | None"] = relationship(
+    embedding: Mapped[PersonEmbedding | None] = relationship(
         "PersonEmbedding", back_populates="person", uselist=False, cascade="all, delete-orphan"
     )
 
     # Relationships between persons
-    relationships_as_a: Mapped[list["PersonRelationship"]] = relationship(
+    relationships_as_a: Mapped[list[PersonRelationship]] = relationship(
         "PersonRelationship",
         foreign_keys="PersonRelationship.person_a_id",
         back_populates="person_a",
     )
-    relationships_as_b: Mapped[list["PersonRelationship"]] = relationship(
+    relationships_as_b: Mapped[list[PersonRelationship]] = relationship(
         "PersonRelationship",
         foreign_keys="PersonRelationship.person_b_id",
         back_populates="person_b",
     )
 
     @property
-    def all_relationships(self) -> list["PersonRelationship"]:
+    def all_relationships(self) -> list[PersonRelationship]:
         """All relationships regardless of direction."""
         return self.relationships_as_a + self.relationships_as_b
 
     @property
-    def avatar(self) -> "Image | None":
+    def avatar(self) -> Image | None:
         """Return the active primary image used as the person's avatar."""
         active_primary = (
-            image
-            for image in self.images
-            if image.is_primary and image.deleted_at is None
+            image for image in self.images if image.is_primary and image.deleted_at is None
         )
-        return min(active_primary, key=lambda image: (image.sort_order, image.created_at), default=None)
+        return min(
+            active_primary, key=lambda image: (image.sort_order, image.created_at), default=None
+        )
 
 
 # ==============================================================================
@@ -544,9 +521,7 @@ class PersonTranslation(BaseModel, Base):
 
     __tablename__ = "person_translations"
     __table_args__ = (
-        UniqueConstraint(
-            "person_id", "language_code", name="uq_person_translation_lang"
-        ),
+        UniqueConstraint("person_id", "language_code", name="uq_person_translation_lang"),
         Index("ix_person_translations_person_id", "person_id"),
         {"comment": "Multilingual content for persons"},
     )
@@ -570,7 +545,7 @@ class PersonTranslation(BaseModel, Base):
         nullable=True,
     )
 
-    person: Mapped["Person"] = relationship("Person", back_populates="translations")
+    person: Mapped[Person] = relationship("Person", back_populates="translations")
 
 
 # ==============================================================================
@@ -616,7 +591,7 @@ class Pope(BaseModel, Base):
     )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    person: Mapped["Person | None"] = relationship("Person")
+    person: Mapped[Person | None] = relationship("Person")
 
 
 # ==============================================================================
@@ -656,9 +631,9 @@ class Canonization(BaseModel, Base):
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    person: Mapped["Person"] = relationship("Person", back_populates="canonization")
-    pope: Mapped["Pope | None"] = relationship("Pope")
-    place: Mapped["Place | None"] = relationship("Place")
+    person: Mapped[Person] = relationship("Person", back_populates="canonization")
+    pope: Mapped[Pope | None] = relationship("Pope")
+    place: Mapped[Place | None] = relationship("Place")
 
 
 # ==============================================================================
@@ -695,9 +670,9 @@ class Beatification(BaseModel, Base):
     decree_number: Mapped[str | None] = mapped_column(String(200), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    person: Mapped["Person"] = relationship("Person", back_populates="beatification")
-    pope: Mapped["Pope | None"] = relationship("Pope")
-    place: Mapped["Place | None"] = relationship("Place")
+    person: Mapped[Person] = relationship("Person", back_populates="beatification")
+    pope: Mapped[Pope | None] = relationship("Pope")
+    place: Mapped[Place | None] = relationship("Place")
 
 
 # ==============================================================================
@@ -742,8 +717,8 @@ class Miracle(BaseModel, Base):
     )
     source_reference: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    person: Mapped["Person"] = relationship("Person", back_populates="miracles")
-    place: Mapped["Place | None"] = relationship("Place")
+    person: Mapped[Person] = relationship("Person", back_populates="miracles")
+    place: Mapped[Place | None] = relationship("Place")
 
 
 # ==============================================================================
@@ -808,7 +783,7 @@ class Patronage(BaseModel, Base):
         comment="True if confirmed by official Church declaration",
     )
 
-    person: Mapped["Person"] = relationship("Person", back_populates="patronages")
+    person: Mapped[Person] = relationship("Person", back_populates="patronages")
 
 
 # ==============================================================================
@@ -851,7 +826,7 @@ class Relic(BaseModel, Base):
     )
     authentication_document: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    person: Mapped["Person"] = relationship("Person")
+    person: Mapped[Person] = relationship("Person")
 
 
 # ==============================================================================
@@ -881,7 +856,7 @@ class PersonQuote(BaseModel, Base):
         comment="True = said by the person; False = said about them",
     )
 
-    person: Mapped["Person"] = relationship("Person")
+    person: Mapped[Person] = relationship("Person")
 
 
 # ==============================================================================
@@ -923,10 +898,10 @@ class PersonRelationship(BaseModel, Base):
         comment="True = the relationship is mutual",
     )
 
-    person_a: Mapped["Person"] = relationship(
+    person_a: Mapped[Person] = relationship(
         "Person", foreign_keys=[person_a_id], back_populates="relationships_as_a"
     )
-    person_b: Mapped["Person"] = relationship(
+    person_b: Mapped[Person] = relationship(
         "Person", foreign_keys=[person_b_id], back_populates="relationships_as_b"
     )
 
@@ -945,9 +920,7 @@ class PersonVersion(Base):
 
     __tablename__ = "person_versions"
     __table_args__ = (
-        UniqueConstraint(
-            "person_id", "version_number", name="uq_person_version_number"
-        ),
+        UniqueConstraint("person_id", "version_number", name="uq_person_version_number"),
         Index("ix_person_versions_person_id", "person_id"),
         {"comment": "Versioned snapshots of person records"},
     )
@@ -975,7 +948,7 @@ class PersonVersion(Base):
     changed_at: Mapped[str | None] = mapped_column(String(50), nullable=True)
     change_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    person: Mapped["Person"] = relationship("Person", back_populates="versions")
+    person: Mapped[Person] = relationship("Person", back_populates="versions")
 
 
 # ==============================================================================
@@ -999,8 +972,8 @@ class PersonOccupation(Base):
         primary_key=True,
     )
 
-    person: Mapped["Person"] = relationship("Person", back_populates="occupations")
-    occupation: Mapped["Occupation"] = relationship("Occupation")
+    person: Mapped[Person] = relationship("Person", back_populates="occupations")
+    occupation: Mapped[Occupation] = relationship("Occupation")
 
 
 class PersonOrder(Base):
@@ -1031,10 +1004,8 @@ class PersonOrder(Base):
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    person: Mapped["Person"] = relationship("Person", back_populates="orders")
-    order: Mapped["ReligiousOrder"] = relationship(
-        "ReligiousOrder", back_populates="memberships"
-    )
+    person: Mapped[Person] = relationship("Person", back_populates="orders")
+    order: Mapped[ReligiousOrder] = relationship("ReligiousOrder", back_populates="memberships")
 
 
 class PersonCategory(Base):
@@ -1053,8 +1024,8 @@ class PersonCategory(Base):
         primary_key=True,
     )
 
-    person: Mapped["Person"] = relationship("Person", back_populates="categories")
-    category: Mapped["Category"] = relationship("Category")
+    person: Mapped[Person] = relationship("Person", back_populates="categories")
+    category: Mapped[Category] = relationship("Category")
 
 
 class PersonTag(Base):
@@ -1073,5 +1044,5 @@ class PersonTag(Base):
         primary_key=True,
     )
 
-    person: Mapped["Person"] = relationship("Person", back_populates="tags")
-    tag: Mapped["Tag"] = relationship("Tag")
+    person: Mapped[Person] = relationship("Person", back_populates="tags")
+    tag: Mapped[Tag] = relationship("Tag")

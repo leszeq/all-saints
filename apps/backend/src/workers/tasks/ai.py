@@ -31,16 +31,13 @@ T = TypeVar("T")
 
 def _run_async(coro: Coroutine[Any, Any, T]) -> T:
     """Run async code in Celery worker (sync context)."""
+    loop = asyncio.new_event_loop()
     try:
-        loop = asyncio.get_event_loop()
-        if loop.is_closed():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-        return loop.run_until_complete(coro)
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         return loop.run_until_complete(coro)
+    finally:
+        loop.close()
+        asyncio.set_event_loop(None)
 
 
 # ==============================================================================
@@ -158,9 +155,7 @@ def batch_generate_embeddings(
                     .where(PersonEmbedding.id.is_(None))
                 )
 
-            count_result = await db.execute(
-                select(func.count()).select_from(base_stmt.subquery())
-            )
+            count_result = await db.execute(select(func.count()).select_from(base_stmt.subquery()))
             total = int(count_result.scalar_one())
 
             logger.info(f"Found {total} persons to embed")

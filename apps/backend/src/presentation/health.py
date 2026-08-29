@@ -7,7 +7,7 @@ No authentication required.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
@@ -37,7 +37,7 @@ async def health_liveness() -> dict:
         "app": settings.APP_NAME,
         "version": settings.APP_VERSION,
         "env": settings.APP_ENV,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
 
@@ -68,7 +68,7 @@ async def health_readiness() -> JSONResponse:
         status_code=http_status,
         content={
             "status": "ready" if all_healthy else "unavailable",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "checks": {
                 "database": "ok" if db_ok else "error",
                 "redis": "ok" if redis_ok else "error",

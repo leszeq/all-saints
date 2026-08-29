@@ -8,7 +8,7 @@ Covers: User, Role, Permission, UserRole, RolePermission,
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
@@ -24,7 +24,7 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.dialects.postgresql import INET, JSONB, UUID
-from sqlalchemy.orm import Mapped, MappedColumn, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.domain.base import Base, BaseModel
 
@@ -107,7 +107,7 @@ class Permission(BaseModel, Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationships
-    roles: Mapped[list["RolePermission"]] = relationship(
+    roles: Mapped[list[RolePermission]] = relationship(
         "RolePermission", back_populates="permission", lazy="selectin"
     )
 
@@ -154,12 +154,10 @@ class Role(BaseModel, Base):
     )
 
     # Relationships
-    permissions: Mapped[list["RolePermission"]] = relationship(
+    permissions: Mapped[list[RolePermission]] = relationship(
         "RolePermission", back_populates="role", lazy="selectin"
     )
-    users: Mapped[list["UserRole"]] = relationship(
-        "UserRole", back_populates="role", lazy="selectin"
-    )
+    users: Mapped[list[UserRole]] = relationship("UserRole", back_populates="role", lazy="selectin")
 
     def has_permission(self, resource: str, action: str) -> bool:
         """Check if this role includes a specific permission."""
@@ -197,10 +195,8 @@ class RolePermission(Base):
     )
 
     # Relationships
-    role: Mapped["Role"] = relationship("Role", back_populates="permissions")
-    permission: Mapped["Permission"] = relationship(
-        "Permission", back_populates="roles"
-    )
+    role: Mapped[Role] = relationship("Role", back_populates="permissions")
+    permission: Mapped[Permission] = relationship("Permission", back_populates="roles")
 
 
 # ==============================================================================
@@ -266,27 +262,23 @@ class User(BaseModel, Base):
     password_changed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    last_login_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     failed_login_attempts: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, server_default=text("0")
     )
-    locked_until: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Relationships
-    roles: Mapped[list["UserRole"]] = relationship(
+    roles: Mapped[list[UserRole]] = relationship(
         "UserRole",
         foreign_keys="UserRole.user_id",
         back_populates="user",
         lazy="selectin",
     )
-    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
+    refresh_tokens: Mapped[list[RefreshToken]] = relationship(
         "RefreshToken", back_populates="user", cascade="all, delete-orphan"
     )
-    audit_logs: Mapped[list["AuditLog"]] = relationship(
+    audit_logs: Mapped[list[AuditLog]] = relationship(
         "AuditLog", back_populates="user", lazy="dynamic"
     )
 
@@ -298,11 +290,9 @@ class User(BaseModel, Base):
     @property
     def is_locked(self) -> bool:
         """True if account is temporarily locked due to failed login attempts."""
-        from datetime import datetime, timezone
-        return (
-            self.locked_until is not None
-            and self.locked_until > datetime.now(timezone.utc)
-        )
+        from datetime import datetime
+
+        return self.locked_until is not None and self.locked_until > datetime.now(UTC)
 
     def get_permissions(self) -> set[str]:
         """Return all permission strings for this user (resource:action)."""
@@ -344,9 +334,7 @@ class UserRole(Base):
         ForeignKey("roles.id", ondelete="CASCADE"),
         primary_key=True,
     )
-    assigned_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    assigned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     assigned_by_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
@@ -354,8 +342,8 @@ class UserRole(Base):
     )
 
     # Relationships
-    user: Mapped["User"] = relationship("User", foreign_keys=[user_id], back_populates="roles")
-    role: Mapped["Role"] = relationship("Role", back_populates="users")
+    user: Mapped[User] = relationship("User", foreign_keys=[user_id], back_populates="roles")
+    role: Mapped[Role] = relationship("Role", back_populates="users")
 
 
 # ==============================================================================
@@ -389,28 +377,20 @@ class RefreshToken(BaseModel, Base):
         unique=True,
         comment="SHA-256 hash of the refresh token",
     )
-    expires_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    revoked_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    ip_address: Mapped[str | None] = mapped_column(
-        INET, nullable=True, comment="Client IP address"
-    )
+    ip_address: Mapped[str | None] = mapped_column(INET, nullable=True, comment="Client IP address")
 
     # Relationships
-    user: Mapped["User"] = relationship("User", back_populates="refresh_tokens")
+    user: Mapped[User] = relationship("User", back_populates="refresh_tokens")
 
     @property
     def is_valid(self) -> bool:
         """True if token is not revoked and not expired."""
-        from datetime import datetime, timezone
-        return (
-            self.revoked_at is None
-            and self.expires_at > datetime.now(timezone.utc)
-        )
+        from datetime import datetime
+
+        return self.revoked_at is None and self.expires_at > datetime.now(UTC)
 
 
 # ==============================================================================
@@ -509,4 +489,4 @@ class AuditLog(Base):
     )
 
     # Relationships
-    user: Mapped["User | None"] = relationship("User", back_populates="audit_logs")
+    user: Mapped[User | None] = relationship("User", back_populates="audit_logs")

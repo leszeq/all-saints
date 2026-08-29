@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 from loguru import logger
 
 if TYPE_CHECKING:
-    from loguru import Message
+    pass
 
 
 # ==============================================================================
@@ -44,9 +44,7 @@ class InterceptHandler(logging.Handler):
             frame = frame.f_back  # type: ignore[assignment]
             depth += 1
 
-        logger.opt(depth=depth, exception=record.exc_info).log(
-            level, record.getMessage()
-        )
+        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
 
 
 # ==============================================================================
