@@ -27,7 +27,7 @@ async def test_health_info_endpoint(async_client: AsyncClient):
 async def test_login_invalid_credentials(async_client: AsyncClient):
     response = await async_client.post(
         "/api/v1/auth/login",
-        json={"email": "nonexistent@all-saints.local", "password": "WrongPassword123!"},
+        json={"email": "nonexistent@example.org", "password": "WrongPassword123!"},
     )
     assert response.status_code == 401
     data = response.json()

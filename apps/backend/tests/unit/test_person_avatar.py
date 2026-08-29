@@ -23,11 +23,14 @@ from src.presentation.api.v1.persons.schemas import (
 )
 
 
-def test_avatar_migration_is_current_head() -> None:
+def test_avatar_migration_is_in_single_head_history() -> None:
     config = Config(str(Path(__file__).parents[2] / "alembic.ini"))
     scripts = ScriptDirectory.from_config(config)
 
-    assert scripts.get_current_head() == "0004_unique_primary_person_image"
+    revisions = {revision.revision for revision in scripts.walk_revisions()}
+    assert scripts.get_current_head() is not None
+    assert len(scripts.get_heads()) == 1
+    assert "0004_unique_primary_person_image" in revisions
 
 
 def test_avatar_input_accepts_relative_and_https_urls() -> None:

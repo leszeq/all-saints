@@ -66,6 +66,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-saints_user}:${POSTGRES_PASSWORD:-saints_dev_password}@db:5432/${POSTGRES_DB:-all_saints}
       DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-saints_user}:${POSTGRES_PASSWORD:-saints_dev_password}@db:5432/${POSTGRES_DB:-all_saints}
+      TEST_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-saints_user}:${POSTGRES_PASSWORD:-saints_dev_password}@db:5432/all_saints_test
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2

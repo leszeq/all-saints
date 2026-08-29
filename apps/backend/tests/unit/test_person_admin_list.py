@@ -64,6 +64,7 @@ async def test_restore_records_the_responsible_editor() -> None:
         deleted_at=datetime.now(UTC),
         version=2,
         updated_at=datetime.now(UTC),
+        orders=[],
         to_dict=lambda: {"id": str(person_id), "version": 3},
     )
     result = MagicMock()
