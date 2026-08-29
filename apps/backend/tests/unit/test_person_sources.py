@@ -68,3 +68,12 @@ def test_source_statistics_are_public_and_quality_report_is_protected() -> None:
 
     assert "security" not in source_stats
     assert quality_report["security"] == [{"HTTPBearer": []}]
+
+
+def test_editorial_media_catalogues_require_authentication() -> None:
+    schema = app.openapi()
+    images = schema["paths"]["/api/v1/sources/images"]["get"]
+    documents = schema["paths"]["/api/v1/sources/documents"]["get"]
+
+    assert images["security"] == [{"HTTPBearer": []}]
+    assert documents["security"] == [{"HTTPBearer": []}]

@@ -494,6 +494,7 @@ async def list_images(
     license: ImageLicense | None = Query(None),
     limit: Annotated[int, Query(ge=1, le=500)] = 100,
     db: AsyncSession = Depends(get_db_session),
+    _user: User = Depends(require_permission("images", "read")),
 ) -> list[ImageSchema]:
     query = select(Image).where(Image.deleted_at.is_(None))
     if person_id:
@@ -537,6 +538,7 @@ async def create_image(
 async def list_documents(
     person_id: uuid.UUID | None = None,
     db: AsyncSession = Depends(get_db_session),
+    _user: User = Depends(require_permission("sources", "read")),
 ) -> list[DocumentSchema]:
     query = select(Document).where(Document.deleted_at.is_(None))
     if person_id:
