@@ -137,10 +137,10 @@ async def get_current_user(
         raise credentials_exception
 
     # Verify token
-    from jose import JWTError
+    from jwt import InvalidTokenError
     try:
         payload = jwt_service.verify_access_token(token)
-    except JWTError:
+    except InvalidTokenError:
         raise credentials_exception from None
 
     # Load user

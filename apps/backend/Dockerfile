@@ -45,21 +45,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     shared-mime-info \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Poetry
-RUN curl -sSL https://install.python-poetry.org | python3 -
+# Install a patched pip and the pinned Poetry release.
+RUN python -m pip install --no-cache-dir pip==26.2.1 && \
+    curl -sSL https://install.python-poetry.org | python3 -
 
 WORKDIR /app
 
 # ── Dependencies ──────────────────────────────────────────────────────────────
 FROM base AS dependencies
 
-COPY pyproject.toml ./
+COPY pyproject.toml poetry.lock ./
 RUN poetry install --only=main --no-root
 
 # ── Development ───────────────────────────────────────────────────────────────
 FROM base AS development
 
-COPY pyproject.toml ./
+COPY pyproject.toml poetry.lock ./
 RUN poetry install --no-root
 
 COPY . .

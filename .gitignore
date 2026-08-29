@@ -51,7 +51,6 @@ venv.bak/
 .python-version
 
 # Poetry
-poetry.lock
 
 # Node.js
 node_modules/

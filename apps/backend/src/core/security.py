@@ -16,7 +16,8 @@ from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 from uuid import UUID
 
-from jose import JWTError, jwt
+import jwt
+from jwt import InvalidTokenError
 from loguru import logger
 from passlib.context import CryptContext
 
@@ -203,7 +204,7 @@ class JWTService:
             Parsed TokenPayload.
 
         Raises:
-            JWTError: If token is invalid or expired.
+            InvalidTokenError: If token is invalid or expired.
         """
         try:
             payload_data = jwt.decode(
@@ -214,11 +215,11 @@ class JWTService:
             payload = TokenPayload(payload_data)
 
             if not payload.is_access_token:
-                raise JWTError("Not an access token")
+                raise InvalidTokenError("Not an access token")
 
             return payload
 
-        except JWTError as exc:
+        except InvalidTokenError as exc:
             logger.warning(f"JWT verification failed: {exc}")
             raise
 
