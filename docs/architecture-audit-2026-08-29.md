@@ -28,6 +28,46 @@ Nie znaleziono aktywnego P0 (potwierdzonej utraty danych, przejęcia uwierzyteln
 lub niedziałającej aplikacji). Zidentyfikowane P1 muszą jednak zostać zamknięte przed
 udostępnieniem systemu w Internecie.
 
+## Status po refaktoryzacji
+
+Poniższy status jest aktualizacją wykonawczą do historycznego pomiaru bazowego.
+Nie zmienia pierwotnych findings ani ocen, dzięki czemu dokument zachowuje wartość
+porównawczą.
+
+Stan na 2026-08-29 po commitach `5f91884`–`eff24d5`:
+
+| Kontrola | Wynik po zmianach |
+| --- | --- |
+| Backend pytest | **129 passed**, 0 failures, 0 errors |
+| Backend coverage | **80.16%**, wymagany próg 80% spełniony |
+| Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
+| `alembic current` / heads | `0012_align_domain_indexes`, jeden head |
+| Nowa pusta baza | upgrade 0001 → 0012 oraz downgrade/re-upgrade: PASS |
+| `alembic check` | PASS na bazie developerskiej i świeżej bazie |
+| `pip-audit` | 0 znanych podatności |
+| Pydantic / Alembic / Ruff config | zdeprecjonowane konfiguracje usunięte |
+| Pozostałe ostrzeżenia testów | Passlib używa `crypt`, usuwanego w Pythonie 3.13 |
+
+Zamknięte zostały wszystkie P1 z listy Top 10:
+
+- publikacja jest dostępna wyłącznie przez workflow i osobne uprawnienie;
+- katalogi prywatnych mediów wymagają autoryzacji;
+- refresh tokeny są rotowane i unieważniane, a login ma rate limiting;
+- zależności backendu są zablokowane lockfile'em i nie mają znanych podatności;
+- edycja osób ma optimistic locking;
+- wyszukiwanie korzysta z utrzymywanego, ważonego PostgreSQL FTS;
+- integracje działają na PostgreSQL, a pełny suite przekracza próg coverage;
+- modele i migracje są zgodne, w tym indeksy częściowe i server defaults.
+
+Moduł AI otrzymał dodatkowe testy providerów oraz integracje z pgvector. Przy okazji
+naprawiono obsługę embeddingów zwracanych jako tablice NumPy i licznik rekordów z
+tagami AI, który wcześniej traktował JSON `null` jak faktyczną listę tagów.
+
+Najważniejsze otwarte ryzyka są teraz klasy P2/P3: brak automatycznego CI/CD i
+produkcyjnego obrazu/deployu, brak próby backup/restore oraz alertów, niejednolita
+polityka transakcji, duże serwisy/routery, brak wspólnego kontraktu błędów i brak
+testów E2E. Przed publicznym wdrożeniem nadal należy wykonać te kroki operacyjne.
+
 ## Repository discovery
 
 ```text
