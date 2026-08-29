@@ -14,19 +14,19 @@ Endpoints:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.core.security import is_strong_password, password_hasher
-from src.domain.identity.models import Role, User, UserRole, UserStatus
+from src.domain.identity.models import User, UserRole, UserStatus
 from src.infrastructure.db.session import get_db_session
-from src.presentation.api.v1.auth.router import get_current_user, require_permission
+from src.presentation.api.v1.auth.router import require_permission
 
 router = APIRouter()
 
@@ -51,6 +51,8 @@ class UpdateUserRequest(BaseModel):
 
 
 class UserListItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     email: str
     full_name: str
@@ -58,9 +60,6 @@ class UserListItem(BaseModel):
     roles: list[str]
     created_at: datetime
     last_login_at: datetime | None
-
-    class Config:
-        from_attributes = True
 
 
 class UserListResponse(BaseModel):
@@ -110,9 +109,7 @@ async def list_users(
 
     # Paginate
     result = await db.execute(
-        query.order_by(User.created_at.desc())
-        .offset((page - 1) * per_page)
-        .limit(per_page)
+        query.order_by(User.created_at.desc()).offset((page - 1) * per_page).limit(per_page)
     )
     users = result.scalars().all()
 
@@ -216,7 +213,9 @@ async def delete_user(
     user = result.scalar_one_or_none()
 
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Użytkownik nie znaleziony")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Użytkownik nie znaleziony"
+        )
 
-    user.deleted_at = datetime.now(timezone.utc)
+    user.deleted_at = datetime.now(UTC)
     await db.commit()

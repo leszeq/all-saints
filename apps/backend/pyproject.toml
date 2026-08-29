@@ -155,6 +155,14 @@ include = '\.pyi?$'
 [tool.ruff]
 target-version = "py312"
 line-length = 100
+exclude = [
+    ".git",
+    ".venv",
+    "alembic/versions",
+    "__pycache__",
+]
+
+[tool.ruff.lint]
 select = [
     "E",  # pycodestyle errors
     "W",  # pycodestyle warnings
@@ -174,14 +182,8 @@ ignore = [
     "ANN101", # missing type annotation for self
     "ANN102", # missing type annotation for cls
 ]
-exclude = [
-    ".git",
-    ".venv",
-    "alembic/versions",
-    "__pycache__",
-]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S", "ANN"]
 "alembic/**/*.py" = ["ANN", "E501"]
 

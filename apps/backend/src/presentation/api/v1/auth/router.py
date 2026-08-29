@@ -19,7 +19,7 @@ from typing import Annotated
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from loguru import logger
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from redis.asyncio import Redis
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -126,6 +126,8 @@ class TokenResponse(BaseModel):
 class UserProfileResponse(BaseModel):
     """Current user profile."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     email: str
     full_name: str
@@ -133,9 +135,6 @@ class UserProfileResponse(BaseModel):
     roles: list[str]
     preferred_language: str
     last_login_at: datetime | None
-
-    class Config:
-        from_attributes = True
 
 
 class ChangePasswordRequest(BaseModel):
