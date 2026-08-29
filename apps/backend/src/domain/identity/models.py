@@ -21,6 +21,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import INET, JSONB, UUID
 from sqlalchemy.orm import Mapped, MappedColumn, mapped_column, relationship
@@ -148,6 +149,7 @@ class Role(BaseModel, Base):
         Boolean,
         nullable=False,
         default=False,
+        server_default=text("false"),
         comment="If True, this role cannot be deleted",
     )
 
@@ -240,6 +242,7 @@ class User(BaseModel, Base):
         String(30),
         nullable=False,
         default=UserStatus.PENDING_VERIFICATION,
+        server_default=text("'pending_verification'"),
     )
 
     # Profile
@@ -249,12 +252,15 @@ class User(BaseModel, Base):
         String(10),
         nullable=False,
         default="pl",
+        server_default=text("'pl'"),
     )
 
     # Security
-    is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_verified: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
     is_two_factor_enabled: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False
+        Boolean, nullable=False, default=False, server_default=text("false")
     )
     two_factor_secret: Mapped[str | None] = mapped_column(String(100), nullable=True)
     password_changed_at: Mapped[datetime | None] = mapped_column(
@@ -264,7 +270,7 @@ class User(BaseModel, Base):
         DateTime(timezone=True), nullable=True
     )
     failed_login_attempts: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=0
+        Integer, nullable=False, default=0, server_default=text("0")
     )
     locked_until: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -433,10 +439,12 @@ class AuditLog(Base):
         UUID(as_uuid=True),
         primary_key=True,
         default=uuid.uuid4,
+        server_default=text("gen_random_uuid()"),
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
+        server_default=text("now()"),
     )
 
     # Who

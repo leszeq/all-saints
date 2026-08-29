@@ -23,6 +23,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, MappedColumn, mapped_column, relationship
@@ -198,7 +199,9 @@ class Category(BaseModel, Base):
         ForeignKey("categories.id", ondelete="SET NULL"),
         nullable=True,
     )
-    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    sort_order: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
 
     parent: Mapped["Category | None"] = relationship(
         "Category", remote_side="Category.id", back_populates="children"
@@ -282,12 +285,14 @@ class Person(BaseModel, Base):
         String(30),
         nullable=False,
         default=PersonType.SAINT,
+        server_default=text("'saint'"),
         comment="PersonType enum: saint/blessed/venerable/servant_of_god/candidate",
     )
     status: Mapped[str] = mapped_column(
         String(20),
         nullable=False,
         default=PublicationStatus.DRAFT,
+        server_default=text("'draft'"),
         comment="Publication status",
     )
 
@@ -327,6 +332,7 @@ class Person(BaseModel, Base):
         String(10),
         nullable=False,
         default=Gender.UNKNOWN,
+        server_default=text("'unknown'"),
     )
     era: Mapped[str | None] = mapped_column(
         String(30), nullable=True, comment="Historical epoch"
@@ -433,7 +439,9 @@ class Person(BaseModel, Base):
     )
 
     # ── Metadata ───────────────────────────────────────────────────────────────
-    is_featured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_featured: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
     sort_name: Mapped[str | None] = mapped_column(
         String(600),
         nullable=True,
@@ -724,12 +732,13 @@ class Miracle(BaseModel, Base):
         String(30),
         nullable=False,
         default=MiracleStatus.REPORTED,
+        server_default=text("'reported'"),
     )
     used_for_beatification: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False
+        Boolean, nullable=False, default=False, server_default=text("false")
     )
     used_for_canonization: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False
+        Boolean, nullable=False, default=False, server_default=text("false")
     )
     source_reference: Mapped[str | None] = mapped_column(Text, nullable=True)
 
@@ -795,6 +804,7 @@ class Patronage(BaseModel, Base):
         Boolean,
         nullable=False,
         default=False,
+        server_default=text("false"),
         comment="True if confirmed by official Church declaration",
     )
 
@@ -837,7 +847,7 @@ class Relic(BaseModel, Base):
         nullable=True,
     )
     is_authenticated: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False
+        Boolean, nullable=False, default=False, server_default=text("false")
     )
     authentication_document: Mapped[str | None] = mapped_column(Text, nullable=True)
 
@@ -867,6 +877,7 @@ class PersonQuote(BaseModel, Base):
         Boolean,
         nullable=False,
         default=True,
+        server_default=text("true"),
         comment="True = said by the person; False = said about them",
     )
 
@@ -908,6 +919,7 @@ class PersonRelationship(BaseModel, Base):
         Boolean,
         nullable=False,
         default=True,
+        server_default=text("true"),
         comment="True = the relationship is mutual",
     )
 
@@ -941,7 +953,10 @@ class PersonVersion(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        server_default=text("gen_random_uuid()"),
     )
     person_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -1005,8 +1020,15 @@ class PersonOrder(Base):
     )
     entry_date: Mapped[str | None] = mapped_column(String(50), nullable=True)
     exit_date: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    is_founder: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    membership_type: Mapped[str] = mapped_column(String(40), nullable=False, default="member")
+    is_founder: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+    membership_type: Mapped[str] = mapped_column(
+        String(40),
+        nullable=False,
+        default="member",
+        server_default=text("'member'"),
+    )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     person: Mapped["Person"] = relationship("Person", back_populates="orders")

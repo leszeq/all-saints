@@ -20,6 +20,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -119,6 +120,7 @@ class Country(BaseModel, Base):
         Boolean,
         nullable=False,
         default=False,
+        server_default=text("false"),
         comment="True for no-longer-existing states (e.g. Byzantine Empire)",
     )
     historical_period: Mapped[str | None] = mapped_column(String(200), nullable=True)
@@ -174,7 +176,9 @@ class Diocese(BaseModel, Base):
 
     name: Mapped[str] = mapped_column(String(400), nullable=False)
     name_la: Mapped[str | None] = mapped_column(String(400), nullable=True)
-    is_archdiocese: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_archdiocese: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
     country_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("countries.id", ondelete="SET NULL"),
@@ -277,7 +281,10 @@ class ReligiousOrder(BaseModel, Base):
     name_local: Mapped[str | None] = mapped_column(String(500), nullable=True)
     abbreviation: Mapped[str | None] = mapped_column(String(20), nullable=True)
     community_type: Mapped[str] = mapped_column(
-        String(40), nullable=False, default=ReligiousCommunityType.RELIGIOUS_ORDER
+        String(40),
+        nullable=False,
+        default=ReligiousCommunityType.RELIGIOUS_ORDER,
+        server_default=text("'religious_order'"),
     )
     spiritual_family: Mapped[str | None] = mapped_column(String(80), nullable=True)
 
@@ -312,10 +319,14 @@ class ReligiousOrder(BaseModel, Base):
     # Papally approved
     papal_approval_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_suppressed: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False
+        Boolean, nullable=False, default=False, server_default=text("false")
     )
-    is_featured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    is_featured: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+    sort_order: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
 
     # Relationships
     founded_place: Mapped["Place | None"] = relationship("Place")
@@ -349,6 +360,7 @@ class Church(BaseModel, Base):
         String(30),
         nullable=False,
         default=ChurchType.PARISH,
+        server_default=text("'parish'"),
     )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
@@ -374,10 +386,10 @@ class Church(BaseModel, Base):
 
     # Flags
     is_pilgrimage_site: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False
+        Boolean, nullable=False, default=False, server_default=text("false")
     )
     is_national_sanctuary: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False
+        Boolean, nullable=False, default=False, server_default=text("false")
     )
 
     # Relationships

@@ -80,9 +80,18 @@ class LiturgicalCalendar(BaseModel, Base):
     )
     name: Mapped[str] = mapped_column(String(300), nullable=False)
     rite: Mapped[str] = mapped_column(
-        String(100), nullable=False, default="roman", comment="Rite name"
+        String(100),
+        nullable=False,
+        default="roman",
+        server_default=text("'roman'"),
+        comment="Rite name",
     )
-    scope: Mapped[str] = mapped_column(String(30), nullable=False, default=CalendarScope.UNIVERSAL)
+    scope: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False,
+        default=CalendarScope.UNIVERSAL,
+        server_default=text("'universal'"),
+    )
     country_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("countries.id", ondelete="SET NULL"),
@@ -96,7 +105,9 @@ class LiturgicalCalendar(BaseModel, Base):
         comment="Religious order if scope=religious",
     )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=text("true")
+    )
 
     feasts: Mapped[list[Feast]] = relationship("Feast", back_populates="calendar")
 
@@ -233,21 +244,33 @@ class Feast(BaseModel, Base):
         comment="Human-readable date (e.g. 'First Sunday of Advent')",
     )
     is_moveable: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False, comment="True for moveable feasts"
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false"),
+        comment="True for moveable feasts",
     )
 
     # Liturgical details
-    rank: Mapped[str] = mapped_column(String(30), nullable=False, default=FeastRank.MEMORIAL)
+    rank: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False,
+        default=FeastRank.MEMORIAL,
+        server_default=text("'memorial'"),
+    )
     liturgical_color: Mapped[str | None] = mapped_column(String(10), nullable=True)
     is_primary: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
         default=False,
+        server_default=text("false"),
         comment="Editorially selected primary entry for this date and calendar",
     )
 
     # Metadata
-    is_suppressed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_suppressed: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     source_title: Mapped[str | None] = mapped_column(String(500), nullable=True)
     source_url: Mapped[str | None] = mapped_column(String(2000), nullable=True)

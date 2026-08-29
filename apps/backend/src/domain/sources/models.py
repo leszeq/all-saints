@@ -88,7 +88,10 @@ class Bibliography(BaseModel, Base):
 
     # Identification
     source_type: Mapped[str] = mapped_column(
-        String(30), nullable=False, default=SourceType.BOOK
+        String(30),
+        nullable=False,
+        default=SourceType.BOOK,
+        server_default=text("'book'"),
     )
     title: Mapped[str] = mapped_column(String(1000), nullable=False)
     subtitle: Mapped[str | None] = mapped_column(String(500), nullable=True)
@@ -151,7 +154,10 @@ class HistoricalSource(BaseModel, Base):
     title: Mapped[str] = mapped_column(String(1000), nullable=False)
     original_title: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     source_type: Mapped[str] = mapped_column(
-        String(30), nullable=False, default=SourceType.MANUSCRIPT
+        String(30),
+        nullable=False,
+        default=SourceType.MANUSCRIPT,
+        server_default=text("'manuscript'"),
     )
     repository: Mapped[str | None] = mapped_column(
         String(500), nullable=True, comment="Archive or library holding the source"
@@ -163,7 +169,9 @@ class HistoricalSource(BaseModel, Base):
     language: Mapped[str | None] = mapped_column(String(100), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     digitization_url: Mapped[str | None] = mapped_column(String(2000), nullable=True)
-    is_digitized: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_digitized: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
 
     person_sources: Mapped[list[PersonSource]] = relationship(
         "PersonSource", back_populates="historical_source"
@@ -206,7 +214,11 @@ class PersonSource(BaseModel, Base):
         Integer, nullable=True, comment="Relevance 1-5"
     )
     is_primary: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False, comment="Primary source for this person"
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false"),
+        comment="Primary source for this person",
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
@@ -267,15 +279,22 @@ class Image(BaseModel, Base):
         comment="portrait/icon/fresco/sculpture/relic/document/other",
     )
     license: Mapped[str] = mapped_column(
-        String(30), nullable=False, default=ImageLicense.UNKNOWN
+        String(30),
+        nullable=False,
+        default=ImageLicense.UNKNOWN,
+        server_default=text("'unknown'"),
     )
     photographer: Mapped[str | None] = mapped_column(String(300), nullable=True)
     source_url: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     year_created: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Display
-    is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    is_primary: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+    sort_order: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
 
     # Technical
     width_px: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -311,7 +330,10 @@ class Document(BaseModel, Base):
     )
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     document_type: Mapped[str] = mapped_column(
-        String(30), nullable=False, default=DocumentType.OTHER
+        String(30),
+        nullable=False,
+        default=DocumentType.OTHER,
+        server_default=text("'other'"),
     )
     language_code: Mapped[str | None] = mapped_column(String(10), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -319,4 +341,6 @@ class Document(BaseModel, Base):
     storage_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
     file_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     mime_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    is_public: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    is_public: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=text("true")
+    )

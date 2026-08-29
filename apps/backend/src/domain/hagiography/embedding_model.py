@@ -12,7 +12,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, String, Text, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -71,6 +71,7 @@ class PersonEmbedding(Base):
         String(50),
         nullable=False,
         default="disabled",
+        server_default=text("'disabled'"),
         comment="Embedding provider: openai or ollama",
     )
 
@@ -78,6 +79,7 @@ class PersonEmbedding(Base):
         String(100),
         nullable=False,
         default="text-embedding-3-small",
+        server_default=text("'text-embedding-3-small'"),
         comment="Model name used for generation",
     )
 
