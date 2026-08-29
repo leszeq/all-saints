@@ -54,7 +54,7 @@ class PersonEmbedding(Base):
 
     # The pgvector column – 1536 dimensions (OpenAI text-embedding-3-small)
     embedding: Mapped[list[float]] = mapped_column(
-        Vector(VECTOR_DIM),  # type: ignore[arg-type]
+        Vector(VECTOR_DIM),
         nullable=False,
         comment="1536-dimensional embedding vector for cosine similarity search",
     )

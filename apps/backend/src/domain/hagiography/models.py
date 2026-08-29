@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import uuid
 from enum import StrEnum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
     Boolean,
@@ -313,7 +313,7 @@ class Person(BaseModel, Base):
     religious_name: Mapped[str | None] = mapped_column(
         String(300), nullable=True, comment="Name taken in religious life"
     )
-    epithets: Mapped[list | None] = mapped_column(
+    epithets: Mapped[list[str] | None] = mapped_column(
         JSONB, nullable=True, comment='Epithets/nicknames (e.g. ["of Assisi", "the Great"])'
     )
     slug: Mapped[str] = mapped_column(
@@ -417,7 +417,7 @@ class Person(BaseModel, Base):
     )
 
     # ── AI ─────────────────────────────────────────────────────────────────────
-    embedding_vector: Mapped[list | None] = mapped_column(
+    embedding_vector: Mapped[list[float] | None] = mapped_column(
         JSONB,
         nullable=True,
         comment="Semantic embedding vector (stored as JSON array for portability)",
@@ -427,7 +427,9 @@ class Person(BaseModel, Base):
         nullable=True,
         comment="AI-generated biography summary",
     )
-    ai_tags: Mapped[list | None] = mapped_column(JSONB, nullable=True, comment="AI-generated tags")
+    ai_tags: Mapped[list[str] | None] = mapped_column(
+        JSONB, nullable=True, comment="AI-generated tags"
+    )
 
     # ── Metadata ───────────────────────────────────────────────────────────────
     is_featured: Mapped[bool] = mapped_column(
@@ -439,7 +441,7 @@ class Person(BaseModel, Base):
         index=True,
         comment="Normalised name for alphabetical sorting (no diacritics)",
     )
-    external_ids: Mapped[dict | None] = mapped_column(
+    external_ids: Mapped[dict[str, Any] | None] = mapped_column(
         JSONB,
         nullable=True,
         comment='External system IDs (e.g. {"wikidata": "Q123", "vatican": "P456"})',
@@ -937,7 +939,7 @@ class PersonVersion(Base):
         nullable=False,
     )
     version_number: Mapped[int] = mapped_column(Integer, nullable=False)
-    snapshot: Mapped[dict] = mapped_column(
+    snapshot: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, comment="Full serialized Person record at this version"
     )
     changed_by_id: Mapped[uuid.UUID | None] = mapped_column(

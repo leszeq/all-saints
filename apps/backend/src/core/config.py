@@ -256,7 +256,7 @@ def get_settings() -> Settings:
     Uses LRU cache to ensure settings are loaded only once.
     In tests, clear with ``get_settings.cache_clear()``.
     """
-    return Settings()  # type: ignore[call-arg]
+    return Settings()
 
 
 # Convenience alias used across the application

@@ -10,7 +10,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
     Boolean,
@@ -460,12 +460,12 @@ class AuditLog(Base):
     )
 
     # Data snapshots
-    old_value: Mapped[dict | None] = mapped_column(
+    old_value: Mapped[dict[str, Any] | None] = mapped_column(
         JSONB,
         nullable=True,
         comment="Record state BEFORE the change",
     )
-    new_value: Mapped[dict | None] = mapped_column(
+    new_value: Mapped[dict[str, Any] | None] = mapped_column(
         JSONB,
         nullable=True,
         comment="Record state AFTER the change",
@@ -481,7 +481,7 @@ class AuditLog(Base):
     )
 
     # Additional metadata
-    extra_metadata: Mapped[dict | None] = mapped_column(
+    extra_metadata: Mapped[dict[str, Any] | None] = mapped_column(
         "metadata",
         JSONB,
         nullable=True,

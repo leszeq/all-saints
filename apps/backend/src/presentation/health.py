@@ -25,7 +25,7 @@ router = APIRouter(tags=["health"])
     description="Returns 200 if the application process is running.",
     responses={200: {"description": "Application is alive"}},
 )
-async def health_liveness() -> dict:
+async def health_liveness() -> dict[str, object]:
     """
     Liveness probe.
 
@@ -82,7 +82,7 @@ async def health_readiness() -> JSONResponse:
     summary="Application info",
     description="Returns detailed application information (non-sensitive).",
 )
-async def health_info() -> dict:
+async def health_info() -> dict[str, object]:
     """Return non-sensitive application metadata."""
     return {
         "app": settings.APP_NAME,

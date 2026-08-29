@@ -118,9 +118,7 @@ class EditorialService:
                     ),
                     and_(
                         PersonSource.historical_source_id.is_not(None),
-                        PersonSource.historical_source.has(
-                            HistoricalSource.deleted_at.is_(None)
-                        ),
+                        PersonSource.historical_source.has(HistoricalSource.deleted_at.is_(None)),
                     ),
                 ),
             )
@@ -444,9 +442,7 @@ class EditorialService:
         *_, priority_score = self._quality_expressions()
         queue_filter = and_(
             Person.deleted_at.is_(None),
-            Person.status.in_(
-                [PublicationStatus.DRAFT.value, PublicationStatus.REVIEW.value]
-            ),
+            Person.status.in_([PublicationStatus.DRAFT.value, PublicationStatus.REVIEW.value]),
         )
         result = await self.db.execute(
             select(
@@ -484,9 +480,7 @@ class EditorialService:
         *_, priority_score = self._quality_expressions()
         query = self._person_rows_query().where(
             Person.deleted_at.is_(None),
-            Person.status.in_(
-                [PublicationStatus.DRAFT.value, PublicationStatus.REVIEW.value]
-            ),
+            Person.status.in_([PublicationStatus.DRAFT.value, PublicationStatus.REVIEW.value]),
         )
         if search and search.strip():
             term = search.strip()
@@ -518,9 +512,7 @@ class EditorialService:
         )
         rows = list(result.unique().all())
         persons = [row[0] for row in rows]
-        editors = await PersonService(self.db).get_last_editors(
-            [person.id for person in persons]
-        )
+        editors = await PersonService(self.db).get_last_editors([person.id for person in persons])
         return EditorialQueueResponseSchema(
             items=[self._queue_item(row, editors.get(row[0].id)) for row in rows],
             counts=await self._queue_counts(),
@@ -765,27 +757,31 @@ class EditorialService:
             items.append(item)
 
         bibliography_rows = (
-            await self.db.execute(
-                select(Bibliography)
-                .where(
-                    Bibliography.deleted_at.is_(None),
-                    or_(
-                        Bibliography.reliability_score.is_(None),
-                        and_(
-                            Bibliography.source_type == SourceType.WEBSITE.value,
-                            self._missing_text(Bibliography.url),
+            (
+                await self.db.execute(
+                    select(Bibliography)
+                    .where(
+                        Bibliography.deleted_at.is_(None),
+                        or_(
+                            Bibliography.reliability_score.is_(None),
+                            and_(
+                                Bibliography.source_type == SourceType.WEBSITE.value,
+                                self._missing_text(Bibliography.url),
+                            ),
+                            and_(
+                                Bibliography.source_type == SourceType.WEBSITE.value,
+                                self._has_text(Bibliography.url),
+                                self._missing_text(Bibliography.url_access_date),
+                            ),
                         ),
-                        and_(
-                            Bibliography.source_type == SourceType.WEBSITE.value,
-                            self._has_text(Bibliography.url),
-                            self._missing_text(Bibliography.url_access_date),
-                        ),
-                    ),
+                    )
+                    .order_by(Bibliography.updated_at.desc())
+                    .limit(limit)
                 )
-                .order_by(Bibliography.updated_at.desc())
-                .limit(limit)
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         for source in bibliography_rows:
             if source.reliability_score is None:
                 add_item(
@@ -810,7 +806,11 @@ class EditorialService:
                         updated_at=source.updated_at,
                     )
                 )
-            if source.source_type == SourceType.WEBSITE.value and source.url and not source.url_access_date:
+            if (
+                source.source_type == SourceType.WEBSITE.value
+                and source.url
+                and not source.url_access_date
+            ):
                 add_item(
                     EditorialSourceVerificationItemSchema(
                         id=source.id,
@@ -824,44 +824,52 @@ class EditorialService:
                 )
 
         historical_rows = (
-            await self.db.execute(
-                select(HistoricalSource)
-                .where(
-                    HistoricalSource.deleted_at.is_(None),
-                    HistoricalSource.is_digitized.is_(True),
-                    self._missing_text(HistoricalSource.digitization_url),
+            (
+                await self.db.execute(
+                    select(HistoricalSource)
+                    .where(
+                        HistoricalSource.deleted_at.is_(None),
+                        HistoricalSource.is_digitized.is_(True),
+                        self._missing_text(HistoricalSource.digitization_url),
+                    )
+                    .order_by(HistoricalSource.updated_at.desc())
+                    .limit(limit)
                 )
-                .order_by(HistoricalSource.updated_at.desc())
-                .limit(limit)
             )
-        ).scalars().all()
-        for source in historical_rows:
+            .scalars()
+            .all()
+        )
+        for historical_source in historical_rows:
             add_item(
                 EditorialSourceVerificationItemSchema(
-                    id=source.id,
+                    id=historical_source.id,
                     item_type="historical_source",
-                    title=source.title,
+                    title=historical_source.title,
                     issue="Źródło oznaczone jako zdigitalizowane bez linku",
                     severity="warning",
-                    updated_at=source.updated_at,
+                    updated_at=historical_source.updated_at,
                 )
             )
 
         image_rows = (
-            await self.db.execute(
-                select(Image)
-                .where(
-                    Image.deleted_at.is_(None),
-                    or_(
-                        Image.license == ImageLicense.UNKNOWN.value,
-                        self._missing_text(Image.source_url),
+            (
+                await self.db.execute(
+                    select(Image)
+                    .where(
+                        Image.deleted_at.is_(None),
+                        or_(
+                            Image.license == ImageLicense.UNKNOWN.value,
+                            self._missing_text(Image.source_url),
+                        ),
                     )
+                    .options(selectinload(Image.person))
+                    .order_by(Image.updated_at.desc())
+                    .limit(limit)
                 )
-                .options(selectinload(Image.person))
-                .order_by(Image.updated_at.desc())
-                .limit(limit)
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         for image in image_rows:
             related_person = image.person
             if image.license == ImageLicense.UNKNOWN.value:
@@ -873,7 +881,9 @@ class EditorialService:
                         issue="Nieznana licencja obrazu",
                         severity="critical",
                         related_person_id=related_person.id if related_person else None,
-                        related_person_name=related_person.canonical_name if related_person else None,
+                        related_person_name=(
+                            related_person.canonical_name if related_person else None
+                        ),
                         source_url=image.source_url,
                         updated_at=image.updated_at,
                     )
@@ -887,7 +897,9 @@ class EditorialService:
                         issue="Brak adresu źródła obrazu",
                         severity="warning",
                         related_person_id=related_person.id if related_person else None,
-                        related_person_name=related_person.canonical_name if related_person else None,
+                        related_person_name=(
+                            related_person.canonical_name if related_person else None
+                        ),
                         updated_at=image.updated_at,
                     )
                 )
@@ -930,8 +942,12 @@ class EditorialService:
 
     async def quality_report(self) -> EditorialQualityReportSchema:
         """Return the complete data quality centre report."""
-        problem_records, issue_breakdown, records_with_issues = await self._quality_problem_records()
-        duplicate_groups, duplicate_group_count, duplicate_record_count = await self._duplicate_groups()
+        problem_records, issue_breakdown, records_with_issues = (
+            await self._quality_problem_records()
+        )
+        duplicate_groups, duplicate_group_count, duplicate_record_count = (
+            await self._duplicate_groups()
+        )
         source_stats = await self._source_stats()
         source_items, source_item_count = await self._source_verification_items()
         total_issues = sum(issue.count for issue in issue_breakdown)
@@ -1045,9 +1061,7 @@ class EditorialService:
                 .group_by(Person.status)
             )
         ).all()
-        status_counts_map: dict[str, int] = {
-            str(row[0]): int(row[1]) for row in status_rows
-        }
+        status_counts_map: dict[str, int] = {str(row[0]): int(row[1]) for row in status_rows}
         total_persons = sum(status_counts_map.values())
         *_, priority_score = self._quality_expressions()
         attention_count = (
@@ -1071,9 +1085,7 @@ class EditorialService:
 
         resources = EditorialResourceCountsSchema(
             users=(
-                await self.db.execute(
-                    select(func.count(User.id)).where(User.deleted_at.is_(None))
-                )
+                await self.db.execute(select(func.count(User.id)).where(User.deleted_at.is_(None)))
             ).scalar_one(),
             countries=(
                 await self.db.execute(
@@ -1082,16 +1094,12 @@ class EditorialService:
             ).scalar_one(),
             orders=(
                 await self.db.execute(
-                    select(func.count(ReligiousOrder.id)).where(
-                        ReligiousOrder.deleted_at.is_(None)
-                    )
+                    select(func.count(ReligiousOrder.id)).where(ReligiousOrder.deleted_at.is_(None))
                 )
             ).scalar_one(),
             bibliography=(
                 await self.db.execute(
-                    select(func.count(Bibliography.id)).where(
-                        Bibliography.deleted_at.is_(None)
-                    )
+                    select(func.count(Bibliography.id)).where(Bibliography.deleted_at.is_(None))
                 )
             ).scalar_one(),
         )
@@ -1099,7 +1107,9 @@ class EditorialService:
             generated_at=datetime.now(UTC),
             total_persons=total_persons,
             status_counts=[
-                EditorialStatusCountSchema(status=status, count=status_counts_map.get(status.value, 0))
+                EditorialStatusCountSchema(
+                    status=status, count=status_counts_map.get(status.value, 0)
+                )
                 for status in PublicationStatus
             ],
             attention_count=attention_count,
@@ -1139,9 +1149,7 @@ class EditorialService:
         if not can_publish and (
             previous in publication_states or target_status.value in publication_states
         ):
-            raise EditorialAuthorizationError(
-                "Ta operacja wymaga uprawnienia persons:publish"
-            )
+            raise EditorialAuthorizationError("Ta operacja wymaga uprawnienia persons:publish")
         if target_status == PublicationStatus.PUBLISHED:
             missing = []
             if not person.summary_pl or not person.summary_pl.strip():

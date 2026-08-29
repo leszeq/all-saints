@@ -6,7 +6,9 @@ Handles CRUD, slug generation, version snapshotting, FTS, and soft-delete/restor
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 from datetime import UTC, datetime
+from typing import cast
 
 from fastapi.encoders import jsonable_encoder
 from slugify import slugify
@@ -75,7 +77,9 @@ class PersonVersionConflictError(RuntimeError):
         )
 
 
-def _enum_values(value: object | list[object] | tuple[object, ...] | set[object] | None) -> list[str]:
+def _enum_values(
+    value: object | list[object] | tuple[object, ...] | set[object] | None,
+) -> list[str]:
     """Normalize a single enum/query value or a multi-select value list."""
     if value is None:
         return []
@@ -225,12 +229,12 @@ class PersonService:
 
         return slug
 
-    async def create_person(self, data: PersonCreateSchema, user_id: uuid.UUID | None = None) -> Person:
+    async def create_person(
+        self, data: PersonCreateSchema, user_id: uuid.UUID | None = None
+    ) -> Person:
         """Create a new person record."""
         if data.status != PublicationStatus.DRAFT:
-            raise PersonStatusChangeError(
-                "Nowy rekord musi rozpocząć proces redakcyjny jako szkic"
-            )
+            raise PersonStatusChangeError("Nowy rekord musi rozpocząć proces redakcyjny jako szkic")
         slug = await self._generate_unique_slug(data.canonical_name)
 
         person = Person(
@@ -390,9 +394,7 @@ class PersonService:
         if period_values:
             period_eras: set[str] = set()
             for period_value in period_values:
-                period_eras.update(
-                    era.value for era in ERA_PERIOD_ERAS[EraPeriod(period_value)]
-                )
+                period_eras.update(era.value for era in ERA_PERIOD_ERAS[EraPeriod(period_value)])
             query = query.where(Person.era.in_(sorted(period_eras)))
         elif era_values:
             query = query.where(Person.era.in_(era_values))
@@ -499,7 +501,8 @@ class PersonService:
             .join(User, User.id == ranked_versions.c.changed_by_id)
             .where(ranked_versions.c.position == 1)
         )
-        return dict(result.all())
+        rows = cast(Sequence[tuple[uuid.UUID, User]], result.all())
+        return dict(rows)
 
     async def update_person(
         self,
@@ -554,7 +557,10 @@ class PersonService:
             },
         )
 
-        if "canonical_name" in update_dict and update_dict["canonical_name"] != person.canonical_name:
+        if (
+            "canonical_name" in update_dict
+            and update_dict["canonical_name"] != person.canonical_name
+        ):
             person.slug = await self._generate_unique_slug(update_dict["canonical_name"], person.id)
 
         for key, value in update_dict.items():
@@ -656,6 +662,7 @@ class PersonService:
             for membership in person.orders:
                 await self.db.refresh(membership, attribute_names=["order"])
             return person
+        return None
 
     async def get_person_versions(self, person_id: uuid.UUID) -> list[PersonVersion]:
         """Fetch version history for a person."""

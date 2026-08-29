@@ -176,9 +176,7 @@ class AIService:
 
     # ── Embedding Generation ────────────────────────────────────────────────────
 
-    async def generate_person_embedding(
-        self, person_id: uuid.UUID
-    ) -> EmbeddingResult | None:
+    async def generate_person_embedding(self, person_id: uuid.UUID) -> EmbeddingResult | None:
         """
         Generate or refresh the embedding for a single person.
 
@@ -215,23 +213,21 @@ class AIService:
         vector = await self._embeddings.embed(source_text)
 
         # Upsert PersonEmbedding
-        existing_stmt = select(PersonEmbedding).where(
-            PersonEmbedding.person_id == person_id
-        )
+        existing_stmt = select(PersonEmbedding).where(PersonEmbedding.person_id == person_id)
         existing_result = await self._db.execute(existing_stmt)
         existing = existing_result.scalar_one_or_none()
 
         was_updated = existing is not None
 
         if existing:
-            existing.embedding = vector  # type: ignore[assignment]
+            existing.embedding = vector
             existing.source_text = source_text
             existing.provider = self._embeddings.provider_name
             existing.model = self._embeddings.model_name
         else:
             new_embedding = PersonEmbedding(
                 person_id=person_id,
-                embedding=vector,  # type: ignore[arg-type]
+                embedding=vector,
                 source_text=source_text,
                 provider=self._embeddings.provider_name,
                 model=self._embeddings.model_name,
@@ -438,9 +434,7 @@ class AIService:
 
     # ── Summarization ───────────────────────────────────────────────────────────
 
-    async def generate_summary(
-        self, person_id: uuid.UUID, max_words: int = 100
-    ) -> str | None:
+    async def generate_summary(self, person_id: uuid.UUID, max_words: int = 100) -> str | None:
         """
         Generate and persist an AI summary for a person's biography.
 
@@ -451,9 +445,7 @@ class AIService:
         Returns:
             Generated summary string, or None if person not found.
         """
-        stmt = select(Person).where(
-            Person.id == person_id, Person.deleted_at.is_(None)
-        )
+        stmt = select(Person).where(Person.id == person_id, Person.deleted_at.is_(None))
         result = await self._db.execute(stmt)
         person = result.scalar_one_or_none()
 
@@ -482,9 +474,7 @@ class AIService:
         Returns:
             List of tag strings.
         """
-        stmt = select(Person).where(
-            Person.id == person_id, Person.deleted_at.is_(None)
-        )
+        stmt = select(Person).where(Person.id == person_id, Person.deleted_at.is_(None))
         result = await self._db.execute(stmt)
         person = result.scalar_one_or_none()
 
@@ -716,9 +706,7 @@ class AIService:
             suggestions = [item for item in suggestions if item.kind == kind_filter]
 
         pending_review = sum(1 for item in suggestions if item.status == "pending_review")
-        ready_to_generate = sum(
-            1 for item in suggestions if item.status == "ready_to_generate"
-        )
+        ready_to_generate = sum(1 for item in suggestions if item.status == "ready_to_generate")
         blocked = sum(1 for item in suggestions if item.status == "blocked")
 
         if status_filter:
@@ -781,9 +769,7 @@ class AIService:
         ).scalar_one()
         suggestions = await self.list_ai_suggestions(limit=5)
         missing_embeddings = max(0, int(total_persons) - total_embeddings)
-        coverage = (
-            total_embeddings / int(total_persons) * 100 if int(total_persons) else 0.0
-        )
+        coverage = total_embeddings / int(total_persons) * 100 if int(total_persons) else 0.0
 
         embedding_ready = self.embedding_provider != "disabled"
         summary_ready = self.summary_provider != "extractive-fallback"
@@ -803,9 +789,7 @@ class AIService:
                 status=(
                     "ready"
                     if embedding_ready and total_embeddings > 0
-                    else "needs_data"
-                    if embedding_ready
-                    else "disabled"
+                    else "needs_data" if embedding_ready else "disabled"
                 ),
                 description="Wyszukiwanie po intencji i znaczeniu, nie tylko po słowach.",
                 detail=(
@@ -867,9 +851,7 @@ class AIService:
         Returns embedding provider info and coverage statistics.
         """
         # Count total persons
-        total_sql = text(
-            "SELECT COUNT(*) FROM persons WHERE deleted_at IS NULL"
-        )
+        total_sql = text("SELECT COUNT(*) FROM persons WHERE deleted_at IS NULL")
         total_result = await self._db.execute(total_sql)
         total_persons = total_result.scalar() or 0
 

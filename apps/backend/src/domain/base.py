@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
-from sqlalchemy import DateTime, Integer, func, text
+from sqlalchemy import DateTime, Integer, Table, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -121,10 +121,8 @@ class BaseModel(UUIDMixin, TimestampMixin, SoftDeleteMixin, VersionMixin):
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize model to dictionary (for audit logs / snapshots)."""
-        return {
-            column.name: getattr(self, column.name)
-            for column in self.__table__.columns
-        }
+        table = cast(Table, object.__getattribute__(self, "__table__"))
+        return {column.name: getattr(self, column.name) for column in table.columns}
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} id={self.id}>"
