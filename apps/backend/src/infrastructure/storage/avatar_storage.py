@@ -9,11 +9,16 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import lru_cache
+from typing import TYPE_CHECKING
 
 import boto3
-from botocore.client import BaseClient
 from botocore.exceptions import ClientError
 from PIL import Image, ImageOps, UnidentifiedImageError
+
+if TYPE_CHECKING:
+    from mypy_boto3_s3 import S3Client
+else:
+    from botocore.client import BaseClient as S3Client
 
 from src.core.config import Settings, StorageBackend, settings
 
@@ -103,25 +108,29 @@ class AvatarStorage:
             else app_settings.MINIO_BUCKET_IMAGES
         )
         self.local_root = app_settings.BASE_DIR / ".storage" / self.bucket
-        self._client: BaseClient | None = None
+        self._client: S3Client | None = None
 
-    def _s3_client(self) -> BaseClient:
+    def _s3_client(self) -> S3Client:
         if self._client is not None:
             return self._client
 
-        kwargs = {
-            "aws_access_key_id": self.settings.MINIO_ACCESS_KEY,
-            "aws_secret_access_key": self.settings.MINIO_SECRET_KEY,
-            "region_name": self.settings.AWS_REGION,
-        }
         if self.settings.STORAGE_BACKEND == StorageBackend.MINIO:
             protocol = "https" if self.settings.MINIO_USE_SSL else "http"
-            kwargs["endpoint_url"] = f"{protocol}://{self.settings.MINIO_ENDPOINT}"
+            self._client = boto3.client(
+                "s3",
+                aws_access_key_id=self.settings.MINIO_ACCESS_KEY,
+                aws_secret_access_key=self.settings.MINIO_SECRET_KEY,
+                region_name=self.settings.AWS_REGION,
+                endpoint_url=f"{protocol}://{self.settings.MINIO_ENDPOINT}",
+            )
         else:
-            kwargs["aws_access_key_id"] = self.settings.AWS_ACCESS_KEY_ID
-            kwargs["aws_secret_access_key"] = self.settings.AWS_SECRET_ACCESS_KEY
+            self._client = boto3.client(
+                "s3",
+                aws_access_key_id=self.settings.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=self.settings.AWS_SECRET_ACCESS_KEY,
+                region_name=self.settings.AWS_REGION,
+            )
 
-        self._client = boto3.client("s3", **kwargs)
         return self._client
 
     def _ensure_minio_bucket(self) -> None:

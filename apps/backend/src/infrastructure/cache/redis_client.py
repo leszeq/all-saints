@@ -13,14 +13,20 @@ from __future__ import annotations
 import hashlib
 import json
 import secrets
-from collections.abc import AsyncGenerator, Callable
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 import redis.asyncio as aioredis
 from loguru import logger
-from redis.asyncio import Redis
-from redis.asyncio.connection import ConnectionPool
+from redis.asyncio.connection import Connection, ConnectionPool
+
+if TYPE_CHECKING:
+    from redis.asyncio import Redis
+
+    type RedisClient = Redis[str]
+else:
+    from redis.asyncio import Redis as RedisClient
 
 from src.core.config import settings
 
@@ -29,10 +35,10 @@ from src.core.config import settings
 # ==============================================================================
 
 
-_redis_pool: ConnectionPool | None = None
+_redis_pool: ConnectionPool[Connection] | None = None
 
 
-def get_redis_pool() -> ConnectionPool:
+def get_redis_pool() -> ConnectionPool[Connection]:
     """Return singleton Redis connection pool."""
     global _redis_pool
     if _redis_pool is None:
@@ -45,9 +51,10 @@ def get_redis_pool() -> ConnectionPool:
     return _redis_pool
 
 
-def get_redis_client() -> Redis:
+def get_redis_client() -> RedisClient:
     """Return a Redis client using the singleton connection pool."""
-    return aioredis.Redis(connection_pool=get_redis_pool())
+    # types-redis cannot infer decode_responses=True from the connection pool.
+    return cast(RedisClient, aioredis.Redis(connection_pool=get_redis_pool()))
 
 
 async def close_redis_pool() -> None:
@@ -75,7 +82,7 @@ async def check_redis_connection() -> bool:
 # ==============================================================================
 
 
-async def get_redis() -> AsyncGenerator[Redis, None]:
+async def get_redis() -> AsyncGenerator[RedisClient, None]:
     """
     FastAPI dependency providing a Redis client.
 
@@ -89,7 +96,13 @@ async def get_redis() -> AsyncGenerator[Redis, None]:
     try:
         yield client
     finally:
-        await client.aclose()
+        # Runtime Redis 5 exposes aclose(), while the pinned types-redis stubs
+        # still model only the deprecated close() method.
+        aclose = cast(
+            Callable[[], Awaitable[None]],
+            object.__getattribute__(client, "aclose"),
+        )
+        await aclose()
 
 
 # ==============================================================================
@@ -105,7 +118,7 @@ class CacheService:
     namespaced keys, and configurable TTLs.
     """
 
-    def __init__(self, redis: Redis) -> None:
+    def __init__(self, redis: RedisClient) -> None:
         """Initialize with a Redis client."""
         self._redis = redis
 
@@ -199,7 +212,7 @@ class CacheService:
         self,
         namespace: str,
         key: str,
-        factory: Callable,
+        factory: Callable[[], Awaitable[Any]],
         ttl: int = settings.CACHE_TTL_DEFAULT,
     ) -> Any:  # noqa: ANN401 - factory result is intentionally generic
         """
@@ -281,7 +294,7 @@ end
 return {current_count, math.ceil(retry_after_ms / 1000)}
 """
 
-    def __init__(self, redis: Redis) -> None:
+    def __init__(self, redis: RedisClient) -> None:
         """Initialize with Redis client."""
         self._redis = redis
 
@@ -296,7 +309,7 @@ return {current_count, math.ceil(retry_after_ms / 1000)}
             raise ValueError("Rate limit and window must be positive")
 
         key = f"saints:ratelimit:{identifier}"
-        result = await self._redis.eval(
+        result = await self._redis.eval(  # type: ignore[no-untyped-call]
             self._SLIDING_WINDOW_SCRIPT,
             1,
             key,

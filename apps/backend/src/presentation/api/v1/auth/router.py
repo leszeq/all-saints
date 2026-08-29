@@ -20,7 +20,6 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from loguru import logger
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
-from redis.asyncio import Redis
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -35,7 +34,7 @@ from src.domain.identity.models import (
     UserRole,
     UserStatus,
 )
-from src.infrastructure.cache.redis_client import RateLimiter, get_redis
+from src.infrastructure.cache.redis_client import RateLimiter, RedisClient, get_redis
 from src.infrastructure.db.session import get_db_session
 
 router = APIRouter()
@@ -62,7 +61,7 @@ async def _enforce_login_rate_limit(
     credentials: LoginRequest,
     request: Request,
     response: Response,
-    redis: Redis,
+    redis: RedisClient,
 ) -> None:
     """Limit login attempts per source address and normalized account."""
     client_ip = request.client.host if request.client else "unknown"
@@ -272,7 +271,7 @@ async def login(
     request: Request,
     response: Response,
     db: AsyncSession = Depends(get_db_session),
-    redis: Redis = Depends(get_redis),
+    redis: RedisClient = Depends(get_redis),
 ) -> TokenResponse:
     """
     Authenticate a user and issue tokens.
