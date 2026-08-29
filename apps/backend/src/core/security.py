@@ -12,8 +12,8 @@ from __future__ import annotations
 
 import hashlib
 import secrets
-from datetime import datetime, timedelta, timezone
-from typing import Any
+from datetime import UTC, datetime, timedelta
+from typing import Any, Literal
 from uuid import UUID
 
 from jose import JWTError, jwt
@@ -21,7 +21,6 @@ from loguru import logger
 from passlib.context import CryptContext
 
 from src.core.config import settings
-
 
 # ==============================================================================
 # PASSWORD HASHING
@@ -97,6 +96,7 @@ class TokenPayload:
         self.iat: int = data.get("iat", 0)
         self.roles: list[str] = data.get("roles", [])
         self.email: str = data.get("email", "")
+        self.password_version: int = data.get("pwd", 0)
 
     @property
     def user_id(self) -> UUID:
@@ -106,7 +106,7 @@ class TokenPayload:
     @property
     def is_expired(self) -> bool:
         """True if token has expired."""
-        return datetime.now(timezone.utc).timestamp() > self.exp
+        return datetime.now(UTC).timestamp() > self.exp
 
     @property
     def is_access_token(self) -> bool:
@@ -117,6 +117,11 @@ class TokenPayload:
     def is_refresh_token(self) -> bool:
         """True if this is a refresh token."""
         return self.type == "refresh"
+
+    def matches_password_version(self, changed_at: datetime | None) -> bool:
+        """Return whether the token was issued for the current password version."""
+        expected = int(changed_at.timestamp() * 1_000_000) if changed_at else 0
+        return self.password_version == expected
 
 
 class JWTService:
@@ -139,6 +144,7 @@ class JWTService:
         email: str,
         roles: list[str],
         extra_claims: dict[str, Any] | None = None,
+        password_changed_at: datetime | None = None,
     ) -> str:
         """
         Create a signed JWT access token.
@@ -148,14 +154,16 @@ class JWTService:
             email: User's email address.
             roles: List of role names.
             extra_claims: Optional additional claims.
+            password_changed_at: Current password version timestamp.
 
         Returns:
             Signed JWT string.
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         jti = secrets.token_urlsafe(16)
 
-        payload: dict[str, Any] = {
+        payload: dict[str, Any] = dict(extra_claims or {})
+        payload.update({
             "sub": str(user_id),
             "email": email,
             "roles": roles,
@@ -163,10 +171,12 @@ class JWTService:
             "jti": jti,
             "iat": int(now.timestamp()),
             "exp": int((now + self._access_ttl).timestamp()),
-        }
-
-        if extra_claims:
-            payload.update(extra_claims)
+            "pwd": (
+                int(password_changed_at.timestamp() * 1_000_000)
+                if password_changed_at
+                else 0
+            ),
+        })
 
         return jwt.encode(payload, self._secret, algorithm=self._algorithm)
 
@@ -212,10 +222,13 @@ class JWTService:
             logger.warning(f"JWT verification failed: {exc}")
             raise
 
-    def get_token_expiry(self, token_type: str = "access") -> datetime:
+    def get_token_expiry(
+        self,
+        kind: Literal["access", "refresh"] = "access",
+    ) -> datetime:
         """Get expiry datetime for a token type."""
-        now = datetime.now(timezone.utc)
-        if token_type == "access":
+        now = datetime.now(UTC)
+        if kind == "access":
             return now + self._access_ttl
         return now + self._refresh_ttl
 

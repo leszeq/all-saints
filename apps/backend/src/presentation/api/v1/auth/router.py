@@ -19,7 +19,7 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from loguru import logger
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -40,6 +40,19 @@ bearer_scheme = HTTPBearer(
     auto_error=False,
     description="JWT otrzymany z endpointu POST /api/v1/auth/login",
 )
+
+
+def _set_refresh_cookie(response: Response, raw_token: str) -> None:
+    """Set the refresh cookie consistently for login and token rotation."""
+    response.set_cookie(
+        key="refresh_token",
+        value=raw_token,
+        httponly=True,
+        secure=settings.SECURE_COOKIES,
+        samesite="lax",
+        max_age=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
+        path="/api/v1/auth",
+    )
 
 
 # ==============================================================================
@@ -145,6 +158,9 @@ async def get_current_user(
     user = result.scalar_one_or_none()
 
     if user is None:
+        raise credentials_exception
+
+    if not payload.matches_password_version(user.password_changed_at):
         raise credentials_exception
 
     if not user.is_active:
@@ -271,6 +287,7 @@ async def login(
         user_id=user.id,
         email=user.email,
         roles=role_names,
+        password_changed_at=user.password_changed_at,
     )
 
     # Issue refresh token
@@ -286,15 +303,7 @@ async def login(
     await db.commit()
 
     # Set refresh token as HttpOnly cookie
-    response.set_cookie(
-        key="refresh_token",
-        value=raw_refresh_token,
-        httponly=True,
-        secure=settings.SECURE_COOKIES,
-        samesite="lax",
-        max_age=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
-        path="/api/v1/auth",
-    )
+    _set_refresh_cookie(response, raw_refresh_token)
 
     logger.info(f"User logged in: {user.email}")
 
@@ -315,6 +324,7 @@ async def login(
     },
 )
 async def refresh_token(
+    request: Request,
     response: Response,
     refresh_token: Annotated[str | None, Cookie()] = None,
     db: AsyncSession = Depends(get_db_session),
@@ -337,6 +347,7 @@ async def refresh_token(
             .selectinload(UserRole.role)
         )
         .where(RefreshToken.token_hash == token_hash)
+        .with_for_update()
     )
     stored_token = result.scalar_one_or_none()
 
@@ -352,14 +363,34 @@ async def refresh_token(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Konto jest nieaktywne",
         )
+    if user.is_locked:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Konto jest tymczasowo zablokowane",
+        )
 
     role_names = [ur.role.name for ur in user.roles if ur.role]
+
+    raw_refresh_token, new_token_hash = jwt_service.create_refresh_token()
+    stored_token.revoked_at = datetime.now(UTC)
+    db.add(
+        RefreshToken(
+            user_id=user.id,
+            token_hash=new_token_hash,
+            expires_at=jwt_service.get_token_expiry("refresh"),
+            user_agent=request.headers.get("User-Agent"),
+            ip_address=request.client.host if request.client else None,
+        )
+    )
+    await db.commit()
 
     access_token = jwt_service.create_access_token(
         user_id=user.id,
         email=user.email,
         roles=role_names,
+        password_changed_at=user.password_changed_at,
     )
+    _set_refresh_cookie(response, raw_refresh_token)
 
     return TokenResponse(
         access_token=access_token,
@@ -457,6 +488,7 @@ async def update_me(
 )
 async def change_password(
     data: ChangePasswordRequest,
+    response: Response,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
 ) -> None:
@@ -477,8 +509,25 @@ async def change_password(
         )
 
     # Update password
+    changed_at = datetime.now(UTC)
     current_user.hashed_password = password_hasher.hash(data.new_password)
-    current_user.password_changed_at = datetime.now(UTC)
+    current_user.password_changed_at = changed_at
+    await db.execute(
+        update(RefreshToken)
+        .where(
+            RefreshToken.user_id == current_user.id,
+            RefreshToken.revoked_at.is_(None),
+        )
+        .values(revoked_at=changed_at)
+    )
     await db.commit()
+
+    response.delete_cookie(
+        key="refresh_token",
+        path="/api/v1/auth",
+        secure=settings.SECURE_COOKIES,
+        httponly=True,
+        samesite="lax",
+    )
 
     logger.info(f"Password changed for user: {current_user.email}")

@@ -6,7 +6,6 @@ from uuid import uuid4
 
 from src.core.security import (
     JWTService,
-    PasswordHasher,
     is_strong_password,
     jwt_service,
     password_hasher,
@@ -51,6 +50,20 @@ def test_jwt_token_creation_and_verification():
     assert payload.email == email
     assert payload.roles == roles
     assert payload.is_access_token is True
+
+
+def test_extra_claims_cannot_override_security_claims():
+    token = jwt_service.create_access_token(
+        user_id=uuid4(),
+        email="test@all-saints.local",
+        roles=["editor"],
+        extra_claims={"type": "refresh", "pwd": 123},
+    )
+
+    payload = jwt_service.verify_access_token(token)
+
+    assert payload.is_access_token is True
+    assert payload.password_version == 0
 
 
 def test_refresh_token_generation_and_hashing():
