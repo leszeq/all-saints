@@ -17,7 +17,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from loguru import logger
-from sqlalchemy import and_, func, select, text
+from sqlalchemy import and_, case, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import InstrumentedAttribute
@@ -378,7 +378,8 @@ class AIService:
             logger.info(f"No embedding for person {person_id} – returning empty related list")
             return []
 
-        embedding_values = ref_embedding.embedding
+        raw_embedding = ref_embedding.embedding
+        embedding_values = list(raw_embedding) if raw_embedding is not None else []
         if (
             not embedding_values
             or not all(math.isfinite(float(value)) for value in embedding_values)
@@ -767,7 +768,14 @@ class AIService:
             await self._db.execute(
                 select(func.count(Person.id)).where(
                     active_filter,
-                    Person.ai_tags.is_not(None),
+                    case(
+                        (
+                            func.jsonb_typeof(Person.ai_tags) == "array",
+                            func.jsonb_array_length(Person.ai_tags),
+                        ),
+                        else_=0,
+                    )
+                    > 0,
                 )
             )
         ).scalar_one()
