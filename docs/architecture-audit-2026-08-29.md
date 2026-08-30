@@ -34,21 +34,22 @@ Poniższy status jest aktualizacją wykonawczą do historycznego pomiaru bazoweg
 Nie zmienia pierwotnych findings ani ocen, dzięki czemu dokument zachowuje wartość
 porównawczą.
 
-Stan na 2026-08-30 po commitach `5f91884`–`94432f4`:
+Stan na 2026-08-30 po commitach `5f91884`–`0ce0a28`:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **148 passed**, 0 failures, 0 errors, 0 warnings |
-| Backend coverage | **80.60%**, wymagany próg 80% spełniony |
+| Backend pytest | **152 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend coverage | **80.68%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0012_align_domain_indexes`, jeden head |
 | Nowa pusta baza | upgrade 0001 → 0012 oraz downgrade/re-upgrade: PASS |
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
-| Ruff / strict mypy | PASS, mypy analizuje 85 plików źródłowych |
+| Ruff / strict mypy | PASS, mypy analizuje 86 plików źródłowych |
 | Admin i web | ESLint, TypeScript i produkcyjne buildy Webpack: PASS |
 | Produkcyjny stack | świeża baza, migracje, API, web, admin i Nginx: PASS |
 | Backup/restore PostgreSQL | format custom, restore 42 tabel, Alembic 0012: PASS |
+| Obserwowalność | poprawny JSON logging, request ID, Prometheus i opcjonalny Sentry |
 | Pydantic / Alembic / Ruff config | zdeprecjonowane konfiguracje usunięte |
 | Hashowanie haseł | bezpośredni bcrypt, zgodny z istniejącymi hashami Passlib |
 
@@ -75,13 +76,15 @@ a Nginx wystawia tylko portal, panel i API. Produkcja odrzuca placeholderowe lub
 współdzielone sekrety, niebezpieczne wildcardy host/CORS i niezabezpieczone cookies.
 
 Najważniejsze otwarte ryzyka są teraz klasy P2/P3: brak zewnętrznego TLS i
-platformowego zarządzania sekretami, alertów, testu obciążenia, testów E2E oraz
-zautomatyzowanego release/CD do konkretnego środowiska. Backup PostgreSQL ma
-działający restore drill, ale nadal wymaga harmonogramu, retencji, szyfrowania,
-kopii poza hostem i objęcia storage plikowego. W kodzie pozostają niejednolita
-polityka transakcji, duże serwisy/routery i brak wspólnego kontraktu błędów.
-Bieżąca gotowość wykonawcza to **BETA**; przed publicznym wdrożeniem nadal trzeba
-zamknąć wymienione kroki operacyjne.
+platformowego zarządzania sekretami, skonfigurowanych reguł alertów, testu
+obciążenia, testów E2E oraz zautomatyzowanego release/CD do konkretnego środowiska.
+Kod udostępnia poprawne logi JSON, Prometheus i opcjonalny Sentry, ale odbiorniki i
+alerty są zadaniem platformowym. Backup PostgreSQL ma działający restore drill,
+lecz nadal wymaga harmonogramu, retencji, szyfrowania, kopii poza hostem i objęcia
+storage plikowego. W kodzie pozostają niejednolita polityka transakcji, duże
+serwisy/routery i brak wspólnego kontraktu błędów. Bieżąca gotowość wykonawcza to
+**BETA**; przed publicznym wdrożeniem nadal trzeba zamknąć wymienione kroki
+operacyjne.
 
 ## Repository discovery
 
