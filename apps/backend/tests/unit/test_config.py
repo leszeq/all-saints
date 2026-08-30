@@ -17,6 +17,8 @@ def _settings(**overrides: object) -> Settings:
         "POSTGRES_PASSWORD": "development-database-password",
         "DATABASE_URL": None,
         "DATABASE_URL_SYNC": None,
+        "SEED_DEMO_USERS": False,
+        "DEMO_USER_PASSWORD": "",
     }
     values.update(overrides)
     return Settings(_env_file=None, **values)  # type: ignore[arg-type]
@@ -68,6 +70,7 @@ def test_database_url_components_are_percent_encoded() -> None:
         ({"SECURE_COOKIES": False}, "SECURE_COOKIES"),
         ({"ALLOWED_HOSTS": ["*"]}, "ALLOWED_HOSTS"),
         ({"CORS_ORIGINS": ["*"]}, "CORS_ORIGINS"),
+        ({"SEED_DEMO_USERS": True}, "SEED_DEMO_USERS"),
     ],
 )
 def test_production_rejects_unsafe_security_settings(

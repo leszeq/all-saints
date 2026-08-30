@@ -158,6 +158,8 @@ class Settings(BaseSettings):
             )
         if "*" in self.CORS_ORIGINS:
             raise ValueError("CORS_ORIGINS cannot contain '*' in production")
+        if self.SEED_DEMO_USERS:
+            raise ValueError("SEED_DEMO_USERS cannot be enabled in production")
 
         return self
 
@@ -244,6 +246,8 @@ class Settings(BaseSettings):
     INITIAL_ADMIN_EMAIL: EmailStr = "admin@encyklopedia.pl"
     INITIAL_ADMIN_PASSWORD: str = ""
     INITIAL_ADMIN_FULL_NAME: str = "System Administrator"
+    SEED_DEMO_USERS: bool = False
+    DEMO_USER_PASSWORD: str = ""
 
     # ── Monitoring ─────────────────────────────────────────────────────────────
     SENTRY_DSN: str = ""

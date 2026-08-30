@@ -18,7 +18,7 @@ from src.application.services.person_service import PersonVersionConflictError
 from src.domain.hagiography.models import PublicationStatus
 from src.domain.identity.models import User
 from src.infrastructure.db.session import get_db_session
-from src.presentation.api.v1.auth.router import require_permission
+from src.presentation.api.v1.auth.router import get_current_user, require_permission
 from src.presentation.api.v1.editorial.schemas import (
     EditorialDashboardSchema,
     EditorialPriority,
@@ -94,7 +94,7 @@ async def transition_editorial_record(
     person_id: uuid.UUID,
     data: EditorialTransitionSchema,
     db: AsyncSession = Depends(get_db_session),
-    current_user: User = Depends(require_permission("persons", "update")),
+    current_user: User = Depends(get_current_user),
 ) -> EditorialTransitionResponseSchema:
     try:
         return await EditorialService(db).transition(
@@ -102,7 +102,7 @@ async def transition_editorial_record(
             data.target_status,
             user_id=current_user.id,
             note=data.note,
-            can_publish=current_user.has_permission("persons", "publish"),
+            granted_permissions=current_user.get_permissions(),
             expected_version=data.expected_version,
         )
     except EditorialAuthorizationError as exc:

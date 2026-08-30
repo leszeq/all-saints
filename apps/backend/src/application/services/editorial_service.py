@@ -81,6 +81,15 @@ ALLOWED_TRANSITIONS: dict[str, set[str]] = {
     PublicationStatus.ARCHIVED.value: {PublicationStatus.DRAFT.value},
 }
 
+TRANSITION_PERMISSIONS: dict[tuple[str, str], str] = {
+    (PublicationStatus.DRAFT.value, PublicationStatus.REVIEW.value): "persons:submit",
+    (PublicationStatus.REVIEW.value, PublicationStatus.DRAFT.value): "persons:review",
+    (PublicationStatus.REVIEW.value, PublicationStatus.PUBLISHED.value): "persons:review",
+    (PublicationStatus.PUBLISHED.value, PublicationStatus.REVIEW.value): "persons:publish",
+    (PublicationStatus.PUBLISHED.value, PublicationStatus.ARCHIVED.value): "persons:publish",
+    (PublicationStatus.ARCHIVED.value, PublicationStatus.DRAFT.value): "persons:publish",
+}
+
 
 class EditorialService:
     """Read operational metrics and manage publication-state transitions."""
@@ -1129,7 +1138,7 @@ class EditorialService:
         *,
         user_id: uuid.UUID,
         note: str | None = None,
-        can_publish: bool = False,
+        granted_permissions: set[str] | None = None,
         expected_version: int | None = None,
     ) -> EditorialTransitionResponseSchema:
         """Apply one allowed workflow transition and write a version snapshot."""
@@ -1142,14 +1151,20 @@ class EditorialService:
             raise EditorialTransitionError(
                 f"Przejście {previous} → {target_status.value} nie jest dozwolone"
             )
-        publication_states = {
-            PublicationStatus.PUBLISHED.value,
-            PublicationStatus.ARCHIVED.value,
-        }
-        if not can_publish and (
-            previous in publication_states or target_status.value in publication_states
+        required_permission = TRANSITION_PERMISSIONS[(previous, target_status.value)]
+        if required_permission not in (granted_permissions or set()):
+            raise EditorialAuthorizationError(
+                f"Ta operacja wymaga uprawnienia {required_permission}"
+            )
+        normalized_note = note.strip() if note else None
+        if (
+            previous == PublicationStatus.REVIEW.value
+            and target_status == PublicationStatus.DRAFT
+            and not normalized_note
         ):
-            raise EditorialAuthorizationError("Ta operacja wymaga uprawnienia persons:publish")
+            raise EditorialTransitionError(
+                "Zwrócenie rekordu do redaktora wymaga komentarza z uzasadnieniem"
+            )
         if target_status == PublicationStatus.PUBLISHED:
             missing = []
             if not person.summary_pl or not person.summary_pl.strip():
@@ -1165,7 +1180,7 @@ class EditorialService:
                 raise EditorialTransitionError(
                     "Publikacja wymaga uzupełnienia: " + ", ".join(missing)
                 )
-        summary = note or f"Workflow redakcyjny: {previous} → {target_status.value}"
+        summary = normalized_note or f"Workflow redakcyjny: {previous} → {target_status.value}"
         person = await person_service.update_person(
             person,
             PersonUpdateSchema(

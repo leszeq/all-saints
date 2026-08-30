@@ -240,7 +240,7 @@ async def test_editorial_transition_validates_content_and_persists_version(
             incomplete.id,
             PublicationStatus.PUBLISHED,
             user_id=editor.id,
-            can_publish=True,
+            granted_permissions={"persons:review"},
             expected_version=incomplete.version,
         )
 
@@ -249,7 +249,7 @@ async def test_editorial_transition_validates_content_and_persists_version(
         PublicationStatus.PUBLISHED,
         user_id=editor.id,
         note="Zatwierdzone w teście integracyjnym",
-        can_publish=True,
+        granted_permissions={"persons:review"},
         expected_version=ready.version,
     )
     assert result.previous_status == PublicationStatus.REVIEW.value
@@ -260,4 +260,5 @@ async def test_editorial_transition_validates_content_and_persists_version(
             uuid.uuid4(),
             PublicationStatus.REVIEW,
             user_id=editor.id,
+            granted_permissions={"persons:submit"},
         )

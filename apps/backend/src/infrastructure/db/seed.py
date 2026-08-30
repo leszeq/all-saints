@@ -13,15 +13,17 @@ Run with: python -m src.infrastructure.db.seed
 from __future__ import annotations
 
 import asyncio
+import uuid
 from datetime import UTC, datetime
 
 from loguru import logger
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.config import settings
-from src.core.security import password_hasher
+from src.core.security import is_strong_password, password_hasher
 from src.domain.geography import models as geography_models  # noqa: F401
+from src.domain.hagiography import embedding_model as embedding_models  # noqa: F401
 from src.domain.hagiography.models import StateOfLife
 from src.domain.identity.models import (
     Permission,
@@ -32,170 +34,15 @@ from src.domain.identity.models import (
     UserRole,
     UserStatus,
 )
+from src.domain.identity.rbac import (
+    PERMISSIONS,
+    ROLE_DEFINITIONS,
+    ROLE_PERMISSIONS,
+    split_permission_key,
+)
 from src.domain.liturgy.models import LiturgicalCalendar
 from src.domain.sources import models as source_models  # noqa: F401
 from src.infrastructure.db.session import enable_pgvector, get_engine
-
-# ==============================================================================
-# PERMISSIONS MATRIX
-# ==============================================================================
-
-PERMISSIONS: list[tuple[str, str, str]] = [
-    # (resource, action, description)
-    # Persons
-    ("persons", "read", "Przeglądanie osób"),
-    ("persons", "create", "Tworzenie nowych osób"),
-    ("persons", "update", "Edycja osób"),
-    ("persons", "delete", "Usuwanie osób"),
-    ("persons", "publish", "Publikowanie osób"),
-    ("persons", "restore", "Przywracanie usuniętych osób"),
-    # Sources
-    ("sources", "read", "Przeglądanie źródeł"),
-    ("sources", "create", "Tworzenie źródeł"),
-    ("sources", "update", "Edycja źródeł"),
-    ("sources", "delete", "Usuwanie źródeł"),
-    # Geography
-    ("geography", "read", "Przeglądanie geografii"),
-    ("geography", "create", "Tworzenie lokalizacji"),
-    ("geography", "update", "Edycja lokalizacji"),
-    ("geography", "delete", "Usuwanie lokalizacji"),
-    # Orders
-    ("orders", "read", "Przeglądanie zakonów"),
-    ("orders", "create", "Tworzenie zakonów"),
-    ("orders", "update", "Edycja zakonów"),
-    ("orders", "delete", "Usuwanie zakonów"),
-    # Images
-    ("images", "read", "Przeglądanie zdjęć"),
-    ("images", "create", "Dodawanie zdjęć"),
-    ("images", "update", "Edycja zdjęć"),
-    ("images", "delete", "Usuwanie zdjęć"),
-    # Export
-    ("export", "read", "Pobieranie eksportów"),
-    ("export", "create", "Generowanie eksportów"),
-    # Import
-    ("import", "create", "Importowanie danych"),
-    # Users
-    ("users", "read", "Przeglądanie użytkowników"),
-    ("users", "create", "Tworzenie użytkowników"),
-    ("users", "update", "Edycja użytkowników"),
-    ("users", "delete", "Usuwanie użytkowników"),
-    # Roles
-    ("roles", "read", "Przeglądanie ról"),
-    ("roles", "create", "Tworzenie ról"),
-    ("roles", "update", "Edycja ról"),
-    ("roles", "delete", "Usuwanie ról"),
-    # Audit
-    ("audit", "read", "Przeglądanie logów audytu"),
-    # Translations
-    ("translations", "read", "Przeglądanie tłumaczeń"),
-    ("translations", "create", "Tworzenie tłumaczeń"),
-    ("translations", "update", "Edycja tłumaczeń"),
-    # Calendar
-    ("calendar", "read", "Przeglądanie kalendarza"),
-    ("calendar", "create", "Tworzenie wpisów kalendarza"),
-    ("calendar", "update", "Edycja kalendarza"),
-    ("calendar", "delete", "Usuwanie wpisów kalendarza"),
-]
-
-
-# Permissions per role
-ROLE_PERMISSIONS: dict[str, list[tuple[str, str]]] = {
-    SystemRole.SUPER_ADMIN: [(r, a) for r, a, _ in PERMISSIONS],  # All permissions
-    SystemRole.ADMIN: [
-        ("persons", "read"),
-        ("persons", "create"),
-        ("persons", "update"),
-        ("persons", "delete"),
-        ("persons", "publish"),
-        ("persons", "restore"),
-        ("sources", "read"),
-        ("sources", "create"),
-        ("sources", "update"),
-        ("sources", "delete"),
-        ("geography", "read"),
-        ("geography", "create"),
-        ("geography", "update"),
-        ("geography", "delete"),
-        ("orders", "read"),
-        ("orders", "create"),
-        ("orders", "update"),
-        ("orders", "delete"),
-        ("images", "read"),
-        ("images", "create"),
-        ("images", "update"),
-        ("images", "delete"),
-        ("export", "read"),
-        ("export", "create"),
-        ("import", "create"),
-        ("users", "read"),
-        ("audit", "read"),
-        ("translations", "read"),
-        ("translations", "create"),
-        ("translations", "update"),
-        ("calendar", "read"),
-        ("calendar", "create"),
-        ("calendar", "update"),
-        ("calendar", "delete"),
-    ],
-    SystemRole.EDITOR: [
-        ("persons", "read"),
-        ("persons", "create"),
-        ("persons", "update"),
-        ("sources", "read"),
-        ("sources", "create"),
-        ("sources", "update"),
-        ("geography", "read"),
-        ("geography", "create"),
-        ("orders", "read"),
-        ("images", "read"),
-        ("images", "create"),
-        ("images", "update"),
-        ("export", "read"),
-        ("export", "create"),
-        ("calendar", "read"),
-    ],
-    SystemRole.REVIEWER: [
-        ("persons", "read"),
-        ("persons", "update"),
-        ("sources", "read"),
-        ("geography", "read"),
-        ("images", "read"),
-        ("export", "read"),
-        ("calendar", "read"),
-    ],
-    SystemRole.TRANSLATOR: [
-        ("persons", "read"),
-        ("translations", "read"),
-        ("translations", "create"),
-        ("translations", "update"),
-        ("geography", "read"),
-        ("calendar", "read"),
-    ],
-    SystemRole.READER: [
-        ("persons", "read"),
-        ("sources", "read"),
-        ("geography", "read"),
-        ("images", "read"),
-        ("export", "read"),
-        ("calendar", "read"),
-    ],
-    SystemRole.GUEST: [
-        ("persons", "read"),
-        ("geography", "read"),
-    ],
-}
-
-
-ROLE_METADATA: dict[str, tuple[str, str]] = {
-    SystemRole.SUPER_ADMIN: ("Super Administrator", "Pełny dostęp do systemu"),
-    SystemRole.ADMIN: ("Administrator", "Zarządzanie treściami i użytkownikami"),
-    SystemRole.EDITOR: ("Redaktor", "Tworzenie i edycja treści"),
-    SystemRole.REVIEWER: ("Recenzent", "Przegląd i weryfikacja treści"),
-    SystemRole.TRANSLATOR: ("Tłumacz", "Tłumaczenie treści"),
-    SystemRole.READER: ("Czytelnik", "Dostęp tylko do odczytu"),
-    SystemRole.GUEST: ("Gość", "Ograniczony dostęp publiczny"),
-}
-
 
 # ==============================================================================
 # REFERENCE DATA
@@ -239,7 +86,8 @@ async def seed_permissions(session: AsyncSession) -> dict[tuple[str, str], Permi
     logger.info("Seeding permissions...")
     permission_map: dict[tuple[str, str], Permission] = {}
 
-    for resource, action, description in PERMISSIONS:
+    for definition in PERMISSIONS:
+        resource, action = definition.resource, definition.action
         result = await session.execute(
             select(Permission).where(
                 Permission.resource == resource,
@@ -251,11 +99,11 @@ async def seed_permissions(session: AsyncSession) -> dict[tuple[str, str], Permi
             perm = Permission(
                 resource=resource,
                 action=action,
-                description=description,
+                description=definition.description,
             )
             session.add(perm)
         else:
-            perm.description = description
+            perm.description = definition.description
         permission_map[(resource, action)] = perm
 
     await session.flush()
@@ -272,46 +120,56 @@ async def seed_roles(
     role_map: dict[str, Role] = {}
     now = datetime.now(UTC)
 
-    for role_name, (display_name, description) in ROLE_METADATA.items():
+    for role_name, definition in ROLE_DEFINITIONS.items():
         result = await session.execute(select(Role).where(Role.name == role_name))
         role = result.scalar_one_or_none()
         if role is None:
             role = Role(
                 name=role_name,
-                display_name=display_name,
-                description=description,
+                display_name=definition.display_name,
+                description=definition.description,
                 is_system=True,
             )
             session.add(role)
             await session.flush()
         else:
-            role.display_name = display_name
-            role.description = description
+            role.display_name = definition.display_name
+            role.description = definition.description
             role.is_system = True
 
-        # Assign permissions
-        for resource, action in ROLE_PERMISSIONS.get(role_name, []):
+        desired_permission_ids: set[uuid.UUID] = set()
+        for key in ROLE_PERMISSIONS.get(role_name, frozenset()):
+            resource, action = split_permission_key(key)
             perm = permission_map.get((resource, action))
             if perm:
-                existing = await session.execute(
-                    select(RolePermission).where(
-                        RolePermission.role_id == role.id,
-                        RolePermission.permission_id == perm.id,
-                    )
+                desired_permission_ids.add(perm.id)
+
+        current_result = await session.execute(
+            select(RolePermission).where(RolePermission.role_id == role.id)
+        )
+        current_assignments = current_result.scalars().all()
+        current_permission_ids = {assignment.permission_id for assignment in current_assignments}
+        stale_permission_ids = current_permission_ids - desired_permission_ids
+        if stale_permission_ids:
+            await session.execute(
+                delete(RolePermission).where(
+                    RolePermission.role_id == role.id,
+                    RolePermission.permission_id.in_(stale_permission_ids),
                 )
-                if existing.scalar_one_or_none() is None:
-                    session.add(
-                        RolePermission(
-                            role_id=role.id,
-                            permission_id=perm.id,
-                            granted_at=now,
-                        )
-                    )
+            )
+        for permission_id in desired_permission_ids - current_permission_ids:
+            session.add(
+                RolePermission(
+                    role_id=role.id,
+                    permission_id=permission_id,
+                    granted_at=now,
+                )
+            )
 
         role_map[role_name] = role
 
     await session.flush()
-    logger.info(f"✓ Created {len(ROLE_METADATA)} roles")
+    logger.info(f"✓ Synchronized {len(ROLE_DEFINITIONS)} system roles")
     return role_map
 
 
@@ -323,11 +181,31 @@ async def seed_admin_user(
     logger.info("Seeding admin user...")
     now = datetime.now(UTC)
 
+    super_admin_role = role_map[SystemRole.SUPER_ADMIN]
+    existing_super_admins = (
+        await session.execute(
+            select(User)
+            .join(UserRole, UserRole.user_id == User.id)
+            .where(UserRole.role_id == super_admin_role.id)
+            .where(User.deleted_at.is_(None))
+        )
+    ).scalars().all()
+    if len(existing_super_admins) > 1:
+        raise RuntimeError("W bazie istnieje więcej niż jeden aktywny superadministrator")
+    if existing_super_admins:
+        user = existing_super_admins[0]
+        if user.email != settings.INITIAL_ADMIN_EMAIL.lower():
+            logger.warning(
+                "Initial admin email differs from the existing superadministrator; "
+                "the existing account remains the sole owner"
+            )
+        return user
+
     result = await session.execute(
         select(User).where(User.email == settings.INITIAL_ADMIN_EMAIL.lower())
     )
-    user = result.scalar_one_or_none()
-    if user is None:
+    initial_user = result.scalar_one_or_none()
+    if initial_user is None:
         user = User(
             email=settings.INITIAL_ADMIN_EMAIL.lower(),
             hashed_password=password_hasher.hash(settings.INITIAL_ADMIN_PASSWORD or "Admin123!"),
@@ -337,9 +215,10 @@ async def seed_admin_user(
         )
         session.add(user)
         await session.flush()
+    else:
+        user = initial_user
 
     # Assign Super Admin role
-    super_admin_role = role_map[SystemRole.SUPER_ADMIN]
     existing_role = await session.execute(
         select(UserRole).where(
             UserRole.user_id == user.id,
@@ -359,6 +238,67 @@ async def seed_admin_user(
 
     logger.info(f"✓ Created admin user: {settings.INITIAL_ADMIN_EMAIL}")
     return user
+
+
+async def seed_demo_users(
+    session: AsyncSession,
+    role_map: dict[str, Role],
+) -> None:
+    """Create deterministic workflow accounts only in development/testing."""
+    if not settings.SEED_DEMO_USERS:
+        return
+    if settings.is_production:
+        raise RuntimeError("Konta demonstracyjne nie mogą być tworzone w produkcji")
+
+    password_is_strong, password_errors = is_strong_password(settings.DEMO_USER_PASSWORD)
+    if not password_is_strong:
+        raise RuntimeError(
+            "DEMO_USER_PASSWORD nie spełnia polityki haseł: " + ", ".join(password_errors)
+        )
+
+    demo_accounts = (
+        ("admin.test@encyklopedia.pl", "Testowy Administrator", SystemRole.ADMIN),
+        ("redaktor.test@encyklopedia.pl", "Testowy Redaktor", SystemRole.EDITOR),
+        ("recenzent.test@encyklopedia.pl", "Testowy Recenzent", SystemRole.REVIEWER),
+    )
+    now = datetime.now(UTC)
+    password_hash = password_hasher.hash(settings.DEMO_USER_PASSWORD)
+
+    for email, full_name, role_name in demo_accounts:
+        user = (
+            await session.execute(select(User).where(User.email == email))
+        ).scalar_one_or_none()
+        if user is None:
+            user = User(
+                email=email,
+                hashed_password=password_hash,
+                full_name=full_name,
+                status=UserStatus.ACTIVE,
+                is_verified=True,
+            )
+            session.add(user)
+            await session.flush()
+        else:
+            if user.has_role(SystemRole.SUPER_ADMIN):
+                raise RuntimeError(f"Konto demonstracyjne {email} nie może być superadministratorem")
+            user.hashed_password = password_hash
+            user.full_name = full_name
+            user.status = UserStatus.ACTIVE
+            user.is_verified = True
+            user.deleted_at = None
+
+        await session.execute(delete(UserRole).where(UserRole.user_id == user.id))
+        session.add(
+            UserRole(
+                user_id=user.id,
+                role_id=role_map[role_name].id,
+                assigned_at=now,
+                assigned_by_id=None,
+            )
+        )
+
+    await session.flush()
+    logger.info("✓ Synchronized development workflow accounts")
 
 
 async def seed_states_of_life(session: AsyncSession) -> None:
@@ -432,6 +372,7 @@ async def run_seed() -> None:
             permission_map = await seed_permissions(session)
             role_map = await seed_roles(session, permission_map)
             await seed_admin_user(session, role_map)
+            await seed_demo_users(session, role_map)
             await seed_states_of_life(session)
             await seed_liturgical_calendars(session)
 

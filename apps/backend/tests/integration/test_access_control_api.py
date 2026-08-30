@@ -1,0 +1,294 @@
+"""Integration coverage for user, role, and permission administration."""
+
+from __future__ import annotations
+
+from datetime import UTC, datetime
+
+import pytest
+from httpx import AsyncClient
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.core.security import jwt_service
+from src.domain.identity.models import (
+    Permission,
+    Role,
+    RolePermission,
+    SystemRole,
+    User,
+    UserRole,
+    UserStatus,
+)
+from src.domain.identity.rbac import ROLE_PERMISSIONS
+
+
+async def _create_role(
+    db: AsyncSession,
+    role_name: SystemRole,
+) -> Role:
+    role = Role(
+        name=role_name.value,
+        display_name=role_name.value,
+        is_system=True,
+    )
+    db.add(role)
+    await db.flush()
+
+    for key in ROLE_PERMISSIONS[role_name]:
+        resource, action = key.split(":", maxsplit=1)
+        permission = (
+            await db.execute(
+                select(Permission).where(
+                    Permission.resource == resource,
+                    Permission.action == action,
+                )
+            )
+        ).scalar_one_or_none()
+        if permission is None:
+            permission = Permission(
+                resource=resource,
+                action=action,
+                description=key,
+            )
+            db.add(permission)
+            await db.flush()
+        db.add(
+            RolePermission(
+                role_id=role.id,
+                permission_id=permission.id,
+                granted_at=datetime.now(UTC),
+            )
+        )
+    return role
+
+
+async def _create_actor(
+    db: AsyncSession,
+    role_name: SystemRole,
+    email: str,
+) -> tuple[User, Role, dict[str, str]]:
+    role = await _create_role(db, role_name)
+    user = User(
+        email=email,
+        hashed_password="not-used-by-token-tests",
+        full_name=email,
+        status=UserStatus.ACTIVE,
+        is_verified=True,
+    )
+    db.add(user)
+    await db.flush()
+    db.add(
+        UserRole(
+            user_id=user.id,
+            role_id=role.id,
+            assigned_at=datetime.now(UTC),
+            assigned_by_id=None,
+        )
+    )
+    await db.commit()
+    token = jwt_service.create_access_token(
+        user_id=user.id,
+        email=user.email,
+        roles=[role.name],
+    )
+    return user, role, {"Authorization": f"Bearer {token}"}
+
+
+@pytest.mark.asyncio
+async def test_only_super_admin_can_create_a_user_with_an_assignable_role(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    _, _, super_headers = await _create_actor(
+        db_session,
+        SystemRole.SUPER_ADMIN,
+        "owner-access@example.com",
+    )
+    editor_role = Role(
+        name=SystemRole.EDITOR.value,
+        display_name="Redaktor",
+        is_system=True,
+    )
+    db_session.add(editor_role)
+    await db_session.commit()
+
+    response = await async_client.post(
+        "/api/v1/users",
+        headers=super_headers,
+        json={
+            "email": "new-editor@example.com",
+            "password": "StrongEditor123!",
+            "full_name": "Nowy Redaktor",
+            "role_id": str(editor_role.id),
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["roles"] == [SystemRole.EDITOR.value]
+    assert response.json()["primary_role"]["display_name"] == "Redaktor"
+
+
+@pytest.mark.asyncio
+async def test_admin_cannot_list_or_manage_users(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    _, _, admin_headers = await _create_actor(
+        db_session,
+        SystemRole.ADMIN,
+        "content-admin@example.com",
+    )
+
+    list_response = await async_client.get("/api/v1/users", headers=admin_headers)
+    profile_response = await async_client.get("/api/v1/auth/me", headers=admin_headers)
+    create_response = await async_client.post(
+        "/api/v1/users",
+        headers=admin_headers,
+        json={
+            "email": "forbidden@example.com",
+            "password": "StrongEditor123!",
+            "full_name": "Forbidden User",
+            "role_id": "00000000-0000-0000-0000-000000000001",
+        },
+    )
+
+    assert list_response.status_code == 403
+    assert create_response.status_code == 403
+    assert "persons:publish" in profile_response.json()["permissions"]
+    assert "users:read" not in profile_response.json()["permissions"]
+
+
+@pytest.mark.asyncio
+async def test_super_admin_role_cannot_be_assigned_to_another_user(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    _, super_role, super_headers = await _create_actor(
+        db_session,
+        SystemRole.SUPER_ADMIN,
+        "sole-owner@example.com",
+    )
+
+    response = await async_client.post(
+        "/api/v1/users",
+        headers=super_headers,
+        json={
+            "email": "second-owner@example.com",
+            "password": "StrongEditor123!",
+            "full_name": "Second Owner",
+            "role_id": str(super_role.id),
+        },
+    )
+
+    assert response.status_code == 409
+    assert "superadministrator" in response.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_super_admin_can_update_and_deactivate_a_managed_user(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    _, _, super_headers = await _create_actor(
+        db_session,
+        SystemRole.SUPER_ADMIN,
+        "user-owner@example.com",
+    )
+    editor_role = await _create_role(db_session, SystemRole.EDITOR)
+    reviewer_role = await _create_role(db_session, SystemRole.REVIEWER)
+    await db_session.commit()
+    created = await async_client.post(
+        "/api/v1/users",
+        headers=super_headers,
+        json={
+            "email": "managed@example.com",
+            "password": "StrongEditor123!",
+            "full_name": "Managed Editor",
+            "role_id": str(editor_role.id),
+        },
+    )
+    user_id = created.json()["id"]
+
+    updated = await async_client.patch(
+        f"/api/v1/users/{user_id}",
+        headers=super_headers,
+        json={
+            "full_name": "Managed Reviewer",
+            "status": "inactive",
+            "role_id": str(reviewer_role.id),
+        },
+    )
+    deleted = await async_client.delete(
+        f"/api/v1/users/{user_id}",
+        headers=super_headers,
+    )
+    listed = await async_client.get("/api/v1/users", headers=super_headers)
+
+    assert updated.status_code == 200
+    assert updated.json()["roles"] == [SystemRole.REVIEWER.value]
+    assert updated.json()["status"] == "inactive"
+    assert deleted.status_code == 204
+    assert all(item["id"] != user_id for item in listed.json()["items"])
+
+
+@pytest.mark.asyncio
+async def test_custom_roles_can_be_created_only_from_content_permissions(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    _, _, super_headers = await _create_actor(
+        db_session,
+        SystemRole.SUPER_ADMIN,
+        "role-owner@example.com",
+    )
+
+    allowed = await async_client.post(
+        "/api/v1/roles",
+        headers=super_headers,
+        json={
+            "name": "source_verifier",
+            "display_name": "Weryfikator źródeł",
+            "description": "Kontroluje źródła bez dostępu do kont.",
+            "permissions": ["persons:read", "sources:read", "sources:update"],
+        },
+    )
+    forbidden = await async_client.post(
+        "/api/v1/roles",
+        headers=super_headers,
+        json={
+            "name": "user_manager",
+            "display_name": "User manager",
+            "permissions": ["users:create"],
+        },
+    )
+
+    assert allowed.status_code == 201
+    assert allowed.json()["permissions"] == [
+        "persons:read",
+        "sources:read",
+        "sources:update",
+    ]
+    assert forbidden.status_code == 409
+
+    role_id = allowed.json()["id"]
+    updated = await async_client.patch(
+        f"/api/v1/roles/{role_id}",
+        headers=super_headers,
+        json={
+            "display_name": "Starszy weryfikator źródeł",
+            "permissions": ["persons:read", "sources:read"],
+        },
+    )
+    matrix = await async_client.get("/api/v1/roles", headers=super_headers)
+    deleted = await async_client.delete(f"/api/v1/roles/{role_id}", headers=super_headers)
+
+    assert updated.status_code == 200
+    assert updated.json()["permissions"] == ["persons:read", "sources:read"]
+    assert matrix.status_code == 200
+    assert any(role["id"] == role_id for role in matrix.json()["items"])
+    assert any(
+        permission["key"] == "users:create"
+        and permission["assignable_to_custom_roles"] is False
+        for permission in matrix.json()["permissions"]
+    )
+    assert deleted.status_code == 204

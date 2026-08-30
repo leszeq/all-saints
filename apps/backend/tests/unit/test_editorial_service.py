@@ -96,6 +96,7 @@ async def test_transition_moves_draft_to_review_and_records_editor(monkeypatch):
         person.id,
         PublicationStatus.REVIEW,
         user_id=editor_id,
+        granted_permissions={"persons:submit"},
     )
 
     assert result.previous_status == PublicationStatus.DRAFT
@@ -118,21 +119,62 @@ async def test_transition_rejects_skipping_review(monkeypatch):
             person.id,
             PublicationStatus.PUBLISHED,
             user_id=uuid4(),
+            granted_permissions={"persons:publish"},
         )
 
 
 @pytest.mark.asyncio
-async def test_publish_transition_requires_dedicated_permission(monkeypatch):
+async def test_review_acceptance_requires_dedicated_review_permission(monkeypatch):
     person = make_person(status=PublicationStatus.REVIEW.value)
     person_service = SimpleNamespace(get_by_id_or_slug=AsyncMock(return_value=person))
     monkeypatch.setattr(editorial_module, "PersonService", lambda _db: person_service)
 
-    with pytest.raises(EditorialAuthorizationError, match="persons:publish"):
+    with pytest.raises(EditorialAuthorizationError, match="persons:review"):
         await EditorialService(SimpleNamespace()).transition(
             person.id,
             PublicationStatus.PUBLISHED,
             user_id=uuid4(),
-            can_publish=False,
+            granted_permissions={"persons:update"},
+        )
+
+
+@pytest.mark.asyncio
+async def test_reviewer_can_accept_complete_record_without_generic_update_permission(monkeypatch):
+    person = make_person(status=PublicationStatus.REVIEW.value)
+    updated = make_person(
+        id=person.id,
+        status=PublicationStatus.PUBLISHED.value,
+        updated_at="2026-08-30T10:00:00+00:00",
+    )
+    person_service = SimpleNamespace(
+        get_by_id_or_slug=AsyncMock(return_value=person),
+        update_person=AsyncMock(return_value=updated),
+    )
+    monkeypatch.setattr(editorial_module, "PersonService", lambda _db: person_service)
+
+    result = await EditorialService(SimpleNamespace()).transition(
+        person.id,
+        PublicationStatus.PUBLISHED,
+        user_id=uuid4(),
+        granted_permissions={"persons:review"},
+    )
+
+    assert result.status == PublicationStatus.PUBLISHED
+
+
+@pytest.mark.asyncio
+async def test_return_to_editor_requires_a_comment(monkeypatch):
+    person = make_person(status=PublicationStatus.REVIEW.value)
+    person_service = SimpleNamespace(get_by_id_or_slug=AsyncMock(return_value=person))
+    monkeypatch.setattr(editorial_module, "PersonService", lambda _db: person_service)
+
+    with pytest.raises(EditorialTransitionError, match="komentarza"):
+        await EditorialService(SimpleNamespace()).transition(
+            person.id,
+            PublicationStatus.DRAFT,
+            user_id=uuid4(),
+            granted_permissions={"persons:review"},
+            note="  ",
         )
 
 
@@ -147,5 +189,5 @@ async def test_unpublish_transition_requires_dedicated_permission(monkeypatch):
             person.id,
             PublicationStatus.REVIEW,
             user_id=uuid4(),
-            can_publish=False,
+            granted_permissions={"persons:review"},
         )

@@ -132,6 +132,7 @@ class UserProfileResponse(BaseModel):
     full_name: str
     status: str
     roles: list[str]
+    permissions: list[str]
     preferred_language: str
     last_login_at: datetime | None
 
@@ -487,6 +488,7 @@ async def get_me(current_user: User = Depends(get_current_user)) -> UserProfileR
         full_name=current_user.full_name,
         status=current_user.status,
         roles=[ur.role.name for ur in current_user.roles if ur.role],
+        permissions=sorted(current_user.get_permissions()),
         preferred_language=current_user.preferred_language,
         last_login_at=current_user.last_login_at,
     )
@@ -519,6 +521,7 @@ async def update_me(
         full_name=current_user.full_name,
         status=current_user.status,
         roles=[ur.role.name for ur in current_user.roles if ur.role],
+        permissions=sorted(current_user.get_permissions()),
         preferred_language=current_user.preferred_language,
         last_login_at=current_user.last_login_at,
     )
