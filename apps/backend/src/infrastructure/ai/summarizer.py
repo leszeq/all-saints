@@ -11,11 +11,16 @@ Supports:
 
 from __future__ import annotations
 
+import json
 import re
 from abc import ABC, abstractmethod
 from functools import lru_cache
+from typing import TYPE_CHECKING
 
 from loguru import logger
+
+if TYPE_CHECKING:
+    from openai import AsyncOpenAI
 
 # ==============================================================================
 # ABSTRACT BASE
@@ -55,11 +60,12 @@ class OpenAISummaryProvider(BaseSummaryProvider):
     """OpenAI GPT-4o-mini for text summarization."""
 
     MODEL = "gpt-4o-mini"
+    _client: AsyncOpenAI | None
 
     def __init__(self, api_key: str, model: str = MODEL) -> None:
         self._model = model
         try:
-            from openai import AsyncOpenAI  # type: ignore[import-untyped]
+            from openai import AsyncOpenAI
 
             self._client = AsyncOpenAI(api_key=api_key)
             self._available = True
@@ -78,12 +84,10 @@ class OpenAISummaryProvider(BaseSummaryProvider):
             "Użyj maksymalnie podanej liczby słów. "
             "Zachowaj najważniejsze fakty: daty, miejsca, patronaty, cuda."
         )
-        user_prompt = (
-            f"Napisz streszczenie poniższego biogramu w maksymalnie {max_words} słowach:\n\n{text[:4000]}"
-        )
+        user_prompt = f"Napisz streszczenie poniższego biogramu w maksymalnie {max_words} słowach:\n\n{text[:4000]}"
 
         try:
-            response = await self._client.chat.completions.create(  # type: ignore[union-attr]
+            response = await self._client.chat.completions.create(
                 model=self._model,
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -111,24 +115,25 @@ class OpenAISummaryProvider(BaseSummaryProvider):
         )
 
         try:
-            response = await self._client.chat.completions.create(  # type: ignore[union-attr]
+            response = await self._client.chat.completions.create(
                 model=self._model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.2,
                 max_tokens=200,
                 response_format={"type": "json_object"},
             )
-            import json
-
             content = response.choices[0].message.content or "{}"
-            data = json.loads(content)
+            data: object = json.loads(content)
             # Handle both {"tags": [...]} and direct array response
             if isinstance(data, list):
-                return data[:10]
+                tags = _normalise_tags(data)
+                if tags:
+                    return tags
             if isinstance(data, dict):
                 for key in ("tags", "tagi", "keywords", "słowa_kluczowe"):
-                    if key in data and isinstance(data[key], list):
-                        return data[key][:10]
+                    tags = _normalise_tags(data.get(key))
+                    if tags:
+                        return tags
             raise TaggingUnavailableError("OpenAI nie zwrócił poprawnych propozycji tagów")
         except Exception as exc:
             logger.warning(f"OpenAI tag extraction failed: {exc}")
@@ -170,7 +175,8 @@ class OllamaSummaryProvider(BaseSummaryProvider):
                     json={"model": self._model, "prompt": prompt, "stream": False},
                 )
                 response.raise_for_status()
-                return response.json().get("response", _extractive_summary(text, max_words))
+                generated = _ollama_response_text(response.json())
+                return generated or _extractive_summary(text, max_words)
         except Exception as exc:
             logger.warning(f"Ollama summarize failed: {exc}")
             return _extractive_summary(text, max_words)
@@ -190,12 +196,10 @@ class OllamaSummaryProvider(BaseSummaryProvider):
                     json={"model": self._model, "prompt": prompt, "stream": False},
                 )
                 response.raise_for_status()
-                raw = response.json().get("response", "")
+                raw = _ollama_response_text(response.json()) or ""
                 tags = [t.strip() for t in raw.split(",") if t.strip()][:10]
                 if not tags:
-                    raise TaggingUnavailableError(
-                        "Ollama nie zwróciła poprawnych propozycji tagów"
-                    )
+                    raise TaggingUnavailableError("Ollama nie zwróciła poprawnych propozycji tagów")
                 return tags
         except Exception as exc:
             logger.warning(f"Ollama tag extraction failed: {exc}")
@@ -302,9 +306,7 @@ def build_summary_provider(
         return OpenAISummaryProvider(api_key=openai_api_key, model=openai_model)
 
     if provider_name == "ollama" and ollama_base_url:
-        logger.info(
-            f"AI: Using Ollama summary provider ({ollama_base_url}, {ollama_model})"
-        )
+        logger.info(f"AI: Using Ollama summary provider ({ollama_base_url}, {ollama_model})")
         return OllamaSummaryProvider(base_url=ollama_base_url, model=ollama_model)
 
     logger.info("AI: Generative summaries are disabled – using extractive summarizer")
@@ -337,6 +339,21 @@ def get_summary_service() -> SummaryService:
 # ==============================================================================
 # UTILITIES
 # ==============================================================================
+
+
+def _normalise_tags(payload: object) -> list[str]:
+    """Return at most ten non-empty string tags from untrusted JSON."""
+    if not isinstance(payload, list):
+        return []
+    return [value.strip() for value in payload if isinstance(value, str) and value.strip()][:10]
+
+
+def _ollama_response_text(payload: object) -> str | None:
+    """Extract a textual response from an untrusted Ollama payload."""
+    if not isinstance(payload, dict):
+        return None
+    response = payload.get("response")
+    return response if isinstance(response, str) else None
 
 
 def _extractive_summary(text: str, max_words: int = 100) -> str:

@@ -19,8 +19,12 @@ import math
 from abc import ABC, abstractmethod
 from enum import StrEnum
 from functools import lru_cache
+from typing import TYPE_CHECKING, Protocol, cast
 
 from loguru import logger
+
+if TYPE_CHECKING:
+    from openai import AsyncOpenAI
 
 VECTOR_DIM = 1536  # Standard dimension (OpenAI text-embedding-3-small)
 
@@ -89,6 +93,7 @@ class OpenAIEmbeddingProvider(BaseEmbeddingProvider):
 
     MODEL = "text-embedding-3-small"
     DIM = 1536
+    _client: AsyncOpenAI | None
 
     def __init__(
         self,
@@ -100,7 +105,7 @@ class OpenAIEmbeddingProvider(BaseEmbeddingProvider):
         self._model = model
         self._dimensions = dimensions
         try:
-            from openai import AsyncOpenAI  # type: ignore[import-untyped]
+            from openai import AsyncOpenAI
 
             self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
             self._available = True
@@ -114,13 +119,17 @@ class OpenAIEmbeddingProvider(BaseEmbeddingProvider):
         if not self._available or self._client is None:
             raise EmbeddingUnavailableError("Dostawca embeddingów OpenAI jest niedostępny")
         try:
-            request: dict[str, object] = {
-                "input": text[:8192],
-                "model": self._model,
-            }
             if self._model.startswith("text-embedding-3"):
-                request["dimensions"] = self._dimensions
-            response = await self._client.embeddings.create(**request)
+                response = await self._client.embeddings.create(
+                    input=text[:8192],
+                    model=self._model,
+                    dimensions=self._dimensions,
+                )
+            else:
+                response = await self._client.embeddings.create(
+                    input=text[:8192],
+                    model=self._model,
+                )
             return response.data[0].embedding
         except Exception as exc:
             logger.warning(f"OpenAI embed failed: {exc}")
@@ -131,13 +140,18 @@ class OpenAIEmbeddingProvider(BaseEmbeddingProvider):
         if not self._available or self._client is None:
             raise EmbeddingUnavailableError("Dostawca embeddingów OpenAI jest niedostępny")
         try:
-            request: dict[str, object] = {
-                "input": [text[:8192] for text in texts],
-                "model": self._model,
-            }
+            inputs = [text[:8192] for text in texts]
             if self._model.startswith("text-embedding-3"):
-                request["dimensions"] = self._dimensions
-            response = await self._client.embeddings.create(**request)
+                response = await self._client.embeddings.create(
+                    input=inputs,
+                    model=self._model,
+                    dimensions=self._dimensions,
+                )
+            else:
+                response = await self._client.embeddings.create(
+                    input=inputs,
+                    model=self._model,
+                )
             return [item.embedding for item in response.data]
         except Exception as exc:
             logger.warning(f"OpenAI batch embed failed: {exc}")
@@ -179,7 +193,7 @@ class OllamaEmbeddingProvider(BaseEmbeddingProvider):
     async def embed(self, text: str) -> list[float]:
         """Embed via local Ollama instance."""
         try:
-            import httpx  # type: ignore[import-untyped]
+            import httpx
 
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
@@ -187,7 +201,7 @@ class OllamaEmbeddingProvider(BaseEmbeddingProvider):
                     json={"model": self._model, "prompt": text[:4096]},
                 )
                 response.raise_for_status()
-                vec = response.json()["embedding"]
+                vec = _embedding_from_ollama_payload(response.json())
                 return _pad_or_truncate(vec, VECTOR_DIM)
         except Exception as exc:
             logger.warning(f"Ollama embed failed: {exc}")
@@ -250,6 +264,14 @@ class DisabledEmbeddingProvider(BaseEmbeddingProvider):
 # ==============================================================================
 
 
+class EmbeddingCache(Protocol):
+    """Minimal async cache contract required by the embedding service."""
+
+    async def get(self, key: str) -> str | bytes | None: ...
+
+    async def setex(self, key: str, ttl: int, value: str) -> object: ...
+
+
 class EmbeddingService:
     """
     High-level embedding service with Redis caching.
@@ -260,7 +282,11 @@ class EmbeddingService:
 
     CACHE_TTL = 60 * 60 * 24 * 7  # 7 days
 
-    def __init__(self, provider: BaseEmbeddingProvider, redis_client: object | None = None) -> None:
+    def __init__(
+        self,
+        provider: BaseEmbeddingProvider,
+        redis_client: EmbeddingCache | None = None,
+    ) -> None:
         self._provider = provider
         self._redis = redis_client
 
@@ -281,9 +307,9 @@ class EmbeddingService:
         # Try cache first
         if self._redis is not None:
             try:
-                cached = await self._redis.get(cache_key)  # type: ignore[union-attr]
+                cached = await self._redis.get(cache_key)
                 if cached:
-                    cached_vector = json.loads(cached)
+                    cached_vector = _coerce_vector(json.loads(cached))
                     _validate_vector(cached_vector, self.vector_dimensions)
                     return cached_vector
             except Exception as exc:
@@ -295,7 +321,7 @@ class EmbeddingService:
         # Store in cache
         if self._redis is not None:
             try:
-                await self._redis.setex(cache_key, self.CACHE_TTL, json.dumps(vector))  # type: ignore[union-attr]
+                await self._redis.setex(cache_key, self.CACHE_TTL, json.dumps(vector))
             except Exception as exc:
                 logger.debug(f"Could not cache embedding: {exc}")
 
@@ -311,9 +337,9 @@ class EmbeddingService:
         for i, text in enumerate(texts):
             if self._redis is not None:
                 try:
-                    cached = await self._redis.get(self._cache_key(text))  # type: ignore[union-attr]
+                    cached = await self._redis.get(self._cache_key(text))
                     if cached:
-                        cached_vector = json.loads(cached)
+                        cached_vector = _coerce_vector(json.loads(cached))
                         _validate_vector(cached_vector, self.vector_dimensions)
                         results[i] = cached_vector
                         continue
@@ -326,15 +352,13 @@ class EmbeddingService:
         if uncached_texts:
             vectors = await self._provider.embed_batch(uncached_texts)
             if len(vectors) != len(uncached_texts):
-                raise EmbeddingUnavailableError(
-                    "Dostawca zwrócił niepełny zestaw embeddingów"
-                )
+                raise EmbeddingUnavailableError("Dostawca zwrócił niepełny zestaw embeddingów")
             for idx, vec in zip(uncached_indices, vectors, strict=True):
                 _validate_vector(vec, self.vector_dimensions)
                 results[idx] = vec
                 if self._redis is not None:
                     try:
-                        await self._redis.setex(  # type: ignore[union-attr]
+                        await self._redis.setex(
                             self._cache_key(texts[idx]),
                             self.CACHE_TTL,
                             json.dumps(vec),
@@ -344,7 +368,7 @@ class EmbeddingService:
 
         if any(result is None for result in results):
             raise EmbeddingUnavailableError("Nie udało się wygenerować wszystkich embeddingów")
-        return [result for result in results if result is not None]
+        return cast(list[list[float]], results)
 
     @property
     def provider_name(self) -> str:
@@ -365,10 +389,7 @@ class EmbeddingService:
 
     def _cache_key(self, text: str) -> str:
         digest = hashlib.sha256(text.encode()).hexdigest()[:24]
-        return (
-            f"emb:{self.provider_name}:{self.model_name}:"
-            f"{self.vector_dimensions}:{digest}"
-        )
+        return f"emb:{self.provider_name}:{self.model_name}:" f"{self.vector_dimensions}:{digest}"
 
 
 # ==============================================================================
@@ -437,9 +458,9 @@ def get_embedding_service() -> EmbeddingService:
     )
 
     # Try to get Redis client for caching
-    redis_client = None
+    redis_client: EmbeddingCache | None = None
     try:
-        from src.infrastructure.cache.redis_client import get_redis_client  # type: ignore[import]
+        from src.infrastructure.cache.redis_client import get_redis_client
 
         redis_client = get_redis_client()
     except Exception:
@@ -451,6 +472,22 @@ def get_embedding_service() -> EmbeddingService:
 # ==============================================================================
 # UTILITIES
 # ==============================================================================
+
+
+def _coerce_vector(payload: object) -> list[float]:
+    """Validate an untrusted JSON value and return a numeric vector."""
+    if not isinstance(payload, list):
+        raise EmbeddingUnavailableError("Dostawca nie zwrócił tablicy embeddingu")
+    if any(isinstance(value, bool) or not isinstance(value, int | float) for value in payload):
+        raise EmbeddingUnavailableError("Embedding zawiera wartości nienumeryczne")
+    return [float(value) for value in payload]
+
+
+def _embedding_from_ollama_payload(payload: object) -> list[float]:
+    """Extract and validate an embedding from an Ollama JSON response."""
+    if not isinstance(payload, dict) or "embedding" not in payload:
+        raise EmbeddingUnavailableError("Ollama nie zwróciła embeddingu")
+    return _coerce_vector(payload["embedding"])
 
 
 def _validate_vector(vector: list[float], expected_dimensions: int) -> None:

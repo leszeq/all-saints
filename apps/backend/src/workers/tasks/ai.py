@@ -16,9 +16,11 @@ import uuid
 from collections.abc import Coroutine
 from typing import Any, TypeVar
 
-from celery import Task, shared_task
+from celery import Task
 from celery.utils.log import get_task_logger
 from sqlalchemy import func, select
+
+from src.workers.task_decorators import typed_shared_task
 
 logger = get_task_logger(__name__)
 T = TypeVar("T")
@@ -45,7 +47,7 @@ def _run_async(coro: Coroutine[Any, Any, T]) -> T:
 # ==============================================================================
 
 
-@shared_task(
+@typed_shared_task(
     name="src.workers.tasks.ai.generate_person_embedding",
     bind=True,
     max_retries=3,
@@ -99,7 +101,7 @@ def generate_person_embedding(self: Task, person_id: str) -> dict[str, Any]:
 # ==============================================================================
 
 
-@shared_task(
+@typed_shared_task(
     name="src.workers.tasks.ai.batch_generate_embeddings",
     bind=True,
     max_retries=1,
@@ -222,7 +224,7 @@ def batch_generate_embeddings(
 # ==============================================================================
 
 
-@shared_task(
+@typed_shared_task(
     name="src.workers.tasks.ai.generate_person_summary",
     bind=True,
     max_retries=3,
@@ -277,7 +279,7 @@ def generate_person_summary(
 # ==============================================================================
 
 
-@shared_task(
+@typed_shared_task(
     name="src.workers.tasks.ai.auto_tag_person",
     bind=True,
     max_retries=3,
@@ -324,7 +326,7 @@ def auto_tag_person(self: Task, person_id: str) -> dict[str, Any]:
 # ==============================================================================
 
 
-@shared_task(
+@typed_shared_task(
     name="src.workers.tasks.ai.batch_auto_tag",
     bind=True,
     max_retries=1,
