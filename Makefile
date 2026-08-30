@@ -1,5 +1,5 @@
 .PHONY: help install setup dev dev-build dev-backend dev-db dev-detach stop \
-	prod-build prod-up prod-down migrate migrate-create migrate-down migrate-history \
+	prod-check prod-build prod-up prod-down migrate migrate-create migrate-down migrate-history \
 	seed reset-db test test-unit test-integration test-e2e test-coverage lint \
 	lint-backend lint-frontend format type-check type-check-backend \
 	type-check-frontend logs logs-backend logs-db ps shell-backend shell-db clean \
@@ -10,6 +10,8 @@
 # ==============================================================================
 COMPOSE_DEV=docker compose -f infrastructure/docker/docker-compose.yml
 BACKEND_RUN=$(COMPOSE_DEV) run --rm -T backend
+PROD_ENV?=infrastructure/docker/.env.production
+COMPOSE_PROD=docker compose --env-file $(PROD_ENV) -f infrastructure/docker/docker-compose.prod.yml
 
 # Colours
 CYAN=\033[0;36m
@@ -71,17 +73,18 @@ stop: ## Stop all development services
 # ==============================================================================
 # PRODUCTION
 # ==============================================================================
-prod-build: ## Build production images
-	@echo "$(YELLOW)Production Compose is not implemented yet.$(NC)"
-	@false
+prod-check: ## Validate production environment and Compose config
+	@if [ ! -f "$(PROD_ENV)" ]; then echo "$(RED)Missing $(PROD_ENV). Copy infrastructure/docker/.env.production.example first.$(NC)"; exit 1; fi
+	$(COMPOSE_PROD) config --quiet
 
-prod-up: ## Start production stack
-	@echo "$(YELLOW)Production Compose is not implemented yet.$(NC)"
-	@false
+prod-build: prod-check ## Build production images
+	$(COMPOSE_PROD) build
 
-prod-down: ## Stop production stack
-	@echo "$(YELLOW)Production Compose is not implemented yet.$(NC)"
-	@false
+prod-up: prod-check ## Start production stack
+	$(COMPOSE_PROD) up -d --build --wait
+
+prod-down: prod-check ## Stop production stack
+	$(COMPOSE_PROD) down
 
 # ==============================================================================
 # DATABASE
