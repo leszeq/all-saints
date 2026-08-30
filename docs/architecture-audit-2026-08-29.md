@@ -34,17 +34,20 @@ Poniższy status jest aktualizacją wykonawczą do historycznego pomiaru bazoweg
 Nie zmienia pierwotnych findings ani ocen, dzięki czemu dokument zachowuje wartość
 porównawczą.
 
-Stan na 2026-08-29 po commitach `5f91884`–`eff24d5`:
+Stan na 2026-08-30 po commitach `5f91884`–`6c8c7b2`:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **129 passed**, 0 failures, 0 errors |
-| Backend coverage | **80.16%**, wymagany próg 80% spełniony |
+| Backend pytest | **145 passed**, 0 failures, 0 errors |
+| Backend coverage | **80.58%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0012_align_domain_indexes`, jeden head |
 | Nowa pusta baza | upgrade 0001 → 0012 oraz downgrade/re-upgrade: PASS |
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
+| Ruff / strict mypy | PASS, mypy analizuje 85 plików źródłowych |
+| Admin i web | ESLint, TypeScript i produkcyjne buildy Webpack: PASS |
+| Produkcyjny stack | świeża baza, migracje, API, web, admin i Nginx: PASS |
 | Pydantic / Alembic / Ruff config | zdeprecjonowane konfiguracje usunięte |
 | Pozostałe ostrzeżenia testów | Passlib używa `crypt`, usuwanego w Pythonie 3.13 |
 
@@ -63,10 +66,19 @@ Moduł AI otrzymał dodatkowe testy providerów oraz integracje z pgvector. Przy
 naprawiono obsługę embeddingów zwracanych jako tablice NumPy i licznik rekordów z
 tagami AI, który wcześniej traktował JSON `null` jak faktyczną listę tagów.
 
-Najważniejsze otwarte ryzyka są teraz klasy P2/P3: brak automatycznego CI/CD i
-produkcyjnego obrazu/deployu, brak próby backup/restore oraz alertów, niejednolita
-polityka transakcji, duże serwisy/routery, brak wspólnego kontraktu błędów i brak
-testów E2E. Przed publicznym wdrożeniem nadal należy wykonać te kroki operacyjne.
+Powstał automatyczny CI z lintem, strict mypy, testami/coverage, audytem zależności,
+kontrolą migracji, buildami frontendów oraz smoke testem całego stosu produkcyjnego.
+Obrazy backendu i Next.js działają jako użytkownicy nie-root; DB i Redis są w
+prywatnej sieci, migracja jest osobnym krokiem, storage ma kontrolowanego właściciela,
+a Nginx wystawia tylko portal, panel i API. Produkcja odrzuca placeholderowe lub
+współdzielone sekrety, niebezpieczne wildcardy host/CORS i niezabezpieczone cookies.
+
+Najważniejsze otwarte ryzyka są teraz klasy P2/P3: brak próby backup/restore,
+zewnętrznego TLS i platformowego zarządzania sekretami, alertów, testu obciążenia,
+testów E2E oraz zautomatyzowanego release/CD do konkretnego środowiska. W kodzie
+pozostają niejednolita polityka transakcji, duże serwisy/routery i brak wspólnego
+kontraktu błędów. Bieżąca gotowość wykonawcza to **BETA**; przed publicznym
+wdrożeniem nadal trzeba zamknąć wymienione kroki operacyjne.
 
 ## Repository discovery
 
