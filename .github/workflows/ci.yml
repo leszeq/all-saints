@@ -106,7 +106,7 @@ jobs:
       PUBLIC_ADMIN_ORIGIN: http://localhost:8080
       CORS_ORIGINS: http://localhost,http://localhost:8080
       ALLOWED_HOSTS: localhost,127.0.0.1
-      SECURE_COOKIES: "false"
+      SECURE_COOKIES: "true"
 
     steps:
       - name: Check out repository

@@ -9,6 +9,7 @@ from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated
+from urllib.parse import quote
 
 from pydantic import EmailStr, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
@@ -109,16 +110,55 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def assemble_db_urls(self) -> Settings:
         """Build database URLs from components if not provided explicitly."""
+        username = quote(self.POSTGRES_USER, safe="")
+        password = quote(self.POSTGRES_PASSWORD, safe="")
+        database = quote(self.POSTGRES_DB, safe="")
         if not self.DATABASE_URL:
             self.DATABASE_URL = (
-                f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
-                f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+                f"postgresql+asyncpg://{username}:{password}"
+                f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{database}"
             )
         if not self.DATABASE_URL_SYNC:
             self.DATABASE_URL_SYNC = (
-                f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
-                f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+                f"postgresql://{username}:{password}"
+                f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{database}"
             )
+        return self
+
+    @model_validator(mode="after")
+    def validate_production_security(self) -> Settings:
+        """Fail fast when production starts with development-grade secrets."""
+        if not self.is_production:
+            return self
+
+        protected_values = (
+            ("APP_SECRET_KEY", self.APP_SECRET_KEY, 32),
+            ("JWT_SECRET_KEY", self.JWT_SECRET_KEY, 32),
+            ("POSTGRES_PASSWORD", self.POSTGRES_PASSWORD, 16),
+        )
+        for field_name, value, minimum_length in protected_values:
+            normalized = value.strip().lower().replace("-", "_")
+            if len(value) < minimum_length or normalized.startswith(
+                ("replace_", "change_", "changeme", "your_", "example_")
+            ):
+                raise ValueError(
+                    f"{field_name} must contain at least {minimum_length} "
+                    "non-placeholder characters in production"
+                )
+
+        if self.APP_SECRET_KEY == self.JWT_SECRET_KEY:
+            raise ValueError(
+                "APP_SECRET_KEY and JWT_SECRET_KEY must be different in production"
+            )
+        if not self.SECURE_COOKIES:
+            raise ValueError("SECURE_COOKIES must be enabled in production")
+        if not self.ALLOWED_HOSTS or "*" in self.ALLOWED_HOSTS:
+            raise ValueError(
+                "ALLOWED_HOSTS must explicitly list production hostnames"
+            )
+        if "*" in self.CORS_ORIGINS:
+            raise ValueError("CORS_ORIGINS cannot contain '*' in production")
+
         return self
 
     # ── Redis ──────────────────────────────────────────────────────────────────

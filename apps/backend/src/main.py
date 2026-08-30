@@ -24,6 +24,7 @@ from fastapi.responses import JSONResponse
 from loguru import logger
 from prometheus_fastapi_instrumentator import Instrumentator
 from starlette.middleware.base import RequestResponseEndpoint
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from src.core.config import settings
 from src.core.logging import setup_logging
@@ -187,6 +188,11 @@ def _setup_middleware(app: FastAPI) -> None:
         ],
         expose_headers=["X-Request-ID", "X-Process-Time"],
         max_age=86400,  # 24 hours preflight cache
+    )
+
+    app.add_middleware(
+        TrustedHostMiddleware,
+        allowed_hosts=settings.ALLOWED_HOSTS,
     )
 
     # Security headers + request ID + timing

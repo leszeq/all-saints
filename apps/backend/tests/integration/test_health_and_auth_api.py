@@ -24,6 +24,16 @@ async def test_health_info_endpoint(async_client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_untrusted_host_is_rejected(async_client: AsyncClient):
+    response = await async_client.get(
+        "/health", headers={"Host": "attacker.example"}
+    )
+
+    assert response.status_code == 400
+    assert response.text == "Invalid host header"
+
+
+@pytest.mark.asyncio
 async def test_login_invalid_credentials(async_client: AsyncClient):
     response = await async_client.post(
         "/api/v1/auth/login",

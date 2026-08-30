@@ -8,11 +8,15 @@ Redis działają wyłącznie w prywatnej sieci Compose.
 
 1. Skopiuj `.env.production.example` do `.env.production`.
 2. Ustaw niezależne wartości `APP_SECRET_KEY`, `JWT_SECRET_KEY` i
-   `POSTGRES_PASSWORD`. Sekrety aplikacji powinny mieć co najmniej 32 losowe
-   bajty; można je wygenerować poleceniem `openssl rand -hex 32`.
+   `POSTGRES_PASSWORD`. Sekrety aplikacji muszą mieć co najmniej 32 znaki, a
+   hasło bazy co najmniej 16; losową wartość można wygenerować poleceniem
+   `openssl rand -hex 32`.
 3. Zastąp domeny `*.example` rzeczywistymi publicznymi adresami portalu i panelu.
 4. Pozostaw `SECURE_COOKIES=true`, gdy ruch użytkowników korzysta z HTTPS.
 5. Dla storage S3 ustaw `STORAGE_BACKEND=s3` oraz komplet zmiennych `AWS_*`.
+
+Backend w trybie produkcyjnym odmawia startu dla placeholderów, współdzielonych
+sekretów, `SECURE_COOKIES=false` oraz wildcardu `*` w `ALLOWED_HOSTS` lub CORS.
 
 Plik `.env.production` jest ignorowany przez Git i nie może być commitowany.
 
