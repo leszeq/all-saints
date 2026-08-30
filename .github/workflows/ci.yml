@@ -134,6 +134,12 @@ jobs:
           curl --fail 'http://localhost/api/v1/persons?per_page=1'
           test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://localhost/docs)" = "404"
 
+      - name: Verify PostgreSQL backup and restore
+        env:
+          PROD_ENV: infrastructure/docker/.env.production.example
+          BACKUP_FILE: /tmp/all-saints-ci.dump
+        run: make prod-backup prod-restore-check
+
       - name: Show production logs after failure
         if: failure()
         run: >-

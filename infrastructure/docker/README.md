@@ -56,5 +56,23 @@ Redis nie powinny otrzymywać mapowania portów hosta.
 
 ## Kopie zapasowe
 
-Przed wdrożeniem wymagany jest automatyczny backup PostgreSQL i storage oraz
-udokumentowana próba odtworzenia. Sam wolumen Dockera nie jest kopią zapasową.
+Backup PostgreSQL jest zapisywany atomowo w formacie custom i weryfikowany przez
+`pg_restore --list`:
+
+```bash
+make prod-backup
+```
+
+Każdy backup należy okresowo odtworzyć do izolowanej bazy testowej:
+
+```bash
+make prod-restore-check BACKUP_FILE=backups/all-saints-YYYYmmddTHHMMSSZ.dump
+```
+
+Restore check tworzy nową bazę o ściśle kontrolowanej nazwie, sprawdza tabele i
+wersję Alembic, po czym usuwa wyłącznie tę bazę testową. Nie modyfikuje aktywnej
+bazy aplikacji. Pliki z katalogu `backups/` są ignorowane przez Git.
+
+Przed publicznym wdrożeniem nadal należy skonfigurować harmonogram, retencję,
+szyfrowanie i kopię poza hostem oraz analogiczny backup storage. Sam wolumen
+Dockera nie jest kopią zapasową.

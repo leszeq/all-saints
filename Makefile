@@ -3,7 +3,8 @@
 	seed reset-db test test-unit test-integration test-e2e test-coverage lint \
 	lint-backend lint-frontend format type-check type-check-backend \
 	type-check-frontend logs logs-backend logs-db ps shell-backend shell-db clean \
-	build export-xlsx export-pdf docs-serve docs-build openapi-export backup-db
+	build export-xlsx export-pdf docs-serve docs-build openapi-export backup-db \
+	prod-backup prod-restore-check
 
 # ==============================================================================
 # CONFIGURATION
@@ -12,6 +13,9 @@ COMPOSE_DEV=docker compose -f infrastructure/docker/docker-compose.yml
 BACKEND_RUN=$(COMPOSE_DEV) run --rm -T backend
 PROD_ENV?=infrastructure/docker/.env.production
 COMPOSE_PROD=docker compose --env-file $(PROD_ENV) -f infrastructure/docker/docker-compose.prod.yml
+BACKUP_DIR?=backups
+BACKUP_FILE?=$(BACKUP_DIR)/all-saints-$(shell date -u +%Y%m%dT%H%M%SZ).dump
+RESTORE_DB?=all_saints_restore_test_$(shell date -u +%Y%m%d%H%M%S)
 
 # Colours
 CYAN=\033[0;36m
@@ -222,6 +226,10 @@ openapi-export: ## Export OpenAPI schema to file
 # BACKUP
 # ==============================================================================
 backup-db: ## Create database backup
-	@mkdir -p backups
-	$(COMPOSE_DEV) exec -T db sh -c 'pg_dump -U "$$POSTGRES_USER" "$$POSTGRES_DB"' | gzip > backups/backup_$$(date +%Y%m%d_%H%M%S).sql.gz
-	@echo "$(GREEN)✓ Backup created$(NC)"
+	infrastructure/scripts/postgres-backup.sh "$(BACKUP_FILE)" $(COMPOSE_DEV)
+
+prod-backup: prod-check ## Create an atomic production PostgreSQL backup
+	infrastructure/scripts/postgres-backup.sh "$(BACKUP_FILE)" $(COMPOSE_PROD)
+
+prod-restore-check: prod-check ## Restore a backup into an isolated temporary database
+	infrastructure/scripts/postgres-restore-check.sh "$(BACKUP_FILE)" "$(RESTORE_DB)" $(COMPOSE_PROD)

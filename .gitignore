@@ -97,6 +97,7 @@ build/
 
 # Logs
 logs/
+backups/
 *.log
 celerybeat-schedule*
 
