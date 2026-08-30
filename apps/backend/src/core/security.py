@@ -11,15 +11,16 @@ Provides:
 from __future__ import annotations
 
 import hashlib
+import re
 import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 from uuid import UUID
 
+import bcrypt
 import jwt
 from jwt import InvalidTokenError
 from loguru import logger
-from passlib.context import CryptContext
 
 from src.core.config import settings
 
@@ -30,16 +31,15 @@ from src.core.config import settings
 
 class PasswordHasher:
     """
-    Secure password hashing using bcrypt via Passlib.
+    Secure password hashing using bcrypt.
 
     Uses configurable cost factor from settings (recommended: 12).
     """
 
     def __init__(self) -> None:
-        self._context = CryptContext(
-            schemes=["bcrypt"],
-            deprecated="auto",
-            bcrypt__rounds=settings.BCRYPT_ROUNDS,
+        self._rounds = settings.BCRYPT_ROUNDS
+        self._hash_pattern = re.compile(
+            r"^\$2[aby]\$(?P<rounds>\d{2})\$[./A-Za-z0-9]{53}$"
         )
 
     def hash(self, plain_password: str) -> str:
@@ -52,7 +52,9 @@ class PasswordHasher:
         Returns:
             Bcrypt hash string.
         """
-        return self._context.hash(plain_password)
+        password_bytes = plain_password.encode("utf-8")
+        salt = bcrypt.gensalt(rounds=self._rounds)
+        return bcrypt.hashpw(password_bytes, salt).decode("ascii")
 
     def verify(self, plain_password: str, hashed_password: str) -> bool:
         """
@@ -65,7 +67,15 @@ class PasswordHasher:
         Returns:
             True if the password matches.
         """
-        return self._context.verify(plain_password, hashed_password)
+        if not self._hash_pattern.fullmatch(hashed_password):
+            return False
+        try:
+            return bcrypt.checkpw(
+                plain_password.encode("utf-8"),
+                hashed_password.encode("ascii"),
+            )
+        except ValueError:
+            return False
 
     def needs_rehash(self, hashed_password: str) -> bool:
         """
@@ -74,7 +84,10 @@ class PasswordHasher:
         Returns:
             True if the hash should be updated.
         """
-        return self._context.needs_update(hashed_password)
+        match = self._hash_pattern.fullmatch(hashed_password)
+        if match is None:
+            return True
+        return int(match.group("rounds")) != self._rounds
 
 
 # Singleton instance

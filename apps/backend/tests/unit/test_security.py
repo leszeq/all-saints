@@ -21,6 +21,25 @@ def test_password_hashing():
     assert password_hasher.verify("WrongPassword123!", hashed) is False
 
 
+def test_password_hasher_accepts_existing_passlib_bcrypt_hash() -> None:
+    legacy_hash = "$2b$12$CF8A8KmxOzKJjng5dXWkweK9CcYeWKa3Wy7aq5zRZB0c0w4V1FB/m"
+
+    assert password_hasher.verify("LegacyPassword123!", legacy_hash)
+    assert not password_hasher.needs_rehash(legacy_hash)
+
+
+def test_password_hasher_rejects_malformed_hash_without_raising() -> None:
+    assert not password_hasher.verify("SecurePassword123!", "not-a-bcrypt-hash")
+    assert password_hasher.needs_rehash("not-a-bcrypt-hash")
+
+
+def test_password_hasher_marks_lower_cost_hash_for_rehash() -> None:
+    low_cost_hash = "$2b$04$9KeUM7F8Ra2wFr9YsHDAzuiJiXv2UtqDmxBkAYavVBrqaSnke.OJq"
+
+    assert password_hasher.verify("LegacyPassword123!", low_cost_hash)
+    assert password_hasher.needs_rehash(low_cost_hash)
+
+
 def test_password_strength_validator():
     is_valid, errors = is_strong_password("SecurePassword123!")
     assert is_valid is True
