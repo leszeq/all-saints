@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend quality and migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Prepare safe CI environment
+        run: cp .env.example infrastructure/docker/.env
+
+      - name: Build backend development image
+        run: docker compose -f infrastructure/docker/docker-compose.yml build backend
+
+      - name: Start PostgreSQL and Redis
+        run: docker compose -f infrastructure/docker/docker-compose.yml up -d --wait db redis
+
+      - name: Upgrade database and verify model drift
+        run: |
+          docker compose -f infrastructure/docker/docker-compose.yml run --rm -T backend alembic upgrade head
+          docker compose -f infrastructure/docker/docker-compose.yml run --rm -T backend alembic check
+
+      - name: Run Ruff
+        run: make lint-backend
+
+      - name: Run strict mypy
+        run: make type-check-backend
+
+      - name: Run backend tests and coverage gate
+        run: make test
+
+      - name: Audit Python dependencies
+        run: docker compose -f infrastructure/docker/docker-compose.yml run --rm -T backend .venv/bin/pip-audit
+
+      - name: Show service logs after failure
+        if: failure()
+        run: docker compose -f infrastructure/docker/docker-compose.yml logs --no-color db redis
+
+      - name: Stop backend services
+        if: always()
+        run: docker compose -f infrastructure/docker/docker-compose.yml down -v --remove-orphans
+
+  frontend:
+    name: Frontend (${{ matrix.app }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [admin, web]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/${{ matrix.app }}/package-lock.json
+
+      - name: Install locked dependencies
+        working-directory: apps/${{ matrix.app }}
+        run: npm ci
+
+      - name: Run ESLint
+        working-directory: apps/${{ matrix.app }}
+        run: npm run lint
+
+      - name: Run TypeScript checks
+        working-directory: apps/${{ matrix.app }}
+        run: npm run type-check
+
+      - name: Build production bundle
+        working-directory: apps/${{ matrix.app }}
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+        run: npm run build -- --webpack
