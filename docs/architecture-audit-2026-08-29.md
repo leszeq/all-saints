@@ -34,12 +34,12 @@ Poniższy status jest aktualizacją wykonawczą do historycznego pomiaru bazoweg
 Nie zmienia pierwotnych findings ani ocen, dzięki czemu dokument zachowuje wartość
 porównawczą.
 
-Stan na 2026-08-30 po commitach `5f91884`–`6c8c7b2`:
+Stan na 2026-08-30 po commitach `5f91884`–`c34200f`:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **145 passed**, 0 failures, 0 errors |
-| Backend coverage | **80.58%**, wymagany próg 80% spełniony |
+| Backend pytest | **148 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend coverage | **80.60%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0012_align_domain_indexes`, jeden head |
 | Nowa pusta baza | upgrade 0001 → 0012 oraz downgrade/re-upgrade: PASS |
@@ -49,7 +49,7 @@ Stan na 2026-08-30 po commitach `5f91884`–`6c8c7b2`:
 | Admin i web | ESLint, TypeScript i produkcyjne buildy Webpack: PASS |
 | Produkcyjny stack | świeża baza, migracje, API, web, admin i Nginx: PASS |
 | Pydantic / Alembic / Ruff config | zdeprecjonowane konfiguracje usunięte |
-| Pozostałe ostrzeżenia testów | Passlib używa `crypt`, usuwanego w Pythonie 3.13 |
+| Hashowanie haseł | bezpośredni bcrypt, zgodny z istniejącymi hashami Passlib |
 
 Zamknięte zostały wszystkie P1 z listy Top 10:
 
