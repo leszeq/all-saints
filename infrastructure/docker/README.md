@@ -54,6 +54,16 @@ Nginx wystawia portal na `PUBLIC_PORT` (domyślnie 80) i panel na `ADMIN_PORT`
 dostęp do panelu administracyjnego zgodnie z polityką organizacji. PostgreSQL i
 Redis nie powinny otrzymywać mapowania portów hosta.
 
+## Monitoring
+
+Ustawienie `SENTRY_DSN` włącza raportowanie błędów backendu. Pole
+`SENTRY_TRACES_SAMPLE_RATE` przyjmuje wartość od `0.0` do `1.0`; bez świadomego
+budżetu telemetrycznego należy pozostawić domyślne `0.0`. Integracja oznacza
+zdarzenia nazwą środowiska i wersją aplikacji oraz nie wysyła domyślnie PII.
+
+Endpoint Prometheus `/metrics` istnieje w backendzie, ale produkcyjny Nginx nie
+wystawia go publicznie. Scraper powinien działać w zaufanej sieci wewnętrznej.
+
 ## Kopie zapasowe
 
 Backup PostgreSQL jest zapisywany atomowo w formacie custom i weryfikowany przez

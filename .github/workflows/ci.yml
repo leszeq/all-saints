@@ -132,6 +132,10 @@ jobs:
           curl --fail http://localhost/
           curl --fail http://localhost:8080/login
           curl --fail 'http://localhost/api/v1/persons?per_page=1'
+          docker compose \
+            --env-file infrastructure/docker/.env.production.example \
+            -f infrastructure/docker/docker-compose.prod.yml \
+            exec -T web wget --quiet --output-document=- http://backend:8000/health
           test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://localhost/docs)" = "404"
 
       - name: Verify PostgreSQL backup and restore

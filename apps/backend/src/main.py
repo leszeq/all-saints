@@ -28,6 +28,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from src.core.config import settings
 from src.core.logging import setup_logging
+from src.core.observability import configure_error_monitoring
 from src.infrastructure.cache.redis_client import check_redis_connection, close_redis_pool
 from src.infrastructure.db.session import check_db_connection, close_db_connections
 
@@ -92,6 +93,8 @@ def create_app() -> FastAPI:
     Returns:
         Configured FastAPI instance.
     """
+    configure_error_monitoring(settings)
+
     app = FastAPI(
         title=settings.APP_NAME,
         description="""

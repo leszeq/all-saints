@@ -247,6 +247,7 @@ class Settings(BaseSettings):
 
     # ── Monitoring ─────────────────────────────────────────────────────────────
     SENTRY_DSN: str = ""
+    SENTRY_TRACES_SAMPLE_RATE: float = Field(default=0.0, ge=0.0, le=1.0)
     PROMETHEUS_ENABLED: bool = True
 
     # ── Features ───────────────────────────────────────────────────────────────
