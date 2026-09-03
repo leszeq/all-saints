@@ -50,6 +50,7 @@ Stan na 2026-09-04 po kolejnych etapach refaktoryzacji:
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
 | Sesja panelu | access token tylko w pamięci, rotowany refresh w cookie HttpOnly, bramka chronionego layoutu |
+| Formularz osoby | 379-liniowy orkiestrator, osobne sekcje UI, schema i mapper payloadu |
 | Produkcyjny stack | świeża baza, migracje, API, web, admin i Nginx: PASS |
 | Backup/restore PostgreSQL | format custom, restore 42 tabel, Alembic 0012: PASS |
 | Obserwowalność | poprawny JSON logging, request ID, Prometheus i opcjonalny Sentry |
@@ -423,7 +424,7 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 - **Severity:** P2
 - **Category:** Maintainability / SRP
 - **File:** `editorial_service.py`, `ai_service.py`, `person-form.tsx`
-- **Lines:** odpowiednio ok. 1154, 891 i 1341 linii
+- **Lines:** odpowiednio ok. 1154, 891 i 379 linii; część formularzowa zamknięta
 - **Problem:** Moduły agregują wiele niezależnych odpowiedzialności i reguł.
 - **Why it matters:** Zmiany mają duży blast radius i utrudniają testy.
 - **Suggested fix:** Wydzielać tylko stabilne pionowe fragmenty: quality queries,
@@ -601,6 +602,11 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 ### FE-003
 
 - **Severity:** P2
+- **Status po refaktoryzacji:** Zamknięte 2026-09-04. Główny formularz ma 379
+  linii i pełni rolę orkiestratora zapisu, zapytań oraz nawigacji. Schema Zod,
+  mapper payloadu i typy domenowe są w osobnym module, a dane podstawowe, daty,
+  biografia, patronaty, kult i avatar mają niezależne komponenty. React Hook Form
+  pozostaje jednym właścicielem stanu i kontrakt API nie został zmieniony.
 - **Category:** Frontend maintainability
 - **File:** `apps/admin/components/persons/person-form.tsx`
 - **Lines:** ok. 1341
