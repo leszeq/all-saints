@@ -41,4 +41,7 @@ async def test_login_invalid_credentials(async_client: AsyncClient):
     )
     assert response.status_code == 401
     data = response.json()
+    assert data["error"] == "UNAUTHORIZED"
+    assert data["message"] == "Nieprawidłowy email lub hasło"
     assert data["detail"] == "Nieprawidłowy email lub hasło"
+    assert data["request_id"] == response.headers["x-request-id"]

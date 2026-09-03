@@ -30,9 +30,11 @@ export const api = axios.create({
 });
 
 interface ApiErrorPayload {
-  detail?: string | { message?: string; errors?: string[] };
+  error?: string;
+  detail?: string | { message?: string; errors?: string[] } | Array<unknown>;
   message?: string;
   details?: Array<{ field?: string; message?: string }>;
+  request_id?: string | null;
 }
 
 export function getApiErrorMessage(error: unknown): string {
@@ -53,7 +55,7 @@ export function getApiErrorMessage(error: unknown): string {
 
   if (payload?.message) return payload.message;
   if (typeof payload?.detail === "string") return payload.detail;
-  if (payload?.detail && typeof payload.detail === "object") {
+  if (payload?.detail && !Array.isArray(payload.detail) && typeof payload.detail === "object") {
     const detailMessage = payload.detail.message;
     const detailErrors = payload.detail.errors;
     return [detailMessage, ...(detailErrors ?? [])].filter(Boolean).join(" · ") || "API zwróciło nieprawidłowe dane.";

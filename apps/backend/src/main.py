@@ -17,10 +17,9 @@ import uuid
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request, Response, status
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import JSONResponse
 from loguru import logger
 from prometheus_fastapi_instrumentator import Instrumentator
 from starlette.middleware.base import RequestResponseEndpoint
@@ -31,6 +30,7 @@ from src.core.logging import setup_logging
 from src.core.observability import configure_error_monitoring
 from src.infrastructure.cache.redis_client import check_redis_connection, close_redis_pool
 from src.infrastructure.db.session import check_db_connection, close_db_connections
+from src.presentation.errors import register_exception_handlers
 
 # ==============================================================================
 # LIFESPAN (startup / shutdown)
@@ -265,60 +265,8 @@ def _setup_middleware(app: FastAPI) -> None:
 
 
 def _setup_exception_handlers(app: FastAPI) -> None:
-    """Register global exception handlers."""
-    from fastapi.exceptions import RequestValidationError
-    from sqlalchemy.exc import IntegrityError
-
-    @app.exception_handler(RequestValidationError)
-    async def validation_exception_handler(
-        request: Request, exc: RequestValidationError
-    ) -> JSONResponse:
-        """Return structured validation errors."""
-        errors = []
-        for error in exc.errors():
-            errors.append(
-                {
-                    "field": ".".join(str(loc) for loc in error["loc"]),
-                    "message": error["msg"],
-                    "type": error["type"],
-                }
-            )
-        return JSONResponse(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content={
-                "error": "VALIDATION_ERROR",
-                "message": "Dane wejściowe zawierają błędy walidacji",
-                "details": errors,
-            },
-        )
-
-    @app.exception_handler(IntegrityError)
-    async def integrity_error_handler(
-        request: Request, exc: IntegrityError
-    ) -> JSONResponse:
-        """Handle database integrity constraint violations."""
-        logger.warning(f"Database integrity error: {exc}")
-        return JSONResponse(
-            status_code=status.HTTP_409_CONFLICT,
-            content={
-                "error": "CONFLICT",
-                "message": "Naruszenie unikalności danych – rekord już istnieje",
-            },
-        )
-
-    @app.exception_handler(Exception)
-    async def generic_exception_handler(
-        request: Request, exc: Exception
-    ) -> JSONResponse:
-        """Catch-all for unhandled exceptions."""
-        logger.exception(f"Unhandled exception on {request.method} {request.url}")
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={
-                "error": "INTERNAL_SERVER_ERROR",
-                "message": "Wystąpił nieoczekiwany błąd serwera",
-            },
-        )
+    """Register global exception handlers through the shared error contract."""
+    register_exception_handlers(app)
 
 
 # ==============================================================================

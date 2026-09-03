@@ -21,4 +21,7 @@ async def test_get_nonexistent_person(async_client: AsyncClient):
     response = await async_client.get("/api/v1/persons/nonexistent-slug")
     assert response.status_code == 404
     data = response.json()
+    assert data["error"] == "NOT_FOUND"
+    assert data["message"] == "Osoba nie została znaleziona"
     assert data["detail"] == "Osoba nie została znaleziona"
+    assert data["request_id"] == response.headers["x-request-id"]
