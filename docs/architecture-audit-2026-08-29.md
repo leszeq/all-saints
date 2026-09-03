@@ -49,6 +49,7 @@ Stan na 2026-09-04 po kolejnych etapach refaktoryzacji:
 | Admin i web | ESLint, TypeScript i produkcyjne buildy Webpack: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
+| Sesja panelu | access token tylko w pamięci, rotowany refresh w cookie HttpOnly, bramka chronionego layoutu |
 | Produkcyjny stack | świeża baza, migracje, API, web, admin i Nginx: PASS |
 | Backup/restore PostgreSQL | format custom, restore 42 tabel, Alembic 0012: PASS |
 | Obserwowalność | poprawny JSON logging, request ID, Prometheus i opcjonalny Sentry |
@@ -564,6 +565,11 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 ### FE-001
 
 - **Severity:** P2
+- **Status po refaktoryzacji:** Zamknięte 2026-09-04. Access token nie jest już
+  zapisywany w Web Storage i żyje wyłącznie w pamięci klienta. Pełny reload odbudowuje
+  sesję przez rotowany cookie HttpOnly przed wyrenderowaniem chronionego layoutu;
+  równoległe odpowiedzi 401 współdzielą jedno żądanie refresh. Pozostawiono możliwość
+  dalszego hardeningu przez BFF, ale pierwotne ryzyko trwałego JWT zostało usunięte.
 - **Category:** Frontend security
 - **File:** `apps/admin/lib/api.ts`, auth store
 - **Lines:** localStorage access token
