@@ -5,7 +5,6 @@ import { BookOpen, CalendarDays, ChevronLeft, ChevronRight, Layers3 } from "luci
 import { fetchCalendarMonth, fetchLiturgicalCalendars } from "@/lib/api";
 import {
   calendarEntryTitle,
-  type CalendarDay,
   type CalendarMonth,
   currentWarsawDate,
   currentWarsawMonth,
@@ -32,54 +31,21 @@ interface PageProps {
 }
 
 
-function emptyMonth(year: number, month: number): CalendarMonth {
-  const numberOfDays = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  const days = Array.from({ length: numberOfDays }, (_, index): CalendarDay => {
-    const date = `${year}-${String(month).padStart(2, "0")}-${String(index + 1).padStart(2, "0")}`;
-    return {
-      date,
-      calendar_code: "roman_pl",
-      calendar_name: "Kalendarz Polski",
-      includes_universal: true,
-      includes_martyrology: true,
-      primary: null,
-      entries: [],
-      total: 0,
-    };
-  });
-  return {
-    year,
-    month,
-    calendar_code: "roman_pl",
-    calendar_name: "Kalendarz Polski",
-    includes_universal: true,
-    includes_martyrology: true,
-    days,
-  };
-}
-
-
 export default async function LiturgicalCalendarPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const selected = parseMonthKey(params.month) ?? parseMonthKey(currentWarsawMonth())!;
-  let calendars: LiturgicalCalendarInfo[] = [];
-  try {
-    calendars = await fetchLiturgicalCalendars();
-  } catch {
-    calendars = [];
-  }
+  const calendars = (await fetchLiturgicalCalendars()) as LiturgicalCalendarInfo[];
   const requestedCalendar = params.calendar || "roman_pl";
   const calendarCode =
     calendars.length === 0 || calendars.some((calendar) => calendar.code === requestedCalendar)
       ? requestedCalendar
       : "roman_pl";
 
-  let monthData = emptyMonth(selected.year, selected.month);
-  try {
-    monthData = await fetchCalendarMonth(selected.year, selected.month, calendarCode);
-  } catch {
-    monthData = emptyMonth(selected.year, selected.month);
-  }
+  const monthData = (await fetchCalendarMonth(
+    selected.year,
+    selected.month,
+    calendarCode,
+  )) as CalendarMonth;
 
   const monthLabel = new Intl.DateTimeFormat("pl-PL", {
     month: "long",

@@ -89,17 +89,10 @@ export default async function OrdersPage({ searchParams }: PageProps) {
   };
   const hasFilters = Object.values(query).some(Boolean);
 
-  let catalogue: ReligiousOrder[] = [];
-  let visibleOrders: ReligiousOrder[] = [];
-  try {
-    catalogue = (await fetchOrders()) as ReligiousOrder[];
-    visibleOrders = hasFilters
-      ? ((await fetchOrders(query)) as ReligiousOrder[])
-      : catalogue;
-  } catch {
-    catalogue = [];
-    visibleOrders = [];
-  }
+  const catalogue = (await fetchOrders()) as ReligiousOrder[];
+  const visibleOrders = hasFilters
+    ? ((await fetchOrders(query)) as ReligiousOrder[])
+    : catalogue;
 
   const featured = catalogue.filter((order) => order.is_featured).slice(0, 3);
   const remaining = hasFilters

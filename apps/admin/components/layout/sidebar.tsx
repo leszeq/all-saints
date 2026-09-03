@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { API_BASE_URL, aiApi, editorialApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { useAuthStore } from "@/lib/store/auth";
+import { useAuthHydrated, useAuthStore } from "@/lib/store/auth";
 
 interface NavItem {
   href?: string;
@@ -66,6 +66,7 @@ const sections: Array<{ title: string; items: NavItem[] }> = [
 export function Sidebar() {
   const pathname = usePathname();
   const hasPermission = useAuthStore((state) => state.hasPermission);
+  const authHydrated = useAuthHydrated();
   const dashboardQuery = useQuery({
     queryKey: ["editorial", "dashboard"],
     queryFn: () => editorialApi.dashboard(),
@@ -107,7 +108,7 @@ export function Sidebar() {
           <section key={section.title} className="mb-5">
             <h2 className="mb-1.5 px-2 text-[9px] font-bold uppercase tracking-[0.17em] text-sidebar-foreground/35">{section.title}</h2>
             <ul className="space-y-0.5">
-              {section.items.filter((item) => !item.requiredPermission || hasPermission(item.requiredPermission)).map((item) => {
+              {section.items.filter((item) => !item.requiredPermission || (authHydrated && hasPermission(item.requiredPermission))).map((item) => {
                 const active = item.href && !item.external
                   ? pathname === item.href || (!item.exact && item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`))
                   : false;

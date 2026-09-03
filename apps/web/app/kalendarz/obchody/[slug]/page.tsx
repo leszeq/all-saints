@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, BookOpen, CalendarDays, Church, Sparkles } from "lucide-react";
 
-import { fetchLiturgicalObservance } from "@/lib/api";
+import { fetchLiturgicalObservance, isApiNotFound } from "@/lib/api";
 import {
   type LiturgicalObservance,
   OBSERVANCE_TYPE_LABELS,
@@ -21,8 +21,9 @@ interface PageProps {
 async function loadObservance(slug: string): Promise<LiturgicalObservance | null> {
   try {
     return (await fetchLiturgicalObservance(slug)) as LiturgicalObservance;
-  } catch {
-    return null;
+  } catch (error) {
+    if (isApiNotFound(error)) return null;
+    throw error;
   }
 }
 

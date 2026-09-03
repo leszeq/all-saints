@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 import { SaintAvatar } from "@/components/saint-avatar";
-import { fetchOrderDetail, fetchOrders } from "@/lib/api";
+import { fetchOrderDetail, fetchOrders, isApiNotFound } from "@/lib/api";
 import {
   COMMUNITY_TYPE_LABELS,
   MEMBERSHIP_TYPE_LABELS,
@@ -39,8 +39,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       title: `${order.name} | Zakony i zgromadzenia`,
       description: order.description || order.mission || `Historia i misja wspólnoty ${order.name}.`,
     };
-  } catch {
-    return { title: "Wspólnota zakonna" };
+  } catch (error) {
+    if (isApiNotFound(error)) return { title: "Nie znaleziono" };
+    throw error;
   }
 }
 
@@ -49,8 +50,9 @@ export default async function OrderDetailPage({ params }: PageProps) {
   let order: ReligiousOrderDetail;
   try {
     order = (await fetchOrderDetail(slug)) as ReligiousOrderDetail;
-  } catch {
-    notFound();
+  } catch (error) {
+    if (isApiNotFound(error)) notFound();
+    throw error;
   }
 
   let related: ReligiousOrder[] = [];

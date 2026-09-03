@@ -203,27 +203,19 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
     })),
   ];
 
-  let persons: Array<Record<string, unknown>> = [];
-  let total = 0;
-  let totalPages = 1;
-
-  try {
-    const res = await fetchPersons({
-      page,
-      per_page: 18,
-      ...(search && { search }),
-      ...(typeFilters.length && { person_type: typeFilters }),
-      ...(genderFilters.length && { gender: genderFilters }),
-      ...(periodFilters.length && { period: periodFilters }),
-      ...(patronageFilters.length && { patronage: patronageFilters }),
-      ...(eraFilters.length && { era: eraFilters }),
-    });
-    persons = res?.items ?? [];
-    total = res?.total ?? 0;
-    totalPages = res?.pages ?? 1;
-  } catch {
-    persons = [];
-  }
+  const res = await fetchPersons({
+    page,
+    per_page: 18,
+    ...(search && { search }),
+    ...(typeFilters.length && { person_type: typeFilters }),
+    ...(genderFilters.length && { gender: genderFilters }),
+    ...(periodFilters.length && { period: periodFilters }),
+    ...(patronageFilters.length && { patronage: patronageFilters }),
+    ...(eraFilters.length && { era: eraFilters }),
+  });
+  const persons: Array<Record<string, unknown>> = res?.items ?? [];
+  const total = res?.total ?? 0;
+  const totalPages = res?.pages ?? 1;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 space-y-8">

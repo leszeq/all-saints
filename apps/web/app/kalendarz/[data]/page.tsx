@@ -58,21 +58,7 @@ export default async function CalendarDayPage({ params, searchParams }: PageProp
   const query = await searchParams;
   const calendarCode = query.calendar || "roman_pl";
 
-  let day: CalendarDay;
-  try {
-    day = await fetchCalendarDay(data, calendarCode);
-  } catch {
-    day = {
-      date: data,
-      calendar_code: "roman_pl",
-      calendar_name: "Kalendarz Polski",
-      includes_universal: true,
-      includes_martyrology: true,
-      primary: null,
-      entries: [],
-      total: 0,
-    };
-  }
+  const day: CalendarDay = await fetchCalendarDay(data, calendarCode);
 
   const formattedDate = formatCalendarDate(data);
   const isToday = data === currentWarsawDate();

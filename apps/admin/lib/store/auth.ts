@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { useSyncExternalStore } from "react";
 
 export interface User {
   id: string;
@@ -67,6 +68,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: "saints-auth",
+      skipHydration: true,
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,
@@ -74,3 +76,11 @@ export const useAuthStore = create<AuthState>()(
     }
   )
 );
+
+export function useAuthHydrated(): boolean {
+  return useSyncExternalStore(
+    (onStoreChange) => useAuthStore.persist.onFinishHydration(onStoreChange),
+    () => useAuthStore.persist.hasHydrated(),
+    () => false,
+  );
+}

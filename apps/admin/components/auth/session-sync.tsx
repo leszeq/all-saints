@@ -8,14 +8,25 @@ export function SessionSync() {
   const updateUser = useAuthStore((state) => state.updateUser);
 
   useEffect(() => {
-    if (!window.localStorage.getItem("access_token")) return;
-
     let active = true;
-    void authApi.me().then(({ data }) => {
-      if (active) updateUser(data);
-    }).catch(() => {
-      // The shared API interceptor handles expired sessions and redirects to login.
-    });
+
+    const syncSession = async () => {
+      await useAuthStore.persist.rehydrate();
+      if (!window.localStorage.getItem("access_token")) {
+        useAuthStore.getState().logout();
+        return;
+      }
+
+      try {
+        const { data } = await authApi.me();
+        if (active) updateUser(data);
+      } catch {
+        // The shared API interceptor handles expired sessions and redirects to login.
+        if (active) useAuthStore.getState().logout();
+      }
+    };
+
+    void syncSession();
 
     return () => {
       active = false;

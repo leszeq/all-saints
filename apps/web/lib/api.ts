@@ -30,6 +30,10 @@ export const publicApi = axios.create({
   },
 });
 
+export function isApiNotFound(error: unknown): boolean {
+  return axios.isAxiosError(error) && error.response?.status === 404;
+}
+
 export const fetchPersons = async (params?: Record<string, unknown>) => {
   const { data } = await publicApi.get("/persons", { params });
   return data;

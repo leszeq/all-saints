@@ -16,7 +16,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { FormEvent, useMemo, useState, useSyncExternalStore } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import type {
   CreateRolePayload,
   CreateUserPayload,
@@ -33,15 +33,13 @@ import {
   USER_STATUS_LABELS,
 } from "@/lib/access-control";
 import { getApiErrorMessage, rolesApi, usersApi } from "@/lib/api";
-import { useAuthStore } from "@/lib/store/auth";
+import { useAuthHydrated, useAuthStore } from "@/lib/store/auth";
 import { cn, formatDateTime } from "@/lib/utils";
 
 type ActiveTab = "users" | "matrix";
 
 const inputClassName =
   "h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15";
-
-const subscribeToHydration = () => () => undefined;
 
 function ModalShell({
   open,
@@ -267,7 +265,7 @@ export function AccessControlClient() {
   const queryClient = useQueryClient();
   const currentUser = useAuthStore((state) => state.user);
   const hasPermission = useAuthStore((state) => state.hasPermission);
-  const hydrated = useSyncExternalStore(subscribeToHydration, () => true, () => false);
+  const hydrated = useAuthHydrated();
   const [activeTab, setActiveTab] = useState<ActiveTab>("users");
   const [search, setSearch] = useState("");
   const [userModalOpen, setUserModalOpen] = useState(false);

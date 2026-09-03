@@ -12,7 +12,7 @@ import {
   Landmark,
   Sparkles,
 } from "lucide-react";
-import { fetchPersonDetail } from "@/lib/api";
+import { fetchPersonDetail, isApiNotFound } from "@/lib/api";
 import { ERA_LABELS, PERSON_TYPE_LABELS } from "@/lib/utils";
 import { SaintAvatar, type SaintAvatarData } from "@/components/saint-avatar";
 import { MEMBERSHIP_TYPE_LABELS } from "@/lib/orders";
@@ -51,8 +51,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
           : undefined,
       },
     };
-  } catch {
-    return { title: "Święty" };
+  } catch (error) {
+    if (isApiNotFound(error)) return { title: "Nie znaleziono" };
+    throw error;
   }
 }
 
@@ -62,8 +63,9 @@ export default async function PersonDetailPage({ params }: PageProps) {
 
   try {
     person = await fetchPersonDetail(slug);
-  } catch {
-    notFound();
+  } catch (error) {
+    if (isApiNotFound(error)) notFound();
+    throw error;
   }
 
   if (!person) {
