@@ -34,19 +34,21 @@ Poniższy status jest aktualizacją wykonawczą do historycznego pomiaru bazoweg
 Nie zmienia pierwotnych findings ani ocen, dzięki czemu dokument zachowuje wartość
 porównawczą.
 
-Stan na 2026-08-30 po commitach `5f91884`–`0ce0a28`:
+Stan na 2026-09-04 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **152 passed**, 0 failures, 0 errors, 0 warnings |
-| Backend coverage | **80.68%**, wymagany próg 80% spełniony |
+| Backend pytest | **173 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend coverage | **80.62%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0012_align_domain_indexes`, jeden head |
 | Nowa pusta baza | upgrade 0001 → 0012 oraz downgrade/re-upgrade: PASS |
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
-| Ruff / strict mypy | PASS, mypy analizuje 86 plików źródłowych |
+| Ruff / strict mypy | PASS, mypy analizuje 92 pliki źródłowe |
 | Admin i web | ESLint, TypeScript i produkcyjne buildy Webpack: PASS |
+| Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
+| Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
 | Produkcyjny stack | świeża baza, migracje, API, web, admin i Nginx: PASS |
 | Backup/restore PostgreSQL | format custom, restore 42 tabel, Alembic 0012: PASS |
 | Obserwowalność | poprawny JSON logging, request ID, Prometheus i opcjonalny Sentry |
@@ -81,8 +83,8 @@ obciążenia, testów E2E oraz zautomatyzowanego release/CD do konkretnego środ
 Kod udostępnia poprawne logi JSON, Prometheus i opcjonalny Sentry, ale odbiorniki i
 alerty są zadaniem platformowym. Backup PostgreSQL ma działający restore drill,
 lecz nadal wymaga harmonogramu, retencji, szyfrowania, kopii poza hostem i objęcia
-storage plikowego. W kodzie pozostają niejednolita polityka transakcji, duże
-serwisy/routery i brak wspólnego kontraktu błędów. Bieżąca gotowość wykonawcza to
+storage plikowego. W kodzie pozostają niejednolita polityka transakcji i duże
+serwisy/routery. Bieżąca gotowość wykonawcza to
 **BETA**; przed publicznym wdrożeniem nadal trzeba zamknąć wymienione kroki
 operacyjne.
 
@@ -530,6 +532,10 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 ### API-001
 
 - **Severity:** P2
+- **Status po refaktoryzacji:** Zamknięte 2026-09-04. Handler obsługuje również
+  `HTTPException`, zachowuje przejściowe pole `detail`, dodaje stabilny kod błędu,
+  `message`, `details` i skorelowany `request_id`; pokrywają to testy kontraktowe i
+  integracyjne.
 - **Category:** Error handling
 - **File:** FastAPI exception handlers i routery
 - **Lines:** wiele `HTTPException(detail=...)`
@@ -571,6 +577,10 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 ### FE-002
 
 - **Severity:** P2
+- **Status po refaktoryzacji:** Zamknięte 2026-09-04. Obie aplikacje mają granice
+  `error/loading/not-found` zgodne z Next.js 16, retry oraz bezpieczny identyfikator
+  błędu. Publiczne profile mapują na 404 wyłącznie odpowiedź HTTP 404, a awarie API
+  trafiają do error boundary. Naprawiono też hydratację menu zależnego od RBAC.
 - **Category:** Resilience / UX
 - **File:** `apps/admin/app`, `apps/web/app`
 - **Lines:** brak route-level `loading.tsx`, `error.tsx`, `not-found.tsx`
