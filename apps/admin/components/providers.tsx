@@ -2,7 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -17,6 +17,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
         },
       })
   );
+
+  useEffect(() => {
+    // One-time migration from the former persisted JWT/session implementation.
+    window.localStorage.removeItem("access_token");
+    window.localStorage.removeItem("saints-auth");
+  }, []);
 
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>

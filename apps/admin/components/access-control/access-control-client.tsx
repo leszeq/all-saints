@@ -33,7 +33,7 @@ import {
   USER_STATUS_LABELS,
 } from "@/lib/access-control";
 import { getApiErrorMessage, rolesApi, usersApi } from "@/lib/api";
-import { useAuthHydrated, useAuthStore } from "@/lib/store/auth";
+import { useAuthStore } from "@/lib/store/auth";
 import { cn, formatDateTime } from "@/lib/utils";
 
 type ActiveTab = "users" | "matrix";
@@ -265,7 +265,7 @@ export function AccessControlClient() {
   const queryClient = useQueryClient();
   const currentUser = useAuthStore((state) => state.user);
   const hasPermission = useAuthStore((state) => state.hasPermission);
-  const hydrated = useAuthHydrated();
+  const sessionReady = currentUser !== null;
   const [activeTab, setActiveTab] = useState<ActiveTab>("users");
   const [search, setSearch] = useState("");
   const [userModalOpen, setUserModalOpen] = useState(false);
@@ -279,12 +279,12 @@ export function AccessControlClient() {
   const usersQuery = useQuery({
     queryKey: ["users", search],
     queryFn: () => usersApi.list({ per_page: 100, ...(search.trim() ? { search: search.trim() } : {}) }),
-    enabled: hydrated && canReadUsers,
+    enabled: sessionReady && canReadUsers,
   });
   const rolesQuery = useQuery({
     queryKey: ["roles"],
     queryFn: () => rolesApi.list(),
-    enabled: hydrated && canReadRoles,
+    enabled: sessionReady && canReadRoles,
   });
 
   const refreshAccessControl = async () => {
@@ -337,7 +337,7 @@ export function AccessControlClient() {
     onError: (error) => setActionError(getApiErrorMessage(error)),
   });
 
-  if (!hydrated) {
+  if (!sessionReady) {
     return <div className="py-20 text-center text-sm text-muted-foreground"><Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />Weryfikowanie dostępu…</div>;
   }
 

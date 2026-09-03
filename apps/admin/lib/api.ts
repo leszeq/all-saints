@@ -19,6 +19,7 @@ import type {
   PublicationStatus,
 } from "@/lib/editorial";
 import type { ApplicationSettings, UserProfile } from "@/lib/settings";
+import { useAuthStore } from "@/lib/store/auth";
 
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -35,6 +36,34 @@ interface ApiErrorPayload {
   message?: string;
   details?: Array<{ field?: string; message?: string }>;
   request_id?: string | null;
+}
+
+interface TokenResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+}
+
+let refreshPromise: Promise<string> | null = null;
+
+async function refreshAccessToken(): Promise<string> {
+  if (!refreshPromise) {
+    refreshPromise = axios
+      .post<TokenResponse>(
+        `${API_BASE_URL}/api/v1/auth/refresh`,
+        {},
+        { withCredentials: true },
+      )
+      .then(({ data }) => {
+        useAuthStore.getState().setAccessToken(data.access_token);
+        return data.access_token;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+
+  return refreshPromise;
 }
 
 export function getApiErrorMessage(error: unknown): string {
@@ -64,10 +93,9 @@ export function getApiErrorMessage(error: unknown): string {
   return `Zapis nie powiódł się (HTTP ${error.response.status}).`;
 }
 
-// Wstrzyknięcie access tokena
+// Access token lives only in memory. The persistent session is the HttpOnly cookie.
 api.interceptors.request.use((config) => {
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+  const token = useAuthStore.getState().accessToken;
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
@@ -93,17 +121,12 @@ api.interceptors.response.use(
     ) {
       original._retry = true;
       try {
-        const { data } = await axios.post(
-          `${API_BASE_URL}/api/v1/auth/refresh`,
-          {},
-          { withCredentials: true }
-        );
-        localStorage.setItem("access_token", data.access_token);
-        original.headers.Authorization = `Bearer ${data.access_token}`;
+        const accessToken = await refreshAccessToken();
+        original.headers.Authorization = `Bearer ${accessToken}`;
         return api(original);
       } catch {
-        localStorage.removeItem("access_token");
-        window.location.replace("/login");
+        useAuthStore.getState().logout();
+        if (typeof window !== "undefined") window.location.replace("/login");
       }
     }
     return Promise.reject(error);
@@ -114,10 +137,11 @@ api.interceptors.response.use(
 
 export const authApi = {
   login: (email: string, password: string) =>
-    api.post<{ access_token: string; expires_in: number }>("/auth/login", {
+    api.post<TokenResponse>("/auth/login", {
       email,
       password,
     }),
+  refresh: () => refreshAccessToken(),
   logout: () => api.post("/auth/logout"),
   me: () => api.get<UserProfile>("/auth/me"),
   updateProfile: (data: { full_name?: string; preferred_language?: string }) =>

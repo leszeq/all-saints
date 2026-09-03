@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { BookOpenText, Eye, EyeOff, Loader2, LockKeyhole, ShieldCheck } from "lucide-react";
-import { authApi } from "@/lib/api";
+import { authApi, getApiErrorMessage } from "@/lib/api";
 import { useAuthStore } from "@/lib/store/auth";
 
 const loginSchema = z.object({ email: z.string().email("Podaj prawidłowy adres email"), password: z.string().min(1, "Hasło jest wymagane") });
@@ -14,7 +14,7 @@ type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
-  const { setAuth } = useAuthStore();
+  const { setAccessToken, setAuth } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginForm>({ resolver: zodResolver(loginSchema) });
@@ -23,11 +23,13 @@ export default function LoginPage() {
     setServerError(null);
     try {
       const { data: tokenData } = await authApi.login(data.email, data.password);
+      setAccessToken(tokenData.access_token);
       const { data: me } = await authApi.me();
       setAuth(me, tokenData.access_token);
-      router.push("/dashboard");
+      router.replace("/dashboard");
     } catch (error: unknown) {
-      setServerError((error as { response?: { data?: { detail?: string } } })?.response?.data?.detail || "Błąd logowania. Sprawdź dane i spróbuj ponownie.");
+      useAuthStore.getState().logout();
+      setServerError(getApiErrorMessage(error));
     }
   };
 
@@ -48,7 +50,9 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5">
             <div><label htmlFor="email" className="mb-2 block text-sm font-medium text-[#202225]">Adres e-mail</label><input id="email" type="email" autoComplete="email" placeholder="redaktor@encyklopedia.pl" {...register("email")} className="h-11 w-full rounded-lg border border-[#d5d2cc] bg-white px-3 text-sm text-[#202225] outline-none transition-colors placeholder:text-[#aaa49c] focus:border-[#a8843d]" />{errors.email && <p className="mt-1.5 text-xs text-[#b3261e]">{errors.email.message}</p>}</div>
             <div><div className="mb-2 flex items-center justify-between"><label htmlFor="password" className="text-sm font-medium text-[#202225]">Hasło</label><button type="button" className="text-xs font-medium text-[#6b2033]">Nie pamiętasz hasła?</button></div><div className="relative"><input id="password" type={showPassword ? "text" : "password"} autoComplete="current-password" placeholder="••••••••" {...register("password")} className="h-11 w-full rounded-lg border border-[#d5d2cc] bg-white px-3 pr-11 text-sm text-[#202225] outline-none transition-colors placeholder:text-[#aaa49c] focus:border-[#a8843d]" /><button type="button" onClick={() => setShowPassword((show) => !show)} className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center text-[#716b64] hover:text-[#202225]" aria-label={showPassword ? "Ukryj hasło" : "Pokaż hasło"}>{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div>{errors.password && <p className="mt-1.5 text-xs text-[#b3261e]">{errors.password.message}</p>}</div>
-            <label className="flex items-center gap-2 text-sm text-[#716b64]"><input type="checkbox" className="h-4 w-4 rounded border-[#d5d2cc] accent-[#6b2033]" />Zapamiętaj mnie na tym urządzeniu</label>
+            <p className="text-xs leading-5 text-[#716b64]">
+              Dostęp jest przechowywany w bezpiecznym cookie HttpOnly. Token panelu nie jest zapisywany w pamięci trwałej przeglądarki.
+            </p>
             {serverError && <div role="alert" className="rounded-lg border border-destructive/25 bg-destructive/8 px-3 py-3 text-sm text-destructive">{serverError}</div>}
             <button type="submit" disabled={isSubmitting} className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#6b2033] px-4 text-sm font-semibold text-white shadow-sm hover:bg-[#591a2a] disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? <><Loader2 className="h-4 w-4 animate-spin" />Logowanie…</> : <><LockKeyhole className="h-4 w-4" />Zaloguj się</>}</button>
           </form>

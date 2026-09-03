@@ -1,8 +1,6 @@
 "use client";
 
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
-import { useSyncExternalStore } from "react";
 
 export interface User {
   id: string;
@@ -18,6 +16,7 @@ interface AuthState {
   accessToken: string | null;
   isAuthenticated: boolean;
   setAuth: (user: User, token: string) => void;
+  setAccessToken: (token: string) => void;
   updateUser: (user: Partial<User>) => void;
   logout: () => void;
   hasRole: (role: string) => boolean;
@@ -25,62 +24,44 @@ interface AuthState {
   isAdmin: () => boolean;
 }
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set, get) => ({
-      user: null,
-      accessToken: null,
-      isAuthenticated: false,
+export const useAuthStore = create<AuthState>()((set, get) => ({
+  user: null,
+  accessToken: null,
+  isAuthenticated: false,
 
-      setAuth: (user, token) => {
-        localStorage.setItem("access_token", token);
-        set({ user, accessToken: token, isAuthenticated: true });
-      },
+  setAuth: (user, token) => {
+    set({ user, accessToken: token, isAuthenticated: true });
+  },
 
-      updateUser: (user) => {
-        const currentUser = get().user;
-        if (currentUser) set({ user: { ...currentUser, ...user } });
-      },
+  setAccessToken: (token) => {
+    set({ accessToken: token });
+  },
 
-      logout: () => {
-        localStorage.removeItem("access_token");
-        set({ user: null, accessToken: null, isAuthenticated: false });
-      },
+  updateUser: (user) => {
+    const currentUser = get().user;
+    if (currentUser) set({ user: { ...currentUser, ...user } });
+  },
 
-      hasRole: (role) => {
-        const { user } = get();
-        return user?.roles.includes(role) ?? false;
-      },
+  logout: () => {
+    set({ user: null, accessToken: null, isAuthenticated: false });
+  },
 
-      hasPermission: (permission) => {
-        const { user } = get();
-        return user?.permissions?.includes(permission) ?? false;
-      },
+  hasRole: (role) => {
+    const { user } = get();
+    return user?.roles.includes(role) ?? false;
+  },
 
-      isAdmin: () => {
-        const { user } = get();
-        return (
-          user?.roles.includes("super_admin") ||
-          user?.roles.includes("admin") ||
-          false
-        );
-      },
-    }),
-    {
-      name: "saints-auth",
-      skipHydration: true,
-      partialize: (state) => ({
-        user: state.user,
-        isAuthenticated: state.isAuthenticated,
-      }),
-    }
-  )
-);
+  hasPermission: (permission) => {
+    const { user } = get();
+    return user?.permissions?.includes(permission) ?? false;
+  },
 
-export function useAuthHydrated(): boolean {
-  return useSyncExternalStore(
-    (onStoreChange) => useAuthStore.persist.onFinishHydration(onStoreChange),
-    () => useAuthStore.persist.hasHydrated(),
-    () => false,
-  );
-}
+  isAdmin: () => {
+    const { user } = get();
+    return (
+      user?.roles.includes("super_admin") ||
+      user?.roles.includes("admin") ||
+      false
+    );
+  },
+}));

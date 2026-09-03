@@ -1,28 +1,29 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { Loader2, ShieldCheck } from "lucide-react";
 import { authApi } from "@/lib/api";
 import { useAuthStore } from "@/lib/store/auth";
 
-export function SessionSync() {
-  const updateUser = useAuthStore((state) => state.updateUser);
+export function SessionSync({ children }: { children: React.ReactNode }) {
+  const setAuth = useAuthStore((state) => state.setAuth);
+  const [sessionReady, setSessionReady] = useState(false);
 
   useEffect(() => {
     let active = true;
 
     const syncSession = async () => {
-      await useAuthStore.persist.rehydrate();
-      if (!window.localStorage.getItem("access_token")) {
-        useAuthStore.getState().logout();
-        return;
-      }
-
       try {
+        const accessToken = await authApi.refresh();
+        if (!active) return;
         const { data } = await authApi.me();
-        if (active) updateUser(data);
+        if (!active) return;
+        setAuth(data, accessToken);
+        setSessionReady(true);
       } catch {
-        // The shared API interceptor handles expired sessions and redirects to login.
-        if (active) useAuthStore.getState().logout();
+        if (!active) return;
+        useAuthStore.getState().logout();
+        window.location.replace("/login");
       }
     };
 
@@ -31,7 +32,24 @@ export function SessionSync() {
     return () => {
       active = false;
     };
-  }, [updateUser]);
+  }, [setAuth]);
 
-  return null;
+  if (!sessionReady) {
+    return (
+      <div
+        className="flex min-h-screen items-center justify-center bg-background p-6"
+        aria-live="polite"
+      >
+        <div className="admin-card flex items-center gap-3 px-5 py-4 text-sm text-muted-foreground">
+          <span className="relative flex h-8 w-8 items-center justify-center text-primary">
+            <ShieldCheck className="h-5 w-5" />
+            <Loader2 className="absolute h-8 w-8 animate-spin opacity-35" />
+          </span>
+          Weryfikowanie bezpiecznej sesji…
+        </div>
+      </div>
+    );
+  }
+
+  return children;
 }
