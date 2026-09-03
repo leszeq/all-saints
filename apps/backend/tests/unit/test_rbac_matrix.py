@@ -6,6 +6,7 @@ from src.domain.identity.rbac import (
     PROTECTED_MANAGEMENT_RESOURCES,
     ROLE_PERMISSIONS,
 )
+from src.infrastructure.db.seed import DEMO_ACCOUNTS
 
 
 def test_super_admin_is_the_only_role_with_identity_management_permissions() -> None:
@@ -46,3 +47,9 @@ def test_reviewer_can_decide_but_cannot_edit_content() -> None:
     assert "persons:update" not in permissions
     assert "persons:submit" not in permissions
     assert "persons:publish" not in permissions
+
+
+def test_development_demo_accounts_cover_every_non_owner_system_role() -> None:
+    assert {role for _, _, role in DEMO_ACCOUNTS} == set(SystemRole) - {
+        SystemRole.SUPER_ADMIN
+    }

@@ -240,6 +240,16 @@ async def seed_admin_user(
     return user
 
 
+DEMO_ACCOUNTS: tuple[tuple[str, str, SystemRole], ...] = (
+    ("admin.test@encyklopedia.pl", "Testowy Administrator", SystemRole.ADMIN),
+    ("redaktor.test@encyklopedia.pl", "Testowy Redaktor", SystemRole.EDITOR),
+    ("recenzent.test@encyklopedia.pl", "Testowy Recenzent", SystemRole.REVIEWER),
+    ("tlumacz.test@encyklopedia.pl", "Testowy Tłumacz", SystemRole.TRANSLATOR),
+    ("czytelnik.test@encyklopedia.pl", "Testowy Czytelnik", SystemRole.READER),
+    ("gosc.test@encyklopedia.pl", "Testowy Gość", SystemRole.GUEST),
+)
+
+
 async def seed_demo_users(
     session: AsyncSession,
     role_map: dict[str, Role],
@@ -256,15 +266,10 @@ async def seed_demo_users(
             "DEMO_USER_PASSWORD nie spełnia polityki haseł: " + ", ".join(password_errors)
         )
 
-    demo_accounts = (
-        ("admin.test@encyklopedia.pl", "Testowy Administrator", SystemRole.ADMIN),
-        ("redaktor.test@encyklopedia.pl", "Testowy Redaktor", SystemRole.EDITOR),
-        ("recenzent.test@encyklopedia.pl", "Testowy Recenzent", SystemRole.REVIEWER),
-    )
     now = datetime.now(UTC)
     password_hash = password_hasher.hash(settings.DEMO_USER_PASSWORD)
 
-    for email, full_name, role_name in demo_accounts:
+    for email, full_name, role_name in DEMO_ACCOUNTS:
         user = (
             await session.execute(select(User).where(User.email == email))
         ).scalar_one_or_none()

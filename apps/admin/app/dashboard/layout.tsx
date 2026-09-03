@@ -1,3 +1,4 @@
+import { SessionSync } from "@/components/auth/session-sync";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 
@@ -8,6 +9,7 @@ export default function DashboardLayout({
 }) {
   return (
     <div className="flex h-screen overflow-hidden bg-background">
+      <SessionSync />
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Topbar />

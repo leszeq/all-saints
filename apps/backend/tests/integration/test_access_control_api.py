@@ -292,3 +292,87 @@ async def test_custom_roles_can_be_created_only_from_content_permissions(
         for permission in matrix.json()["permissions"]
     )
     assert deleted.status_code == 204
+
+
+@pytest.mark.asyncio
+async def test_editor_and_reviewer_complete_the_full_publication_flow(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    _, _, editor_headers = await _create_actor(
+        db_session,
+        SystemRole.EDITOR,
+        "workflow-editor@example.com",
+    )
+    _, _, reviewer_headers = await _create_actor(
+        db_session,
+        SystemRole.REVIEWER,
+        "workflow-reviewer@example.com",
+    )
+
+    created = await async_client.post(
+        "/api/v1/persons",
+        headers=editor_headers,
+        json={
+            "canonical_name": "Św. Test Pełnego Workflow",
+            "person_type": "saint",
+            "status": "draft",
+            "gender": "unknown",
+            "summary_pl": "Zweryfikowane streszczenie testowego rekordu.",
+            "biography_pl": "Zweryfikowany biogram testowego rekordu.",
+        },
+    )
+    assert created.status_code == 201
+    person_id = created.json()["id"]
+    slug = created.json()["slug"]
+
+    submitted = await async_client.post(
+        f"/api/v1/editorial/queue/{person_id}/transition",
+        headers=editor_headers,
+        json={"target_status": "review", "expected_version": 1},
+    )
+    editor_publish = await async_client.post(
+        f"/api/v1/editorial/queue/{person_id}/transition",
+        headers=editor_headers,
+        json={"target_status": "published", "expected_version": 2},
+    )
+    reviewer_edit = await async_client.patch(
+        f"/api/v1/persons/{person_id}",
+        headers=reviewer_headers,
+        json={"summary_pl": "Recenzent nie może zmieniać treści."},
+    )
+    return_without_comment = await async_client.post(
+        f"/api/v1/editorial/queue/{person_id}/transition",
+        headers=reviewer_headers,
+        json={"target_status": "draft", "expected_version": 2},
+    )
+    returned = await async_client.post(
+        f"/api/v1/editorial/queue/{person_id}/transition",
+        headers=reviewer_headers,
+        json={
+            "target_status": "draft",
+            "expected_version": 2,
+            "note": "Proszę doprecyzować przypis do biogramu.",
+        },
+    )
+    resubmitted = await async_client.post(
+        f"/api/v1/editorial/queue/{person_id}/transition",
+        headers=editor_headers,
+        json={"target_status": "review", "expected_version": 3},
+    )
+    approved = await async_client.post(
+        f"/api/v1/editorial/queue/{person_id}/transition",
+        headers=reviewer_headers,
+        json={"target_status": "published", "expected_version": 4},
+    )
+    public_record = await async_client.get(f"/api/v1/persons/{slug}")
+
+    assert submitted.status_code == 200
+    assert editor_publish.status_code == 403
+    assert reviewer_edit.status_code == 403
+    assert return_without_comment.status_code == 409
+    assert returned.status_code == 200
+    assert resubmitted.status_code == 200
+    assert approved.status_code == 200
+    assert approved.json()["status"] == "published"
+    assert public_record.status_code == 200

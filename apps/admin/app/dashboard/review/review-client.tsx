@@ -1,5 +1,6 @@
 "use client";
 
+import * as Dialog from "@radix-ui/react-dialog";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -14,12 +15,15 @@ import {
   CircleHelp,
   Edit3,
   Loader2,
+  MessageSquareText,
   RefreshCw,
   Search,
   Send,
+  X,
 } from "lucide-react";
 import { SaintAvatar } from "@/components/persons/saint-avatar";
 import { editorialApi, getApiErrorMessage } from "@/lib/api";
+import { useAuthStore } from "@/lib/store/auth";
 import {
   EDITORIAL_PRIORITY_COLORS,
   EDITORIAL_PRIORITY_LABELS,
@@ -60,6 +64,17 @@ export function EditorialQueueClient({
   const [priorityFilter, setPriorityFilter] = useState<QueuePriorityFilter>(initialFilters.priority);
   const [attentionFilter, setAttentionFilter] = useState(initialFilters.attention);
   const [actionError, setActionError] = useState("");
+  const [returnDecision, setReturnDecision] = useState<{
+    id: string;
+    version: number;
+    name: string;
+  } | null>(null);
+  const [returnNote, setReturnNote] = useState("");
+  const hasPermission = useAuthStore((state) => state.hasPermission);
+  const canCreate = hasPermission("persons:create");
+  const canEdit = hasPermission("persons:update");
+  const canSubmit = hasPermission("persons:submit");
+  const canReview = hasPermission("persons:review");
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -83,10 +98,12 @@ export function EditorialQueueClient({
   });
 
   const transitionMutation = useMutation({
-    mutationFn: ({ id, targetStatus, version }: { id: string; targetStatus: PublicationStatus; version: number }) =>
-      editorialApi.transition(id, targetStatus, version),
+    mutationFn: ({ id, targetStatus, version, note }: { id: string; targetStatus: PublicationStatus; version: number; note?: string }) =>
+      editorialApi.transition(id, targetStatus, version, note),
     onMutate: () => setActionError(""),
     onSuccess: async () => {
+      setReturnDecision(null);
+      setReturnNote("");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["editorial"] }),
         queryClient.invalidateQueries({ queryKey: ["persons"] }),
@@ -129,12 +146,14 @@ export function EditorialQueueClient({
             Przygotuj szkice, przekaż je do recenzji i publikuj zweryfikowane rekordy.
           </p>
         </div>
-        <Link
-          href="/dashboard/persons/new"
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-        >
-          Dodaj nowy rekord <ArrowRight className="h-4 w-4" />
-        </Link>
+        {canCreate && (
+          <Link
+            href="/dashboard/persons/new"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+          >
+            Dodaj nowy rekord <ArrowRight className="h-4 w-4" />
+          </Link>
+        )}
       </header>
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6" aria-label="Stan kolejki">
@@ -284,14 +303,16 @@ export function EditorialQueueClient({
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex justify-end gap-1.5">
-                        <Link href={`/dashboard/persons/${item.id}/edit`} className="inline-flex h-8 items-center gap-1 rounded-md border border-border px-2.5 text-xs hover:bg-accent"><Edit3 className="h-3.5 w-3.5" /> Edytuj</Link>
-                        {item.status === "draft" ? (
+                        {canEdit && <Link href={`/dashboard/persons/${item.id}/edit`} className="inline-flex h-8 items-center gap-1 rounded-md border border-border px-2.5 text-xs hover:bg-accent"><Edit3 className="h-3.5 w-3.5" /> Edytuj</Link>}
+                        {item.status === "draft" && canSubmit ? (
                           <button disabled={mutationForItem} onClick={() => transitionMutation.mutate({ id: item.id, targetStatus: "review", version: item.version })} className="inline-flex h-8 items-center gap-1 rounded-md bg-blue-600 px-2.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50">{mutationForItem ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />} Do recenzji</button>
-                        ) : (
+                        ) : item.status === "review" && canReview ? (
                           <>
-                            <button disabled={mutationForItem} onClick={() => transitionMutation.mutate({ id: item.id, targetStatus: "draft", version: item.version })} className="inline-flex h-8 items-center gap-1 rounded-md border border-border px-2.5 text-xs hover:bg-accent disabled:opacity-50"><ArrowLeft className="h-3.5 w-3.5" /> Do szkicu</button>
-                            <button disabled={mutationForItem || !item.can_publish} title={!item.can_publish ? "Uzupełnij krytyczne braki przed publikacją" : "Opublikuj rekord"} onClick={() => transitionMutation.mutate({ id: item.id, targetStatus: "published", version: item.version })} className="inline-flex h-8 items-center gap-1 rounded-md bg-emerald-600 px-2.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40">{mutationForItem ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} Publikuj</button>
+                            <button disabled={mutationForItem} onClick={() => { setActionError(""); setReturnNote(""); setReturnDecision({ id: item.id, version: item.version, name: item.canonical_name }); }} className="inline-flex h-8 items-center gap-1 rounded-md border border-border px-2.5 text-xs hover:bg-accent disabled:opacity-50"><ArrowLeft className="h-3.5 w-3.5" /> Zwróć</button>
+                            <button disabled={mutationForItem || !item.can_publish} title={!item.can_publish ? "Uzupełnij krytyczne braki przed akceptacją" : "Zatwierdź i opublikuj rekord"} onClick={() => transitionMutation.mutate({ id: item.id, targetStatus: "published", version: item.version })} className="inline-flex h-8 items-center gap-1 rounded-md bg-emerald-600 px-2.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40">{mutationForItem ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} Zatwierdź</button>
                           </>
+                        ) : (
+                          <span className="inline-flex h-8 items-center rounded-md bg-muted px-2.5 text-[10px] font-medium text-muted-foreground">Tylko podgląd</span>
                         )}
                       </div>
                     </td>
@@ -311,6 +332,35 @@ export function EditorialQueueClient({
           </div>
         </footer>
       </section>
+
+      <Dialog.Root open={returnDecision !== null} onOpenChange={(open) => { if (!open) { setReturnDecision(null); setReturnNote(""); } }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-slate-950/55 backdrop-blur-[2px]" />
+          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 shadow-2xl focus:outline-none">
+            <Dialog.Title className="pr-10 text-lg font-semibold">Zwróć rekord do przeredagowania</Dialog.Title>
+            <Dialog.Description className="mt-1 text-sm leading-6 text-muted-foreground">
+              Wskaż redaktorowi konkretne poprawki dla: <span className="font-medium text-foreground">{returnDecision?.name}</span>.
+            </Dialog.Description>
+            <Dialog.Close className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Zamknij"><X className="h-4 w-4" /></Dialog.Close>
+            <label className="mt-5 block text-sm font-medium" htmlFor="review-note">Komentarz recenzenta</label>
+            <div className="relative mt-2">
+              <MessageSquareText className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <textarea id="review-note" value={returnNote} onChange={(event) => setReturnNote(event.target.value)} rows={5} maxLength={2000} placeholder="Np. uzupełnij źródło dla daty kanonizacji i doprecyzuj drugi akapit biogramu…" className="w-full rounded-lg border border-input bg-background py-2.5 pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" />
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">Komentarz jest wymagany i zostanie zapisany w historii rekordu.</p>
+            <div className="mt-5 flex justify-end gap-2 border-t border-border pt-4">
+              <Dialog.Close className="h-10 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted">Anuluj</Dialog.Close>
+              <button
+                disabled={!returnDecision || !returnNote.trim() || transitionMutation.isPending}
+                onClick={() => returnDecision && transitionMutation.mutate({ id: returnDecision.id, targetStatus: "draft", version: returnDecision.version, note: returnNote.trim() })}
+                className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {transitionMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowLeft className="h-4 w-4" />} Zwróć redaktorowi
+              </button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
   );
 }

@@ -4,6 +4,7 @@ export interface UserProfile {
   full_name: string;
   status: string;
   roles: string[];
+  permissions: string[];
   preferred_language: string;
   last_login_at?: string | null;
 }

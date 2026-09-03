@@ -4,18 +4,25 @@ import { useQuery } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import { PersonForm } from "@/components/persons/person-form";
 import { personsApi } from "@/lib/api";
+import { useAuthStore } from "@/lib/store/auth";
 
 export default function EditPersonPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
+  const canEdit = useAuthStore((state) => state.hasPermission("persons:update"));
 
   const { data: personData, isLoading } = useQuery({
     queryKey: ["person", id],
     queryFn: () => personsApi.get(id),
+    enabled: canEdit,
   });
 
   const person = personData?.data;
+
+  if (!canEdit) {
+    return <div className="mx-auto mt-20 max-w-xl rounded-xl border border-border bg-card p-8 text-center"><h1 className="text-xl font-semibold">Tryb tylko do odczytu</h1><p className="mt-2 text-sm text-muted-foreground">Recenzent może zaakceptować rekord lub zwrócić go z komentarzem, ale nie może zmieniać treści.</p></div>;
+  }
 
   if (isLoading) {
     return (

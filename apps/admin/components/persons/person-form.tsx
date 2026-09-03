@@ -8,7 +8,7 @@ import { z } from "zod";
 import { ArrowLeft, BookOpenText, CalendarDays, FileImage, HeartHandshake, ImagePlus, Info, Loader2, Plus, Save, Trash2, Upload, X } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { calendarApi, getApiErrorMessage, personsApi, geographyApi, sourcesApi, taxonomyApi } from "@/lib/api";
-import { cn, ERA_LABELS, FEAST_RANK_LABELS, LITURGICAL_COLOR_LABELS } from "@/lib/utils";
+import { cn, ERA_LABELS, FEAST_RANK_LABELS, LITURGICAL_COLOR_LABELS, PERSON_STATUS_LABELS } from "@/lib/utils";
 import { SaintAvatar } from "@/components/persons/saint-avatar";
 import { PersonSourcesEditor } from "@/components/persons/person-sources-editor";
 
@@ -468,6 +468,7 @@ export function PersonForm({ personId, defaultValues, isEdit, expectedVersion }:
   const errorCls = "mt-1 text-xs text-destructive";
   const avatarUrl = useWatch({ control, name: "avatar_url" });
   const canonicalName = useWatch({ control, name: "canonical_name" }) || "Nowa postać";
+  const publicationStatus = useWatch({ control, name: "status" });
   const feastMonth = useWatch({ control, name: "feast_month" });
   const feastDay = useWatch({ control, name: "feast_day" });
   const avatarDisplayUrl = avatarPreview || avatarUrl || null;
@@ -612,12 +613,13 @@ export function PersonForm({ personId, defaultValues, isEdit, expectedVersion }:
 
           <div>
             <label className={labelCls}>Status publikacji *</label>
-            <select {...register("status")} className={inputCls}>
-              <option value="draft">Szkic</option>
-              <option value="review">W recenzji</option>
-              <option value="published">Opublikowany</option>
-              <option value="archived">Zarchiwizowany</option>
-            </select>
+            <input type="hidden" {...register("status")} />
+            <div className="rounded-lg border border-input bg-muted/45 px-3 py-2">
+              <p className="text-sm font-medium">{PERSON_STATUS_LABELS[publicationStatus] ?? publicationStatus}</p>
+              <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
+                Status zmienisz wyłącznie przez akcje w kolejce redakcyjnej.
+              </p>
+            </div>
           </div>
 
           <div>

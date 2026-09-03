@@ -3,11 +3,12 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-interface User {
+export interface User {
   id: string;
   email: string;
   full_name: string;
   roles: string[];
+  permissions: string[];
   preferred_language: string;
 }
 
@@ -19,6 +20,7 @@ interface AuthState {
   updateUser: (user: Partial<User>) => void;
   logout: () => void;
   hasRole: (role: string) => boolean;
+  hasPermission: (permission: string) => boolean;
   isAdmin: () => boolean;
 }
 
@@ -47,6 +49,11 @@ export const useAuthStore = create<AuthState>()(
       hasRole: (role) => {
         const { user } = get();
         return user?.roles.includes(role) ?? false;
+      },
+
+      hasPermission: (permission) => {
+        const { user } = get();
+        return user?.permissions?.includes(permission) ?? false;
       },
 
       isAdmin: () => {

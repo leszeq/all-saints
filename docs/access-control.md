@@ -49,6 +49,20 @@ nadane roli niestandardowej. Role systemowe są niemodyfikowalne.
 
 ## Konta demonstracyjne
 
-Seed może opcjonalnie utworzyć konta `admin`, `editor` i `reviewer` po włączeniu
-`SEED_DEMO_USERS`. Flaga jest akceptowana wyłącznie w środowisku development lub
-testing; konfiguracja produkcyjna z tą flagą kończy start błędem.
+Seed może opcjonalnie utworzyć po jednym koncie dla każdej niewłaścicielskiej
+roli systemowej po włączeniu `SEED_DEMO_USERS`:
+
+| Rola | Konto lokalne |
+| --- | --- |
+| Administrator | `admin.test@encyklopedia.pl` |
+| Redaktor | `redaktor.test@encyklopedia.pl` |
+| Recenzent | `recenzent.test@encyklopedia.pl` |
+| Tłumacz | `tlumacz.test@encyklopedia.pl` |
+| Czytelnik wewnętrzny | `czytelnik.test@encyklopedia.pl` |
+| Gość | `gosc.test@encyklopedia.pl` |
+
+Istniejący właściciel stanowi test roli superadministratora, ponieważ system
+celowo nie pozwala utworzyć drugiego takiego konta. Wszystkie konta demonstracyjne
+korzystają z hasła `DEMO_USER_PASSWORD` z lokalnego, niecommitowanego pliku `.env`.
+Flaga jest akceptowana wyłącznie w środowisku development lub testing;
+konfiguracja produkcyjna z tą flagą kończy start błędem.

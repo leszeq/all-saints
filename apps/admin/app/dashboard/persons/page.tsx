@@ -11,6 +11,7 @@ import {
   Search,
 } from "lucide-react";
 import { personsApi } from "@/lib/api";
+import { useAuthStore } from "@/lib/store/auth";
 import { SaintAvatar, type SaintAvatarData } from "@/components/persons/saint-avatar";
 import { cn, ERA_LABELS, formatDateTime, PERSON_STATUS_COLORS, PERSON_STATUS_LABELS, PERSON_TYPE_COLORS, PERSON_TYPE_LABELS } from "@/lib/utils";
 
@@ -39,6 +40,9 @@ function EditorIdentity({ editor }: { editor?: LastEditor | null }) {
 
 export default function PersonsPage() {
   const router = useRouter();
+  const hasPermission = useAuthStore((state) => state.hasPermission);
+  const canCreate = hasPermission("persons:create");
+  const canEdit = hasPermission("persons:update");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -81,13 +85,15 @@ export default function PersonsPage() {
             Zarządzaj hagiograficzną bazą osób
           </p>
         </div>
-        <button
-          onClick={() => router.push("/dashboard/persons/new")}
-          className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          Dodaj osobę
-        </button>
+        {canCreate && (
+          <button
+            onClick={() => router.push("/dashboard/persons/new")}
+            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            Dodaj osobę
+          </button>
+        )}
       </div>
 
       {/* Filters */}
@@ -249,7 +255,7 @@ export default function PersonsPage() {
                     {formatDateTime(p.created_at as string)}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <button
+                    {canEdit && <button
                       onClick={(e) => {
                         e.stopPropagation();
                         router.push(`/dashboard/persons/${p.id}/edit`);
@@ -257,7 +263,7 @@ export default function PersonsPage() {
                       className="rounded-md px-3 py-1 text-xs font-medium text-primary hover:bg-accent"
                     >
                       Edytuj
-                    </button>
+                    </button>}
                   </td>
                 </tr>
               ))

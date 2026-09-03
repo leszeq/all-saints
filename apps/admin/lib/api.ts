@@ -2,6 +2,16 @@
 import axios from "axios";
 import type { AiDashboard, AiSuggestionsResponse } from "@/lib/ai";
 import type {
+  CreateRolePayload,
+  CreateUserPayload,
+  ManagedRole,
+  ManagedUser,
+  ManagedUsersResponse,
+  RolesResponse,
+  UpdateRolePayload,
+  UpdateUserPayload,
+} from "@/lib/access-control";
+import type {
   EditorialDashboard,
   EditorialPriority,
   EditorialQualityReport,
@@ -241,7 +251,18 @@ export const taxonomyApi = {
 };
 
 export const usersApi = {
-  list: (params?: Record<string, unknown>) => api.get("/users", { params }),
-  create: (data: unknown) => api.post("/users", data),
+  list: (params?: Record<string, unknown>) =>
+    api.get<ManagedUsersResponse>("/users", { params }),
+  create: (data: CreateUserPayload) => api.post<ManagedUser>("/users", data),
+  update: (id: string, data: UpdateUserPayload) =>
+    api.patch<ManagedUser>(`/users/${id}`, data),
   delete: (id: string) => api.delete(`/users/${id}`),
+};
+
+export const rolesApi = {
+  list: () => api.get<RolesResponse>("/roles"),
+  create: (data: CreateRolePayload) => api.post<ManagedRole>("/roles", data),
+  update: (id: string, data: UpdateRolePayload) =>
+    api.patch<ManagedRole>(`/roles/${id}`, data),
+  delete: (id: string) => api.delete(`/roles/${id}`),
 };

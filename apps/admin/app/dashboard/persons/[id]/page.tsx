@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, BookOpenText, CalendarDays, Edit, HeartHandshake, History } from "lucide-react";
 import { calendarApi, personsApi, sourcesApi } from "@/lib/api";
+import { useAuthStore } from "@/lib/store/auth";
 import { SaintAvatar } from "@/components/persons/saint-avatar";
 import {
   cn,
@@ -71,6 +72,7 @@ export default function PersonDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
+  const canEdit = useAuthStore((state) => state.hasPermission("persons:update"));
 
   const { data: personData, isLoading } = useQuery({
     queryKey: ["person", id],
@@ -176,13 +178,13 @@ export default function PersonDetailPage() {
           </div>
         </div>
 
-        <button
+        {canEdit && <button
           onClick={() => router.push(`/dashboard/persons/${id}/edit`)}
           className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors"
         >
           <Edit className="h-4 w-4" />
           Edytuj
-        </button>
+        </button>}
       </div>
 
       {/* Main Grid */}
@@ -257,12 +259,12 @@ export default function PersonDetailPage() {
                   Informacje wykorzystywane w katalogu publicznym i eksploracji według patronatu.
                 </p>
               </div>
-              <button
+              {canEdit && <button
                 onClick={() => router.push(`/dashboard/persons/${id}/edit#patronages`)}
                 className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-accent"
               >
                 Zarządzaj
-              </button>
+              </button>}
             </div>
             {patronages.length ? (
               <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -309,12 +311,12 @@ export default function PersonDetailPage() {
                   Powiązania uwzględniane przy ocenie kompletności rekordu.
                 </p>
               </div>
-              <button
+              {canEdit && <button
                 onClick={() => router.push(`/dashboard/persons/${id}/edit`)}
                 className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-accent"
               >
                 Zarządzaj
-              </button>
+              </button>}
             </div>
             {personSources.length ? (
               <ul className="mt-4 divide-y divide-border">
