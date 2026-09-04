@@ -408,6 +408,12 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 ### DX-002
 
 - **Severity:** P2
+- **Status po refaktoryzacji:** Zamknięte 2026-09-04. `make install` korzysta z
+  deterministycznego obrazu backendu i `npm ci`, polecenia testów/lint/type-check
+  wskazują rzeczywisty workdir `/app`, a konfiguracja produkcyjna istnieje i jest
+  walidowana przez `prod-check`. Usunięto cele MkDocs bez konfiguracji. Eksporty
+  XLSX/PDF i E2E są jawnie oznaczone jako planowane, natomiast `openapi-export`
+  generuje aktualny kontrakt bezpośrednio z aplikacji FastAPI.
 - **Category:** Developer experience
 - **File:** `Makefile`
 - **Lines:** test, format, type-check, prod, export

@@ -73,6 +73,7 @@ out/
 # Build outputs
 dist/
 build/
+apps/backend/openapi.json
 
 # IDE
 .idea/

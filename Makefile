@@ -3,7 +3,7 @@
 	seed reset-db test test-unit test-integration test-e2e test-coverage lint \
 	lint-backend lint-frontend format type-check type-check-backend \
 	type-check-frontend logs logs-backend logs-db ps shell-backend shell-db clean \
-	build export-xlsx export-pdf docs-serve docs-build openapi-export backup-db \
+	build export-xlsx export-pdf openapi-export backup-db \
 	prod-backup prod-restore-check
 
 # ==============================================================================
@@ -39,12 +39,12 @@ help: ## Show this help
 # SETUP
 # ==============================================================================
 install: ## Install all dependencies (backend + frontend)
-	@echo "$(CYAN)Installing backend dependencies...$(NC)"
-	cd $(BACKEND) && pip install poetry && poetry install
+	@echo "$(CYAN)Building the backend development image...$(NC)"
+	$(COMPOSE_DEV) build backend
 	@echo "$(CYAN)Installing admin dependencies...$(NC)"
-	cd apps/admin && npm install
+	cd apps/admin && npm ci
 	@echo "$(CYAN)Installing web dependencies...$(NC)"
-	cd apps/web && npm install
+	cd apps/web && npm ci
 	@echo "$(GREEN)✓ All dependencies installed$(NC)"
 
 setup: ## Initial project setup (copy .env, create dirs)
@@ -210,17 +210,11 @@ export-pdf: ## Trigger Encyclopedia PDF export
 	@false
 
 # ==============================================================================
-# DOCUMENTATION
+# API DOCUMENTATION
 # ==============================================================================
-docs-serve: ## Serve documentation locally
-	mkdocs serve
-
-docs-build: ## Build documentation
-	mkdocs build
-
-openapi-export: ## Export OpenAPI schema to file
-	@echo "$(YELLOW)OpenAPI file export is not implemented yet; use /docs or /openapi.json.$(NC)"
-	@false
+openapi-export: ## Export the current OpenAPI schema to apps/backend/openapi.json
+	$(COMPOSE_DEV) exec -T backend python -c 'import json; from pathlib import Path; from src.main import app; Path("openapi.json").write_text(json.dumps(app.openapi(), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")'
+	@echo "$(GREEN)✓ OpenAPI exported to apps/backend/openapi.json$(NC)"
 
 # ==============================================================================
 # BACKUP
