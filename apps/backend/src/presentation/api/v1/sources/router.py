@@ -24,8 +24,14 @@ from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.application.services.audit_service import add_audit_log
+from src.application.services.person_snapshot import (
+    append_relation_version,
+    lock_person_for_snapshot,
+    serialize_person_snapshot,
+)
 from src.domain.hagiography.models import Person, PublicationStatus
-from src.domain.identity.models import User
+from src.domain.identity.models import AuditAction, User
 from src.domain.sources.models import (
     Bibliography,
     Document,
@@ -59,6 +65,7 @@ from src.presentation.api.v1.sources.schemas import (
     PersonWebSourceCreateSchema,
     SourceStatsSchema,
 )
+from src.presentation.audit import audit_context_from_request
 
 router = APIRouter()
 
@@ -248,17 +255,15 @@ async def list_person_sources(
 async def create_person_source(
     person_id: uuid.UUID,
     data: PersonSourceCreateSchema,
+    request: Request,
     db: AsyncSession = Depends(get_db_session),
-    _user: User = Depends(require_permission("sources", "create")),
+    current_user: User = Depends(require_permission("sources", "create")),
 ) -> PersonSourceSchema:
     """Create a non-duplicated source assignment used by data-quality scoring."""
-    person = (
-        await db.execute(
-            select(Person).where(Person.id == person_id, Person.deleted_at.is_(None))
-        )
-    ).scalar_one_or_none()
+    person = await lock_person_for_snapshot(db, person_id)
     if person is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Osoba nie istnieje")
+    previous_snapshot = await serialize_person_snapshot(db, person)
 
     source_model = Bibliography if data.bibliography_id is not None else HistoricalSource
     source_id = data.bibliography_id or data.historical_source_id
@@ -295,6 +300,24 @@ async def create_person_source(
 
     link = PersonSource(person_id=person_id, **data.model_dump())
     db.add(link)
+    await db.flush()
+    previous_snapshot, current_snapshot = await append_relation_version(
+        db,
+        person,
+        previous_snapshot=previous_snapshot,
+        changed_by_id=current_user.id,
+        change_summary="Dodanie źródła",
+    )
+    add_audit_log(
+        db,
+        context=audit_context_from_request(request, current_user),
+        action=AuditAction.UPDATE,
+        resource_type="persons",
+        resource_id=person.id,
+        old_value=previous_snapshot,
+        new_value=current_snapshot,
+        extra_metadata={"relation": "sources", "operation": "add"},
+    )
     await db.commit()
 
     result = await db.execute(
@@ -317,17 +340,15 @@ async def create_person_source(
 async def create_person_web_source(
     person_id: uuid.UUID,
     data: PersonWebSourceCreateSchema,
+    request: Request,
     db: AsyncSession = Depends(get_db_session),
-    _user: User = Depends(require_permission("sources", "create")),
+    current_user: User = Depends(require_permission("sources", "create")),
 ) -> PersonSourceSchema:
     """Create or reuse a URL source and attach it in one transaction."""
-    person = (
-        await db.execute(
-            select(Person).where(Person.id == person_id, Person.deleted_at.is_(None))
-        )
-    ).scalar_one_or_none()
+    person = await lock_person_for_snapshot(db, person_id)
     if person is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Osoba nie istnieje")
+    previous_snapshot = await serialize_person_snapshot(db, person)
 
     normalized_url = str(data.url)
     bibliography = (
@@ -377,6 +398,24 @@ async def create_person_web_source(
         notes=data.notes,
     )
     db.add(link)
+    await db.flush()
+    previous_snapshot, current_snapshot = await append_relation_version(
+        db,
+        person,
+        previous_snapshot=previous_snapshot,
+        changed_by_id=current_user.id,
+        change_summary="Dodanie źródła internetowego",
+    )
+    add_audit_log(
+        db,
+        context=audit_context_from_request(request, current_user),
+        action=AuditAction.UPDATE,
+        resource_type="persons",
+        resource_id=person.id,
+        old_value=previous_snapshot,
+        new_value=current_snapshot,
+        extra_metadata={"relation": "sources", "operation": "add"},
+    )
     await db.commit()
 
     result = await db.execute(
@@ -400,10 +439,14 @@ async def create_person_web_source(
 async def delete_person_source(
     person_id: uuid.UUID,
     link_id: uuid.UUID,
+    request: Request,
     db: AsyncSession = Depends(get_db_session),
-    _user: User = Depends(require_permission("sources", "delete")),
+    current_user: User = Depends(require_permission("sources", "delete")),
 ) -> None:
     """Soft-delete one source assignment without deleting the source itself."""
+    person = await lock_person_for_snapshot(db, person_id)
+    if person is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Osoba nie istnieje")
     link = (
         await db.execute(
             select(PersonSource).where(
@@ -418,7 +461,26 @@ async def delete_person_source(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Przypisanie źródła nie istnieje",
         )
+    previous_snapshot = await serialize_person_snapshot(db, person)
     link.deleted_at = datetime.now(UTC)
+    await db.flush()
+    previous_snapshot, current_snapshot = await append_relation_version(
+        db,
+        person,
+        previous_snapshot=previous_snapshot,
+        changed_by_id=current_user.id,
+        change_summary="Usunięcie źródła",
+    )
+    add_audit_log(
+        db,
+        context=audit_context_from_request(request, current_user),
+        action=AuditAction.UPDATE,
+        resource_type="persons",
+        resource_id=person.id,
+        old_value=previous_snapshot,
+        new_value=current_snapshot,
+        extra_metadata={"relation": "sources", "operation": "remove"},
+    )
     await db.commit()
 
 
@@ -509,21 +571,48 @@ async def list_images(
 @router.post("/images", response_model=ImageSchema, status_code=status.HTTP_201_CREATED, summary="Create image record")
 async def create_image(
     data: ImageCreateSchema,
+    request: Request,
     db: AsyncSession = Depends(get_db_session),
-    _user: User = Depends(require_permission("images", "create")),
+    current_user: User = Depends(require_permission("images", "create")),
 ) -> ImageSchema:
-    if data.person_id is not None and data.is_primary:
-        await db.execute(
-            update(Image)
-            .where(
-                Image.person_id == data.person_id,
-                Image.deleted_at.is_(None),
-                Image.is_primary.is_(True),
+    person = None
+    previous_snapshot = None
+    if data.person_id is not None:
+        person = await lock_person_for_snapshot(db, data.person_id)
+        if person is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Osoba nie istnieje")
+        previous_snapshot = await serialize_person_snapshot(db, person)
+        if data.is_primary:
+            await db.execute(
+                update(Image)
+                .where(
+                    Image.person_id == data.person_id,
+                    Image.deleted_at.is_(None),
+                    Image.is_primary.is_(True),
+                )
+                .values(is_primary=False)
             )
-            .values(is_primary=False)
-        )
     img = Image(**data.model_dump())
     db.add(img)
+    if person is not None and previous_snapshot is not None:
+        await db.flush()
+        previous_snapshot, current_snapshot = await append_relation_version(
+            db,
+            person,
+            previous_snapshot=previous_snapshot,
+            changed_by_id=current_user.id,
+            change_summary="Dodanie obrazu",
+        )
+        add_audit_log(
+            db,
+            context=audit_context_from_request(request, current_user),
+            action=AuditAction.UPDATE,
+            resource_type="persons",
+            resource_id=person.id,
+            old_value=previous_snapshot,
+            new_value=current_snapshot,
+            extra_metadata={"relation": "images", "operation": "add"},
+        )
     await db.commit()
     await db.refresh(img)
     return ImageSchema.model_validate(img)

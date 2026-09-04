@@ -9,8 +9,15 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.application.services.audit_service import AuditContext, add_audit_log
+from src.application.services.person_snapshot import (
+    append_relation_version,
+    lock_person_for_snapshot,
+    serialize_person_snapshot,
+)
 from src.domain.geography.models import ReligiousOrder
 from src.domain.hagiography.models import Person, PersonOrder, PublicationStatus
+from src.domain.identity.models import AuditAction
 from src.presentation.api.v1.orders.schemas import (
     ReligiousOrderCreateSchema,
     ReligiousOrderMembershipCreateSchema,
@@ -167,11 +174,14 @@ class OrderService:
         self,
         identifier: str,
         data: ReligiousOrderMembershipCreateSchema,
+        *,
+        user_id: uuid.UUID | None = None,
+        audit_context: AuditContext | None = None,
     ) -> PersonOrder:
         """Attach a person to a community with a documented membership role."""
         order, _memberships = await self.get_order(identifier, public_members_only=False)
-        person = await self.db.get(Person, data.person_id)
-        if person is None or person.deleted_at is not None:
+        person = await lock_person_for_snapshot(self.db, data.person_id)
+        if person is None:
             raise OrderNotFoundError("Osoba nie istnieje")
 
         existing = await self.db.get(
@@ -181,12 +191,31 @@ class OrderService:
         if existing is not None:
             raise OrderConflictError("Osoba jest już przypisana do tej wspólnoty")
 
+        previous_snapshot = await serialize_person_snapshot(self.db, person)
         membership = PersonOrder(
             person_id=person.id,
             order_id=order.id,
             **data.model_dump(exclude={"person_id"}, mode="json"),
         )
         self.db.add(membership)
+        await self.db.flush()
+        previous_snapshot, current_snapshot = await append_relation_version(
+            self.db,
+            person,
+            previous_snapshot=previous_snapshot,
+            changed_by_id=user_id,
+            change_summary="Dodanie przynależności zakonnej",
+        )
+        add_audit_log(
+            self.db,
+            context=audit_context or AuditContext.for_user(user_id),
+            action=AuditAction.UPDATE,
+            resource_type="persons",
+            resource_id=person.id,
+            old_value=previous_snapshot,
+            new_value=current_snapshot,
+            extra_metadata={"relation": "orders", "operation": "add"},
+        )
         await self.db.commit()
         result = await self.db.execute(
             select(PersonOrder)
@@ -198,14 +227,43 @@ class OrderService:
         )
         return result.scalar_one()
 
-    async def delete_membership(self, identifier: str, person_id: uuid.UUID) -> None:
+    async def delete_membership(
+        self,
+        identifier: str,
+        person_id: uuid.UUID,
+        *,
+        user_id: uuid.UUID | None = None,
+        audit_context: AuditContext | None = None,
+    ) -> None:
         """Remove one person-to-community link."""
         order, _memberships = await self.get_order(identifier, public_members_only=False)
+        person = await lock_person_for_snapshot(self.db, person_id)
+        if person is None:
+            raise OrderNotFoundError("Osoba nie istnieje")
         membership = await self.db.get(
             PersonOrder,
             {"person_id": person_id, "order_id": order.id},
         )
         if membership is None:
             raise OrderNotFoundError("Powiązanie nie istnieje")
+        previous_snapshot = await serialize_person_snapshot(self.db, person)
         await self.db.delete(membership)
+        await self.db.flush()
+        previous_snapshot, current_snapshot = await append_relation_version(
+            self.db,
+            person,
+            previous_snapshot=previous_snapshot,
+            changed_by_id=user_id,
+            change_summary="Usunięcie przynależności zakonnej",
+        )
+        add_audit_log(
+            self.db,
+            context=audit_context or AuditContext.for_user(user_id),
+            action=AuditAction.UPDATE,
+            resource_type="persons",
+            resource_id=person.id,
+            old_value=previous_snapshot,
+            new_value=current_snapshot,
+            extra_metadata={"relation": "orders", "operation": "remove"},
+        )
         await self.db.commit()

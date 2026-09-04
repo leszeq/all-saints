@@ -52,6 +52,13 @@ ADMIN_PAYLOAD = {
 }
 
 
+def _empty_snapshot_query_result() -> MagicMock:
+    result = MagicMock()
+    result.scalars.return_value.all.return_value = []
+    result.scalar_one_or_none.return_value = None
+    return result
+
+
 def test_person_create_schema_accepts_empty_optional_selects() -> None:
     payload = PersonCreateSchema.model_validate(ADMIN_PAYLOAD)
 
@@ -225,6 +232,7 @@ async def test_person_service_creates_json_safe_initial_snapshot() -> None:
         stored.append(model)
 
     db.add.side_effect = add
+    db.execute = AsyncMock(return_value=_empty_snapshot_query_result())
     db.flush = AsyncMock()
     db.commit = AsyncMock()
     db.refresh = AsyncMock()
@@ -299,6 +307,8 @@ async def test_person_service_allows_unchanged_status_in_form_payload() -> None:
     person.patronages = []
     person.orders = []
     db = MagicMock()
+    db.execute = AsyncMock(return_value=_empty_snapshot_query_result())
+    db.flush = AsyncMock()
     db.commit = AsyncMock()
     db.refresh = AsyncMock()
 

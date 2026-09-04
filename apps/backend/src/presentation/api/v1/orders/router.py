@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.services.order_service import (
@@ -24,6 +24,7 @@ from src.presentation.api.v1.orders.schemas import (
     ReligiousOrderSchema,
     ReligiousOrderUpdateSchema,
 )
+from src.presentation.audit import audit_context_from_request
 
 router = APIRouter()
 
@@ -141,11 +142,17 @@ async def delete_order(
 async def add_order_member(
     id_or_slug: str,
     data: ReligiousOrderMembershipCreateSchema,
+    request: Request,
     db: AsyncSession = Depends(get_db_session),
-    _user: User = Depends(require_permission("orders", "update")),
+    current_user: User = Depends(require_permission("orders", "update")),
 ) -> ReligiousOrderMembershipSchema:
     try:
-        membership = await OrderService(db).add_membership(id_or_slug, data)
+        membership = await OrderService(db).add_membership(
+            id_or_slug,
+            data,
+            user_id=current_user.id,
+            audit_context=audit_context_from_request(request, current_user),
+        )
     except OrderNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except OrderConflictError as exc:
@@ -161,11 +168,17 @@ async def add_order_member(
 async def delete_order_member(
     id_or_slug: str,
     person_id: uuid.UUID,
+    request: Request,
     db: AsyncSession = Depends(get_db_session),
-    _user: User = Depends(require_permission("orders", "update")),
+    current_user: User = Depends(require_permission("orders", "update")),
 ) -> Response:
     try:
-        await OrderService(db).delete_membership(id_or_slug, person_id)
+        await OrderService(db).delete_membership(
+            id_or_slug,
+            person_id,
+            user_id=current_user.id,
+            audit_context=audit_context_from_request(request, current_user),
+        )
     except OrderNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)

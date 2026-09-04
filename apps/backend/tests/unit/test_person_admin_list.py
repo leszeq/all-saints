@@ -16,6 +16,13 @@ from src.main import app
 from src.presentation.api.v1.persons.schemas import PersonAdminListItemSchema
 
 
+def _empty_snapshot_query_result() -> MagicMock:
+    result = MagicMock()
+    result.scalars.return_value.all.return_value = []
+    result.scalar_one_or_none.return_value = None
+    return result
+
+
 def test_admin_person_schema_contains_editor_metadata() -> None:
     now = datetime.now(UTC)
     editor = SimpleNamespace(
@@ -72,7 +79,10 @@ async def test_restore_records_the_responsible_editor() -> None:
     result = MagicMock()
     result.scalar_one_or_none.return_value = person
     db = MagicMock()
-    db.execute = AsyncMock(return_value=result)
+    db.execute = AsyncMock(
+        side_effect=[result, *[_empty_snapshot_query_result() for _ in range(12)]]
+    )
+    db.flush = AsyncMock()
     db.commit = AsyncMock()
     db.refresh = AsyncMock()
 
@@ -100,16 +110,24 @@ async def test_soft_delete_stages_an_audit_record_before_commit() -> None:
     person = SimpleNamespace(
         id=person_id,
         deleted_at=None,
+        version=1,
+        updated_at=datetime.now(UTC),
         to_dict=lambda: {
             "id": str(person_id),
             "deleted_at": person.deleted_at.isoformat() if person.deleted_at else None,
+            "version": person.version,
         },
     )
     db = MagicMock()
+    db.execute = AsyncMock(return_value=_empty_snapshot_query_result())
+    db.flush = AsyncMock()
     db.commit = AsyncMock()
 
     await PersonService(db).soft_delete_person(person, user_id=editor_id)
 
+    version = next(
+        call.args[0] for call in db.add.call_args_list if isinstance(call.args[0], PersonVersion)
+    )
     audit_log = next(
         call.args[0] for call in db.add.call_args_list if isinstance(call.args[0], AuditLog)
     )
@@ -117,6 +135,8 @@ async def test_soft_delete_stages_an_audit_record_before_commit() -> None:
     assert audit_log.user_id == editor_id
     assert audit_log.old_value["deleted_at"] is None
     assert audit_log.new_value["deleted_at"] is not None
+    assert version.changed_by_id == editor_id
+    assert version.change_summary == "Usunięcie rekordu"
     db.commit.assert_awaited_once()
 
 

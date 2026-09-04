@@ -10,13 +10,13 @@ from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import cast
 
-from fastapi.encoders import jsonable_encoder
 from slugify import slugify
 from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.application.services.audit_service import AuditContext, add_audit_log
+from src.application.services.person_snapshot import serialize_person_snapshot
 from src.domain.hagiography.models import (
     Beatification,
     Canonization,
@@ -304,7 +304,7 @@ class PersonService:
             )
 
         # Create initial version snapshot
-        person_snapshot = jsonable_encoder(person.to_dict())
+        person_snapshot = await serialize_person_snapshot(self.db, person)
         version_snapshot = PersonVersion(
             person_id=person.id,
             version_number=1,
@@ -555,7 +555,7 @@ class PersonService:
         )
         if expected_version != person.version:
             raise PersonVersionConflictError(expected_version, person.version)
-        previous_snapshot = jsonable_encoder(person.to_dict())
+        previous_snapshot = await serialize_person_snapshot(self.db, person)
 
         avatar_was_set = "avatar" in data.model_fields_set
         patronages_were_set = "patronages" in data.model_fields_set
@@ -596,7 +596,7 @@ class PersonService:
         person.updated_at = datetime.now(UTC)
 
         # Save new version snapshot
-        person_snapshot = jsonable_encoder(person.to_dict())
+        person_snapshot = await serialize_person_snapshot(self.db, person)
         version_snapshot = PersonVersion(
             person_id=person.id,
             version_number=person.version,
@@ -664,8 +664,21 @@ class PersonService:
         audit_context: AuditContext | None = None,
     ) -> None:
         """Soft delete a person record."""
-        previous_snapshot = jsonable_encoder(person.to_dict())
+        previous_snapshot = await serialize_person_snapshot(self.db, person)
         person.deleted_at = datetime.now(UTC)
+        person.version += 1
+        person.updated_at = datetime.now(UTC)
+        current_snapshot = await serialize_person_snapshot(self.db, person)
+        self.db.add(
+            PersonVersion(
+                person_id=person.id,
+                version_number=person.version,
+                snapshot=current_snapshot,
+                changed_by_id=user_id,
+                changed_at=datetime.now(UTC).isoformat(),
+                change_summary="Usunięcie rekordu",
+            )
+        )
         add_audit_log(
             self.db,
             context=audit_context or AuditContext.for_user(user_id),
@@ -673,7 +686,7 @@ class PersonService:
             resource_type="persons",
             resource_id=person.id,
             old_value=previous_snapshot,
-            new_value=jsonable_encoder(person.to_dict()),
+            new_value=current_snapshot,
         )
         await self.db.commit()
 
@@ -700,15 +713,16 @@ class PersonService:
         res = await self.db.execute(stmt)
         person = res.scalar_one_or_none()
         if person and person.deleted_at is not None:
-            previous_snapshot = jsonable_encoder(person.to_dict())
+            previous_snapshot = await serialize_person_snapshot(self.db, person)
             person.deleted_at = None
             person.version += 1
             person.updated_at = datetime.now(UTC)
+            current_snapshot = await serialize_person_snapshot(self.db, person)
             self.db.add(
                 PersonVersion(
                     person_id=person.id,
                     version_number=person.version,
-                    snapshot=jsonable_encoder(person.to_dict()),
+                    snapshot=current_snapshot,
                     changed_by_id=user_id,
                     changed_at=datetime.now(UTC).isoformat(),
                     change_summary="Przywrócenie rekordu",
@@ -721,7 +735,7 @@ class PersonService:
                 resource_type="persons",
                 resource_id=person.id,
                 old_value=previous_snapshot,
-                new_value=jsonable_encoder(person.to_dict()),
+                new_value=current_snapshot,
             )
             await self.db.commit()
             await self.db.refresh(person)

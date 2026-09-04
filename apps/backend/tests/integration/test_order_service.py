@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.services.order_service import (
@@ -13,7 +14,14 @@ from src.application.services.order_service import (
     OrderService,
 )
 from src.domain.geography.models import OrderCharism, ReligiousCommunityType
-from src.domain.hagiography.models import Gender, Person, PersonType, PublicationStatus
+from src.domain.hagiography.models import (
+    Gender,
+    Person,
+    PersonType,
+    PersonVersion,
+    PublicationStatus,
+)
+from src.domain.identity.models import AuditLog
 from src.presentation.api.v1.orders.schemas import (
     OrderMembershipType,
     ReligiousOrderCreateSchema,
@@ -131,6 +139,16 @@ async def test_order_memberships_hide_drafts_and_reject_duplicates(
             membership_type=OrderMembershipType.MEMBER,
         ),
     )
+    await db_session.refresh(published)
+    membership_version = (
+        await db_session.execute(
+            select(PersonVersion).where(
+                PersonVersion.person_id == published.id,
+                PersonVersion.version_number == 2,
+            )
+        )
+    ).scalar_one()
+    assert membership_version.snapshot["orders"][0]["order_id"] == str(order.id)
 
     rows = await service.list_orders()
     assert rows[0][1] == 1
@@ -152,6 +170,31 @@ async def test_order_memberships_hide_drafts_and_reject_duplicates(
         )
 
     await service.delete_membership(order.slug, published.id)
+    await db_session.refresh(published)
+    removal_version = (
+        await db_session.execute(
+            select(PersonVersion).where(
+                PersonVersion.person_id == published.id,
+                PersonVersion.version_number == 3,
+            )
+        )
+    ).scalar_one()
+    assert removal_version.snapshot["orders"] == []
+    audit_events = list(
+        (
+            await db_session.execute(
+                select(AuditLog)
+                .where(AuditLog.resource_id == published.id)
+                .order_by(AuditLog.created_at.asc())
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert [event.extra_metadata["operation"] for event in audit_events] == [
+        "add",
+        "remove",
+    ]
     with pytest.raises(OrderNotFoundError, match="Powiązanie"):
         await service.delete_membership(order.slug, published.id)
     with pytest.raises(OrderNotFoundError, match="Wspólnota"):

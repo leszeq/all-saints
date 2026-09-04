@@ -457,6 +457,13 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 ### VER-001
 
 - **Severity:** P2
+- **Status po refaktoryzacji:** Zamknięte 2026-09-04. Jeden wersjonowany serializer
+  zachowuje zgodny wstecznie zestaw pól osoby oraz aktywne patronaty, źródła, obrazy,
+  przynależności zakonne, beatyfikację i kanonizację. Snapshot ma jawny numer schematu.
+  Tworzenie, edycja, soft delete i restore oraz zmiany źródeł, obrazów i członkostw
+  zapisują nową wersję z autorem; patronaty i avatar są wersjonowane w operacji edycji
+  osoby. Wersje pozostają bezterminowo jako nieusuwalna historia redakcyjna — nie ma
+  automatycznego pruningu.
 - **Category:** Versioning / audit
 - **File:** `apps/backend/src/application/services/person_service.py`
 - **Lines:** snapshot create/update/delete/restore
