@@ -16,6 +16,7 @@ from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.application.services.audit_service import AuditContext, add_audit_log
 from src.domain.hagiography.models import (
     Beatification,
     Canonization,
@@ -31,7 +32,7 @@ from src.domain.hagiography.models import (
     PersonVersion,
     PublicationStatus,
 )
-from src.domain.identity.models import User
+from src.domain.identity.models import AuditAction, User
 from src.domain.sources.models import Image
 from src.presentation.api.v1.persons.schemas import (
     PersonAvatarInputSchema,
@@ -230,7 +231,11 @@ class PersonService:
         return slug
 
     async def create_person(
-        self, data: PersonCreateSchema, user_id: uuid.UUID | None = None
+        self,
+        data: PersonCreateSchema,
+        user_id: uuid.UUID | None = None,
+        *,
+        audit_context: AuditContext | None = None,
     ) -> Person:
         """Create a new person record."""
         if data.status != PublicationStatus.DRAFT:
@@ -299,15 +304,24 @@ class PersonService:
             )
 
         # Create initial version snapshot
+        person_snapshot = jsonable_encoder(person.to_dict())
         version_snapshot = PersonVersion(
             person_id=person.id,
             version_number=1,
-            snapshot=jsonable_encoder(person.to_dict()),
+            snapshot=person_snapshot,
             changed_by_id=user_id,
             changed_at=datetime.now(UTC).isoformat(),
             change_summary="Utworzenie rekordu",
         )
         self.db.add(version_snapshot)
+        add_audit_log(
+            self.db,
+            context=audit_context or AuditContext.for_user(user_id),
+            action=AuditAction.CREATE,
+            resource_type="persons",
+            resource_id=person.id,
+            new_value=person_snapshot,
+        )
 
         await self.db.commit()
         await self.db.refresh(person)
@@ -511,17 +525,18 @@ class PersonService:
         user_id: uuid.UUID | None = None,
         *,
         allow_status_change: bool = False,
+        audit_context: AuditContext | None = None,
     ) -> Person:
         """Update person record and create version snapshot."""
+        previous_status = (
+            person.status.value if hasattr(person.status, "value") else str(person.status)
+        )
         status_was_set = "status" in data.model_fields_set
         if status_was_set:
             requested_status = data.status.value if data.status is not None else None
-            current_status = (
-                person.status.value if hasattr(person.status, "value") else str(person.status)
-            )
             if requested_status is None:
                 raise PersonStatusChangeError("Status rekordu nie może być pusty")
-            if requested_status != current_status and not allow_status_change:
+            if requested_status != previous_status and not allow_status_change:
                 raise PersonStatusChangeError(
                     "Status rekordu można zmienić wyłącznie przez workflow redakcyjny"
                 )
@@ -540,6 +555,7 @@ class PersonService:
         )
         if expected_version != person.version:
             raise PersonVersionConflictError(expected_version, person.version)
+        previous_snapshot = jsonable_encoder(person.to_dict())
 
         avatar_was_set = "avatar" in data.model_fields_set
         patronages_were_set = "patronages" in data.model_fields_set
@@ -580,15 +596,48 @@ class PersonService:
         person.updated_at = datetime.now(UTC)
 
         # Save new version snapshot
+        person_snapshot = jsonable_encoder(person.to_dict())
         version_snapshot = PersonVersion(
             person_id=person.id,
             version_number=person.version,
-            snapshot=jsonable_encoder(person.to_dict()),
+            snapshot=person_snapshot,
             changed_by_id=user_id,
             changed_at=datetime.now(UTC).isoformat(),
             change_summary=data.change_summary or "Aktualizacja danych",
         )
         self.db.add(version_snapshot)
+        current_status = (
+            person.status.value if hasattr(person.status, "value") else str(person.status)
+        )
+        action = AuditAction.UPDATE
+        if (
+            previous_status != current_status
+            and current_status == PublicationStatus.PUBLISHED.value
+        ):
+            action = AuditAction.PUBLISH
+        elif (
+            previous_status == PublicationStatus.PUBLISHED.value
+            and current_status != previous_status
+        ):
+            action = AuditAction.UNPUBLISH
+        audit_metadata: dict[str, object] = {
+            "change_summary": data.change_summary or "Aktualizacja danych",
+        }
+        if previous_status != current_status:
+            audit_metadata.update(
+                previous_status=previous_status,
+                status=current_status,
+            )
+        add_audit_log(
+            self.db,
+            context=audit_context or AuditContext.for_user(user_id),
+            action=action,
+            resource_type="persons",
+            resource_id=person.id,
+            old_value=previous_snapshot,
+            new_value=person_snapshot,
+            extra_metadata=audit_metadata,
+        )
 
         await self.db.commit()
         await self.db.refresh(person)
@@ -607,15 +656,33 @@ class PersonService:
             await self.db.refresh(membership, attribute_names=["order"])
         return person
 
-    async def soft_delete_person(self, person: Person, user_id: uuid.UUID | None = None) -> None:
+    async def soft_delete_person(
+        self,
+        person: Person,
+        user_id: uuid.UUID | None = None,
+        *,
+        audit_context: AuditContext | None = None,
+    ) -> None:
         """Soft delete a person record."""
+        previous_snapshot = jsonable_encoder(person.to_dict())
         person.deleted_at = datetime.now(UTC)
+        add_audit_log(
+            self.db,
+            context=audit_context or AuditContext.for_user(user_id),
+            action=AuditAction.DELETE,
+            resource_type="persons",
+            resource_id=person.id,
+            old_value=previous_snapshot,
+            new_value=jsonable_encoder(person.to_dict()),
+        )
         await self.db.commit()
 
     async def restore_person(
         self,
         person_id: uuid.UUID,
         user_id: uuid.UUID | None = None,
+        *,
+        audit_context: AuditContext | None = None,
     ) -> Person | None:
         """Restore a soft-deleted person record."""
         stmt = (
@@ -633,6 +700,7 @@ class PersonService:
         res = await self.db.execute(stmt)
         person = res.scalar_one_or_none()
         if person and person.deleted_at is not None:
+            previous_snapshot = jsonable_encoder(person.to_dict())
             person.deleted_at = None
             person.version += 1
             person.updated_at = datetime.now(UTC)
@@ -645,6 +713,15 @@ class PersonService:
                     changed_at=datetime.now(UTC).isoformat(),
                     change_summary="Przywrócenie rekordu",
                 )
+            )
+            add_audit_log(
+                self.db,
+                context=audit_context or AuditContext.for_user(user_id),
+                action=AuditAction.RESTORE,
+                resource_type="persons",
+                resource_id=person.id,
+                old_value=previous_snapshot,
+                new_value=jsonable_encoder(person.to_dict()),
             )
             await self.db.commit()
             await self.db.refresh(person)

@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.services.editorial_service import (
@@ -21,7 +22,7 @@ from src.domain.hagiography.models import (
     PublicationStatus,
     StateOfLife,
 )
-from src.domain.identity.models import User, UserStatus
+from src.domain.identity.models import AuditAction, AuditLog, User, UserStatus
 from src.domain.sources.models import (
     Bibliography,
     HistoricalSource,
@@ -254,6 +255,18 @@ async def test_editorial_transition_validates_content_and_persists_version(
     )
     assert result.previous_status == PublicationStatus.REVIEW.value
     assert result.status == PublicationStatus.PUBLISHED.value
+    audit_log = (
+        await db_session.execute(
+            select(AuditLog).where(
+                AuditLog.resource_type == "persons",
+                AuditLog.resource_id == ready.id,
+            )
+        )
+    ).scalar_one()
+    assert audit_log.action == AuditAction.PUBLISH.value
+    assert audit_log.user_id == editor.id
+    assert audit_log.old_value["status"] == PublicationStatus.REVIEW.value
+    assert audit_log.new_value["status"] == PublicationStatus.PUBLISHED.value
 
     with pytest.raises(EditorialNotFoundError):
         await service.transition(

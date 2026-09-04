@@ -12,6 +12,7 @@ Endpoints:
 from __future__ import annotations
 
 import hashlib
+import uuid
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
@@ -24,9 +25,11 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.application.services.audit_service import AuditContext, add_audit_log
 from src.core.config import settings
 from src.core.security import JWTService, is_strong_password, jwt_service, password_hasher
 from src.domain.identity.models import (
+    AuditAction,
     RefreshToken,
     Role,
     RolePermission,
@@ -42,6 +45,21 @@ bearer_scheme = HTTPBearer(
     auto_error=False,
     description="JWT otrzymany z endpointu POST /api/v1/auth/login",
 )
+
+
+def _audit_context(
+    request: Request,
+    *,
+    user_id: uuid.UUID | None = None,
+    user_email: str | None = None,
+) -> AuditContext:
+    return AuditContext(
+        user_id=user_id,
+        user_email=user_email,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("User-Agent"),
+        request_id=getattr(request.state, "request_id", None),
+    )
 
 
 def _set_refresh_cookie(response: Response, raw_token: str) -> None:
@@ -303,16 +321,43 @@ async def login(
     )
 
     if user is None:
+        add_audit_log(
+            db,
+            context=_audit_context(request, user_email=credentials.email.lower()),
+            action=AuditAction.LOGIN_FAILED,
+            resource_type="authentication",
+            resource_id=None,
+            extra_metadata={"reason": "invalid_credentials"},
+        )
+        await db.commit()
         raise auth_error
 
     # Check account status
     if user.status == UserStatus.BANNED:
+        add_audit_log(
+            db,
+            context=_audit_context(request, user_id=user.id, user_email=user.email),
+            action=AuditAction.LOGIN_FAILED,
+            resource_type="authentication",
+            resource_id=user.id,
+            extra_metadata={"reason": "account_banned"},
+        )
+        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Konto zostało zablokowane",
         )
 
     if user.is_locked:
+        add_audit_log(
+            db,
+            context=_audit_context(request, user_id=user.id, user_email=user.email),
+            action=AuditAction.LOGIN_FAILED,
+            resource_type="authentication",
+            resource_id=user.id,
+            extra_metadata={"reason": "account_locked"},
+        )
+        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Zbyt wiele nieudanych prób logowania. Spróbuj za chwilę.",
@@ -325,6 +370,14 @@ async def login(
         if user.failed_login_attempts >= 10:
             user.locked_until = datetime.now(UTC) + timedelta(minutes=15)
             logger.warning(f"Account locked: {user.email} (too many failed attempts)")
+        add_audit_log(
+            db,
+            context=_audit_context(request, user_id=user.id, user_email=user.email),
+            action=AuditAction.LOGIN_FAILED,
+            resource_type="authentication",
+            resource_id=user.id,
+            extra_metadata={"reason": "invalid_credentials"},
+        )
         await db.commit()
         raise auth_error
 
@@ -354,6 +407,13 @@ async def login(
         ip_address=request.client.host if request.client else None,
     )
     db.add(refresh_token_record)
+    add_audit_log(
+        db,
+        context=_audit_context(request, user_id=user.id, user_email=user.email),
+        action=AuditAction.LOGIN,
+        resource_type="authentication",
+        resource_id=user.id,
+    )
     await db.commit()
 
     # Set refresh token as HttpOnly cookie
@@ -459,6 +519,7 @@ async def refresh_token(
     description="Revoke the refresh token and clear the cookie.",
 )
 async def logout(
+    request: Request,
     response: Response,
     refresh_token: Annotated[str | None, Cookie()] = None,
     db: AsyncSession = Depends(get_db_session),
@@ -472,6 +533,13 @@ async def logout(
 
         if stored_token:
             stored_token.revoked_at = datetime.now(UTC)
+            add_audit_log(
+                db,
+                context=_audit_context(request, user_id=stored_token.user_id),
+                action=AuditAction.LOGOUT,
+                resource_type="authentication",
+                resource_id=stored_token.user_id,
+            )
             await db.commit()
 
     response.delete_cookie(key="refresh_token", path="/api/v1/auth")
@@ -505,16 +573,38 @@ async def get_me(current_user: User = Depends(get_current_user)) -> UserProfileR
 )
 async def update_me(
     data: UpdateProfileRequest,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
 ) -> UserProfileResponse:
     """Update the current user's own profile."""
+    previous_profile = {
+        "full_name": current_user.full_name,
+        "preferred_language": current_user.preferred_language,
+    }
     if data.full_name is not None:
         current_user.full_name = data.full_name.strip()
     if data.preferred_language is not None:
         current_user.preferred_language = data.preferred_language.strip().lower()
 
     current_user.updated_at = datetime.now(UTC)
+    add_audit_log(
+        db,
+        context=_audit_context(
+            request,
+            user_id=current_user.id,
+            user_email=current_user.email,
+        ),
+        action=AuditAction.UPDATE,
+        resource_type="users",
+        resource_id=current_user.id,
+        old_value=previous_profile,
+        new_value={
+            "full_name": current_user.full_name,
+            "preferred_language": current_user.preferred_language,
+        },
+        extra_metadata={"scope": "own_profile"},
+    )
     await db.commit()
     await db.refresh(current_user)
 
@@ -540,6 +630,7 @@ async def update_me(
 )
 async def change_password(
     data: ChangePasswordRequest,
+    request: Request,
     response: Response,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
@@ -571,6 +662,18 @@ async def change_password(
             RefreshToken.revoked_at.is_(None),
         )
         .values(revoked_at=changed_at)
+    )
+    add_audit_log(
+        db,
+        context=_audit_context(
+            request,
+            user_id=current_user.id,
+            user_email=current_user.email,
+        ),
+        action=AuditAction.UPDATE,
+        resource_type="users",
+        resource_id=current_user.id,
+        extra_metadata={"event": "password_changed", "sessions_revoked": True},
     )
     await db.commit()
 

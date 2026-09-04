@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.services.editorial_service import (
@@ -27,6 +27,7 @@ from src.presentation.api.v1.editorial.schemas import (
     EditorialTransitionResponseSchema,
     EditorialTransitionSchema,
 )
+from src.presentation.audit import audit_context_from_request
 
 router = APIRouter()
 
@@ -93,6 +94,7 @@ async def list_editorial_queue(
 async def transition_editorial_record(
     person_id: uuid.UUID,
     data: EditorialTransitionSchema,
+    request: Request,
     db: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
 ) -> EditorialTransitionResponseSchema:
@@ -104,6 +106,7 @@ async def transition_editorial_record(
             note=data.note,
             granted_permissions=current_user.get_permissions(),
             expected_version=data.expected_version,
+            audit_context=audit_context_from_request(request, current_user),
         )
     except EditorialAuthorizationError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc

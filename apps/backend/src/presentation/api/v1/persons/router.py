@@ -16,7 +16,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.services.person_service import (
@@ -46,6 +46,7 @@ from src.presentation.api.v1.persons.schemas import (
     PersonUpdateSchema,
     PersonVersionSchema,
 )
+from src.presentation.audit import audit_context_from_request
 
 router = APIRouter()
 
@@ -60,11 +61,18 @@ async def list_persons(
     page: Annotated[int, Query(ge=1)] = 1,
     per_page: Annotated[int, Query(ge=1, le=100)] = 20,
     search: str | None = Query(None, max_length=200),
-    person_type: Annotated[list[PersonType] | None, Query(description="One or more Church recognition types")] = None,
+    person_type: Annotated[
+        list[PersonType] | None, Query(description="One or more Church recognition types")
+    ] = None,
     gender: Annotated[list[Gender] | None, Query(description="One or more genders")] = None,
     era: Annotated[list[Era] | None, Query(description="One or more historical eras")] = None,
-    period: Annotated[list[EraPeriod] | None, Query(description="One or more public timeline groups")] = None,
-    patronage: Annotated[list[PatronageGroup] | None, Query(description="One or more public patronage discovery groups")] = None,
+    period: Annotated[
+        list[EraPeriod] | None, Query(description="One or more public timeline groups")
+    ] = None,
+    patronage: Annotated[
+        list[PatronageGroup] | None,
+        Query(description="One or more public patronage discovery groups"),
+    ] = None,
     country_id: uuid.UUID | None = None,
     is_featured: bool | None = None,
     sort: PersonSort = PersonSort.NAME_ASC,
@@ -190,13 +198,18 @@ async def get_person_for_admin(
 )
 async def create_person(
     data: PersonCreateSchema,
+    request: Request,
     db: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(require_permission("persons", "create")),
 ) -> PersonDetailSchema:
     """Create a new person record."""
     service = PersonService(db)
     try:
-        person = await service.create_person(data, user_id=current_user.id)
+        person = await service.create_person(
+            data,
+            user_id=current_user.id,
+            audit_context=audit_context_from_request(request, current_user),
+        )
     except PersonStatusChangeError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     return PersonDetailSchema.model_validate(person)
@@ -234,6 +247,7 @@ async def get_person(
 async def update_person(
     person_id: uuid.UUID,
     data: PersonUpdateSchema,
+    request: Request,
     db: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(require_permission("persons", "update")),
 ) -> PersonDetailSchema:
@@ -248,7 +262,12 @@ async def update_person(
         )
 
     try:
-        updated_person = await service.update_person(person, data, user_id=current_user.id)
+        updated_person = await service.update_person(
+            person,
+            data,
+            user_id=current_user.id,
+            audit_context=audit_context_from_request(request, current_user),
+        )
     except PersonStatusChangeError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except PersonVersionConflictError as exc:
@@ -274,6 +293,7 @@ async def update_person(
 )
 async def delete_person(
     person_id: uuid.UUID,
+    request: Request,
     db: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(require_permission("persons", "delete")),
 ) -> None:
@@ -287,7 +307,11 @@ async def delete_person(
             detail="Osoba nie została znaleziona",
         )
 
-    await service.soft_delete_person(person, user_id=current_user.id)
+    await service.soft_delete_person(
+        person,
+        user_id=current_user.id,
+        audit_context=audit_context_from_request(request, current_user),
+    )
 
 
 @router.post(
@@ -297,12 +321,17 @@ async def delete_person(
 )
 async def restore_person(
     person_id: uuid.UUID,
+    request: Request,
     db: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(require_permission("persons", "restore")),
 ) -> PersonDetailSchema:
     """Restore soft-deleted person."""
     service = PersonService(db)
-    person = await service.restore_person(person_id, user_id=current_user.id)
+    person = await service.restore_person(
+        person_id,
+        user_id=current_user.id,
+        audit_context=audit_context_from_request(request, current_user),
+    )
 
     if not person:
         raise HTTPException(

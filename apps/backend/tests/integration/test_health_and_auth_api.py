@@ -4,6 +4,10 @@ Integration tests for Health and Auth API endpoints.
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.domain.identity.models import AuditAction, AuditLog
 
 
 @pytest.mark.asyncio
@@ -34,7 +38,10 @@ async def test_untrusted_host_is_rejected(async_client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_login_invalid_credentials(async_client: AsyncClient):
+async def test_login_invalid_credentials(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+):
     response = await async_client.post(
         "/api/v1/auth/login",
         json={"email": "nonexistent@example.org", "password": "WrongPassword123!"},
@@ -45,3 +52,7 @@ async def test_login_invalid_credentials(async_client: AsyncClient):
     assert data["message"] == "Nieprawidłowy email lub hasło"
     assert data["detail"] == "Nieprawidłowy email lub hasło"
     assert data["request_id"] == response.headers["x-request-id"]
+    audit_log = (await db_session.execute(select(AuditLog))).scalar_one()
+    assert audit_log.action == AuditAction.LOGIN_FAILED.value
+    assert audit_log.resource_type == "authentication"
+    assert audit_log.request_id == response.headers["x-request-id"]

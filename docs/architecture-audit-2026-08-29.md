@@ -644,11 +644,13 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 ### OBS-001
 
 - **Severity:** P2
-- **Status po refaktoryzacji:** W toku. Sentry jest inicjalizowany wyłącznie z DSN,
-  bez domyślnego PII i z kontrolowanym samplingiem. Po poprawnym uwierzytelnieniu
-  middleware wzbogaca końcowy log requestu o `user_id` i e-mail; `request_id`
-  pozostaje wspólnym identyfikatorem logu, odpowiedzi i błędu. Do zamknięcia pozostaje
-  zapis modelu `AuditLog` przez krytyczne flow modyfikujące dane.
+- **Status po refaktoryzacji:** Zamknięte 2026-09-04. Sentry jest inicjalizowany
+  wyłącznie z DSN, bez domyślnego PII i z kontrolowanym samplingiem. Po poprawnym
+  uwierzytelnieniu middleware wzbogaca końcowy log requestu o `user_id` i e-mail,
+  a `request_id` pozostaje wspólnym identyfikatorem logu, odpowiedzi, błędu i wpisu
+  audytowego. `AuditLog` jest zapisywany atomowo z tworzeniem, edycją, usuwaniem,
+  przywracaniem i publikacją postaci oraz ze zdarzeniami logowania, wylogowania,
+  zmiany profilu i hasła. Snapshoty uwierzytelniania nie zawierają haseł ani tokenów.
 - **Category:** Observability / audit
 - **File:** config, middleware, identity models
 - **Lines:** `SENTRY_DSN`, request logging, `AuditLog`

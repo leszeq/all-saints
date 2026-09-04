@@ -24,6 +24,7 @@ from src.domain.hagiography.models import (
     PersonVersion,
     PublicationStatus,
 )
+from src.domain.identity.models import AuditAction, AuditLog
 from src.main import app
 from src.presentation.api.v1.persons.schemas import (
     PersonCreateSchema,
@@ -242,9 +243,14 @@ async def test_person_service_creates_json_safe_initial_snapshot() -> None:
     assert person.slug == "sw-jan-pawel-ii"
     assert person.latin_name == "Sanctus Ioannes Paulus II"
     snapshot = next(model for model in stored if isinstance(model, PersonVersion))
+    audit_log = next(model for model in stored if isinstance(model, AuditLog))
     assert snapshot.changed_by_id == user_id
     assert snapshot.snapshot["id"] == str(person.id)
     assert snapshot.snapshot["birth_country_id"] is None
+    assert audit_log.user_id == user_id
+    assert audit_log.action == AuditAction.CREATE.value
+    assert audit_log.resource_id == person.id
+    assert audit_log.new_value["latin_name"] == "Sanctus Ioannes Paulus II"
 
 
 @pytest.mark.asyncio
@@ -304,6 +310,12 @@ async def test_person_service_allows_unchanged_status_in_form_payload() -> None:
 
     assert result.status == PublicationStatus.DRAFT.value
     assert result.summary_pl == "Nowy opis"
+    audit_log = next(
+        call.args[0] for call in db.add.call_args_list if isinstance(call.args[0], AuditLog)
+    )
+    assert audit_log.action == AuditAction.UPDATE.value
+    assert audit_log.old_value["summary_pl"] is None
+    assert audit_log.new_value["summary_pl"] == "Nowy opis"
 
 
 @pytest.mark.asyncio

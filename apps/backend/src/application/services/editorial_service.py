@@ -10,6 +10,7 @@ from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.engine import Row
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.application.services.audit_service import AuditContext
 from src.application.services.editorial_quality import EditorialQualityPolicy
 from src.application.services.editorial_source_quality import EditorialSourceQualityReader
 from src.application.services.person_service import PersonService
@@ -493,6 +494,7 @@ class EditorialService:
         note: str | None = None,
         granted_permissions: set[str] | None = None,
         expected_version: int | None = None,
+        audit_context: AuditContext | None = None,
     ) -> EditorialTransitionResponseSchema:
         """Apply one allowed workflow transition and write a version snapshot."""
         person_service = PersonService(self.db)
@@ -543,6 +545,7 @@ class EditorialService:
             ),
             user_id=user_id,
             allow_status_change=True,
+            audit_context=audit_context,
         )
         return EditorialTransitionResponseSchema(
             person_id=person.id,

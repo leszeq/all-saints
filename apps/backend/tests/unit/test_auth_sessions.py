@@ -13,7 +13,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 from starlette.requests import Request
 
 from src.core.security import jwt_service, password_hasher
-from src.domain.identity.models import RefreshToken
+from src.domain.identity.models import AuditAction, AuditLog, RefreshToken
 from src.presentation.api.v1.auth.router import (
     ChangePasswordRequest,
     change_password,
@@ -110,6 +110,7 @@ async def test_password_change_revokes_all_refresh_tokens() -> None:
             current_password=old_password,
             new_password="NewPassword456!",
         ),
+        request=make_request(),
         response=response,
         current_user=user,
         db=db,
@@ -124,6 +125,14 @@ async def test_password_change_revokes_all_refresh_tokens() -> None:
         header == b"set-cookie" and b"Max-Age=0" in value
         for header, value in response.raw_headers
     )
+    audit_log = next(
+        call.args[0] for call in db.add.call_args_list if isinstance(call.args[0], AuditLog)
+    )
+    assert audit_log.action == AuditAction.UPDATE.value
+    assert audit_log.extra_metadata == {
+        "event": "password_changed",
+        "sessions_revoked": True,
+    }
 
 
 @pytest.mark.asyncio
