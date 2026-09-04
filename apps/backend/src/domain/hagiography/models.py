@@ -419,11 +419,6 @@ class Person(BaseModel, Base):
     )
 
     # ── AI ─────────────────────────────────────────────────────────────────────
-    embedding_vector: Mapped[list[float] | None] = mapped_column(
-        JSONB,
-        nullable=True,
-        comment="Semantic embedding vector (stored as JSON array for portability)",
-    )
     ai_summary: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,

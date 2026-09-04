@@ -524,6 +524,11 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 ### DATA-002
 
 - **Severity:** P2
+- **Status po refaktoryzacji:** Zamknięte 2026-09-04. W całym kodzie nie było
+  odczytów ani zapisów legacy `Person.embedding_vector`, a lokalna kolumna była pusta.
+  Jedynym źródłem prawdy jest teraz `PersonEmbedding.embedding` typu pgvector.
+  Migracja odmawia usunięcia starej kolumny, jeśli na innym środowisku zawiera ona
+  dane; downgrade odtwarza nullable JSONB wyłącznie jako pole kompatybilności.
 - **Category:** AI / schema
 - **File:** model Person i `PersonEmbedding`
 - **Lines:** legacy `embedding_vector` oraz tabela pgvector

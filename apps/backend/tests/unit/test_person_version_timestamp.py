@@ -43,12 +43,17 @@ def test_person_version_schema_exposes_a_datetime() -> None:
     assert payload.changed_at == changed_at
 
 
-def test_timestamp_migration_is_the_single_validating_head() -> None:
+def test_timestamp_migration_is_in_the_single_validating_history() -> None:
     config = Config(str(Path(__file__).parents[2] / "alembic.ini"))
     scripts = ScriptDirectory.from_config(config)
     source = MIGRATION.read_text(encoding="utf-8")
 
-    assert scripts.get_current_head() == "0014_person_version_changed_at"
+    migration = scripts.get_revision("0014_person_version_changed_at")
+    successor = scripts.get_revision("0015_drop_legacy_embedding")
+    assert migration is not None
+    assert successor is not None
+    assert successor.down_revision == migration.revision
+    assert len(scripts.get_heads()) == 1
     assert 'down_revision: str | None = "0013_refine_editorial_rbac"' in source
     assert "changed_at::timestamptz" in source
     assert "invalid_datetime_format" in source
