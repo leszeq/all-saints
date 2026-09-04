@@ -9,20 +9,17 @@ from datetime import UTC, datetime
 from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.engine import Row
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from src.application.services.editorial_quality import EditorialQualityPolicy
+from src.application.services.editorial_source_quality import EditorialSourceQualityReader
 from src.application.services.person_service import PersonService
 from src.domain.geography.models import Country, ReligiousOrder
 from src.domain.hagiography.models import Person, PublicationStatus
 from src.domain.identity.models import User
 from src.domain.sources.models import (
     Bibliography,
-    HistoricalSource,
     Image,
     ImageLicense,
-    PersonSource,
-    SourceType,
 )
 from src.presentation.api.v1.editorial.schemas import (
     EditorialCompletionBucketSchema,
@@ -87,6 +84,7 @@ class EditorialService:
 
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
+        self._source_quality = EditorialSourceQualityReader(db)
 
     # Compatibility aliases keep existing internal callers stable while the
     # quality policy lives in a focused, independently testable module.
@@ -289,320 +287,16 @@ class EditorialService:
         return groups, len(duplicate_rows), sum(len(group) for group in duplicate_rows)
 
     async def _source_stats(self) -> EditorialSourceVerificationStatsSchema:
-        source_count, *_ = self._quality_expressions()
-        active_person_filter = and_(
-            Person.deleted_at.is_(None),
-            Person.status != PublicationStatus.ARCHIVED.value,
-        )
-        active_persons = (
-            await self.db.execute(select(func.count(Person.id)).where(active_person_filter))
-        ).scalar_one()
-        undocumented_persons = (
-            await self.db.execute(
-                select(func.count(Person.id)).where(active_person_filter, source_count == 0)
-            )
-        ).scalar_one()
-        bibliography_sources = (
-            await self.db.execute(
-                select(func.count(Bibliography.id)).where(Bibliography.deleted_at.is_(None))
-            )
-        ).scalar_one()
-        historical_sources = (
-            await self.db.execute(
-                select(func.count(HistoricalSource.id)).where(HistoricalSource.deleted_at.is_(None))
-            )
-        ).scalar_one()
-        person_source_links = (
-            await self.db.execute(
-                select(func.count(PersonSource.id)).where(PersonSource.deleted_at.is_(None))
-            )
-        ).scalar_one()
-        images = (
-            await self.db.execute(select(func.count(Image.id)).where(Image.deleted_at.is_(None)))
-        ).scalar_one()
-        unknown_license_images = (
-            await self.db.execute(
-                select(func.count(Image.id)).where(
-                    Image.deleted_at.is_(None),
-                    Image.license == ImageLicense.UNKNOWN.value,
-                )
-            )
-        ).scalar_one()
-
-        return EditorialSourceVerificationStatsSchema(
-            bibliography_sources=bibliography_sources,
-            historical_sources=historical_sources,
-            person_source_links=person_source_links,
-            documented_persons=active_persons - undocumented_persons,
-            undocumented_persons=undocumented_persons,
-            images=images,
-            unknown_license_images=unknown_license_images,
-        )
+        return await self._source_quality.stats()
 
     async def _source_verification_count(self) -> int:
-        missing_bibliography_reliability = (
-            await self.db.execute(
-                select(func.count(Bibliography.id)).where(
-                    Bibliography.deleted_at.is_(None),
-                    Bibliography.reliability_score.is_(None),
-                )
-            )
-        ).scalar_one()
-        missing_website_url = (
-            await self.db.execute(
-                select(func.count(Bibliography.id)).where(
-                    Bibliography.deleted_at.is_(None),
-                    Bibliography.source_type == SourceType.WEBSITE.value,
-                    self._missing_text(Bibliography.url),
-                )
-            )
-        ).scalar_one()
-        missing_access_date = (
-            await self.db.execute(
-                select(func.count(Bibliography.id)).where(
-                    Bibliography.deleted_at.is_(None),
-                    Bibliography.source_type == SourceType.WEBSITE.value,
-                    self._has_text(Bibliography.url),
-                    self._missing_text(Bibliography.url_access_date),
-                )
-            )
-        ).scalar_one()
-        missing_digitization_url = (
-            await self.db.execute(
-                select(func.count(HistoricalSource.id)).where(
-                    HistoricalSource.deleted_at.is_(None),
-                    HistoricalSource.is_digitized.is_(True),
-                    self._missing_text(HistoricalSource.digitization_url),
-                )
-            )
-        ).scalar_one()
-        unknown_license_images = (
-            await self.db.execute(
-                select(func.count(Image.id)).where(
-                    Image.deleted_at.is_(None),
-                    Image.license == ImageLicense.UNKNOWN.value,
-                )
-            )
-        ).scalar_one()
-        missing_image_source = (
-            await self.db.execute(
-                select(func.count(Image.id)).where(
-                    Image.deleted_at.is_(None),
-                    self._missing_text(Image.source_url),
-                )
-            )
-        ).scalar_one()
-        orphan_source_links = (
-            await self.db.execute(
-                select(func.count(PersonSource.id)).where(
-                    PersonSource.deleted_at.is_(None),
-                    PersonSource.bibliography_id.is_(None),
-                    PersonSource.historical_source_id.is_(None),
-                )
-            )
-        ).scalar_one()
-        return (
-            missing_bibliography_reliability
-            + missing_website_url
-            + missing_access_date
-            + missing_digitization_url
-            + unknown_license_images
-            + missing_image_source
-            + orphan_source_links
-        )
+        return await self._source_quality.verification_count()
 
     async def _source_verification_items(
         self,
         limit: int = 150,
     ) -> tuple[list[EditorialSourceVerificationItemSchema], int]:
-        items: list[EditorialSourceVerificationItemSchema] = []
-
-        def add_item(item: EditorialSourceVerificationItemSchema) -> None:
-            items.append(item)
-
-        bibliography_rows = (
-            (
-                await self.db.execute(
-                    select(Bibliography)
-                    .where(
-                        Bibliography.deleted_at.is_(None),
-                        or_(
-                            Bibliography.reliability_score.is_(None),
-                            and_(
-                                Bibliography.source_type == SourceType.WEBSITE.value,
-                                self._missing_text(Bibliography.url),
-                            ),
-                            and_(
-                                Bibliography.source_type == SourceType.WEBSITE.value,
-                                self._has_text(Bibliography.url),
-                                self._missing_text(Bibliography.url_access_date),
-                            ),
-                        ),
-                    )
-                    .order_by(Bibliography.updated_at.desc())
-                    .limit(limit)
-                )
-            )
-            .scalars()
-            .all()
-        )
-        for source in bibliography_rows:
-            if source.reliability_score is None:
-                add_item(
-                    EditorialSourceVerificationItemSchema(
-                        id=source.id,
-                        item_type="bibliography",
-                        title=source.title,
-                        issue="Brak oceny wiarygodności źródła",
-                        severity="warning",
-                        source_url=source.url,
-                        updated_at=source.updated_at,
-                    )
-                )
-            if source.source_type == SourceType.WEBSITE.value and not source.url:
-                add_item(
-                    EditorialSourceVerificationItemSchema(
-                        id=source.id,
-                        item_type="bibliography",
-                        title=source.title,
-                        issue="Źródło internetowe nie ma adresu URL",
-                        severity="critical",
-                        updated_at=source.updated_at,
-                    )
-                )
-            if (
-                source.source_type == SourceType.WEBSITE.value
-                and source.url
-                and not source.url_access_date
-            ):
-                add_item(
-                    EditorialSourceVerificationItemSchema(
-                        id=source.id,
-                        item_type="bibliography",
-                        title=source.title,
-                        issue="Brak daty dostępu do źródła internetowego",
-                        severity="warning",
-                        source_url=source.url,
-                        updated_at=source.updated_at,
-                    )
-                )
-
-        historical_rows = (
-            (
-                await self.db.execute(
-                    select(HistoricalSource)
-                    .where(
-                        HistoricalSource.deleted_at.is_(None),
-                        HistoricalSource.is_digitized.is_(True),
-                        self._missing_text(HistoricalSource.digitization_url),
-                    )
-                    .order_by(HistoricalSource.updated_at.desc())
-                    .limit(limit)
-                )
-            )
-            .scalars()
-            .all()
-        )
-        for historical_source in historical_rows:
-            add_item(
-                EditorialSourceVerificationItemSchema(
-                    id=historical_source.id,
-                    item_type="historical_source",
-                    title=historical_source.title,
-                    issue="Źródło oznaczone jako zdigitalizowane bez linku",
-                    severity="warning",
-                    updated_at=historical_source.updated_at,
-                )
-            )
-
-        image_rows = (
-            (
-                await self.db.execute(
-                    select(Image)
-                    .where(
-                        Image.deleted_at.is_(None),
-                        or_(
-                            Image.license == ImageLicense.UNKNOWN.value,
-                            self._missing_text(Image.source_url),
-                        ),
-                    )
-                    .options(selectinload(Image.person))
-                    .order_by(Image.updated_at.desc())
-                    .limit(limit)
-                )
-            )
-            .scalars()
-            .all()
-        )
-        for image in image_rows:
-            related_person = image.person
-            if image.license == ImageLicense.UNKNOWN.value:
-                add_item(
-                    EditorialSourceVerificationItemSchema(
-                        id=image.id,
-                        item_type="image",
-                        title=image.title or image.url,
-                        issue="Nieznana licencja obrazu",
-                        severity="critical",
-                        related_person_id=related_person.id if related_person else None,
-                        related_person_name=(
-                            related_person.canonical_name if related_person else None
-                        ),
-                        source_url=image.source_url,
-                        updated_at=image.updated_at,
-                    )
-                )
-            if not image.source_url:
-                add_item(
-                    EditorialSourceVerificationItemSchema(
-                        id=image.id,
-                        item_type="image",
-                        title=image.title or image.url,
-                        issue="Brak adresu źródła obrazu",
-                        severity="warning",
-                        related_person_id=related_person.id if related_person else None,
-                        related_person_name=(
-                            related_person.canonical_name if related_person else None
-                        ),
-                        updated_at=image.updated_at,
-                    )
-                )
-
-        orphan_rows = (
-            await self.db.execute(
-                select(PersonSource, Person)
-                .join(Person, Person.id == PersonSource.person_id)
-                .where(
-                    PersonSource.deleted_at.is_(None),
-                    PersonSource.bibliography_id.is_(None),
-                    PersonSource.historical_source_id.is_(None),
-                    Person.deleted_at.is_(None),
-                )
-                .order_by(PersonSource.updated_at.desc())
-                .limit(limit)
-            )
-        ).all()
-        for link, person in orphan_rows:
-            add_item(
-                EditorialSourceVerificationItemSchema(
-                    id=link.id,
-                    item_type="person_source",
-                    title=f"Przypis źródłowy: {person.canonical_name}",
-                    issue="Przypis nie wskazuje na bibliografię ani źródło historyczne",
-                    severity="critical",
-                    related_person_id=person.id,
-                    related_person_name=person.canonical_name,
-                    updated_at=link.updated_at,
-                )
-            )
-
-        items.sort(
-            key=lambda item: (
-                0 if item.severity == "critical" else 1,
-                item.updated_at,
-            )
-        )
-        return items[:limit], await self._source_verification_count()
+        return await self._source_quality.verification_items(limit)
 
     async def quality_report(self) -> EditorialQualityReportSchema:
         """Return the complete data quality centre report."""

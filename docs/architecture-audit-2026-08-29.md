@@ -424,12 +424,12 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 - **Severity:** P2
 - **Status po refaktoryzacji:** W toku. Zamknięto część frontendową oraz wydzielono
   z `EditorialService` stabilną politykę kompletności, priorytetów, problemów jakości
-  i wykrywania duplikatów. Serwis redakcyjny zmniejszył się z ok. 1154 do 858 linii,
-  zachowując dotychczasowe sygnatury i kontrakty. Pozostają agregaty źródeł oraz
-  podział `AIService`.
+  i wykrywania duplikatów, a także osobny reader statystyk i weryfikacji źródeł.
+  Serwis redakcyjny zmniejszył się z ok. 1154 do 552 linii, zachowując dotychczasowe
+  sygnatury i kontrakty. Pozostaje podział `AIService`.
 - **Category:** Maintainability / SRP
 - **File:** `editorial_service.py`, `ai_service.py`, `person-form.tsx`
-- **Lines:** odpowiednio 858, 881 i 379 linii; część formularzowa zamknięta
+- **Lines:** odpowiednio 552, 881 i 379 linii; część formularzowa zamknięta
 - **Problem:** Moduły agregują wiele niezależnych odpowiedzialności i reguł.
 - **Why it matters:** Zmiany mają duży blast radius i utrudniają testy.
 - **Suggested fix:** Wydzielać tylko stabilne pionowe fragmenty: quality queries,
