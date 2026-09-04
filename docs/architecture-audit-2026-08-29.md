@@ -422,9 +422,14 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 ### ARCH-001
 
 - **Severity:** P2
+- **Status po refaktoryzacji:** W toku. Zamknięto część frontendową oraz wydzielono
+  z `EditorialService` stabilną politykę kompletności, priorytetów, problemów jakości
+  i wykrywania duplikatów. Serwis redakcyjny zmniejszył się z ok. 1154 do 858 linii,
+  zachowując dotychczasowe sygnatury i kontrakty. Pozostają agregaty źródeł oraz
+  podział `AIService`.
 - **Category:** Maintainability / SRP
 - **File:** `editorial_service.py`, `ai_service.py`, `person-form.tsx`
-- **Lines:** odpowiednio ok. 1154, 891 i 379 linii; część formularzowa zamknięta
+- **Lines:** odpowiednio 858, 881 i 379 linii; część formularzowa zamknięta
 - **Problem:** Moduły agregują wiele niezależnych odpowiedzialności i reguł.
 - **Why it matters:** Zmiany mają duży blast radius i utrudniają testy.
 - **Suggested fix:** Wydzielać tylko stabilne pionowe fragmenty: quality queries,

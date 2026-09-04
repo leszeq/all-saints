@@ -2,19 +2,16 @@
 
 from __future__ import annotations
 
-import re
-import unicodedata
 import uuid
 from collections import Counter
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
-from sqlalchemy import Select, and_, case, func, or_, select
+from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.engine import Row
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from sqlalchemy.orm.attributes import InstrumentedAttribute
-from sqlalchemy.sql.elements import ColumnElement
 
+from src.application.services.editorial_quality import EditorialQualityPolicy
 from src.application.services.person_service import PersonService
 from src.domain.geography.models import Country, ReligiousOrder
 from src.domain.hagiography.models import Person, PublicationStatus
@@ -28,11 +25,9 @@ from src.domain.sources.models import (
     SourceType,
 )
 from src.presentation.api.v1.editorial.schemas import (
-    EditorialCompletenessCriterionSchema,
     EditorialCompletionBucketSchema,
     EditorialDashboardSchema,
     EditorialDuplicateGroupSchema,
-    EditorialDuplicatePersonSchema,
     EditorialIssueSchema,
     EditorialMonthlyActivitySchema,
     EditorialPriority,
@@ -49,11 +44,7 @@ from src.presentation.api.v1.editorial.schemas import (
     EditorialStatusCountSchema,
     EditorialTransitionResponseSchema,
 )
-from src.presentation.api.v1.persons.schemas import (
-    PersonAvatarSchema,
-    PersonLastEditorSchema,
-    PersonUpdateSchema,
-)
+from src.presentation.api.v1.persons.schemas import PersonUpdateSchema
 
 
 class EditorialNotFoundError(ValueError):
@@ -97,355 +88,19 @@ class EditorialService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
-    @staticmethod
-    def _has_text(column: InstrumentedAttribute[str | None]) -> ColumnElement[bool]:
-        return and_(column.is_not(None), func.length(func.trim(column)) > 0)
-
-    @staticmethod
-    def _missing_text(column: InstrumentedAttribute[str | None]) -> ColumnElement[bool]:
-        return or_(column.is_(None), func.length(func.trim(column)) == 0)
-
-    @classmethod
-    def _quality_expressions(
-        cls,
-    ) -> tuple[
-        ColumnElement[int],
-        ColumnElement[int],
-        ColumnElement[int],
-        ColumnElement[int],
-        ColumnElement[int],
-    ]:
-        source_count = (
-            select(func.count(PersonSource.id))
-            .where(
-                PersonSource.person_id == Person.id,
-                PersonSource.deleted_at.is_(None),
-                or_(
-                    and_(
-                        PersonSource.bibliography_id.is_not(None),
-                        PersonSource.bibliography.has(Bibliography.deleted_at.is_(None)),
-                    ),
-                    and_(
-                        PersonSource.historical_source_id.is_not(None),
-                        PersonSource.historical_source.has(HistoricalSource.deleted_at.is_(None)),
-                    ),
-                ),
-            )
-            .correlate(Person)
-            .scalar_subquery()
-        )
-        image_count = (
-            select(func.count(Image.id))
-            .where(Image.person_id == Person.id, Image.deleted_at.is_(None))
-            .correlate(Person)
-            .scalar_subquery()
-        )
-        unknown_license_count = (
-            select(func.count(Image.id))
-            .where(
-                Image.person_id == Person.id,
-                Image.deleted_at.is_(None),
-                Image.license == ImageLicense.UNKNOWN.value,
-            )
-            .correlate(Person)
-            .scalar_subquery()
-        )
-        completeness_score = (
-            10
-            + case((cls._has_text(Person.summary_pl), 15), else_=0)
-            + case((cls._has_text(Person.biography_pl), 25), else_=0)
-            + case(
-                (or_(Person.birth_year.is_not(None), Person.death_year.is_not(None)), 10),
-                else_=0,
-            )
-            + case((Person.state_of_life_id.is_not(None), 10), else_=0)
-            + case((source_count > 0, 15), else_=0)
-            + case((image_count > 0, 10), else_=0)
-            + case((and_(image_count > 0, unknown_license_count == 0), 5), else_=0)
-        )
-        stale_cutoff = datetime.now(UTC) - timedelta(days=30)
-        priority_score = (
-            case((Person.status == PublicationStatus.REVIEW.value, 3), else_=0)
-            + case((~cls._has_text(Person.biography_pl), 2), else_=0)
-            + case((~cls._has_text(Person.summary_pl), 1), else_=0)
-            + case((source_count == 0, 2), else_=0)
-            + case((image_count == 0, 1), else_=0)
-            + case((unknown_license_count > 0, 2), else_=0)
-            + case((Person.updated_at < stale_cutoff, 2), else_=0)
-        )
-        return (
-            source_count,
-            image_count,
-            unknown_license_count,
-            completeness_score,
-            priority_score,
-        )
-
-    @classmethod
-    def _person_rows_query(cls) -> Select[tuple[Person, int, int, int, int, int]]:
-        source_count, image_count, unknown_count, completeness, priority = (
-            cls._quality_expressions()
-        )
-        return select(
-            Person,
-            source_count.label("source_count"),
-            image_count.label("image_count"),
-            unknown_count.label("unknown_license_count"),
-            completeness.label("completeness_score"),
-            priority.label("priority_score"),
-        ).options(selectinload(Person.images))
-
-    @staticmethod
-    def _priority(score: int) -> EditorialPriority:
-        if score >= 7:
-            return EditorialPriority.URGENT
-        if score >= 4:
-            return EditorialPriority.HIGH
-        return EditorialPriority.NORMAL
-
-    @staticmethod
-    def _issues(
-        person: Person,
-        *,
-        source_count: int,
-        image_count: int,
-        unknown_license_count: int,
-    ) -> list[EditorialIssueSchema]:
-        issues: list[EditorialIssueSchema] = []
-        if not person.biography_pl or not person.biography_pl.strip():
-            issues.append(
-                EditorialIssueSchema(
-                    code="missing_biography",
-                    label="Brak biogramu",
-                    severity="critical",
-                )
-            )
-        if not person.summary_pl or not person.summary_pl.strip():
-            issues.append(
-                EditorialIssueSchema(
-                    code="missing_summary",
-                    label="Brak streszczenia",
-                    severity="critical",
-                )
-            )
-        if source_count == 0:
-            issues.append(
-                EditorialIssueSchema(
-                    code="missing_sources",
-                    label="Brak przypisanych źródeł",
-                    severity="warning",
-                )
-            )
-        if image_count == 0:
-            issues.append(
-                EditorialIssueSchema(
-                    code="missing_image",
-                    label="Brak obrazu",
-                    severity="warning",
-                )
-            )
-        elif unknown_license_count > 0:
-            issues.append(
-                EditorialIssueSchema(
-                    code="unknown_image_license",
-                    label="Nieznana licencja obrazu",
-                    severity="critical",
-                )
-            )
-        if person.birth_year is None and person.death_year is None:
-            issues.append(
-                EditorialIssueSchema(
-                    code="missing_dates",
-                    label="Brak dat życia",
-                    severity="warning",
-                )
-            )
-        if person.state_of_life_id is None:
-            issues.append(
-                EditorialIssueSchema(
-                    code="missing_state_of_life",
-                    label="Brak stanu życia",
-                    severity="warning",
-                )
-            )
-        return issues
-
-    @staticmethod
-    def _completeness_criteria(
-        person: Person,
-        *,
-        source_count: int,
-        image_count: int,
-        unknown_license_count: int,
-    ) -> list[EditorialCompletenessCriterionSchema]:
-        """Explain every weighted component used by ``_quality_expressions``."""
-        return [
-            EditorialCompletenessCriterionSchema(
-                key="basic_data",
-                label="Dane podstawowe",
-                weight=10,
-                completed=True,
-            ),
-            EditorialCompletenessCriterionSchema(
-                key="summary",
-                label="Streszczenie",
-                weight=15,
-                completed=bool(person.summary_pl and person.summary_pl.strip()),
-            ),
-            EditorialCompletenessCriterionSchema(
-                key="biography",
-                label="Biogram",
-                weight=25,
-                completed=bool(person.biography_pl and person.biography_pl.strip()),
-            ),
-            EditorialCompletenessCriterionSchema(
-                key="life_dates",
-                label="Co najmniej jedna data życia",
-                weight=10,
-                completed=person.birth_year is not None or person.death_year is not None,
-            ),
-            EditorialCompletenessCriterionSchema(
-                key="state_of_life",
-                label="Stan życia",
-                weight=10,
-                completed=person.state_of_life_id is not None,
-            ),
-            EditorialCompletenessCriterionSchema(
-                key="sources",
-                label="Przypisane źródło",
-                weight=15,
-                completed=source_count > 0,
-            ),
-            EditorialCompletenessCriterionSchema(
-                key="image",
-                label="Obraz",
-                weight=10,
-                completed=image_count > 0,
-            ),
-            EditorialCompletenessCriterionSchema(
-                key="image_license",
-                label="Zweryfikowana licencja obrazu",
-                weight=5,
-                completed=image_count > 0 and unknown_license_count == 0,
-            ),
-        ]
-
-    @classmethod
-    def _queue_item(
-        cls,
-        row: Row[tuple[Person, int, int, int, int, int]],
-        editor: User | None,
-    ) -> EditorialQueueItemSchema:
-        person, source_count, image_count, unknown_count, completeness, priority_score = row
-        issues = cls._issues(
-            person,
-            source_count=source_count,
-            image_count=image_count,
-            unknown_license_count=unknown_count,
-        )
-        blockers = {"missing_biography", "missing_summary", "unknown_image_license"}
-        now = datetime.now(UTC)
-        updated_at = person.updated_at
-        if updated_at.tzinfo is None:
-            updated_at = updated_at.replace(tzinfo=UTC)
-        return EditorialQueueItemSchema(
-            id=person.id,
-            slug=person.slug,
-            canonical_name=person.canonical_name,
-            person_type=person.person_type,
-            status=person.status,
-            version=person.version,
-            avatar=(
-                PersonAvatarSchema.model_validate(person.avatar)
-                if person.avatar is not None
-                else None
-            ),
-            updated_at=person.updated_at,
-            last_modified_by=(
-                PersonLastEditorSchema.model_validate(editor) if editor is not None else None
-            ),
-            age_days=max(0, (now - updated_at).days),
-            completeness_score=int(completeness),
-            completeness_criteria=cls._completeness_criteria(
-                person,
-                source_count=source_count,
-                image_count=image_count,
-                unknown_license_count=unknown_count,
-            ),
-            priority=cls._priority(int(priority_score)),
-            issues=issues,
-            can_publish=not any(issue.code in blockers for issue in issues),
-        )
-
-    @classmethod
-    def _quality_record(
-        cls,
-        row: Row[tuple[Person, int, int, int, int, int]],
-    ) -> EditorialQualityRecordSchema:
-        person, source_count, image_count, unknown_count, completeness, priority_score = row
-        return EditorialQualityRecordSchema(
-            id=person.id,
-            slug=person.slug,
-            canonical_name=person.canonical_name,
-            person_type=person.person_type,
-            status=person.status,
-            avatar=(
-                PersonAvatarSchema.model_validate(person.avatar)
-                if person.avatar is not None
-                else None
-            ),
-            updated_at=person.updated_at,
-            completeness_score=int(completeness),
-            source_count=source_count,
-            image_count=image_count,
-            unknown_license_count=unknown_count,
-            priority=cls._priority(int(priority_score)),
-            issues=cls._issues(
-                person,
-                source_count=source_count,
-                image_count=image_count,
-                unknown_license_count=unknown_count,
-            ),
-        )
-
-    @staticmethod
-    def _normalize_duplicate_key(name: str) -> str:
-        polish_letters = str.maketrans({"ł": "l", "Ł": "L"})
-        normalized = unicodedata.normalize("NFKD", name.translate(polish_letters))
-        without_diacritics = "".join(
-            character for character in normalized if not unicodedata.combining(character)
-        )
-        value = re.sub(r"[^a-zA-Z0-9\s]+", " ", without_diacritics).lower()
-        value = re.sub(
-            r"\b(sw|swiety|swieta|bl|blogoslawiony|blogoslawiona|czcigodny|czcigodna|sluga|sluzebnica|bozy|boza)\b",
-            " ",
-            value,
-        )
-        return " ".join(value.split())
-
-    @classmethod
-    def _duplicate_person(
-        cls,
-        row: Row[tuple[Person, int, int, int, int, int]],
-    ) -> EditorialDuplicatePersonSchema:
-        person, source_count, image_count, *_ = row
-        return EditorialDuplicatePersonSchema(
-            id=person.id,
-            slug=person.slug,
-            canonical_name=person.canonical_name,
-            person_type=person.person_type,
-            status=person.status,
-            birth_year=person.birth_year,
-            death_year=person.death_year,
-            updated_at=person.updated_at,
-            avatar=(
-                PersonAvatarSchema.model_validate(person.avatar)
-                if person.avatar is not None
-                else None
-            ),
-            source_count=source_count,
-            image_count=image_count,
-        )
+    # Compatibility aliases keep existing internal callers stable while the
+    # quality policy lives in a focused, independently testable module.
+    _has_text = staticmethod(EditorialQualityPolicy.has_text)
+    _missing_text = staticmethod(EditorialQualityPolicy.missing_text)
+    _quality_expressions = staticmethod(EditorialQualityPolicy.quality_expressions)
+    _person_rows_query = staticmethod(EditorialQualityPolicy.person_rows_query)
+    _priority = staticmethod(EditorialQualityPolicy.priority)
+    _issues = staticmethod(EditorialQualityPolicy.issues)
+    _completeness_criteria = staticmethod(EditorialQualityPolicy.completeness_criteria)
+    _queue_item = staticmethod(EditorialQualityPolicy.queue_item)
+    _quality_record = staticmethod(EditorialQualityPolicy.quality_record)
+    _normalize_duplicate_key = staticmethod(EditorialQualityPolicy.normalize_duplicate_key)
+    _duplicate_person = staticmethod(EditorialQualityPolicy.duplicate_person)
 
     async def _queue_counts(self) -> EditorialQueueCountsSchema:
         *_, priority_score = self._quality_expressions()
@@ -951,12 +606,16 @@ class EditorialService:
 
     async def quality_report(self) -> EditorialQualityReportSchema:
         """Return the complete data quality centre report."""
-        problem_records, issue_breakdown, records_with_issues = (
-            await self._quality_problem_records()
-        )
-        duplicate_groups, duplicate_group_count, duplicate_record_count = (
-            await self._duplicate_groups()
-        )
+        (
+            problem_records,
+            issue_breakdown,
+            records_with_issues,
+        ) = await self._quality_problem_records()
+        (
+            duplicate_groups,
+            duplicate_group_count,
+            duplicate_record_count,
+        ) = await self._duplicate_groups()
         source_stats = await self._source_stats()
         source_items, source_item_count = await self._source_verification_items()
         total_issues = sum(issue.count for issue in issue_breakdown)

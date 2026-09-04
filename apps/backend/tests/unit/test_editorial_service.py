@@ -7,6 +7,7 @@ from uuid import uuid4
 import pytest
 
 from src.application.services import editorial_service as editorial_module
+from src.application.services.editorial_quality import EditorialQualityPolicy
 from src.application.services.editorial_service import (
     EditorialAuthorizationError,
     EditorialService,
@@ -40,7 +41,7 @@ def test_quality_issues_describe_concrete_missing_data():
         state_of_life_id=None,
     )
 
-    issues = EditorialService._issues(
+    issues = EditorialQualityPolicy.issues(
         person,
         source_count=0,
         image_count=0,
@@ -60,7 +61,7 @@ def test_quality_issues_describe_concrete_missing_data():
 def test_completeness_score_has_a_transparent_100_point_breakdown():
     person = make_person(summary_pl="Streszczenie", biography_pl="Biogram")
 
-    criteria = EditorialService._completeness_criteria(
+    criteria = EditorialQualityPolicy.completeness_criteria(
         person,
         source_count=1,
         image_count=1,
@@ -73,8 +74,11 @@ def test_completeness_score_has_a_transparent_100_point_breakdown():
 
 
 def test_duplicate_key_normalizes_hagiographic_prefixes_and_diacritics():
-    assert EditorialService._normalize_duplicate_key("Św. Rita z Cascii") == "rita z cascii"
-    assert EditorialService._normalize_duplicate_key("Błogosławiony Jerzy Popiełuszko") == "jerzy popieluszko"
+    assert EditorialQualityPolicy.normalize_duplicate_key("Św. Rita z Cascii") == "rita z cascii"
+    assert (
+        EditorialQualityPolicy.normalize_duplicate_key("Błogosławiony Jerzy Popiełuszko")
+        == "jerzy popieluszko"
+    )
 
 
 @pytest.mark.asyncio
