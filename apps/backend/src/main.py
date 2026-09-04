@@ -254,6 +254,8 @@ def _setup_middleware(app: FastAPI) -> None:
             status=response.status_code,
             time=process_time,
             request_id=request_id,
+            user_id=getattr(request.state, "user_id", None),
+            user_email=getattr(request.state, "user_email", None),
         )
 
         return response

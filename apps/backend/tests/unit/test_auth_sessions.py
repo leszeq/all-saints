@@ -145,6 +145,7 @@ async def test_access_token_is_rejected_after_password_change() -> None:
 
     with pytest.raises(HTTPException) as exc_info:
         await get_current_user(
+            request=make_request(),
             credentials=HTTPAuthorizationCredentials(
                 scheme="Bearer",
                 credentials=token,
@@ -153,3 +154,35 @@ async def test_access_token_is_rejected_after_password_change() -> None:
         )
 
     assert exc_info.value.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_authenticated_request_is_enriched_with_user_context() -> None:
+    user_id = uuid4()
+    token = jwt_service.create_access_token(
+        user_id=user_id,
+        email="editor@example.org",
+        roles=["editor"],
+    )
+    user = SimpleNamespace(
+        id=user_id,
+        email="editor@example.org",
+        password_changed_at=None,
+        is_active=True,
+        is_locked=False,
+    )
+    result = MagicMock()
+    result.scalar_one_or_none.return_value = user
+    db = MagicMock()
+    db.execute = AsyncMock(return_value=result)
+    request = make_request()
+
+    authenticated = await get_current_user(
+        request=request,
+        credentials=HTTPAuthorizationCredentials(scheme="Bearer", credentials=token),
+        db=db,
+    )
+
+    assert authenticated is user
+    assert request.state.user_id == str(user_id)
+    assert request.state.user_email == "editor@example.org"

@@ -644,6 +644,11 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 ### OBS-001
 
 - **Severity:** P2
+- **Status po refaktoryzacji:** W toku. Sentry jest inicjalizowany wyłącznie z DSN,
+  bez domyślnego PII i z kontrolowanym samplingiem. Po poprawnym uwierzytelnieniu
+  middleware wzbogaca końcowy log requestu o `user_id` i e-mail; `request_id`
+  pozostaje wspólnym identyfikatorem logu, odpowiedzi i błędu. Do zamknięcia pozostaje
+  zapis modelu `AuditLog` przez krytyczne flow modyfikujące dane.
 - **Category:** Observability / audit
 - **File:** config, middleware, identity models
 - **Lines:** `SENTRY_DSN`, request logging, `AuditLog`
@@ -702,6 +707,11 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 ### AI-001
 
 - **Severity:** P2
+- **Status po refaktoryzacji:** Zamknięte 2026-09-04. Aktywne zadania AI wykonują
+  rzeczywistą pracę i mają testy jednostkowe/integracyjne. Dwa niezaimplementowane
+  zadania maintenance zwracają jawnie `status=disabled` i `reason=not_implemented`,
+  a harmonogram Celery Beat jest pusty, więc monitoring nie raportuje pozornego
+  sukcesu okresowych no-opów.
 - **Category:** Background jobs
 - **File:** `apps/backend/src/workers/tasks/maintenance.py` i taski AI
 - **Lines:** task bodies

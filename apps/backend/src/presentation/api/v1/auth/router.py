@@ -157,6 +157,7 @@ class UpdateProfileRequest(BaseModel):
 
 
 async def get_current_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db_session),
 ) -> User:
@@ -223,6 +224,8 @@ async def get_current_user(
             detail="Konto jest tymczasowo zablokowane",
         )
 
+    request.state.user_id = str(user.id)
+    request.state.user_email = user.email
     return user
 
 
