@@ -15,6 +15,7 @@ from src.domain.hagiography.models import (
     Canonization,
     Patronage,
     Person,
+    PersonName,
     PersonOrder,
     PersonVersion,
 )
@@ -67,6 +68,13 @@ SOURCE_FIELDS = (
     "relevance_score",
     "is_primary",
     "notes",
+)
+ALIAS_FIELDS = (
+    "id",
+    "value",
+    "normalized_value",
+    "language_code",
+    "kind",
 )
 BEATIFICATION_FIELDS = (
     "id",
@@ -156,6 +164,20 @@ async def serialize_person_snapshot(
         .scalars()
         .all()
     )
+    aliases = list(
+        (
+            await db.execute(
+                select(PersonName)
+                .where(
+                    PersonName.person_id == person_id,
+                    PersonName.deleted_at.is_(None),
+                )
+                .order_by(PersonName.created_at.asc(), PersonName.id.asc())
+            )
+        )
+        .scalars()
+        .all()
+    )
     beatification = (
         await db.execute(select(Beatification).where(Beatification.person_id == person_id))
     ).scalar_one_or_none()
@@ -170,6 +192,7 @@ async def serialize_person_snapshot(
         "images": [_fields(item, IMAGE_FIELDS) for item in images],
         "orders": [_fields(item, ORDER_FIELDS) for item in orders],
         "sources": [_fields(item, SOURCE_FIELDS) for item in sources],
+        "aliases": [_fields(item, ALIAS_FIELDS) for item in aliases],
         "beatification": (
             _fields(beatification, BEATIFICATION_FIELDS) if beatification is not None else None
         ),

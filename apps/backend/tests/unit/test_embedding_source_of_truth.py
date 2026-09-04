@@ -27,7 +27,12 @@ def test_legacy_column_removal_is_guarded_and_reversible() -> None:
     scripts = ScriptDirectory.from_config(config)
     source = MIGRATION.read_text(encoding="utf-8")
 
-    assert scripts.get_current_head() == "0015_drop_legacy_embedding"
+    migration = scripts.get_revision("0015_drop_legacy_embedding")
+    successor = scripts.get_revision("0016_person_names")
+    assert migration is not None
+    assert successor is not None
+    assert successor.down_revision == migration.revision
+    assert len(scripts.get_heads()) == 1
     assert 'down_revision: str | None = "0014_person_version_changed_at"' in source
     assert "WHERE embedding_vector IS NOT NULL" in source
     assert 'op.drop_column("persons", "embedding_vector")' in source

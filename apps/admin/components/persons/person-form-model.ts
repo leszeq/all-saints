@@ -19,6 +19,14 @@ export const PATRONAGE_TYPE_OPTIONS = [
   { value: "other", label: "Inne" },
 ] as const;
 
+export const PERSON_ALIAS_KIND_OPTIONS = [
+  { value: "birth_name", label: "Imię świeckie / rodowe" },
+  { value: "religious_name", label: "Imię zakonne" },
+  { value: "alias", label: "Inna nazwa / alias" },
+  { value: "abbreviation", label: "Skrót" },
+  { value: "transliteration", label: "Transliteracja" },
+] as const;
+
 export const MONTH_OPTIONS = [
   [1, "Styczeń"],
   [2, "Luty"],
@@ -52,6 +60,16 @@ export function optionalText(value?: string | null) {
 function isRealRecurringDate(month: number, day: number) {
   const value = new Date(Date.UTC(2000, month - 1, day));
   return value.getUTCMonth() === month - 1 && value.getUTCDate() === day;
+}
+
+function normalizeAliasForComparison(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[łŁ]/g, "l")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
 
 export const personSchema = z.object({
@@ -100,6 +118,15 @@ export const personSchema = z.object({
   feast_source_title: z.string().optional(),
   feast_source_url: optionalHttpUrl,
   feast_notes: z.string().optional(),
+  aliases: z.array(z.object({
+    value: z.string().trim().min(2, "Podaj nazwę alternatywną")
+      .refine((value) => normalizeAliasForComparison(value).length > 0, "Nazwa musi zawierać litery lub cyfry"),
+    language_code: z.string().trim()
+      .min(2, "Podaj kod języka")
+      .max(10, "Kod języka może mieć maksymalnie 10 znaków")
+      .regex(/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/, "Użyj kodu języka, np. pl, en lub zh-Hant"),
+    kind: z.enum(["birth_name", "religious_name", "alias", "abbreviation", "transliteration"]),
+  })),
   patronages: z.array(z.object({
     patronage_type: z.string().min(2, "Wybierz typ patronatu"),
     name_pl: z.string().min(2, "Podaj, komu lub czemu patronuje dana osoba"),
@@ -109,6 +136,15 @@ export const personSchema = z.object({
   })),
   change_summary: z.string().optional(),
 }).superRefine((data, ctx) => {
+  const aliasKeys = data.aliases.map((alias) => normalizeAliasForComparison(alias.value));
+  if (new Set(aliasKeys).size !== aliasKeys.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Nazwy alternatywne nie mogą się powtarzać.",
+      path: ["aliases"],
+    });
+  }
+
   const hasMonth = data.feast_month !== null && data.feast_month !== undefined;
   const hasDay = data.feast_day !== null && data.feast_day !== undefined;
 
@@ -190,6 +226,14 @@ function normalizePatronages(patronages: PersonFormData["patronages"]) {
     .filter((patronage) => patronage.patronage_type && patronage.name_pl);
 }
 
+function normalizeAliases(aliases: PersonFormData["aliases"]) {
+  return aliases.map((alias) => ({
+    value: alias.value.trim(),
+    language_code: alias.language_code.trim().toLowerCase(),
+    kind: alias.kind,
+  }));
+}
+
 export function normalizePersonPayload(data: PersonFormData, isEdit: boolean) {
   const optionalId = (value?: string | null) => value || null;
   const personFields: Partial<PersonFormData> = { ...data };
@@ -222,6 +266,7 @@ export function normalizePersonPayload(data: PersonFormData, isEdit: boolean) {
     biography_pl: optionalText(data.biography_pl),
     prayers: optionalText(data.prayers),
     iconographic_attributes: optionalText(data.iconographic_attributes),
+    aliases: normalizeAliases(data.aliases),
     patronages: normalizePatronages(data.patronages),
     avatar: normalizedAvatarUrl
       ? {

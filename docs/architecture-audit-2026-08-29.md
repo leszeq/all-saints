@@ -516,6 +516,14 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 ### SEARCH-002
 
 - **Severity:** P2
+- **Status po refaktoryzacji:** Zamknięte 2026-09-04. Nazwy alternatywne są
+  przechowywane w encji `PersonName` z językiem, rodzajem i wartością
+  znormalizowaną bez znaków diakrytycznych. Formularz redakcyjny obsługuje aliasy,
+  skróty, imiona świeckie/zakonne i transliteracje, a publiczny profil eksponuje je
+  użytkownikowi i w `alternateName` JSON-LD. Wyszukiwanie PostgreSQL uwzględnia
+  aliasy oraz nazwy z `PersonTranslation` przez dokładne dopasowanie wartości
+  znormalizowanej i indeksowane podobieństwo trigramowe. Migracja zachowuje
+  istniejące `original_name` i `religious_name` przez backfill.
 - **Category:** Domain search
 - **File:** modele Person/Translation i `list_persons`
 - **Lines:** pola nazw i warunek search

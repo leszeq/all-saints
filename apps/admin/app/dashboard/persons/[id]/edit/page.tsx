@@ -84,6 +84,18 @@ export default function EditPersonPage() {
             biography_pl: person.biography_pl ?? "",
             prayers: person.prayers ?? "",
             iconographic_attributes: person.iconographic_attributes ?? "",
+            aliases: Array.isArray(person.aliases)
+              ? person.aliases.map((alias: Record<string, unknown>) => ({
+                  value: String(alias.value ?? ""),
+                  language_code: String(alias.language_code ?? "pl"),
+                  kind: String(alias.kind ?? "alias") as
+                    | "birth_name"
+                    | "religious_name"
+                    | "alias"
+                    | "abbreviation"
+                    | "transliteration",
+                }))
+              : [],
             patronages: Array.isArray(person.patronages)
               ? person.patronages.map((patronage: Record<string, unknown>) => ({
                   patronage_type: String(patronage.patronage_type ?? "other"),

@@ -60,6 +60,16 @@ class Gender(StrEnum):
     UNKNOWN = "unknown"
 
 
+class PersonNameKind(StrEnum):
+    """Editorial meaning of an alternative person name."""
+
+    BIRTH_NAME = "birth_name"
+    RELIGIOUS_NAME = "religious_name"
+    ALIAS = "alias"
+    ABBREVIATION = "abbreviation"
+    TRANSLITERATION = "transliteration"
+
+
 class PublicationStatus(StrEnum):
     """Content lifecycle state."""
 
@@ -462,6 +472,9 @@ class Person(BaseModel, Base):
     translations: Mapped[list[PersonTranslation]] = relationship(
         "PersonTranslation", back_populates="person", cascade="all, delete-orphan"
     )
+    aliases: Mapped[list[PersonName]] = relationship(
+        "PersonName", back_populates="person", cascade="all, delete-orphan"
+    )
     versions: Mapped[list[PersonVersion]] = relationship(
         "PersonVersion", back_populates="person", order_by="PersonVersion.version_number"
     )
@@ -522,6 +535,12 @@ class PersonTranslation(BaseModel, Base):
     __table_args__ = (
         UniqueConstraint("person_id", "language_code", name="uq_person_translation_lang"),
         Index("ix_person_translations_person_id", "person_id"),
+        Index(
+            "ix_person_translations_canonical_name_trgm",
+            "canonical_name",
+            postgresql_using="gin",
+            postgresql_ops={"canonical_name": "gin_trgm_ops"},
+        ),
         {"comment": "Multilingual content for persons"},
     )
 
@@ -545,6 +564,55 @@ class PersonTranslation(BaseModel, Base):
     )
 
     person: Mapped[Person] = relationship("Person", back_populates="translations")
+
+
+# ==============================================================================
+# PERSON NAME / ALIAS
+# ==============================================================================
+
+
+class PersonName(BaseModel, Base):
+    """A searchable birth name, alias, abbreviation, or transliteration."""
+
+    __tablename__ = "person_names"
+    __table_args__ = (
+        UniqueConstraint(
+            "person_id",
+            "normalized_value",
+            name="uq_person_name_normalized",
+        ),
+        Index("ix_person_names_person_id", "person_id"),
+        Index("ix_person_names_normalized_value", "normalized_value"),
+        Index(
+            "ix_person_names_value_trgm",
+            "value",
+            postgresql_using="gin",
+            postgresql_ops={"value": "gin_trgm_ops"},
+        ),
+        {"comment": "Searchable alternative names for hagiographic persons"},
+    )
+
+    person_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("persons.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    value: Mapped[str] = mapped_column(String(500), nullable=False)
+    normalized_value: Mapped[str] = mapped_column(String(500), nullable=False)
+    language_code: Mapped[str] = mapped_column(
+        String(10),
+        nullable=False,
+        default="pl",
+        server_default=text("'pl'"),
+    )
+    kind: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False,
+        default=PersonNameKind.ALIAS,
+        server_default=text("'alias'"),
+    )
+
+    person: Mapped[Person] = relationship("Person", back_populates="aliases")
 
 
 # ==============================================================================

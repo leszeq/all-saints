@@ -26,15 +26,19 @@ from src.domain.hagiography.models import (
     Patronage,
     PatronageGroup,
     Person,
+    PersonName,
     PersonOrder,
     PersonSort,
+    PersonTranslation,
     PersonType,
     PersonVersion,
     PublicationStatus,
 )
+from src.domain.hagiography.person_names import normalize_person_name
 from src.domain.identity.models import AuditAction, User
 from src.domain.sources.models import Image
 from src.presentation.api.v1.persons.schemas import (
+    PersonAliasInputSchema,
     PersonAvatarInputSchema,
     PersonBeatificationInputSchema,
     PersonCanonizationInputSchema,
@@ -166,6 +170,24 @@ class PersonService:
                 )
             )
 
+    async def _replace_aliases(
+        self,
+        person: Person,
+        aliases: list[PersonAliasInputSchema],
+    ) -> None:
+        """Replace searchable alternative names with normalized equivalents."""
+        await self.db.execute(delete(PersonName).where(PersonName.person_id == person.id))
+        for alias in aliases:
+            self.db.add(
+                PersonName(
+                    person_id=person.id,
+                    value=alias.value,
+                    normalized_value=normalize_person_name(alias.value),
+                    language_code=alias.language_code.lower(),
+                    kind=alias.kind.value,
+                )
+            )
+
     @staticmethod
     def _beatification_has_content(data: PersonBeatificationInputSchema) -> bool:
         return bool(data.beatification_date or data.beatification_year)
@@ -284,6 +306,8 @@ class PersonService:
 
         if data.avatar is not None:
             await self._sync_avatar(person, data.avatar)
+        if data.aliases:
+            await self._replace_aliases(person, data.aliases)
         if data.patronages:
             await self._replace_patronages(person, data.patronages)
         if data.beatification and self._beatification_has_content(data.beatification):
@@ -329,6 +353,7 @@ class PersonService:
             person,
             attribute_names=[
                 "images",
+                "aliases",
                 "state_of_life",
                 "patronages",
                 "orders",
@@ -349,6 +374,7 @@ class PersonService:
             select(Person)
             .options(
                 selectinload(Person.images),
+                selectinload(Person.aliases),
                 selectinload(Person.state_of_life),
                 selectinload(Person.patronages),
                 selectinload(Person.orders).selectinload(PersonOrder.order),
@@ -436,15 +462,43 @@ class PersonService:
         if search and search.strip():
             term = search.strip()
             like_term = f"%{term}%"
+            normalized_term = normalize_person_name(term)
             text_query = func.websearch_to_tsquery("simple", func.unaccent(term))
             full_text_rank = func.coalesce(
                 func.ts_rank_cd(Person.search_vector, text_query),
                 0.0,
             )
+            alias_similarity = (
+                select(func.max(func.similarity(PersonName.value, term)))
+                .where(
+                    PersonName.person_id == Person.id,
+                    PersonName.deleted_at.is_(None),
+                )
+                .correlate(Person)
+                .scalar_subquery()
+            )
+            translation_similarity = (
+                select(
+                    func.max(
+                        func.similarity(
+                            func.coalesce(PersonTranslation.canonical_name, ""),
+                            term,
+                        )
+                    )
+                )
+                .where(
+                    PersonTranslation.person_id == Person.id,
+                    PersonTranslation.deleted_at.is_(None),
+                )
+                .correlate(Person)
+                .scalar_subquery()
+            )
             fuzzy_rank = func.greatest(
                 func.similarity(Person.canonical_name, term),
                 func.similarity(func.coalesce(Person.canonical_name_en, ""), term),
                 func.similarity(func.coalesce(Person.latin_name, ""), term),
+                func.coalesce(alias_similarity, 0.0),
+                func.coalesce(translation_similarity, 0.0),
             )
             search_score = full_text_rank + (fuzzy_rank * 0.25)
             query = query.where(
@@ -456,6 +510,25 @@ class PersonService:
                     Person.canonical_name.op("%")(term),
                     Person.canonical_name_en.op("%")(term),
                     Person.latin_name.op("%")(term),
+                    Person.aliases.any(
+                        and_(
+                            PersonName.deleted_at.is_(None),
+                            or_(
+                                PersonName.normalized_value == normalized_term,
+                                PersonName.value.ilike(like_term),
+                                PersonName.value.op("%")(term),
+                            ),
+                        )
+                    ),
+                    Person.translations.any(
+                        and_(
+                            PersonTranslation.deleted_at.is_(None),
+                            or_(
+                                PersonTranslation.canonical_name.ilike(like_term),
+                                PersonTranslation.canonical_name.op("%")(term),
+                            ),
+                        )
+                    ),
                     Person.patronages.any(
                         and_(
                             Patronage.deleted_at.is_(None),
@@ -558,6 +631,7 @@ class PersonService:
         previous_snapshot = await serialize_person_snapshot(self.db, person)
 
         avatar_was_set = "avatar" in data.model_fields_set
+        aliases_were_set = "aliases" in data.model_fields_set
         patronages_were_set = "patronages" in data.model_fields_set
         beatification_was_set = "beatification" in data.model_fields_set
         canonization_was_set = "canonization" in data.model_fields_set
@@ -565,6 +639,7 @@ class PersonService:
             exclude_unset=True,
             exclude={
                 "avatar",
+                "aliases",
                 "patronages",
                 "beatification",
                 "canonization",
@@ -585,6 +660,8 @@ class PersonService:
 
         if avatar_was_set:
             await self._sync_avatar(person, data.avatar)
+        if aliases_were_set:
+            await self._replace_aliases(person, data.aliases or [])
         if patronages_were_set:
             await self._replace_patronages(person, data.patronages or [])
         if beatification_was_set:
@@ -645,6 +722,7 @@ class PersonService:
             person,
             attribute_names=[
                 "images",
+                "aliases",
                 "state_of_life",
                 "patronages",
                 "orders",
@@ -702,6 +780,7 @@ class PersonService:
             select(Person)
             .options(
                 selectinload(Person.images),
+                selectinload(Person.aliases),
                 selectinload(Person.state_of_life),
                 selectinload(Person.patronages),
                 selectinload(Person.orders).selectinload(PersonOrder.order),
@@ -743,6 +822,7 @@ class PersonService:
                 person,
                 attribute_names=[
                     "images",
+                    "aliases",
                     "state_of_life",
                     "patronages",
                     "orders",

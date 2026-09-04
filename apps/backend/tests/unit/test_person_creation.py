@@ -6,6 +6,7 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from pydantic import ValidationError
 
 from src.application.services.person_service import (
     ERA_PERIOD_ERAS,
@@ -81,6 +82,29 @@ def test_person_update_schema_accepts_expected_version() -> None:
     payload = PersonUpdateSchema.model_validate({"summary_pl": "Nowy opis", "expected_version": 7})
 
     assert payload.expected_version == 7
+
+
+def test_person_aliases_reject_accent_insensitive_duplicates() -> None:
+    with pytest.raises(ValidationError, match="nie mogą się powtarzać"):
+        PersonCreateSchema.model_validate(
+            {
+                **ADMIN_PAYLOAD,
+                "aliases": [
+                    {"value": "Karol Wojtyła", "kind": "birth_name"},
+                    {"value": "Karol Wojtyla", "kind": "alias"},
+                ],
+            }
+        )
+
+
+def test_person_alias_rejects_whitespace_only_value() -> None:
+    with pytest.raises(ValidationError):
+        PersonCreateSchema.model_validate(
+            {
+                "canonical_name": "Św. Testowy",
+                "aliases": [{"value": "  ", "kind": "alias"}],
+            }
+        )
 
 
 def test_person_content_fields_and_state_of_life_are_exposed_in_detail() -> None:

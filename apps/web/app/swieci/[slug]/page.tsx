@@ -72,12 +72,22 @@ export default async function PersonDetailPage({ params }: PageProps) {
     notFound();
   }
 
+  const aliases = (Array.isArray(person.aliases) ? person.aliases : [])
+    .map((alias) => String((alias as Record<string, unknown>).value ?? "").trim())
+    .filter(Boolean);
+  const alternateNames = Array.from(
+    new Set([
+      person.latin_name ? String(person.latin_name) : "",
+      ...aliases,
+    ].filter(Boolean)),
+  );
+
   // Schema.org Person JSON-LD for Google SEO
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Person",
     name: person.canonical_name,
-    alternateName: person.latin_name,
+    alternateName: alternateNames.length > 0 ? alternateNames : undefined,
     description: person.summary_pl,
     birthDate: person.birth_year ? String(person.birth_year) : undefined,
     deathDate: person.death_year ? String(person.death_year) : undefined,
@@ -140,6 +150,13 @@ export default async function PersonDetailPage({ params }: PageProps) {
               {Boolean(person.latin_name) && (
                 <p className="font-serif text-lg font-medium italic text-gold-100">
                   {String(person.latin_name)}
+                </p>
+              )}
+
+              {aliases.length > 0 && (
+                <p className="max-w-2xl text-sm leading-6 text-burgundy-100">
+                  <span className="font-semibold text-gold-200">Znany także jako:</span>{" "}
+                  {aliases.join(", ")}
                 </p>
               )}
 

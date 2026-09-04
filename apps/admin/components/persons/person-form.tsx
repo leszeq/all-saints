@@ -8,6 +8,7 @@ import { ArrowLeft, BookOpenText, Loader2, Save } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { calendarApi, geographyApi, getApiErrorMessage, personsApi, sourcesApi, taxonomyApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { PersonAliasesSection } from "./person-aliases-section";
 import { PersonAvatarSection } from "./person-avatar-section";
 import { PersonBasicSection } from "./person-basic-section";
 import { PersonBiographySection } from "./person-biography-section";
@@ -26,6 +27,7 @@ import { PersonSourcesEditor } from "./person-sources-editor";
 
 const TABS = [
   { id: "basic", label: "Dane podstawowe" },
+  { id: "aliases", label: "Nazwy i aliasy" },
   { id: "dates", label: "Daty i miejsca" },
   { id: "biography", label: "Biografia" },
   { id: "patronages", label: "Patronaty" },
@@ -157,6 +159,7 @@ export function PersonForm({ personId, defaultValues, isEdit = false, expectedVe
       feast_source_title: "",
       feast_source_url: "",
       feast_notes: "",
+      aliases: [],
       patronages: [],
       ...defaultValues,
     },
@@ -317,6 +320,9 @@ export function PersonForm({ personId, defaultValues, isEdit = false, expectedVe
         />
       )}
 
+      {activeTab === "aliases" && (
+        <PersonAliasesSection control={control} register={register} errors={errors} />
+      )}
       {activeTab === "biography" && <PersonBiographySection register={register} isEdit={isEdit} />}
       {activeTab === "patronages" && <PersonPatronagesSection control={control} register={register} errors={errors} />}
       {activeTab === "devotion" && <PersonDevotionSection register={register} />}

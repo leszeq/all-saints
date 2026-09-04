@@ -14,9 +14,11 @@ from src.domain.hagiography.models import (
     Era,
     Gender,
     LiturgicalColor,
+    PersonNameKind,
     PersonType,
     PublicationStatus,
 )
+from src.domain.hagiography.person_names import normalize_person_name
 from src.domain.sources.models import ImageLicense
 
 OPTIONAL_UUID_FIELDS = (
@@ -110,17 +112,61 @@ class PersonCanonizationInputSchema(BaseModel):
         return _blank_as_none(value)
 
 
+class PersonAliasInputSchema(BaseModel):
+    """Editable alternative name used by catalogue search."""
+
+    value: str = Field(..., min_length=2, max_length=500)
+    language_code: str = Field(
+        default="pl",
+        min_length=2,
+        max_length=10,
+        pattern=r"^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$",
+    )
+    kind: PersonNameKind = PersonNameKind.ALIAS
+
+    @field_validator("value")
+    @classmethod
+    def strip_value(cls, value: str) -> str:
+        normalized = value.strip()
+        if len(normalized) < 2 or not normalize_person_name(normalized):
+            raise ValueError("Nazwa alternatywna musi zawierać co najmniej 2 znaki")
+        return normalized
+
+    @field_validator("language_code")
+    @classmethod
+    def normalize_language_code(cls, value: str) -> str:
+        return value.strip().lower()
+
+
+def _ensure_unique_aliases(
+    aliases: list[PersonAliasInputSchema],
+) -> list[PersonAliasInputSchema]:
+    normalized = [normalize_person_name(alias.value) for alias in aliases]
+    if len(normalized) != len(set(normalized)):
+        raise ValueError("Nazwy alternatywne nie mogą się powtarzać")
+    return aliases
+
+
 class PersonBaseSchema(BaseModel):
     """Base fields for Person payload."""
 
-    person_type: PersonType = Field(default=PersonType.SAINT, description="saint, blessed, venerable, servant_of_god, candidate")
-    canonical_name: str = Field(..., min_length=2, max_length=500, description="Full canonical display name (e.g. Św. Franciszek z Asyżu)")
+    person_type: PersonType = Field(
+        default=PersonType.SAINT, description="saint, blessed, venerable, servant_of_god, candidate"
+    )
+    canonical_name: str = Field(
+        ...,
+        min_length=2,
+        max_length=500,
+        description="Full canonical display name (e.g. Św. Franciszek z Asyżu)",
+    )
     canonical_name_en: str | None = Field(None, max_length=500)
     latin_name: str | None = Field(None, max_length=500)
     original_name: str | None = Field(None, max_length=500)
     surnames: str | None = Field(None, max_length=500)
     religious_name: str | None = Field(None, max_length=300)
-    epithets: list[str] | None = Field(default=None, description="Nicknames or epithets e.g. ['z Asyżu', 'Wielki']")
+    epithets: list[str] | None = Field(
+        default=None, description="Nicknames or epithets e.g. ['z Asyżu', 'Wielki']"
+    )
 
     gender: Gender = Field(default=Gender.UNKNOWN)
     era: Era | None = Field(None)
@@ -151,6 +197,7 @@ class PersonBaseSchema(BaseModel):
     is_featured: bool = False
     external_ids: dict[str, Any] | None = None
     avatar: PersonAvatarInputSchema | None = None
+    aliases: list[PersonAliasInputSchema] = Field(default_factory=list)
     patronages: list[PersonPatronageInputSchema] = Field(default_factory=list)
     beatification: PersonBeatificationInputSchema | None = None
     canonization: PersonCanonizationInputSchema | None = None
@@ -160,6 +207,14 @@ class PersonBaseSchema(BaseModel):
     def normalize_optional_selects(cls, value: object) -> object:
         """Accept the empty value emitted by native HTML select controls."""
         return _blank_as_none(value)
+
+    @field_validator("aliases")
+    @classmethod
+    def validate_aliases(
+        cls,
+        aliases: list[PersonAliasInputSchema],
+    ) -> list[PersonAliasInputSchema]:
+        return _ensure_unique_aliases(aliases)
 
 
 class PersonCreateSchema(PersonBaseSchema):
@@ -233,10 +288,13 @@ class PersonUpdateSchema(BaseModel):
     is_featured: bool | None = None
     external_ids: dict[str, Any] | None = None
     avatar: PersonAvatarInputSchema | None = None
+    aliases: list[PersonAliasInputSchema] | None = None
     patronages: list[PersonPatronageInputSchema] | None = None
     beatification: PersonBeatificationInputSchema | None = None
     canonization: PersonCanonizationInputSchema | None = None
-    change_summary: str | None = Field(None, description="Optional description of changes for version log")
+    change_summary: str | None = Field(
+        None, description="Optional description of changes for version log"
+    )
     expected_version: int | None = Field(
         None,
         ge=1,
@@ -248,6 +306,14 @@ class PersonUpdateSchema(BaseModel):
     def normalize_optional_selects(cls, value: object) -> object:
         """Accept the empty value emitted by native HTML select controls."""
         return _blank_as_none(value)
+
+    @field_validator("aliases")
+    @classmethod
+    def validate_aliases(
+        cls,
+        aliases: list[PersonAliasInputSchema] | None,
+    ) -> list[PersonAliasInputSchema] | None:
+        return _ensure_unique_aliases(aliases) if aliases is not None else None
 
 
 # ==============================================================================
@@ -278,6 +344,18 @@ class PersonPatronageSchema(BaseModel):
     name_en: str | None = None
     description: str | None = None
     is_official: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PersonAliasSchema(BaseModel):
+    """Searchable alternative name returned on a person profile."""
+
+    id: uuid.UUID
+    value: str
+    normalized_value: str
+    language_code: str
+    kind: PersonNameKind
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -385,6 +463,7 @@ class PersonDetailSchema(PersonListItemSchema):
     nationality_id: uuid.UUID | None = None
     state_of_life_id: uuid.UUID | None = None
     state_of_life: PersonStateOfLifeSchema | None = None
+    aliases: list[PersonAliasSchema] = Field(default_factory=list)
     patronages: list[PersonPatronageSchema] = Field(default_factory=list)
     orders: list[PersonOrderMembershipSchema] = Field(default_factory=list)
     beatification: PersonBeatificationSchema | None = None

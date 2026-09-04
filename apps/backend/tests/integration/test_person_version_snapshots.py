@@ -18,6 +18,7 @@ from src.domain.hagiography.models import (
     Gender,
     Patronage,
     Person,
+    PersonName,
     PersonOrder,
     PersonType,
     PublicationStatus,
@@ -64,6 +65,13 @@ async def test_snapshot_contains_editable_person_relations(db_session: AsyncSess
         page_reference="s. 12",
         is_primary=True,
     )
+    alias = PersonName(
+        person_id=person.id,
+        value="Pełny Przydomek",
+        normalized_value="pelny przydomek",
+        language_code="pl",
+        kind="alias",
+    )
     beatification = Beatification(
         person_id=person.id,
         beatification_year=2001,
@@ -72,9 +80,7 @@ async def test_snapshot_contains_editable_person_relations(db_session: AsyncSess
         person_id=person.id,
         canonization_year=2005,
     )
-    db_session.add_all(
-        [patronage, image, membership, source, beatification, canonization]
-    )
+    db_session.add_all([patronage, image, membership, source, alias, beatification, canonization])
 
     snapshot = await serialize_person_snapshot(db_session, person)
 
@@ -105,5 +111,14 @@ async def test_snapshot_contains_editable_person_relations(db_session: AsyncSess
     ]
     assert snapshot["sources"][0]["bibliography_id"] == str(bibliography.id)
     assert snapshot["sources"][0]["page_reference"] == "s. 12"
+    assert snapshot["aliases"] == [
+        {
+            "id": str(alias.id),
+            "value": "Pełny Przydomek",
+            "normalized_value": "pelny przydomek",
+            "language_code": "pl",
+            "kind": "alias",
+        }
+    ]
     assert snapshot["beatification"]["beatification_year"] == 2001
     assert snapshot["canonization"]["canonization_year"] == 2005
