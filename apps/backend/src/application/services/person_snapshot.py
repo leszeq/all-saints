@@ -214,7 +214,7 @@ async def append_relation_version(
             version_number=person.version,
             snapshot=current_snapshot,
             changed_by_id=changed_by_id,
-            changed_at=datetime.now(UTC).isoformat(),
+            changed_at=datetime.now(UTC),
             change_summary=change_summary,
         )
     )

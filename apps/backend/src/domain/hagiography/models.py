@@ -10,11 +10,13 @@ Covers: Person (Saint/Blessed/ServantOfGod/Venerable/Candidate),
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
     Boolean,
+    DateTime,
     ForeignKey,
     Index,
     Integer,
@@ -947,7 +949,10 @@ class PersonVersion(Base):
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
-    changed_at: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    changed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
     change_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     person: Mapped[Person] = relationship("Person", back_populates="versions")

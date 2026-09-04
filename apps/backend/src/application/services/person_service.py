@@ -310,7 +310,7 @@ class PersonService:
             version_number=1,
             snapshot=person_snapshot,
             changed_by_id=user_id,
-            changed_at=datetime.now(UTC).isoformat(),
+            changed_at=datetime.now(UTC),
             change_summary="Utworzenie rekordu",
         )
         self.db.add(version_snapshot)
@@ -602,7 +602,7 @@ class PersonService:
             version_number=person.version,
             snapshot=person_snapshot,
             changed_by_id=user_id,
-            changed_at=datetime.now(UTC).isoformat(),
+            changed_at=datetime.now(UTC),
             change_summary=data.change_summary or "Aktualizacja danych",
         )
         self.db.add(version_snapshot)
@@ -675,7 +675,7 @@ class PersonService:
                 version_number=person.version,
                 snapshot=current_snapshot,
                 changed_by_id=user_id,
-                changed_at=datetime.now(UTC).isoformat(),
+                changed_at=datetime.now(UTC),
                 change_summary="Usunięcie rekordu",
             )
         )
@@ -724,7 +724,7 @@ class PersonService:
                     version_number=person.version,
                     snapshot=current_snapshot,
                     changed_by_id=user_id,
-                    changed_at=datetime.now(UTC).isoformat(),
+                    changed_at=datetime.now(UTC),
                     change_summary="Przywrócenie rekordu",
                 )
             )

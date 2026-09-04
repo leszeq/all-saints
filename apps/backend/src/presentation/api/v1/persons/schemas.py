@@ -449,7 +449,7 @@ class PersonVersionSchema(BaseModel):
     version_number: int
     snapshot: dict[str, Any]
     changed_by_id: uuid.UUID | None = None
-    changed_at: str | None = None
+    changed_at: datetime | None = None
     change_summary: str | None = None
 
     model_config = ConfigDict(from_attributes=True)

@@ -478,6 +478,10 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 ### VER-002
 
 - **Severity:** P2
+- **Status po refaktoryzacji:** Zamknięte 2026-09-04. `changed_at` używa teraz
+  timezone-aware `datetime` w modelu i kontrakcie API oraz `TIMESTAMPTZ` w PostgreSQL.
+  Migracja przed zmianą typu jawnie waliduje wszystkie istniejące wartości i przerywa
+  się przy błędnym formacie; downgrade zachowuje reprezentację czasu jako tekst.
 - **Category:** Data model
 - **File:** `apps/backend/src/domain/hagiography/models.py`
 - **Lines:** `PersonVersion.changed_at`
