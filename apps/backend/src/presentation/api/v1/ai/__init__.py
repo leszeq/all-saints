@@ -25,11 +25,8 @@ from loguru import logger
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.application.ai_service import (
-    AIDashboardResult,
-    AIService,
-    AISuggestionResult,
-)
+from src.application.ai_models import AIDashboardResult, AISuggestionResult
+from src.application.ai_service import AIService
 from src.domain.identity.models import User
 from src.infrastructure.ai.embeddings import EmbeddingUnavailableError
 from src.infrastructure.ai.summarizer import TaggingUnavailableError
@@ -529,7 +526,9 @@ async def generate_tags(
 async def batch_generate_embeddings(
     _user: Annotated[User, Depends(require_permission("persons", "publish"))],
     ai_service: Annotated[AIService, Depends(get_ai_service)],
-    overwrite_existing: Annotated[bool, Query(description="Regenerate existing embeddings")] = False,
+    overwrite_existing: Annotated[
+        bool, Query(description="Regenerate existing embeddings")
+    ] = False,
     batch_size: Annotated[int, Query(ge=10, le=500)] = 50,
 ) -> BatchTaskResponse:
     """Trigger bulk embedding generation as a background Celery task."""

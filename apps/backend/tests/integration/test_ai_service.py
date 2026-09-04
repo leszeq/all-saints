@@ -8,6 +8,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.ai_service import AIService
+from src.application.ai_suggestions import has_text_value, preview, tag_list
 from src.domain.hagiography.models import Gender, Person, PersonType, PublicationStatus
 from src.infrastructure.ai.embeddings import (
     VECTOR_DIM,
@@ -212,10 +213,10 @@ async def test_summaries_suggestions_and_admin_dashboard_preserve_editorial_valu
 
 
 def test_ai_suggestion_helpers_normalize_previews_and_tags() -> None:
-    assert AIService._preview("  ") is None
-    assert AIService._preview("  krótki   tekst ") == "krótki tekst"
-    assert AIService._preview("abcdefgh", max_length=5) == "abcd…"
-    assert AIService._tag_list(None) == []
-    assert AIService._tag_list([" patron ", "", 12]) == ["patron", "12"]
-    assert AIService._has_text_value(" tekst ") is True
-    assert AIService._has_text_value(None) is False
+    assert preview("  ") is None
+    assert preview("  krótki   tekst ") == "krótki tekst"
+    assert preview("abcdefgh", max_length=5) == "abcd…"
+    assert tag_list(None) == []
+    assert tag_list([" patron ", "", 12]) == ["patron", "12"]
+    assert has_text_value(" tekst ") is True
+    assert has_text_value(None) is False
