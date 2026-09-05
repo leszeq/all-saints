@@ -5,10 +5,12 @@ from __future__ import annotations
 import uuid
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.application.ai_service import AIService
 from src.application.ai_suggestions import has_text_value, preview, tag_list
+from src.domain.hagiography.embedding_model import PersonEmbedding
 from src.domain.hagiography.models import Gender, Person, PersonType, PublicationStatus
 from src.infrastructure.ai.embeddings import (
     VECTOR_DIM,
@@ -91,6 +93,52 @@ async def _add_person(
     db_session.add(person)
     await db_session.commit()
     return person
+
+
+@pytest.mark.asyncio
+async def test_ai_writes_wait_for_caller_unit_of_work(
+    test_engine,
+    db_session: AsyncSession,
+) -> None:
+    person = await _add_person(db_session, "sw-transakcja-ai")
+    person_id = person.id
+    session_factory = async_sessionmaker(
+        test_engine,
+        expire_on_commit=False,
+        autoflush=False,
+    )
+
+    async with session_factory() as writer_session, session_factory() as observer_session:
+        service = _service(writer_session)
+        embedding = await service.generate_person_embedding(person_id)
+        summary = await service.generate_summary(person_id, max_words=4)
+        tags = await service.extract_person_tags(person_id)
+
+        observed_person = (
+            await observer_session.execute(select(Person).where(Person.id == person_id))
+        ).scalar_one()
+        observed_embedding = (
+            await observer_session.execute(
+                select(PersonEmbedding).where(PersonEmbedding.person_id == person_id)
+            )
+        ).scalar_one_or_none()
+        assert embedding is not None
+        assert summary == "Pełny biogram testowej postaci."
+        assert tags == [person.canonical_name, "hagiografia"]
+        assert observed_person.ai_summary is None
+        assert observed_person.ai_tags is None
+        assert observed_embedding is None
+
+        await writer_session.commit()
+        await observer_session.refresh(observed_person)
+        committed_embedding = (
+            await observer_session.execute(
+                select(PersonEmbedding).where(PersonEmbedding.person_id == person_id)
+            )
+        ).scalar_one()
+        assert observed_person.ai_summary == summary
+        assert observed_person.ai_tags == tags
+        assert committed_embedding.provider == "openai"
 
 
 @pytest.mark.asyncio

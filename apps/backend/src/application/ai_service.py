@@ -54,8 +54,8 @@ class AIService:
     """
     Application-level AI service.
 
-    Instantiate with a DB session; embedding and summary services are
-    resolved from singletons (configured once at startup).
+    Instantiate with a DB session owned by the calling request or worker;
+    embedding and summary services are resolved from configured singletons.
     """
 
     def __init__(
@@ -138,9 +138,10 @@ class AIService:
             )
             self._db.add(new_embedding)
 
-        await self._db.commit()
+        await self._db.flush()
         logger.info(
-            f"{'Updated' if was_updated else 'Created'} embedding for {person.canonical_name}"
+            f"Prepared {'updated' if was_updated else 'new'} embedding "
+            f"for {person.canonical_name}"
         )
 
         return EmbeddingResult(
@@ -364,7 +365,7 @@ class AIService:
 
         # Persist AI summary back to the person record
         person.ai_summary = summary
-        await self._db.commit()
+        await self._db.flush()
 
         return summary
 
@@ -390,7 +391,7 @@ class AIService:
 
         # Persist AI tags
         person.ai_tags = tags
-        await self._db.commit()
+        await self._db.flush()
 
         return tags
 

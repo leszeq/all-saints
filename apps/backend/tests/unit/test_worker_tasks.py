@@ -49,6 +49,7 @@ class StubResult:
 class StubSession:
     def __init__(self, results: list[StubResult] | None = None) -> None:
         self.results = list(results or [])
+        self.commit_count = 0
         self.rollback_count = 0
 
     async def __aenter__(self) -> StubSession:
@@ -59,6 +60,9 @@ class StubSession:
 
     async def execute(self, _statement: object) -> StubResult:
         return self.results.pop(0)
+
+    async def commit(self) -> None:
+        self.commit_count += 1
 
     async def rollback(self) -> None:
         self.rollback_count += 1
@@ -108,7 +112,8 @@ def test_single_person_ai_tasks(monkeypatch) -> None:
         async def extract_person_tags(self, _person_id: uuid.UUID) -> list[str]:
             return ["męczennik", "Polska"]
 
-    _install_session(monkeypatch, StubSession())
+    session = StubSession()
+    _install_session(monkeypatch, session)
     monkeypatch.setattr(ai_service_module, "AIService", StubAIService)
 
     embedding_result = generate_person_embedding.run(str(person_id))
@@ -131,6 +136,7 @@ def test_single_person_ai_tasks(monkeypatch) -> None:
         "tags": ["męczennik", "Polska"],
         "count": 2,
     }
+    assert session.commit_count == 3
 
     StubAIService.embedding_result = None
     StubAIService.summary_result = None
@@ -171,6 +177,7 @@ def test_batch_embedding_tracks_processed_skipped_and_failed(monkeypatch) -> Non
     result = batch_generate_embeddings.run(batch_size=0, overwrite_existing=False)
 
     assert result == {"total": 3, "processed": 1, "failed": 1, "skipped": 1}
+    assert session.commit_count == 2
     assert session.rollback_count == 1
     update_state.assert_called_once_with(
         state="PROGRESS",
@@ -201,6 +208,8 @@ def test_batch_auto_tag_reports_progress_and_failures(monkeypatch) -> None:
     result = batch_auto_tag.run(only_untagged=False)
 
     assert result == {"total": 10, "processed": 9, "failed": 1}
+    assert session.commit_count == 9
+    assert session.rollback_count == 1
     update_state.assert_called_once_with(
         state="PROGRESS",
         meta={"current": 10, "total": 10, "processed": 9},

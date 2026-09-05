@@ -79,6 +79,7 @@ def generate_person_embedding(self: Task, person_id: str) -> dict[str, Any]:
 
             if result is None:
                 return {"error": f"Person {person_id} not found"}
+            await db.commit()
 
             return {
                 "person_id": str(result.person_id),
@@ -179,6 +180,7 @@ def batch_generate_embeddings(
                 for person_id in person_ids:
                     try:
                         embedding_result = await service.generate_person_embedding(person_id)
+                        await db.commit()
                         if embedding_result:
                             processed += 1
                         else:
@@ -260,6 +262,7 @@ def generate_person_summary(
 
             if summary is None:
                 return {"error": f"Person {person_id} not found"}
+            await db.commit()
 
             return {
                 "person_id": person_id,
@@ -307,6 +310,7 @@ def auto_tag_person(self: Task, person_id: str) -> dict[str, Any]:
         async with get_session_factory()() as db:
             service = AIService(db)
             tags = await service.extract_person_tags(pid)
+            await db.commit()
 
             return {
                 "person_id": person_id,
@@ -369,8 +373,10 @@ def batch_auto_tag(self: Task, only_untagged: bool = True) -> dict[str, Any]:
             for i, person_id in enumerate(all_ids):
                 try:
                     await service.extract_person_tags(person_id)
+                    await db.commit()
                     processed += 1
                 except Exception as exc:
+                    await db.rollback()
                     logger.error(f"Failed to tag person {person_id}: {exc}")
                     failed += 1
 

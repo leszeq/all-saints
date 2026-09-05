@@ -23,7 +23,7 @@ do jawnych, izolowanych operacji podczas migracji modułu uwierzytelniania.
 
 ## Stan migracji
 
-Z zasady korzysta obecnie sześć pionów:
+Z zasady korzysta obecnie siedem pionów:
 
 - zakony i zgromadzenia — tworzenie, edycja, soft-delete oraz zmiana członkostwa;
 - kalendarz liturgiczny — obchody nieosobowe, przypisania do dni, zmiana wpisu
@@ -35,7 +35,11 @@ Z zasady korzysta obecnie sześć pionów:
 - źródła i media — wpisy bibliograficzne, źródła historyczne, dokumenty, obrazy,
   powiązania z osobą, snapshot wersji i audit log tworzą jeden atomowy zapis;
 - dane referencyjne — geografia, kategorie, tagi i papieże czekają na commit
-  granicy requestu, dzięki czemu można je bezpiecznie składać w większe operacje.
+  granicy requestu, dzięki czemu można je bezpiecznie składać w większe operacje;
+- AI — embeddingi, streszczenia i tagi generowane przez API czekają na commit
+  requestu; zadania Celery jawnie commitują każdy udany rekord i rollbackują błąd.
+
+Endpoint ustawień jest wyłącznie odczytowy i nie uczestniczy w transakcjach zapisu.
 
 Operacje te tylko flushują zmiany; produkcyjny provider sesji i jego odpowiednik
 w testach integracyjnych posiadają commit/rollback requestu. Pozostałe moduły
