@@ -11,19 +11,7 @@ from sqlalchemy.engine import Row
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.commands.persons import PersonUpdateSchema
-from src.application.services.audit_service import AuditContext
-from src.application.services.editorial_quality import EditorialQualityPolicy
-from src.application.services.editorial_source_quality import EditorialSourceQualityReader
-from src.application.services.person_service import PersonService
-from src.domain.geography.models import Country, ReligiousOrder
-from src.domain.hagiography.models import Person, PublicationStatus
-from src.domain.identity.models import User
-from src.domain.sources.models import (
-    Bibliography,
-    Image,
-    ImageLicense,
-)
-from src.presentation.api.v1.editorial.schemas import (
+from src.application.editorial_models import (
     EditorialCompletionBucketSchema,
     EditorialDashboardSchema,
     EditorialDuplicateGroupSchema,
@@ -42,6 +30,18 @@ from src.presentation.api.v1.editorial.schemas import (
     EditorialSourceVerificationStatsSchema,
     EditorialStatusCountSchema,
     EditorialTransitionResponseSchema,
+)
+from src.application.services.audit_service import AuditContext
+from src.application.services.editorial_quality import EditorialQualityPolicy
+from src.application.services.editorial_source_quality import EditorialSourceQualityReader
+from src.application.services.person_service import PersonService
+from src.domain.geography.models import Country, ReligiousOrder
+from src.domain.hagiography.models import Person, PublicationStatus
+from src.domain.identity.models import User
+from src.domain.sources.models import (
+    Bibliography,
+    Image,
+    ImageLicense,
 )
 
 

@@ -39,4 +39,11 @@ Zachowano dotychczasowe nazwy klas wejściowych, aby publiczne komponenty OpenAP
 importy klientów Pythona nie zmieniły się. `PersonService` oraz workflow redakcyjny
 nie importują już schematów HTTP osoby.
 
-Pozostały zastany dług dotyczy modeli wynikowych trzech modułów redakcyjnych.
+Ostatnim wydzielonym pionem jest redakcja. Modele wynikowe dashboardu, kolejki,
+kompletności, duplikatów i weryfikacji źródeł znajdują się w
+`application.editorial_models`. Współdzielone reprezentacje avatara oraz ostatniego
+redaktora należą do `application.person_models`. Moduły HTTP zachowują kompatybilne
+re-eksporty.
+
+Lista wyjątków w teście architektury jest pusta. Warstwy `application`, `domain` i
+`infrastructure` nie mogą importować `src.presentation`.

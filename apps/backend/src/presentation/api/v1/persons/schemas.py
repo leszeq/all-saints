@@ -8,6 +8,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from src.application import person_models
 from src.application.commands import persons as person_commands
 from src.domain.hagiography.models import (
     Era,
@@ -17,7 +18,6 @@ from src.domain.hagiography.models import (
     PersonType,
     PublicationStatus,
 )
-from src.domain.sources.models import ImageLicense
 
 # Input schemas are owned by the application layer and re-exported here to keep
 # existing API imports and OpenAPI component names stable.
@@ -29,20 +29,8 @@ PersonCanonizationInputSchema = person_commands.PersonCanonizationInputSchema
 PersonCreateSchema = person_commands.PersonCreateSchema
 PersonPatronageInputSchema = person_commands.PersonPatronageInputSchema
 PersonUpdateSchema = person_commands.PersonUpdateSchema
-
-
-class PersonAvatarSchema(BaseModel):
-    """Primary portrait returned with person list and detail responses."""
-
-    id: uuid.UUID
-    url: str
-    thumbnail_url: str | None = None
-    title: str | None = None
-    license: ImageLicense
-    photographer: str | None = None
-    source_url: str | None = None
-
-    model_config = ConfigDict(from_attributes=True)
+PersonAvatarSchema = person_models.PersonAvatarSchema
+PersonLastEditorSchema = person_models.PersonLastEditorSchema
 
 
 class PersonPatronageSchema(BaseModel):
@@ -201,16 +189,6 @@ class PersonListResponseSchema(BaseModel):
     page: int
     per_page: int
     pages: int
-
-
-class PersonLastEditorSchema(BaseModel):
-    """Minimal editor identity exposed only by the protected admin list."""
-
-    id: uuid.UUID
-    full_name: str
-    avatar_url: str | None = None
-
-    model_config = ConfigDict(from_attributes=True)
 
 
 class PersonAdminListItemSchema(PersonListItemSchema):

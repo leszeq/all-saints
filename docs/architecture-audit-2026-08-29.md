@@ -38,15 +38,15 @@ Stan na 2026-09-05 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **207 passed**, 0 failures, 0 errors, 0 warnings |
-| Backend coverage | **82.51%**, wymagany próg 80% spełniony |
+| Backend pytest | **208 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend coverage | **82.59%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0012_align_domain_indexes`, jeden head |
 | Nowa pusta baza | upgrade 0001 → 0012 oraz downgrade/re-upgrade: PASS |
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 106 plików źródłowych |
+| Ruff / strict mypy | PASS, mypy analizuje 108 plików źródłowych |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -57,7 +57,7 @@ Stan na 2026-09-05 po kolejnych etapach refaktoryzacji:
 | Obserwowalność | poprawny JSON logging, request ID, Prometheus i opcjonalny Sentry |
 | Pydantic / Alembic / Ruff config | zdeprecjonowane konfiguracje usunięte |
 | Hashowanie haseł | bezpośredni bcrypt, zgodny z istniejącymi hashami Passlib |
-| Granice warstw backendu | test blokuje nowe zależności niższych warstw od HTTP; zakony, kalendarz i osoby rozdzielone |
+| Granice warstw backendu | PASS; application, domain i infrastructure nie importują warstwy HTTP |
 
 Zamknięte zostały wszystkie P1 z listy Top 10:
 
@@ -484,13 +484,12 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 ### ARCH-003
 
 - **Severity:** P2
-- **Status po refaktoryzacji:** W toku od 2026-09-05. Komendy pionów zakonów,
-  kalendarza i osób zostały przeniesione do warstwy application, enum członkostwa
-  zakonnego do domeny, a ich serwisy oraz importer zakonów nie zależą już od
-  schematów HTTP. Workflow redakcyjny również używa aplikacyjnej komendy aktualizacji
-  osoby. Test architektury blokuje nowe zależności
-  `application/domain/infrastructure -> presentation` i jawnie ogranicza zastany dług
-  do trzech modułów redakcyjnych, które będą migrowane w następnym pionie.
+- **Status po refaktoryzacji:** Zamknięte 2026-09-05. Komendy pionów zakonów,
+  kalendarza i osób oraz modele wynikowe redakcji należą do warstwy application;
+  enum członkostwa zakonnego należy do domeny. Serwisy i importery nie zależą już od
+  schematów HTTP. Moduły presentation zachowują kompatybilne re-eksporty dla
+  istniejących importów i nazw OpenAPI. Test architektury ma pustą listę wyjątków i
+  blokuje każdą zależność `application/domain/infrastructure -> presentation`.
 - **Category:** Architecture / dependency direction
 - **File:** `apps/backend/src/application`, `apps/backend/src/infrastructure`
 - **Problem:** Serwisy przypadków użycia i importer danych importują schematy z

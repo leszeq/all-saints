@@ -12,6 +12,15 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.sql.elements import ColumnElement
 
+from src.application.editorial_models import (
+    EditorialCompletenessCriterionSchema,
+    EditorialDuplicatePersonSchema,
+    EditorialIssueSchema,
+    EditorialPriority,
+    EditorialQualityRecordSchema,
+    EditorialQueueItemSchema,
+)
+from src.application.person_models import PersonAvatarSchema, PersonLastEditorSchema
 from src.domain.hagiography.models import Person, PublicationStatus
 from src.domain.identity.models import User
 from src.domain.sources.models import (
@@ -21,15 +30,6 @@ from src.domain.sources.models import (
     ImageLicense,
     PersonSource,
 )
-from src.presentation.api.v1.editorial.schemas import (
-    EditorialCompletenessCriterionSchema,
-    EditorialDuplicatePersonSchema,
-    EditorialIssueSchema,
-    EditorialPriority,
-    EditorialQualityRecordSchema,
-    EditorialQueueItemSchema,
-)
-from src.presentation.api.v1.persons.schemas import PersonAvatarSchema, PersonLastEditorSchema
 
 PersonQualityRow = Row[tuple[Person, int, int, int, int, int]]
 

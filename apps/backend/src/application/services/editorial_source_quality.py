@@ -6,6 +6,10 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.application.editorial_models import (
+    EditorialSourceVerificationItemSchema,
+    EditorialSourceVerificationStatsSchema,
+)
 from src.application.services.editorial_quality import EditorialQualityPolicy
 from src.domain.hagiography.models import Person, PublicationStatus
 from src.domain.sources.models import (
@@ -15,10 +19,6 @@ from src.domain.sources.models import (
     ImageLicense,
     PersonSource,
     SourceType,
-)
-from src.presentation.api.v1.editorial.schemas import (
-    EditorialSourceVerificationItemSchema,
-    EditorialSourceVerificationStatsSchema,
 )
 
 
