@@ -283,6 +283,8 @@ async def test_person_service_creates_json_safe_initial_snapshot() -> None:
     assert audit_log.action == AuditAction.CREATE.value
     assert audit_log.resource_id == person.id
     assert audit_log.new_value["latin_name"] == "Sanctus Ioannes Paulus II"
+    db.flush.assert_awaited()
+    db.commit.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -350,6 +352,8 @@ async def test_person_service_allows_unchanged_status_in_form_payload() -> None:
     assert audit_log.action == AuditAction.UPDATE.value
     assert audit_log.old_value["summary_pl"] is None
     assert audit_log.new_value["summary_pl"] == "Nowy opis"
+    db.flush.assert_awaited()
+    db.commit.assert_not_called()
 
 
 @pytest.mark.asyncio

@@ -17,6 +17,52 @@ from src.presentation.api.v1.persons.schemas import PersonUpdateSchema
 
 
 @pytest.mark.asyncio
+async def test_person_service_defers_commit_to_unit_of_work(test_engine) -> None:
+    person_id = uuid.uuid4()
+    session_factory = async_sessionmaker(
+        test_engine,
+        expire_on_commit=False,
+        autoflush=False,
+    )
+
+    async with session_factory() as setup_session:
+        setup_session.add(
+            Person(
+                id=person_id,
+                slug="sw-test-transakcji-osoby",
+                canonical_name="Św. Test Transakcji Osoby",
+                person_type=PersonType.SAINT.value,
+                status=PublicationStatus.DRAFT.value,
+                gender=Gender.UNKNOWN.value,
+                version=1,
+            )
+        )
+        await setup_session.commit()
+
+    async with session_factory() as writer_session, session_factory() as observer_session:
+        person = (
+            await writer_session.execute(select(Person).where(Person.id == person_id))
+        ).scalar_one()
+
+        await PersonService(writer_session).update_person(
+            person,
+            PersonUpdateSchema(summary_pl="Zmiana oczekująca na commit", expected_version=1),
+            None,
+        )
+
+        observed = (
+            await observer_session.execute(select(Person).where(Person.id == person_id))
+        ).scalar_one()
+        assert observed.summary_pl is None
+        assert observed.version == 1
+
+        await writer_session.commit()
+        await observer_session.refresh(observed)
+        assert observed.summary_pl == "Zmiana oczekująca na commit"
+        assert observed.version == 2
+
+
+@pytest.mark.asyncio
 async def test_stale_editor_cannot_overwrite_a_newer_person_version(test_engine) -> None:
     person_id = uuid.uuid4()
     session_factory = async_sessionmaker(
@@ -52,6 +98,7 @@ async def test_stale_editor_cannot_overwrite_a_newer_person_version(test_engine)
             PersonUpdateSchema(summary_pl="Zmiana pierwszego redaktora", expected_version=1),
             None,
         )
+        await first_session.commit()
 
         with pytest.raises(PersonVersionConflictError):
             await PersonService(stale_session).update_person(

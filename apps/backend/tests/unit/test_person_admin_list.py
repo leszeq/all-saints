@@ -101,10 +101,12 @@ async def test_restore_records_the_responsible_editor() -> None:
     assert version.change_summary == "Przywrócenie rekordu"
     assert audit_log.action == AuditAction.RESTORE.value
     assert audit_log.user_id == editor_id
+    db.flush.assert_awaited()
+    db.commit.assert_not_called()
 
 
 @pytest.mark.asyncio
-async def test_soft_delete_stages_an_audit_record_before_commit() -> None:
+async def test_soft_delete_stages_an_audit_record_without_committing() -> None:
     person_id = uuid.uuid4()
     editor_id = uuid.uuid4()
     person = SimpleNamespace(
@@ -137,7 +139,8 @@ async def test_soft_delete_stages_an_audit_record_before_commit() -> None:
     assert audit_log.new_value["deleted_at"] is not None
     assert version.changed_by_id == editor_id
     assert version.change_summary == "Usunięcie rekordu"
-    db.commit.assert_awaited_once()
+    db.flush.assert_awaited()
+    db.commit.assert_not_called()
 
 
 def test_editor_identity_is_exposed_only_by_protected_admin_contract() -> None:

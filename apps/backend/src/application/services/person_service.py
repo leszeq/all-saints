@@ -100,7 +100,7 @@ def _enum_values(
 
 
 class PersonService:
-    """Service handling Person domain operations."""
+    """Handle person operations inside a caller-owned transaction."""
 
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
@@ -347,7 +347,7 @@ class PersonService:
             new_value=person_snapshot,
         )
 
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(person)
         await self.db.refresh(
             person,
@@ -716,7 +716,7 @@ class PersonService:
             extra_metadata=audit_metadata,
         )
 
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(person)
         await self.db.refresh(
             person,
@@ -766,7 +766,7 @@ class PersonService:
             old_value=previous_snapshot,
             new_value=current_snapshot,
         )
-        await self.db.commit()
+        await self.db.flush()
 
     async def restore_person(
         self,
@@ -816,7 +816,7 @@ class PersonService:
                 old_value=previous_snapshot,
                 new_value=current_snapshot,
             )
-            await self.db.commit()
+            await self.db.flush()
             await self.db.refresh(person)
             await self.db.refresh(
                 person,
