@@ -67,6 +67,7 @@ async def test_refresh_rotates_the_stored_token_and_cookie() -> None:
     db = MagicMock()
     db.execute = AsyncMock(return_value=result)
     db.commit = AsyncMock()
+    db.flush = AsyncMock()
     response = Response()
 
     token_response = await refresh_access_token(
@@ -78,6 +79,8 @@ async def test_refresh_rotates_the_stored_token_and_cookie() -> None:
 
     assert token_response.access_token
     assert stored_token.revoked_at is not None
+    db.flush.assert_awaited_once()
+    db.commit.assert_not_called()
     assert "FOR UPDATE" in str(db.execute.await_args.args[0])
     new_token = next(
         call.args[0]
@@ -103,6 +106,7 @@ async def test_password_change_revokes_all_refresh_tokens() -> None:
     db = MagicMock()
     db.execute = AsyncMock()
     db.commit = AsyncMock()
+    db.flush = AsyncMock()
     response = Response()
 
     await change_password(
@@ -118,6 +122,8 @@ async def test_password_change_revokes_all_refresh_tokens() -> None:
 
     assert user.password_changed_at is not None
     assert password_hasher.verify("NewPassword456!", user.hashed_password)
+    db.flush.assert_awaited_once()
+    db.commit.assert_not_called()
     statement = db.execute.await_args.args[0]
     assert "UPDATE refresh_tokens" in str(statement)
     assert "revoked_at" in str(statement)

@@ -14,7 +14,7 @@ from __future__ import annotations
 import hashlib
 import uuid
 from collections.abc import Awaitable, Callable
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
@@ -26,6 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.application.services.audit_service import AuditContext, add_audit_log
+from src.application.services.auth_security_service import AuthenticationSecurityRecorder
 from src.core.config import settings
 from src.core.security import JWTService, is_strong_password, jwt_service, password_hasher
 from src.domain.identity.models import (
@@ -38,7 +39,7 @@ from src.domain.identity.models import (
     UserStatus,
 )
 from src.infrastructure.cache.redis_client import RateLimiter, RedisClient, get_redis
-from src.infrastructure.db.session import get_db_session
+from src.infrastructure.db.session import get_db_session, get_session_factory
 
 router = APIRouter()
 bearer_scheme = HTTPBearer(
@@ -73,6 +74,11 @@ def _set_refresh_cookie(response: Response, raw_token: str) -> None:
         max_age=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
         path="/api/v1/auth",
     )
+
+
+def get_authentication_security_recorder() -> AuthenticationSecurityRecorder:
+    """Provide the isolated writer used for durable login-denial events."""
+    return AuthenticationSecurityRecorder(get_session_factory())
 
 
 async def _enforce_login_rate_limit(
@@ -294,6 +300,9 @@ async def login(
     response: Response,
     db: AsyncSession = Depends(get_db_session),
     redis: RedisClient = Depends(get_redis),
+    security_recorder: AuthenticationSecurityRecorder = Depends(
+        get_authentication_security_recorder
+    ),
 ) -> TokenResponse:
     """
     Authenticate a user and issue tokens.
@@ -321,43 +330,28 @@ async def login(
     )
 
     if user is None:
-        add_audit_log(
-            db,
+        await security_recorder.record_login_failure(
             context=_audit_context(request, user_email=credentials.email.lower()),
-            action=AuditAction.LOGIN_FAILED,
-            resource_type="authentication",
-            resource_id=None,
-            extra_metadata={"reason": "invalid_credentials"},
+            reason="invalid_credentials",
         )
-        await db.commit()
         raise auth_error
 
     # Check account status
     if user.status == UserStatus.BANNED:
-        add_audit_log(
-            db,
+        await security_recorder.record_login_failure(
             context=_audit_context(request, user_id=user.id, user_email=user.email),
-            action=AuditAction.LOGIN_FAILED,
-            resource_type="authentication",
-            resource_id=user.id,
-            extra_metadata={"reason": "account_banned"},
+            reason="account_banned",
         )
-        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Konto zostało zablokowane",
         )
 
     if user.is_locked:
-        add_audit_log(
-            db,
+        await security_recorder.record_login_failure(
             context=_audit_context(request, user_id=user.id, user_email=user.email),
-            action=AuditAction.LOGIN_FAILED,
-            resource_type="authentication",
-            resource_id=user.id,
-            extra_metadata={"reason": "account_locked"},
+            reason="account_locked",
         )
-        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Zbyt wiele nieudanych prób logowania. Spróbuj za chwilę.",
@@ -365,20 +359,13 @@ async def login(
 
     # Verify password
     if not password_hasher.verify(credentials.password, user.hashed_password):
-        # Increment failed attempts
-        user.failed_login_attempts += 1
-        if user.failed_login_attempts >= 10:
-            user.locked_until = datetime.now(UTC) + timedelta(minutes=15)
-            logger.warning(f"Account locked: {user.email} (too many failed attempts)")
-        add_audit_log(
-            db,
+        account_locked = await security_recorder.record_login_failure(
             context=_audit_context(request, user_id=user.id, user_email=user.email),
-            action=AuditAction.LOGIN_FAILED,
-            resource_type="authentication",
-            resource_id=user.id,
-            extra_metadata={"reason": "invalid_credentials"},
+            reason="invalid_credentials",
+            increment_attempts=True,
         )
-        await db.commit()
+        if account_locked:
+            logger.warning(f"Account locked: {user.email} (too many failed attempts)")
         raise auth_error
 
     # Reset failed attempts on successful login
@@ -414,7 +401,7 @@ async def login(
         resource_type="authentication",
         resource_id=user.id,
     )
-    await db.commit()
+    await db.flush()
 
     # Set refresh token as HttpOnly cookie
     _set_refresh_cookie(response, raw_refresh_token)
@@ -494,7 +481,7 @@ async def refresh_token(
             ip_address=request.client.host if request.client else None,
         )
     )
-    await db.commit()
+    await db.flush()
 
     access_token = jwt_service.create_access_token(
         user_id=user.id,
@@ -540,7 +527,7 @@ async def logout(
                 resource_type="authentication",
                 resource_id=stored_token.user_id,
             )
-            await db.commit()
+            await db.flush()
 
     response.delete_cookie(key="refresh_token", path="/api/v1/auth")
 
@@ -605,7 +592,7 @@ async def update_me(
         },
         extra_metadata={"scope": "own_profile"},
     )
-    await db.commit()
+    await db.flush()
     await db.refresh(current_user)
 
     return UserProfileResponse(
@@ -675,7 +662,7 @@ async def change_password(
         resource_id=current_user.id,
         extra_metadata={"event": "password_changed", "sessions_revoked": True},
     )
-    await db.commit()
+    await db.flush()
 
     response.delete_cookie(
         key="refresh_token",

@@ -14,16 +14,18 @@ wcześniejszy krok zostanie zapisany mimo błędu późniejszego kroku.
 - Import, seed i migracja: skrypt używa jawnego bloku transakcyjnego albo pary
   `commit` / `rollback`, ponieważ nie działa wewnątrz requestu.
 - Serwis aplikacyjny: może wykonywać `flush`, aby uzyskać identyfikator i wcześnie
-  wykryć naruszenie constraintu, ale nie kończy transakcji.
+  wykryć naruszenie constraintu, ale nie kończy transakcji, poza opisanym niżej
+  izolowanym zapisem zdarzeń bezpieczeństwa.
 
 Wyjątek wymaga komentarza uzasadniającego trwały zapis przed zgłoszeniem błędu.
-Przykładem są zdarzenia bezpieczeństwa logowania, które muszą pozostać w audycie
-również wtedy, gdy endpoint zwraca odpowiedź błędną. Takie miejsca będą wydzielane
-do jawnych, izolowanych operacji podczas migracji modułu uwierzytelniania.
+Zdarzenia odmowy logowania muszą pozostać w audycie również wtedy, gdy endpoint
+zwraca odpowiedź błędną. `AuthenticationSecurityRecorder` realizuje je w krótkiej,
+jawnej transakcji `session.begin()`. Pod blokadą wiersza atomowo zwiększa licznik
+nieudanych prób i zapisuje audit, po czym request może bezpiecznie wykonać rollback.
 
 ## Stan migracji
 
-Z zasady korzysta obecnie siedem pionów:
+Z zasady korzysta obecnie osiem pionów:
 
 - zakony i zgromadzenia — tworzenie, edycja, soft-delete oraz zmiana członkostwa;
 - kalendarz liturgiczny — obchody nieosobowe, przypisania do dni, zmiana wpisu
@@ -37,11 +39,12 @@ Z zasady korzysta obecnie siedem pionów:
 - dane referencyjne — geografia, kategorie, tagi i papieże czekają na commit
   granicy requestu, dzięki czemu można je bezpiecznie składać w większe operacje;
 - AI — embeddingi, streszczenia i tagi generowane przez API czekają na commit
-  requestu; zadania Celery jawnie commitują każdy udany rekord i rollbackują błąd.
+  requestu; zadania Celery jawnie commitują każdy udany rekord i rollbackują błąd;
+- uwierzytelnianie — udane logowanie, rotacja tokenu, logout, profil i zmiana hasła
+  czekają na commit requestu, a odmowy logowania używają izolowanego recordera.
 
 Endpoint ustawień jest wyłącznie odczytowy i nie uczestniczy w transakcjach zapisu.
 
-Operacje te tylko flushują zmiany; produkcyjny provider sesji i jego odpowiednik
-w testach integracyjnych posiadają commit/rollback requestu. Pozostałe moduły
-należy przenosić osobnymi, testowanymi etapami — bez mechanicznej zmiany całego
-repozytorium naraz.
+Migracja runtime jest zakończona. Jawne commity i rollbacki pozostają wyłącznie
+u właścicieli transakcji: w providerze requestu, workerach, skryptach importu,
+seedzie, inicjalizacji rozszerzeń bazy oraz izolowanym recorderze bezpieczeństwa.

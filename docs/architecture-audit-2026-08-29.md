@@ -38,8 +38,8 @@ Stan na 2026-09-05 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **204 passed**, 0 failures, 0 errors, 0 warnings |
-| Backend coverage | **82.28%**, wymagany próg 80% spełniony |
+| Backend pytest | **206 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend coverage | **82.42%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0012_align_domain_indexes`, jeden head |
 | Nowa pusta baza | upgrade 0001 → 0012 oraz downgrade/re-upgrade: PASS |
@@ -456,18 +456,19 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 ### ARCH-002
 
 - **Severity:** P2
-- **Status po refaktoryzacji:** W toku od 2026-09-05. Ustalono i udokumentowano
+- **Status po refaktoryzacji:** Zamknięte 2026-09-05. Ustalono i udokumentowano
   jedną politykę unit-of-work: serwisy flushują, a granica requestu lub workera
-  commit/rollbackuje. Siedem pionów — zakony wraz z członkostwami, kalendarz
+  commit/rollbackuje. Osiem pionów — zakony wraz z członkostwami, kalendarz
   liturgiczny wraz z obchodami, osoby z wersjonowaniem, audytem i workflow
   redakcyjnym, kontrola dostępu użytkowników, ról i uprawnień oraz źródła i media
   z wersjonowaniem relacji, geografia, taksonomia i papieże, a także zapis wyników
-  AI — nie wykonują już commitów wewnątrz przypadków użycia HTTP. Workery AI są
-  jawnymi właścicielami transakcji i commitują każdy udany element batcha osobno.
-  Testy integracyjne potwierdzają niewidoczność zmian w drugiej sesji przed
-  commitem właściciela, a provider klienta testowego odwzorowuje produkcyjną
-  granicę requestu. Do osobnej migracji pozostaje uwierzytelnianie z trwałymi
-  zdarzeniami bezpieczeństwa.
+  AI i uwierzytelnianie — nie wykonują już przypadkowych commitów wewnątrz
+  przypadków użycia HTTP. Workery AI są jawnymi właścicielami transakcji i
+  commitują każdy udany element batcha osobno. Odmowy logowania zapisuje
+  `AuthenticationSecurityRecorder` w izolowanej transakcji, dzięki czemu audit,
+  licznik prób i blokada konta przeżywają rollback odpowiedzi `401/403`. Testy
+  integracyjne potwierdzają obie ścieżki, a bezpośrednie commity pozostały tylko
+  w udokumentowanych granicach unit-of-work.
 - **Category:** Transactions
 - **File:** `apps/backend/src/infrastructure/db/session.py` i serwisy
 - **Lines:** `get_db_session` oraz jawne `commit()` w service/router

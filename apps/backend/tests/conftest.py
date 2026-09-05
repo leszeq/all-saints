@@ -14,9 +14,11 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
+from src.application.services.auth_security_service import AuthenticationSecurityRecorder
 from src.domain.base import Base
 from src.infrastructure.db.session import get_db_session
 from src.main import app
+from src.presentation.api.v1.auth.router import get_authentication_security_recorder
 
 TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")
 SAFE_TEST_DATABASE_NAME = re.compile(r"^[a-zA-Z0-9_]+_test$")
@@ -104,7 +106,10 @@ async def db_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest.fixture
-async def async_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+async def async_client(
+    test_engine,
+    db_session: AsyncSession,
+) -> AsyncGenerator[AsyncClient, None]:
     async def override_get_db():
         try:
             yield db_session
@@ -113,7 +118,19 @@ async def async_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, 
             await db_session.rollback()
             raise
 
+    security_session_factory = async_sessionmaker(
+        test_engine,
+        expire_on_commit=False,
+        autoflush=False,
+    )
+
+    def override_security_recorder() -> AuthenticationSecurityRecorder:
+        return AuthenticationSecurityRecorder(security_session_factory)
+
     app.dependency_overrides[get_db_session] = override_get_db
+    app.dependency_overrides[get_authentication_security_recorder] = (
+        override_security_recorder
+    )
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://localhost"
     ) as client:
