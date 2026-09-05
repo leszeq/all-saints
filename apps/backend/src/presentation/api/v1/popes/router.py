@@ -42,6 +42,6 @@ async def create_pope(
 ) -> PopeSchema:
     pope = Pope(**data.model_dump())
     db.add(pope)
-    await db.commit()
+    await db.flush()
     await db.refresh(pope)
     return PopeSchema.model_validate(pope)

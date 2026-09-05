@@ -66,7 +66,7 @@ async def create_category(
     slug = slugify(data.name_pl)
     cat = Category(slug=slug, **data.model_dump())
     db.add(cat)
-    await db.commit()
+    await db.flush()
     await db.refresh(cat)
     return CategorySchema.model_validate(cat)
 
@@ -109,7 +109,7 @@ async def create_tag(
     slug = slugify(data.name_pl)
     tag = Tag(slug=slug, **data.model_dump())
     db.add(tag)
-    await db.commit()
+    await db.flush()
     await db.refresh(tag)
     return TagSchema.model_validate(tag)
 

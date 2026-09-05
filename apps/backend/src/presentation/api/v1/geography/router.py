@@ -68,7 +68,7 @@ async def create_country(
 ) -> CountrySchema:
     country = Country(**data.model_dump())
     db.add(country)
-    await db.commit()
+    await db.flush()
     await db.refresh(country)
     return CountrySchema.model_validate(country)
 
@@ -113,7 +113,7 @@ async def create_diocese(
 ) -> DioceseSchema:
     diocese = Diocese(**data.model_dump())
     db.add(diocese)
-    await db.commit()
+    await db.flush()
     await db.refresh(diocese)
     return DioceseSchema.model_validate(diocese)
 
@@ -161,7 +161,7 @@ async def create_place(
 ) -> PlaceSchema:
     place = Place(**data.model_dump())
     db.add(place)
-    await db.commit()
+    await db.flush()
     await db.refresh(place)
     return PlaceSchema.model_validate(place)
 
@@ -209,6 +209,6 @@ async def create_church(
 ) -> ChurchSchema:
     church = Church(**data.model_dump())
     db.add(church)
-    await db.commit()
+    await db.flush()
     await db.refresh(church)
     return ChurchSchema.model_validate(church)
