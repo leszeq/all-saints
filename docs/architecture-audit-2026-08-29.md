@@ -38,15 +38,15 @@ Stan na 2026-09-05 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **206 passed**, 0 failures, 0 errors, 0 warnings |
-| Backend coverage | **82.42%**, wymagany próg 80% spełniony |
+| Backend pytest | **207 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend coverage | **82.44%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0012_align_domain_indexes`, jeden head |
 | Nowa pusta baza | upgrade 0001 → 0012 oraz downgrade/re-upgrade: PASS |
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 101 plików źródłowych |
+| Ruff / strict mypy | PASS, mypy analizuje 104 pliki źródłowe |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -57,6 +57,7 @@ Stan na 2026-09-05 po kolejnych etapach refaktoryzacji:
 | Obserwowalność | poprawny JSON logging, request ID, Prometheus i opcjonalny Sentry |
 | Pydantic / Alembic / Ruff config | zdeprecjonowane konfiguracje usunięte |
 | Hashowanie haseł | bezpośredni bcrypt, zgodny z istniejącymi hashami Passlib |
+| Granice warstw backendu | test architektury blokuje nowe zależności niższych warstw od HTTP; pion zakonów rozdzielony |
 
 Zamknięte zostały wszystkie P1 z listy Top 10:
 
@@ -86,8 +87,8 @@ obciążenia oraz zautomatyzowanego release/CD do konkretnego środowiska.
 Kod udostępnia poprawne logi JSON, Prometheus i opcjonalny Sentry, ale odbiorniki i
 alerty są zadaniem platformowym. Backup PostgreSQL ma działający restore drill,
 lecz nadal wymaga harmonogramu, retencji, szyfrowania, kopii poza hostem i objęcia
-storage plikowego. W kodzie pozostają niejednolita polityka transakcji i duże
-serwisy/routery. Bieżąca gotowość wykonawcza to
+storage plikowego. W kodzie pozostają przejściowe naruszenia kierunku zależności
+warstw oraz duże routery. Bieżąca gotowość wykonawcza to
 **BETA**; przed publicznym wdrożeniem nadal trzeba zamknąć wymienione kroki
 operacyjne.
 
@@ -478,6 +479,25 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 - **Suggested fix:** Jedna polityka: application service flushuje, a granica requestu
   commit/rollback; wyjątkowe transakcje jawne przez `session.begin()`.
 - **Risk:** High przy zmianie masowej; wdrażać przypadek po przypadku.
+- **Estimated complexity:** Large.
+
+### ARCH-003
+
+- **Severity:** P2
+- **Status po refaktoryzacji:** W toku od 2026-09-05. Komendy pionu zakonów zostały
+  przeniesione do warstwy application, enum członkostwa do domeny, a serwis i importer
+  nie zależą już od schematów HTTP. Test architektury blokuje nowe zależności
+  `application/domain/infrastructure -> presentation` i jawnie ogranicza zastany dług
+  do pięciu modułów, które będą migrowane kolejnymi pionami.
+- **Category:** Architecture / dependency direction
+- **File:** `apps/backend/src/application`, `apps/backend/src/infrastructure`
+- **Problem:** Serwisy przypadków użycia i importer danych importują schematy z
+  warstwy prezentacji, przez co zależność biegnie od logiki do HTTP.
+- **Why it matters:** Przypadki użycia są trudniejsze do testowania i ponownego użycia,
+  a zmiana kontraktu transportowego może wymuszać zmianę logiki aplikacyjnej.
+- **Suggested fix:** Wydzielać komendy i typy domenowe pion po pionie, utrzymując
+  schematy transportowe jako cienkie adaptery kompatybilne z OpenAPI.
+- **Risk:** Medium; migracja szeroka, dlatego wykonywana przyrostowo.
 - **Estimated complexity:** Large.
 
 ### VER-001

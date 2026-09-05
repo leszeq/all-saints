@@ -9,6 +9,11 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.application.commands.religious_orders import (
+    AddReligiousOrderMembershipCommand,
+    CreateReligiousOrderCommand,
+    UpdateReligiousOrderCommand,
+)
 from src.application.services.audit_service import AuditContext, add_audit_log
 from src.application.services.person_snapshot import (
     append_relation_version,
@@ -18,11 +23,6 @@ from src.application.services.person_snapshot import (
 from src.domain.geography.models import ReligiousOrder
 from src.domain.hagiography.models import Person, PersonOrder, PublicationStatus
 from src.domain.identity.models import AuditAction
-from src.presentation.api.v1.orders.schemas import (
-    ReligiousOrderCreateSchema,
-    ReligiousOrderMembershipCreateSchema,
-    ReligiousOrderUpdateSchema,
-)
 
 
 class OrderNotFoundError(ValueError):
@@ -139,7 +139,7 @@ class OrderService:
         if (await self.db.execute(query)).scalar_one_or_none() is not None:
             raise OrderConflictError("Wspólnota o takim slugu już istnieje")
 
-    async def create_order(self, data: ReligiousOrderCreateSchema) -> ReligiousOrder:
+    async def create_order(self, data: CreateReligiousOrderCommand) -> ReligiousOrder:
         """Create a religious community record."""
         await self._assert_slug_available(data.slug)
         values = data.model_dump(mode="json")
@@ -150,7 +150,7 @@ class OrderService:
         return order
 
     async def update_order(
-        self, identifier: str, data: ReligiousOrderUpdateSchema
+        self, identifier: str, data: UpdateReligiousOrderCommand
     ) -> ReligiousOrder:
         """Update editable community content."""
         order, _memberships = await self.get_order(identifier, public_members_only=False)
@@ -173,7 +173,7 @@ class OrderService:
     async def add_membership(
         self,
         identifier: str,
-        data: ReligiousOrderMembershipCreateSchema,
+        data: AddReligiousOrderMembershipCommand,
         *,
         user_id: uuid.UUID | None = None,
         audit_context: AuditContext | None = None,

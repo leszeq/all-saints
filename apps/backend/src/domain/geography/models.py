@@ -76,6 +76,19 @@ class ReligiousCommunityType(StrEnum):
     OTHER = "other"
 
 
+class OrderMembershipType(StrEnum):
+    """A person's form of belonging to a religious family."""
+
+    FOUNDER = "founder"
+    MONK = "monk"
+    FRIAR = "friar"
+    NUN = "nun"
+    SISTER = "sister"
+    LAY_MEMBER = "lay_member"
+    SPIRITUAL_PATRON = "spiritual_patron"
+    MEMBER = "member"
+
+
 # ==============================================================================
 # COUNTRY
 # ==============================================================================

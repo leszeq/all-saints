@@ -8,6 +8,11 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from src.application.commands.religious_orders import (
+    AddReligiousOrderMembershipCommand,
+    CreateReligiousOrderCommand,
+    UpdateReligiousOrderCommand,
+)
 from src.application.services.order_service import (
     OrderConflictError,
     OrderNotFoundError,
@@ -15,6 +20,7 @@ from src.application.services.order_service import (
 )
 from src.domain.geography.models import (
     OrderCharism,
+    OrderMembershipType,
     ReligiousCommunityType,
     ReligiousOrder,
 )
@@ -26,12 +32,6 @@ from src.domain.hagiography.models import (
     PublicationStatus,
 )
 from src.domain.identity.models import AuditLog
-from src.presentation.api.v1.orders.schemas import (
-    OrderMembershipType,
-    ReligiousOrderCreateSchema,
-    ReligiousOrderMembershipCreateSchema,
-    ReligiousOrderUpdateSchema,
-)
 
 
 async def _person(db_session: AsyncSession, slug: str, status: PublicationStatus) -> Person:
@@ -55,7 +55,7 @@ async def test_order_service_defers_commit_to_unit_of_work(
     test_engine,
 ) -> None:
     order = await OrderService(db_session).create_order(
-        ReligiousOrderCreateSchema(
+        CreateReligiousOrderCommand(
             slug="transakcja-zakonu-test",
             name="Transakcja Zakonu Test",
         )
@@ -80,7 +80,7 @@ async def test_order_service_defers_commit_to_unit_of_work(
 async def test_order_crud_filters_and_slug_conflicts(db_session: AsyncSession) -> None:
     service = OrderService(db_session)
     franciscans = await service.create_order(
-        ReligiousOrderCreateSchema(
+        CreateReligiousOrderCommand(
             slug="franciszkanie-test",
             name="Franciszkanie Testowi",
             abbreviation="OFT",
@@ -95,7 +95,7 @@ async def test_order_crud_filters_and_slug_conflicts(db_session: AsyncSession) -
         )
     )
     benedictines = await service.create_order(
-        ReligiousOrderCreateSchema(
+        CreateReligiousOrderCommand(
             slug="benedyktyni-test",
             name="Benedyktyni Testowi",
             community_type=ReligiousCommunityType.MONASTIC_FAMILY,
@@ -108,7 +108,7 @@ async def test_order_crud_filters_and_slug_conflicts(db_session: AsyncSession) -
 
     with pytest.raises(OrderConflictError):
         await service.create_order(
-            ReligiousOrderCreateSchema(slug=franciscans.slug, name="Duplikat")
+            CreateReligiousOrderCommand(slug=franciscans.slug, name="Duplikat")
         )
 
     assert [order.id for order, _ in await service.list_orders(search="Ewangelii")] == [
@@ -126,7 +126,7 @@ async def test_order_crud_filters_and_slug_conflicts(db_session: AsyncSession) -
 
     changed = await service.update_order(
         str(franciscans.id),
-        ReligiousOrderUpdateSchema(
+        UpdateReligiousOrderCommand(
             slug="franciszkanie-zmienieni",
             name="Franciszkanie Zmienieni",
         ),
@@ -135,7 +135,7 @@ async def test_order_crud_filters_and_slug_conflicts(db_session: AsyncSession) -
     with pytest.raises(OrderConflictError):
         await service.update_order(
             changed.slug,
-            ReligiousOrderUpdateSchema(slug=benedictines.slug),
+            UpdateReligiousOrderCommand(slug=benedictines.slug),
         )
 
     await service.soft_delete_order(benedictines.slug)
@@ -149,14 +149,14 @@ async def test_order_memberships_hide_drafts_and_reject_duplicates(
 ) -> None:
     service = OrderService(db_session)
     order = await service.create_order(
-        ReligiousOrderCreateSchema(slug="wspolnota-test", name="Wspólnota Testowa")
+        CreateReligiousOrderCommand(slug="wspolnota-test", name="Wspólnota Testowa")
     )
     published = await _person(db_session, "sw-opublikowany", PublicationStatus.PUBLISHED)
     draft = await _person(db_session, "szkic-czlonka", PublicationStatus.DRAFT)
 
     published_membership = await service.add_membership(
         order.slug,
-        ReligiousOrderMembershipCreateSchema(
+        AddReligiousOrderMembershipCommand(
             person_id=published.id,
             is_founder=True,
             membership_type=OrderMembershipType.FOUNDER,
@@ -165,7 +165,7 @@ async def test_order_memberships_hide_drafts_and_reject_duplicates(
     )
     await service.add_membership(
         order.slug,
-        ReligiousOrderMembershipCreateSchema(
+        AddReligiousOrderMembershipCommand(
             person_id=draft.id,
             membership_type=OrderMembershipType.MEMBER,
         ),
@@ -192,12 +192,12 @@ async def test_order_memberships_hide_drafts_and_reject_duplicates(
     with pytest.raises(OrderConflictError):
         await service.add_membership(
             order.slug,
-            ReligiousOrderMembershipCreateSchema(person_id=published.id),
+            AddReligiousOrderMembershipCommand(person_id=published.id),
         )
     with pytest.raises(OrderNotFoundError, match="Osoba"):
         await service.add_membership(
             order.slug,
-            ReligiousOrderMembershipCreateSchema(person_id=uuid.uuid4()),
+            AddReligiousOrderMembershipCommand(person_id=uuid.uuid4()),
         )
 
     await service.delete_membership(order.slug, published.id)

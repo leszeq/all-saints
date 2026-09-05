@@ -13,10 +13,13 @@ from pathlib import Path
 
 from sqlalchemy import text
 
-from src.domain.geography.models import OrderCharism, ReligiousCommunityType
+from src.domain.geography.models import (
+    OrderCharism,
+    OrderMembershipType,
+    ReligiousCommunityType,
+)
 from src.domain.hagiography.models import Era, Gender, PersonType, PublicationStatus
 from src.infrastructure.db.session import get_engine
-from src.presentation.api.v1.orders.schemas import OrderMembershipType
 
 
 @dataclass(slots=True)
