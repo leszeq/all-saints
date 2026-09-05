@@ -273,7 +273,8 @@ export const taxonomyApi = {
   tags: (params?: Record<string, unknown>) =>
     api.get("/taxonomy/tags", { params }),
   statesOfLife: () => api.get("/taxonomy/states-of-life"),
-  occupations: () => api.get("/taxonomy/occupations"),
+  occupations: (params?: Record<string, unknown>) =>
+    api.get("/taxonomy/occupations", { params }),
 };
 
 export const usersApi = {

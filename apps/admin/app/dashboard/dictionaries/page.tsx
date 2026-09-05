@@ -86,7 +86,7 @@ export default function DictionariesPage() {
   });
   const tagsQuery = useQuery({
     queryKey: ["taxonomy", "tags"],
-    queryFn: () => taxonomyApi.tags(),
+    queryFn: () => taxonomyApi.tags({ per_page: 500 }),
   });
   const statesQuery = useQuery({
     queryKey: ["taxonomy", "states-of-life"],
@@ -94,7 +94,7 @@ export default function DictionariesPage() {
   });
   const occupationsQuery = useQuery({
     queryKey: ["taxonomy", "occupations"],
-    queryFn: () => taxonomyApi.occupations(),
+    queryFn: () => taxonomyApi.occupations({ per_page: 500 }),
   });
   const popesQuery = useQuery({
     queryKey: ["popes"],
@@ -120,6 +120,10 @@ export default function DictionariesPage() {
   const popes = useMemo(
     () => (popesQuery.data?.data ?? []) as ApiRecord[],
     [popesQuery.data?.data],
+  );
+  const tagsTotal = Number(tagsQuery.data?.headers["x-total-count"] ?? tagsList.length);
+  const occupationsTotal = Number(
+    occupationsQuery.data?.headers["x-total-count"] ?? occupations.length,
   );
   const categoryNames = useMemo(
     () => new Map(categories.map((category) => [String(category.id), valueText(category.name_pl)])),
@@ -177,7 +181,7 @@ export default function DictionariesPage() {
         />
         <MetricCard
           label="Tagi"
-          value={tagsList.length}
+          value={tagsTotal}
           detail={`${tagsList.filter((tag) => tag.color).length.toLocaleString("pl-PL")} z kolorem`}
           icon={Tags}
         />
@@ -189,7 +193,7 @@ export default function DictionariesPage() {
         />
         <MetricCard
           label="Zawody"
-          value={occupations.length}
+          value={occupationsTotal}
           detail={`${occupations.filter((occupation) => occupation.description).length.toLocaleString("pl-PL")} z opisem`}
           icon={BriefcaseBusiness}
         />

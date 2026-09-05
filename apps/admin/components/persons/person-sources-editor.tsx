@@ -79,13 +79,13 @@ export function PersonSourcesEditor({ personId }: { personId: string }) {
   });
   const bibliographyQuery = useQuery({
     queryKey: ["sources", "bibliography"],
-    queryFn: () => sourcesApi.bibliography(),
+    queryFn: () => sourcesApi.bibliography({ per_page: 500 }),
     staleTime: 60_000,
     enabled: sourceMode === "catalog",
   });
   const historicalQuery = useQuery({
     queryKey: ["sources", "historical"],
-    queryFn: () => sourcesApi.historicalSources(),
+    queryFn: () => sourcesApi.historicalSources({ per_page: 500 }),
     staleTime: 60_000,
     enabled: sourceMode === "catalog",
   });

@@ -6,13 +6,20 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.geography.models import Church, Country, Diocese, Place
 from src.domain.identity.models import User
 from src.infrastructure.db.session import get_db_session
+from src.presentation.api.pagination import (
+    PAGINATION_RESPONSE_DOCS,
+    PageNumber,
+    PageSize,
+    add_pagination_headers,
+    execute_page,
+)
 from src.presentation.api.v1.auth.router import require_permission
 from src.presentation.api.v1.geography.schemas import (
     ChurchCreateSchema,
@@ -71,17 +78,26 @@ async def create_country(
 # ==============================================================================
 
 
-@router.get("/dioceses", response_model=list[DioceseSchema], summary="List dioceses")
+@router.get(
+    "/dioceses",
+    response_model=list[DioceseSchema],
+    responses=PAGINATION_RESPONSE_DOCS,
+    summary="List dioceses",
+)
 async def list_dioceses(
+    response: Response,
     country_id: uuid.UUID | None = None,
+    page: PageNumber = 1,
+    per_page: PageSize = 100,
     db: AsyncSession = Depends(get_db_session),
 ) -> list[DioceseSchema]:
     query = select(Diocese).where(Diocese.deleted_at.is_(None))
     if country_id:
         query = query.where(Diocese.country_id == country_id)
     query = query.order_by(Diocese.name.asc())
-    res = await db.execute(query)
-    return [DioceseSchema.model_validate(d) for d in res.scalars().all()]
+    items, total = await execute_page(db, query, page=page, per_page=per_page)
+    add_pagination_headers(response, total=total, page=page, per_page=per_page)
+    return [DioceseSchema.model_validate(item) for item in items]
 
 
 @router.post(
@@ -107,10 +123,18 @@ async def create_diocese(
 # ==============================================================================
 
 
-@router.get("/places", response_model=list[PlaceSchema], summary="List places")
+@router.get(
+    "/places",
+    response_model=list[PlaceSchema],
+    responses=PAGINATION_RESPONSE_DOCS,
+    summary="List places",
+)
 async def list_places(
+    response: Response,
     country_id: uuid.UUID | None = None,
     search: str | None = Query(None, max_length=100),
+    page: PageNumber = 1,
+    per_page: PageSize = 100,
     db: AsyncSession = Depends(get_db_session),
 ) -> list[PlaceSchema]:
     query = select(Place).where(Place.deleted_at.is_(None))
@@ -118,9 +142,10 @@ async def list_places(
         query = query.where(Place.country_id == country_id)
     if search:
         query = query.where(Place.name.ilike(f"%{search}%"))
-    query = query.order_by(Place.name.asc()).limit(100)
-    res = await db.execute(query)
-    return [PlaceSchema.model_validate(p) for p in res.scalars().all()]
+    query = query.order_by(Place.name.asc())
+    items, total = await execute_page(db, query, page=page, per_page=per_page)
+    add_pagination_headers(response, total=total, page=page, per_page=per_page)
+    return [PlaceSchema.model_validate(item) for item in items]
 
 
 @router.post(
@@ -146,10 +171,18 @@ async def create_place(
 # ==============================================================================
 
 
-@router.get("/churches", response_model=list[ChurchSchema], summary="List churches")
+@router.get(
+    "/churches",
+    response_model=list[ChurchSchema],
+    responses=PAGINATION_RESPONSE_DOCS,
+    summary="List churches",
+)
 async def list_churches(
+    response: Response,
     place_id: uuid.UUID | None = None,
     is_sanctuary: bool | None = None,
+    page: PageNumber = 1,
+    per_page: PageSize = 100,
     db: AsyncSession = Depends(get_db_session),
 ) -> list[ChurchSchema]:
     query = select(Church).where(Church.deleted_at.is_(None))
@@ -157,9 +190,10 @@ async def list_churches(
         query = query.where(Church.place_id == place_id)
     if is_sanctuary is not None:
         query = query.where(Church.is_national_sanctuary == is_sanctuary)
-    query = query.order_by(Church.name.asc()).limit(100)
-    res = await db.execute(query)
-    return [ChurchSchema.model_validate(c) for c in res.scalars().all()]
+    query = query.order_by(Church.name.asc())
+    items, total = await execute_page(db, query, page=page, per_page=per_page)
+    add_pagination_headers(response, total=total, page=page, per_page=per_page)
+    return [ChurchSchema.model_validate(item) for item in items]
 
 
 @router.post(

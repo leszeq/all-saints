@@ -85,28 +85,28 @@ export function SourcesClient({
 
   const bibliographyQuery = useQuery({
     queryKey: ["sources", "bibliography", search],
-    queryFn: () => sourcesApi.bibliography({ search: search || undefined }),
+    queryFn: () => sourcesApi.bibliography({ search: search || undefined, per_page: 500 }),
   });
   const historicalQuery = useQuery({
     queryKey: ["sources", "historical", search],
-    queryFn: () => sourcesApi.historicalSources({ search: search || undefined }),
+    queryFn: () => sourcesApi.historicalSources({ search: search || undefined, per_page: 500 }),
   });
   const imagesQuery = useQuery({
     queryKey: ["sources", "images", licenseFilter],
     queryFn: () =>
       sourcesApi.images({
         ...(licenseFilter ? { license: licenseFilter } : {}),
-        limit: licenseFilter ? 500 : 100,
+        per_page: licenseFilter ? 500 : 100,
       }),
   });
   const unknownImagesQuery = useQuery({
     queryKey: ["sources", "images", "license", "unknown"],
-    queryFn: () => sourcesApi.images({ license: "unknown", limit: 500 }),
+    queryFn: () => sourcesApi.images({ license: "unknown", per_page: 500 }),
     enabled: licenseFilter !== "unknown",
   });
   const documentsQuery = useQuery({
     queryKey: ["sources", "documents"],
-    queryFn: () => sourcesApi.documents(),
+    queryFn: () => sourcesApi.documents({ per_page: 500 }),
   });
 
   const bibliography = (bibliographyQuery.data?.data ?? []) as ApiRecord[];
@@ -122,7 +122,21 @@ export function SourcesClient({
     historicalQuery.isLoading ||
     imagesQuery.isLoading ||
     documentsQuery.isLoading;
-  const unknownLicenseCount = unknownLicenseImages.length;
+  const bibliographyTotal = Number(
+    bibliographyQuery.data?.headers["x-total-count"] ?? bibliography.length,
+  );
+  const historicalTotal = Number(
+    historicalQuery.data?.headers["x-total-count"] ?? historicalSources.length,
+  );
+  const imagesTotal = Number(imagesQuery.data?.headers["x-total-count"] ?? images.length);
+  const documentsTotal = Number(
+    documentsQuery.data?.headers["x-total-count"] ?? documents.length,
+  );
+  const unknownLicenseCount = Number(
+    (licenseFilter === "unknown" ? imagesQuery : unknownImagesQuery).data?.headers[
+      "x-total-count"
+    ] ?? unknownLicenseImages.length,
+  );
   const websiteCount = bibliography.filter((source) => source.source_type === "website").length;
   const digitizedCount = historicalSources.filter((source) => source.is_digitized).length;
 
@@ -158,25 +172,25 @@ export function SourcesClient({
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Podsumowanie źródeł">
         <MetricCard
           label="Bibliografia"
-          value={bibliography.length}
+          value={bibliographyTotal}
           detail={`${websiteCount.toLocaleString("pl-PL")} pozycji pochodzi z adresów URL`}
           icon={BookOpenText}
         />
         <MetricCard
           label="Źródła historyczne"
-          value={historicalSources.length}
+          value={historicalTotal}
           detail={`${digitizedCount.toLocaleString("pl-PL")} pozycji ma digitalizację`}
           icon={Archive}
         />
         <MetricCard
           label="Media"
-          value={images.length}
+          value={imagesTotal}
           detail={`${unknownLicenseCount.toLocaleString("pl-PL")} obrazów wymaga licencji`}
           icon={ImageIcon}
         />
         <MetricCard
           label="Dokumenty"
-          value={documents.length}
+          value={documentsTotal}
           detail={`${documents.filter((doc) => doc.is_public).length.toLocaleString("pl-PL")} dokumentów publicznych`}
           icon={FileText}
         />

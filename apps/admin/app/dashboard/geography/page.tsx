@@ -89,15 +89,15 @@ export default function GeographyPage() {
   });
   const placesQuery = useQuery({
     queryKey: ["geography", "places"],
-    queryFn: () => geographyApi.places(),
+    queryFn: () => geographyApi.places({ per_page: 500 }),
   });
   const diocesesQuery = useQuery({
     queryKey: ["geography", "dioceses"],
-    queryFn: () => geographyApi.dioceses(),
+    queryFn: () => geographyApi.dioceses({ per_page: 500 }),
   });
   const churchesQuery = useQuery({
     queryKey: ["geography", "churches"],
-    queryFn: () => geographyApi.churches(),
+    queryFn: () => geographyApi.churches({ per_page: 500 }),
   });
 
   const countries = useMemo(
@@ -115,6 +115,13 @@ export default function GeographyPage() {
   const churches = useMemo(
     () => (churchesQuery.data?.data ?? []) as ApiRecord[],
     [churchesQuery.data?.data],
+  );
+  const placesTotal = Number(placesQuery.data?.headers["x-total-count"] ?? places.length);
+  const diocesesTotal = Number(
+    diocesesQuery.data?.headers["x-total-count"] ?? dioceses.length,
+  );
+  const churchesTotal = Number(
+    churchesQuery.data?.headers["x-total-count"] ?? churches.length,
   );
   const countryNames = useMemo(
     () => new Map(countries.map((country) => [String(country.id), valueText(country.name_pl)])),
@@ -184,19 +191,19 @@ export default function GeographyPage() {
         />
         <MetricCard
           label="Miejsca"
-          value={places.length}
+          value={placesTotal}
           detail={`${places.filter((place) => place.latitude && place.longitude).length.toLocaleString("pl-PL")} z koordynatami`}
           icon={MapPin}
         />
         <MetricCard
           label="Diecezje"
-          value={dioceses.length}
+          value={diocesesTotal}
           detail={`${dioceses.filter((diocese) => diocese.is_archdiocese).length.toLocaleString("pl-PL")} archidiecezji`}
           icon={Building2}
         />
         <MetricCard
           label="Kościoły i sanktuaria"
-          value={churches.length}
+          value={churchesTotal}
           detail={`${sanctuaryCount.toLocaleString("pl-PL")} miejsc pielgrzymkowych`}
           icon={Church}
         />

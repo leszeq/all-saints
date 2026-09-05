@@ -49,6 +49,13 @@ from src.infrastructure.storage.avatar_storage import (
     get_avatar_storage,
     prepare_avatar,
 )
+from src.presentation.api.pagination import (
+    PAGINATION_RESPONSE_DOCS,
+    PageNumber,
+    PageSize,
+    add_pagination_headers,
+    execute_page,
+)
 from src.presentation.api.v1.auth.router import require_permission
 from src.presentation.api.v1.sources.schemas import (
     BibliographyCreateSchema,
@@ -154,20 +161,36 @@ async def get_source_stats(
     )
 
 
-@router.get("/bibliography", response_model=list[BibliographySchema], summary="List bibliography entries")
+@router.get(
+    "/bibliography",
+    response_model=list[BibliographySchema],
+    responses=PAGINATION_RESPONSE_DOCS,
+    summary="List bibliography entries",
+)
 async def list_bibliography(
+    response: Response,
     search: str | None = Query(None, max_length=100),
+    page: PageNumber = 1,
+    per_page: PageSize = 100,
     db: AsyncSession = Depends(get_db_session),
 ) -> list[BibliographySchema]:
     query = select(Bibliography).where(Bibliography.deleted_at.is_(None))
     if search:
-        query = query.where(Bibliography.title.ilike(f"%{search}%") | Bibliography.authors.ilike(f"%{search}%"))
-    query = query.order_by(Bibliography.year.desc().nullslast(), Bibliography.title.asc()).limit(100)
-    res = await db.execute(query)
-    return [BibliographySchema.model_validate(b) for b in res.scalars().all()]
+        query = query.where(
+            Bibliography.title.ilike(f"%{search}%") | Bibliography.authors.ilike(f"%{search}%")
+        )
+    query = query.order_by(Bibliography.year.desc().nullslast(), Bibliography.title.asc())
+    items, total = await execute_page(db, query, page=page, per_page=per_page)
+    add_pagination_headers(response, total=total, page=page, per_page=per_page)
+    return [BibliographySchema.model_validate(item) for item in items]
 
 
-@router.post("/bibliography", response_model=BibliographySchema, status_code=status.HTTP_201_CREATED, summary="Create bibliography entry")
+@router.post(
+    "/bibliography",
+    response_model=BibliographySchema,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create bibliography entry",
+)
 async def create_bibliography(
     data: BibliographyCreateSchema,
     db: AsyncSession = Depends(get_db_session),
@@ -185,20 +208,37 @@ async def create_bibliography(
 # ==============================================================================
 
 
-@router.get("/historical-sources", response_model=list[HistoricalSourceSchema], summary="List primary historical sources")
+@router.get(
+    "/historical-sources",
+    response_model=list[HistoricalSourceSchema],
+    responses=PAGINATION_RESPONSE_DOCS,
+    summary="List primary historical sources",
+)
 async def list_historical_sources(
+    response: Response,
     search: str | None = Query(None, max_length=100),
+    page: PageNumber = 1,
+    per_page: PageSize = 100,
     db: AsyncSession = Depends(get_db_session),
 ) -> list[HistoricalSourceSchema]:
     query = select(HistoricalSource).where(HistoricalSource.deleted_at.is_(None))
     if search:
-        query = query.where(HistoricalSource.title.ilike(f"%{search}%") | HistoricalSource.repository.ilike(f"%{search}%"))
-    query = query.order_by(HistoricalSource.title.asc()).limit(100)
-    res = await db.execute(query)
-    return [HistoricalSourceSchema.model_validate(s) for s in res.scalars().all()]
+        query = query.where(
+            HistoricalSource.title.ilike(f"%{search}%")
+            | HistoricalSource.repository.ilike(f"%{search}%")
+        )
+    query = query.order_by(HistoricalSource.title.asc())
+    items, total = await execute_page(db, query, page=page, per_page=per_page)
+    add_pagination_headers(response, total=total, page=page, per_page=per_page)
+    return [HistoricalSourceSchema.model_validate(item) for item in items]
 
 
-@router.post("/historical-sources", response_model=HistoricalSourceSchema, status_code=status.HTTP_201_CREATED, summary="Create historical source")
+@router.post(
+    "/historical-sources",
+    response_model=HistoricalSourceSchema,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create historical source",
+)
 async def create_historical_source(
     data: HistoricalSourceCreateSchema,
     db: AsyncSession = Depends(get_db_session),
@@ -509,7 +549,9 @@ async def upload_avatar_image(
         prepared = await asyncio.to_thread(prepare_avatar, content, file.content_type)
         stored = await storage.store(prepared)
     except InvalidAvatarError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
 
     url = str(request.url_for("get_uploaded_image", object_key=stored.storage_key))
     thumbnail_url = str(
@@ -542,7 +584,9 @@ async def get_uploaded_image(
     try:
         content = await storage.read(object_key)
     except FileNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Obraz nie istnieje") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Obraz nie istnieje"
+        ) from exc
     return Response(
         content=content,
         media_type="image/webp",
@@ -550,11 +594,19 @@ async def get_uploaded_image(
     )
 
 
-@router.get("/images", response_model=list[ImageSchema], summary="List images")
+@router.get(
+    "/images",
+    response_model=list[ImageSchema],
+    responses=PAGINATION_RESPONSE_DOCS,
+    summary="List images",
+)
 async def list_images(
+    response: Response,
     person_id: uuid.UUID | None = None,
     license: ImageLicense | None = Query(None),
-    limit: Annotated[int, Query(ge=1, le=500)] = 100,
+    page: PageNumber = 1,
+    per_page: PageSize = 100,
+    limit: Annotated[int | None, Query(ge=1, le=500, deprecated=True)] = None,
     db: AsyncSession = Depends(get_db_session),
     _user: User = Depends(require_permission("images", "read")),
 ) -> list[ImageSchema]:
@@ -563,12 +615,24 @@ async def list_images(
         query = query.where(Image.person_id == person_id)
     if license is not None:
         query = query.where(Image.license == license.value)
-    query = query.order_by(Image.is_primary.desc(), Image.sort_order.asc()).limit(limit)
-    res = await db.execute(query)
-    return [ImageSchema.model_validate(i) for i in res.scalars().all()]
+    query = query.order_by(Image.is_primary.desc(), Image.sort_order.asc())
+    effective_per_page = limit if limit is not None else per_page
+    items, total = await execute_page(db, query, page=page, per_page=effective_per_page)
+    add_pagination_headers(
+        response,
+        total=total,
+        page=page,
+        per_page=effective_per_page,
+    )
+    return [ImageSchema.model_validate(item) for item in items]
 
 
-@router.post("/images", response_model=ImageSchema, status_code=status.HTTP_201_CREATED, summary="Create image record")
+@router.post(
+    "/images",
+    response_model=ImageSchema,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create image record",
+)
 async def create_image(
     data: ImageCreateSchema,
     request: Request,
@@ -623,21 +687,35 @@ async def create_image(
 # ==============================================================================
 
 
-@router.get("/documents", response_model=list[DocumentSchema], summary="List documents")
+@router.get(
+    "/documents",
+    response_model=list[DocumentSchema],
+    responses=PAGINATION_RESPONSE_DOCS,
+    summary="List documents",
+)
 async def list_documents(
+    response: Response,
     person_id: uuid.UUID | None = None,
+    page: PageNumber = 1,
+    per_page: PageSize = 100,
     db: AsyncSession = Depends(get_db_session),
     _user: User = Depends(require_permission("sources", "read")),
 ) -> list[DocumentSchema]:
     query = select(Document).where(Document.deleted_at.is_(None))
     if person_id:
         query = query.where(Document.person_id == person_id)
-    query = query.order_by(Document.created_at.desc()).limit(100)
-    res = await db.execute(query)
-    return [DocumentSchema.model_validate(d) for d in res.scalars().all()]
+    query = query.order_by(Document.created_at.desc())
+    items, total = await execute_page(db, query, page=page, per_page=per_page)
+    add_pagination_headers(response, total=total, page=page, per_page=per_page)
+    return [DocumentSchema.model_validate(item) for item in items]
 
 
-@router.post("/documents", response_model=DocumentSchema, status_code=status.HTTP_201_CREATED, summary="Create document record")
+@router.post(
+    "/documents",
+    response_model=DocumentSchema,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create document record",
+)
 async def create_document(
     data: DocumentCreateSchema,
     db: AsyncSession = Depends(get_db_session),

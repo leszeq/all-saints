@@ -133,18 +133,33 @@ Bearer JWT token wymagany dla większości endpointów.
         },
         openapi_tags=[
             {"name": "auth", "description": "Logowanie, tokeny JWT i konto bieżącego użytkownika"},
-            {"name": "persons", "description": "Osoby, święci, wersjonowanie i workflow publikacyjny"},
-            {"name": "editorial", "description": "Pulpit redakcyjny, jakość danych i kolejka recenzji"},
-            {"name": "calendar", "description": "Kalendarze liturgiczne, wspomnienia i widoki dnia"},
+            {
+                "name": "persons",
+                "description": "Osoby, święci, wersjonowanie i workflow publikacyjny",
+            },
+            {
+                "name": "editorial",
+                "description": "Pulpit redakcyjny, jakość danych i kolejka recenzji",
+            },
+            {
+                "name": "calendar",
+                "description": "Kalendarze liturgiczne, wspomnienia i widoki dnia",
+            },
             {"name": "geography", "description": "Kraje, miejsca, diecezje i kościoły"},
             {"name": "taxonomy", "description": "Kategorie, tagi, stany życia i zawody"},
             {"name": "orders", "description": "Zakony i zgromadzenia"},
             {"name": "popes", "description": "Papieże i dane o kanonizacjach"},
-            {"name": "sources", "description": "Bibliografia, źródła historyczne, media i dokumenty"},
+            {
+                "name": "sources",
+                "description": "Bibliografia, źródła historyczne, media i dokumenty",
+            },
             {"name": "settings", "description": "Bezpieczny podgląd konfiguracji systemu i panelu"},
             {"name": "users", "description": "Użytkownicy i uprawnienia panelu administracyjnego"},
             {"name": "health", "description": "Stan aplikacji i jej zależności"},
-            {"name": "ai", "description": "Wyszukiwanie semantyczne, embeddingi pgvector i moduły AI"},
+            {
+                "name": "ai",
+                "description": "Wyszukiwanie semantyczne, embeddingi pgvector i moduły AI",
+            },
         ],
     )
 
@@ -189,7 +204,14 @@ def _setup_middleware(app: FastAPI) -> None:
             "X-Requested-With",
             "X-Request-ID",
         ],
-        expose_headers=["X-Request-ID", "X-Process-Time"],
+        expose_headers=[
+            "X-Request-ID",
+            "X-Process-Time",
+            "X-Total-Count",
+            "X-Page",
+            "X-Per-Page",
+            "X-Total-Pages",
+        ],
         max_age=86400,  # 24 hours preflight cache
     )
 

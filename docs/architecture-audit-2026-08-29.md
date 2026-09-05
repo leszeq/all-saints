@@ -590,6 +590,13 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 ### API-002
 
 - **Severity:** P2
+- **Status po refaktoryzacji:** Zamknięte 2026-09-05. Rosnące listy miejsc,
+  diecezji, kościołów, bibliografii, źródeł historycznych, obrazów, dokumentów,
+  tagów i zawodów mają wspólne, ograniczone parametry `page` / `per_page` oraz
+  udokumentowane nagłówki `X-Total-Count`, `X-Page`, `X-Per-Page` i
+  `X-Total-Pages`. Ciało pozostaje tablicą JSON dla kompatybilności ze starszymi
+  klientami. Panel korzysta z jawnego limitu i pełnych liczników z nagłówków, a CORS
+  je eksponuje. Małe słowniki kontrolowane nadal zwracają pełne listy.
 - **Category:** Pagination
 - **File:** geography/taxonomy/source routers
 - **Lines:** list endpoints
