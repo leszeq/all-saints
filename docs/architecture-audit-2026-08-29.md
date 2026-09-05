@@ -38,8 +38,8 @@ Stan na 2026-09-05 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **200 passed**, 0 failures, 0 errors, 0 warnings |
-| Backend coverage | **81.72%**, wymagany próg 80% spełniony |
+| Backend pytest | **201 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend coverage | **82.11%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0012_align_domain_indexes`, jeden head |
 | Nowa pusta baza | upgrade 0001 → 0012 oraz downgrade/re-upgrade: PASS |
@@ -458,12 +458,13 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 - **Severity:** P2
 - **Status po refaktoryzacji:** W toku od 2026-09-05. Ustalono i udokumentowano
   jedną politykę unit-of-work: serwisy flushują, a granica requestu lub workera
-  commit/rollbackuje. Trzy piony — zakony wraz z członkostwami, kalendarz
-  liturgiczny wraz z obchodami oraz osoby z wersjonowaniem, audytem i workflow
-  redakcyjnym — nie wykonują już commitów w serwisach. Testy integracyjne
-  potwierdzają niewidoczność zmian w drugiej sesji przed commitem właściciela,
-  a provider klienta testowego odwzorowuje produkcyjną granicę requestu.
-  Pozostałe moduły wymagają migracji małymi etapami.
+  commit/rollbackuje. Cztery piony — zakony wraz z członkostwami, kalendarz
+  liturgiczny wraz z obchodami, osoby z wersjonowaniem, audytem i workflow
+  redakcyjnym oraz kontrola dostępu użytkowników, ról i uprawnień — nie wykonują
+  już commitów w serwisach. Testy integracyjne potwierdzają niewidoczność zmian
+  w drugiej sesji przed commitem właściciela, a provider klienta testowego
+  odwzorowuje produkcyjną granicę requestu. Pozostałe moduły wymagają migracji
+  małymi etapami.
 - **Category:** Transactions
 - **File:** `apps/backend/src/infrastructure/db/session.py` i serwisy
 - **Lines:** `get_db_session` oraz jawne `commit()` w service/router

@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import UTC, datetime
 
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from src.application.services.access_control_service import AccessControlService
 from src.core.security import jwt_service
 from src.domain.identity.models import (
     Permission,
@@ -92,6 +94,71 @@ async def _create_actor(
         roles=[role.name],
     )
     return user, role, {"Authorization": f"Bearer {token}"}
+
+
+@pytest.mark.asyncio
+async def test_access_control_service_defers_changes_to_unit_of_work(test_engine) -> None:
+    actor_id = uuid.uuid4()
+    managed_user_id = uuid.uuid4()
+    custom_role_id = uuid.uuid4()
+    session_factory = async_sessionmaker(
+        test_engine,
+        expire_on_commit=False,
+        autoflush=False,
+    )
+
+    async with session_factory() as setup_session:
+        setup_session.add_all(
+            [
+                User(
+                    id=actor_id,
+                    email="access-owner@example.com",
+                    hashed_password="not-used",
+                    full_name="Access Owner",
+                    status=UserStatus.ACTIVE,
+                    is_verified=True,
+                ),
+                User(
+                    id=managed_user_id,
+                    email="access-managed@example.com",
+                    hashed_password="not-used",
+                    full_name="Before commit",
+                    status=UserStatus.ACTIVE,
+                    is_verified=True,
+                ),
+                Role(
+                    id=custom_role_id,
+                    name="access_transaction_test",
+                    display_name="Before commit",
+                    is_system=False,
+                ),
+            ]
+        )
+        await setup_session.commit()
+
+    async with session_factory() as writer_session, session_factory() as observer_session:
+        service = AccessControlService(writer_session)
+        await service.update_user(
+            managed_user_id,
+            actor_id=actor_id,
+            full_name="After commit",
+        )
+        await service.update_role(custom_role_id, display_name="After commit")
+
+        observed_user = (
+            await observer_session.execute(select(User).where(User.id == managed_user_id))
+        ).scalar_one()
+        observed_role = (
+            await observer_session.execute(select(Role).where(Role.id == custom_role_id))
+        ).scalar_one()
+        assert observed_user.full_name == "Before commit"
+        assert observed_role.display_name == "Before commit"
+
+        await writer_session.commit()
+        await observer_session.refresh(observed_user)
+        await observer_session.refresh(observed_role)
+        assert observed_user.full_name == "After commit"
+        assert observed_role.display_name == "After commit"
 
 
 @pytest.mark.asyncio

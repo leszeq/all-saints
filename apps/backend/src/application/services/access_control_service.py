@@ -42,7 +42,7 @@ class AccessControlValidationError(ValueError):
 
 
 class AccessControlService:
-    """Manage identities without exposing persistence details to API routers."""
+    """Manage identities inside a transaction owned by the caller."""
 
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
@@ -129,9 +129,8 @@ class AccessControlService:
                     assigned_by_id=actor_id,
                 )
             )
-            await self.db.commit()
+            await self.db.flush()
         except IntegrityError as exc:
-            await self.db.rollback()
             raise AccessControlConflictError("Nie udało się utworzyć unikalnego konta") from exc
         return await self._get_user(user.id)
 
@@ -170,7 +169,7 @@ class AccessControlService:
             )
         user.version += 1
         user.updated_at = datetime.now(UTC)
-        await self.db.commit()
+        await self.db.flush()
         return await self._get_user(user.id)
 
     async def delete_user(self, user_id: uuid.UUID, *, actor_id: uuid.UUID) -> None:
@@ -179,7 +178,7 @@ class AccessControlService:
         user.deleted_at = datetime.now(UTC)
         user.status = UserStatus.INACTIVE
         user.version += 1
-        await self.db.commit()
+        await self.db.flush()
 
     async def list_roles(self) -> tuple[Sequence[Role], dict[uuid.UUID, int]]:
         roles = (
@@ -228,9 +227,8 @@ class AccessControlService:
         try:
             await self.db.flush()
             self._assign_permissions(role, permissions)
-            await self.db.commit()
+            await self.db.flush()
         except IntegrityError as exc:
-            await self.db.rollback()
             raise AccessControlConflictError("Nie udało się utworzyć unikalnej roli") from exc
         return await self._get_role(role.id)
 
@@ -257,7 +255,7 @@ class AccessControlService:
             self._assign_permissions(role, permissions)
         role.version += 1
         role.updated_at = datetime.now(UTC)
-        await self.db.commit()
+        await self.db.flush()
         return await self._get_role(role.id)
 
     async def delete_role(self, role_id: uuid.UUID) -> None:
@@ -275,7 +273,7 @@ class AccessControlService:
             )
         role.deleted_at = datetime.now(UTC)
         role.version += 1
-        await self.db.commit()
+        await self.db.flush()
 
     async def _get_user(self, user_id: uuid.UUID, *, for_update: bool = False) -> User:
         query = self._user_query().where(User.id == user_id, User.deleted_at.is_(None))

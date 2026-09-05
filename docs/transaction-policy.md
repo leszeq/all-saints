@@ -23,13 +23,15 @@ do jawnych, izolowanych operacji podczas migracji modułu uwierzytelniania.
 
 ## Stan migracji
 
-Z zasady korzystają obecnie trzy piony:
+Z zasady korzystają obecnie cztery piony:
 
 - zakony i zgromadzenia — tworzenie, edycja, soft-delete oraz zmiana członkostwa;
 - kalendarz liturgiczny — obchody nieosobowe, przypisania do dni, zmiana wpisu
   głównego i soft-delete;
 - osoby i workflow redakcyjny — tworzenie, edycja, soft-delete, przywracanie,
-  zmiany statusu, snapshot wersji i audit log są zatwierdzane atomowo.
+  zmiany statusu, snapshot wersji i audit log są zatwierdzane atomowo;
+- kontrola dostępu — konta użytkowników, przypisania ról, role niestandardowe
+  oraz ich uprawnienia są zatwierdzane przez właściciela unit-of-work.
 
 Operacje te tylko flushują zmiany; produkcyjny provider sesji i jego odpowiednik
 w testach integracyjnych posiadają commit/rollback requestu. Pozostałe moduły
