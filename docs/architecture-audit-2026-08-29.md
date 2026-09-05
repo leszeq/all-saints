@@ -45,6 +45,7 @@ Stan na 2026-09-05 po kolejnych etapach refaktoryzacji:
 | Nowa pusta baza | upgrade 0001 → 0012 oraz downgrade/re-upgrade: PASS |
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
+| `npm audit` | 0 znanych podatności w panelu i portalu |
 | Ruff / strict mypy | PASS, mypy analizuje 101 plików źródłowych |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
@@ -395,6 +396,11 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 ### CI-001
 
 - **Severity:** P2
+- **Status po refaktoryzacji:** Zamknięte 2026-09-05. CI wykonuje kontrolę migracji,
+  Ruff, strict mypy, pytest z progiem coverage, `pip-audit`, `npm audit` dla obu
+  frontendów, lint, typecheck, buildy, krytyczne E2E oraz smoke całego stosu
+  produkcyjnego z próbą backup/restore. Dependabot co tydzień proponuje grupowane
+  aktualizacje minor/patch dla Poetry, obu lockfile'ów npm i GitHub Actions.
 - **Category:** CI/CD
 - **File:** repo root
 - **Lines:** brak `.github/workflows`

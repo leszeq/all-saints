@@ -2,7 +2,7 @@
 	prod-check prod-build prod-up prod-down migrate migrate-create migrate-down migrate-history \
 	seed reset-db test test-unit test-integration test-e2e test-coverage lint \
 	lint-backend lint-frontend format type-check type-check-backend \
-	type-check-frontend logs logs-backend logs-db ps shell-backend shell-db clean \
+	type-check-frontend audit logs logs-backend logs-db ps shell-backend shell-db clean \
 	build export-xlsx export-pdf openapi-export backup-db \
 	prod-backup prod-restore-check
 
@@ -170,6 +170,11 @@ type-check-backend: ## Run strict mypy for backend source
 type-check-frontend: ## Run TypeScript type checking
 	cd apps/admin && npm run type-check
 	cd apps/web && npm run type-check
+
+audit: ## Audit locked backend and frontend dependencies
+	$(BACKEND_RUN) .venv/bin/pip-audit
+	cd apps/admin && npm run audit
+	cd apps/web && npm run audit
 
 # ==============================================================================
 # UTILITIES
