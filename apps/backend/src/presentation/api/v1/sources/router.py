@@ -198,7 +198,7 @@ async def create_bibliography(
 ) -> BibliographySchema:
     bib = Bibliography(**data.model_dump())
     db.add(bib)
-    await db.commit()
+    await db.flush()
     await db.refresh(bib)
     return BibliographySchema.model_validate(bib)
 
@@ -246,7 +246,7 @@ async def create_historical_source(
 ) -> HistoricalSourceSchema:
     src = HistoricalSource(**data.model_dump())
     db.add(src)
-    await db.commit()
+    await db.flush()
     await db.refresh(src)
     return HistoricalSourceSchema.model_validate(src)
 
@@ -358,7 +358,7 @@ async def create_person_source(
         new_value=current_snapshot,
         extra_metadata={"relation": "sources", "operation": "add"},
     )
-    await db.commit()
+    await db.flush()
 
     result = await db.execute(
         select(PersonSource)
@@ -456,7 +456,7 @@ async def create_person_web_source(
         new_value=current_snapshot,
         extra_metadata={"relation": "sources", "operation": "add"},
     )
-    await db.commit()
+    await db.flush()
 
     result = await db.execute(
         select(PersonSource)
@@ -521,7 +521,7 @@ async def delete_person_source(
         new_value=current_snapshot,
         extra_metadata={"relation": "sources", "operation": "remove"},
     )
-    await db.commit()
+    await db.flush()
 
 
 # ==============================================================================
@@ -677,7 +677,7 @@ async def create_image(
             new_value=current_snapshot,
             extra_metadata={"relation": "images", "operation": "add"},
         )
-    await db.commit()
+    await db.flush()
     await db.refresh(img)
     return ImageSchema.model_validate(img)
 
@@ -723,6 +723,6 @@ async def create_document(
 ) -> DocumentSchema:
     doc = Document(**data.model_dump())
     db.add(doc)
-    await db.commit()
+    await db.flush()
     await db.refresh(doc)
     return DocumentSchema.model_validate(doc)
