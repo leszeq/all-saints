@@ -27,4 +27,10 @@ zachowując nazwy i kształt publicznego kontraktu OpenAPI. `OrderMembershipType
 pojęciem domenowym i znajduje się obok pozostałych enumów wspólnot religijnych.
 
 `OrderService` oraz importer danych nie zależą już od routerów ani schematów HTTP.
-Ten sam wzorzec należy zastosować kolejno do kalendarza, osób i redakcji.
+
+Drugim wydzielonym pionem jest kalendarz liturgiczny. Komendy obchodów i stałych
+wpisów kalendarza, razem z walidacją daty i rodzaju celu, znajdują się w
+`application.commands.liturgical_calendar`. Warstwa HTTP zachowuje dotychczasowe
+nazwy schematów i publiczny kontrakt.
+
+Ten sam wzorzec należy zastosować kolejno do osób i redakcji.

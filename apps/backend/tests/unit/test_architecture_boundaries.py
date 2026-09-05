@@ -11,7 +11,6 @@ SRC_ROOT = BACKEND_ROOT / "src"
 # Existing debt is removed vertically. Files disappear from this allowlist as
 # their input/output models move below the presentation layer.
 ALLOWED_PRESENTATION_DEPENDENCIES = {
-    "application/services/calendar_service.py",
     "application/services/editorial_quality.py",
     "application/services/editorial_service.py",
     "application/services/editorial_source_quality.py",

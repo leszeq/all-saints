@@ -11,18 +11,18 @@ from sqlalchemy import and_, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
+from src.application.commands.liturgical_calendar import (
+    CreateFeastEntryCommand,
+    CreateLiturgicalObservanceCommand,
+    UpdateFeastEntryCommand,
+    UpdateLiturgicalObservanceCommand,
+)
 from src.domain.hagiography.models import Person
 from src.domain.liturgy.models import (
     Feast,
     FeastRank,
     LiturgicalCalendar,
     LiturgicalObservance,
-)
-from src.presentation.api.v1.calendar.schemas import (
-    FeastEntryCreateSchema,
-    FeastEntryUpdateSchema,
-    LiturgicalObservanceCreateSchema,
-    LiturgicalObservanceUpdateSchema,
 )
 
 RANK_PRIORITY: dict[str, int] = {
@@ -123,7 +123,7 @@ class CalendarService:
             raise ObservanceConflictError("Slug obchodu liturgicznego jest już zajęty")
 
     async def create_observance(
-        self, data: LiturgicalObservanceCreateSchema
+        self, data: CreateLiturgicalObservanceCommand
     ) -> LiturgicalObservance:
         """Create a non-person observance without entering it into the person catalogue."""
         await self._ensure_observance_slug_available(data.slug)
@@ -135,7 +135,7 @@ class CalendarService:
     async def update_observance(
         self,
         observance_id: uuid.UUID,
-        data: LiturgicalObservanceUpdateSchema,
+        data: UpdateLiturgicalObservanceCommand,
     ) -> LiturgicalObservance:
         """Update editorial content of a non-person observance."""
         observance = await self.get_observance(observance_id)
@@ -409,7 +409,7 @@ class CalendarService:
         )
         return list(result.scalars().unique().all())
 
-    async def create_entry(self, data: FeastEntryCreateSchema) -> Feast:
+    async def create_entry(self, data: CreateFeastEntryCommand) -> Feast:
         """Create a fixed commemoration and maintain the one-primary invariant."""
         selected = await self.get_calendar(data.calendar_code)
         person: Person | None = None
@@ -454,7 +454,7 @@ class CalendarService:
         await self.db.flush()
         return await self.get_entry(entry.id)
 
-    async def update_entry(self, entry_id: uuid.UUID, data: FeastEntryUpdateSchema) -> Feast:
+    async def update_entry(self, entry_id: uuid.UUID, data: UpdateFeastEntryCommand) -> Feast:
         """Update one commemoration and re-check its date-level invariants."""
         entry = await self.get_entry(entry_id)
         changes = data.model_dump(exclude_unset=True, mode="json")

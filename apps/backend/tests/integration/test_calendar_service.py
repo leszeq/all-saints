@@ -9,6 +9,12 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from src.application.commands.liturgical_calendar import (
+    CreateFeastEntryCommand,
+    CreateLiturgicalObservanceCommand,
+    UpdateFeastEntryCommand,
+    UpdateLiturgicalObservanceCommand,
+)
 from src.application.services.calendar_service import (
     CalendarNotFoundError,
     CalendarService,
@@ -24,12 +30,6 @@ from src.domain.liturgy.models import (
     LiturgicalCalendar,
     LiturgicalObservance,
     ObservanceType,
-)
-from src.presentation.api.v1.calendar.schemas import (
-    FeastEntryCreateSchema,
-    FeastEntryUpdateSchema,
-    LiturgicalObservanceCreateSchema,
-    LiturgicalObservanceUpdateSchema,
 )
 
 
@@ -80,7 +80,7 @@ async def test_calendar_service_defers_commit_to_unit_of_work(
 ) -> None:
     await _seed_catalogue(db_session)
     observance = await CalendarService(db_session).create_observance(
-        LiturgicalObservanceCreateSchema(
+        CreateLiturgicalObservanceCommand(
             slug="transakcja-obchodu-test",
             title_pl="Transakcja obchodu testowego",
             observance_type=ObservanceType.OTHER,
@@ -117,7 +117,7 @@ async def test_observance_crud_and_conflict_rules(db_session: AsyncSession) -> N
         await service.get_calendar("missing")
 
     created = await service.create_observance(
-        LiturgicalObservanceCreateSchema(
+        CreateLiturgicalObservanceCommand(
             slug="matki-bozej-testowej",
             title_pl="Matki Bożej Testowej",
             observance_type=ObservanceType.MARIAN,
@@ -130,7 +130,7 @@ async def test_observance_crud_and_conflict_rules(db_session: AsyncSession) -> N
 
     with pytest.raises(ObservanceConflictError):
         await service.create_observance(
-            LiturgicalObservanceCreateSchema(
+            CreateLiturgicalObservanceCommand(
                 slug=created.slug,
                 title_pl="Duplikat obchodu",
                 observance_type=ObservanceType.OTHER,
@@ -139,7 +139,7 @@ async def test_observance_crud_and_conflict_rules(db_session: AsyncSession) -> N
 
     updated = await service.update_observance(
         created.id,
-        LiturgicalObservanceUpdateSchema(
+        UpdateLiturgicalObservanceCommand(
             slug="matki-bozej-zmienionej",
             title_pl="Matki Bożej Zmienionej",
             is_featured=False,
@@ -161,7 +161,7 @@ async def test_calendar_entries_merge_public_targets_and_maintain_primary(
     calendars, published, draft = await _seed_catalogue(db_session)
     service = CalendarService(db_session)
     observance = await service.create_observance(
-        LiturgicalObservanceCreateSchema(
+        CreateLiturgicalObservanceCommand(
             slug="uroczystosc-testowa",
             title_pl="Uroczystość Testowa",
             observance_type=ObservanceType.LORD,
@@ -170,7 +170,7 @@ async def test_calendar_entries_merge_public_targets_and_maintain_primary(
     )
 
     universal = await service.create_entry(
-        FeastEntryCreateSchema(
+        CreateFeastEntryCommand(
             person_id=published.id,
             calendar_code="roman_universal",
             month=8,
@@ -181,7 +181,7 @@ async def test_calendar_entries_merge_public_targets_and_maintain_primary(
         )
     )
     draft_entry = await service.create_entry(
-        FeastEntryCreateSchema(
+        CreateFeastEntryCommand(
             person_id=draft.id,
             calendar_code="roman_pl",
             month=8,
@@ -189,7 +189,7 @@ async def test_calendar_entries_merge_public_targets_and_maintain_primary(
         )
     )
     observance_entry = await service.create_entry(
-        FeastEntryCreateSchema(
+        CreateFeastEntryCommand(
             observance_id=observance.id,
             calendar_code="roman_pl",
             month=8,
@@ -219,7 +219,7 @@ async def test_calendar_entries_merge_public_targets_and_maintain_primary(
 
     with pytest.raises(FeastConflictError):
         await service.create_entry(
-            FeastEntryCreateSchema(
+            CreateFeastEntryCommand(
                 person_id=published.id,
                 calendar_code="roman_universal",
                 month=8,
@@ -229,7 +229,7 @@ async def test_calendar_entries_merge_public_targets_and_maintain_primary(
 
     changed = await service.update_entry(
         universal.id,
-        FeastEntryUpdateSchema(
+        UpdateFeastEntryCommand(
             calendar_code="roman_pl",
             month=8,
             day=30,
@@ -257,7 +257,7 @@ async def test_calendar_service_rejects_missing_targets_and_invalid_updates(
 
     with pytest.raises(FeastNotFoundError, match="Osoba"):
         await service.create_entry(
-            FeastEntryCreateSchema(
+            CreateFeastEntryCommand(
                 person_id=uuid.uuid4(),
                 calendar_code="roman_pl",
                 month=1,
@@ -266,7 +266,7 @@ async def test_calendar_service_rejects_missing_targets_and_invalid_updates(
         )
     with pytest.raises(FeastNotFoundError, match="Obchód"):
         await service.create_entry(
-            FeastEntryCreateSchema(
+            CreateFeastEntryCommand(
                 observance_id=uuid.uuid4(),
                 calendar_code="roman_pl",
                 month=1,
@@ -277,7 +277,7 @@ async def test_calendar_service_rejects_missing_targets_and_invalid_updates(
         await service.list_person_entries(uuid.uuid4())
 
     entry = await service.create_entry(
-        FeastEntryCreateSchema(
+        CreateFeastEntryCommand(
             person_id=published.id,
             calendar_code="roman_pl",
             month=1,
@@ -285,6 +285,6 @@ async def test_calendar_service_rejects_missing_targets_and_invalid_updates(
         )
     )
     with pytest.raises(ValueError, match="miesiąca i dnia"):
-        await service.update_entry(entry.id, FeastEntryUpdateSchema(month=None))
+        await service.update_entry(entry.id, UpdateFeastEntryCommand(month=None))
     with pytest.raises(ValueError):
         await service.get_month(year=2026, month=13)
