@@ -38,8 +38,8 @@ Stan na 2026-09-05 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **208 passed**, 0 failures, 0 errors, 0 warnings |
-| Backend coverage | **82.59%**, wymagany próg 80% spełniony |
+| Backend pytest | **209 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend coverage | **82.62%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0012_align_domain_indexes`, jeden head |
 | Nowa pusta baza | upgrade 0001 → 0012 oraz downgrade/re-upgrade: PASS |
@@ -542,6 +542,12 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 ### DATA-001
 
 - **Severity:** P2
+- **Status po refaktoryzacji:** Zamknięte 2026-09-05. Globalnie unikalny slug jest
+  celowo rezerwowany również przez rekord usunięty miękko. Generator uwzględnia takie
+  rekordy, przywrócenie zachowuje kanoniczny URL, a nowy rekord o tej samej nazwie
+  otrzymuje sufiks. Decyzję i konsekwencje opisuje
+  `docs/adr/0002-person-slug-after-soft-delete.md`, a pełny cykl chroni test
+  integracyjny.
 - **Category:** Soft delete
 - **File:** `Person.slug`, restore flow
 - **Lines:** unique slug i `_generate_unique_slug`
@@ -1001,6 +1007,8 @@ rotacja sesji, test obciążenia search i przejrzany drift migracji.
   konflikt; następnie oznaczenie deprecated i usunięcie dopiero w v2.
 
 ## ADR-002 — Polityka slug po soft delete
+
+Pełny zapis decyzji: `docs/adr/0002-person-slug-after-soft-delete.md`.
 
 - **Decision:** Zachować slug jako globalnie unikalny i nigdy go automatycznie nie
   przydzielać innemu rekordowi.

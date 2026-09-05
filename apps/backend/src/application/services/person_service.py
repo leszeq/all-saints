@@ -235,7 +235,12 @@ class PersonService:
         current.canonization_year = data.canonization_year
 
     async def _generate_unique_slug(self, name: str, person_id: uuid.UUID | None = None) -> str:
-        """Generate a URL-safe unique slug for a person."""
+        """Generate a URL-safe slug unique across active and soft-deleted people.
+
+        Soft-deleted rows deliberately remain in this lookup. Their public URL is
+        reserved so that restoring a record cannot collide with a newer person or
+        silently point an established canonical URL at different content.
+        """
         base_slug = slugify(name) or "person"
         slug = base_slug
         counter = 1
