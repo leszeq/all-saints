@@ -23,8 +23,13 @@ do jawnych, izolowanych operacji podczas migracji modułu uwierzytelniania.
 
 ## Stan migracji
 
-Moduł zakonów i zgromadzeń jest pierwszym pionem korzystającym z tej zasady.
-Tworzenie, edycja, soft-delete oraz zmiana członkostwa tylko flushują zmiany;
-produkcyjny provider sesji i jego odpowiednik w testach integracyjnych posiadają
-commit/rollback requestu. Pozostałe moduły należy przenosić osobnymi, testowanymi
-etapami — bez mechanicznej zmiany całego repozytorium naraz.
+Z zasady korzystają obecnie dwa piony:
+
+- zakony i zgromadzenia — tworzenie, edycja, soft-delete oraz zmiana członkostwa;
+- kalendarz liturgiczny — obchody nieosobowe, przypisania do dni, zmiana wpisu
+  głównego i soft-delete.
+
+Operacje te tylko flushują zmiany; produkcyjny provider sesji i jego odpowiednik
+w testach integracyjnych posiadają commit/rollback requestu. Pozostałe moduły
+należy przenosić osobnymi, testowanymi etapami — bez mechanicznej zmiany całego
+repozytorium naraz.

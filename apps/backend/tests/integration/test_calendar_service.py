@@ -6,7 +6,8 @@ import uuid
 from datetime import date
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.application.services.calendar_service import (
     CalendarNotFoundError,
@@ -21,6 +22,7 @@ from src.domain.liturgy.models import (
     CalendarScope,
     FeastRank,
     LiturgicalCalendar,
+    LiturgicalObservance,
     ObservanceType,
 )
 from src.presentation.api.v1.calendar.schemas import (
@@ -69,6 +71,39 @@ async def _seed_catalogue(
     db_session.add_all([*calendars.values(), published, draft])
     await db_session.commit()
     return calendars, published, draft
+
+
+@pytest.mark.asyncio
+async def test_calendar_service_defers_commit_to_unit_of_work(
+    db_session: AsyncSession,
+    test_engine,
+) -> None:
+    await _seed_catalogue(db_session)
+    observance = await CalendarService(db_session).create_observance(
+        LiturgicalObservanceCreateSchema(
+            slug="transakcja-obchodu-test",
+            title_pl="Transakcja obchodu testowego",
+            observance_type=ObservanceType.OTHER,
+        )
+    )
+    observer_factory = async_sessionmaker(test_engine, expire_on_commit=False)
+
+    async with observer_factory() as observer:
+        before_commit = await observer.scalar(
+            select(LiturgicalObservance).where(
+                LiturgicalObservance.id == observance.id
+            )
+        )
+        assert before_commit is None
+
+        await db_session.commit()
+
+        after_commit = await observer.scalar(
+            select(LiturgicalObservance).where(
+                LiturgicalObservance.id == observance.id
+            )
+        )
+        assert after_commit is not None
 
 
 @pytest.mark.asyncio

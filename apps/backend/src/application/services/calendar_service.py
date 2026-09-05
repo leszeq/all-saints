@@ -55,7 +55,7 @@ class ObservanceConflictError(ValueError):
 
 
 class CalendarService:
-    """Read merged calendar views and manage individual feast assignments."""
+    """Read and mutate liturgical calendars inside a caller-owned transaction."""
 
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
@@ -129,7 +129,7 @@ class CalendarService:
         await self._ensure_observance_slug_available(data.slug)
         observance = LiturgicalObservance(**data.model_dump(mode="json"))
         self.db.add(observance)
-        await self.db.commit()
+        await self.db.flush()
         return await self.get_observance(observance.id)
 
     async def update_observance(
@@ -144,7 +144,7 @@ class CalendarService:
             await self._ensure_observance_slug_available(slug, exclude_id=observance.id)
         for field, value in changes.items():
             setattr(observance, field, value)
-        await self.db.commit()
+        await self.db.flush()
         return await self.get_observance(observance.id)
 
     async def delete_observance(self, observance_id: uuid.UUID) -> None:
@@ -160,7 +160,7 @@ class CalendarService:
             .values(is_primary=False, deleted_at=now, updated_at=now)
         )
         observance.deleted_at = now
-        await self.db.commit()
+        await self.db.flush()
 
     async def _calendar_codes(
         self,
@@ -451,7 +451,7 @@ class CalendarService:
             source_url=str(data.source_url) if data.source_url else None,
         )
         self.db.add(entry)
-        await self.db.commit()
+        await self.db.flush()
         return await self.get_entry(entry.id)
 
     async def update_entry(self, entry_id: uuid.UUID, data: FeastEntryUpdateSchema) -> Feast:
@@ -484,7 +484,7 @@ class CalendarService:
         entry.day_of_year = date(2000, month, day).timetuple().tm_yday
         for field, value in changes.items():
             setattr(entry, field, value)
-        await self.db.commit()
+        await self.db.flush()
         return await self.get_entry(entry.id)
 
     async def delete_entry(self, entry_id: uuid.UUID) -> None:
@@ -492,4 +492,4 @@ class CalendarService:
         entry = await self.get_entry(entry_id)
         entry.is_primary = False
         entry.deleted_at = datetime.now(UTC)
-        await self.db.commit()
+        await self.db.flush()
