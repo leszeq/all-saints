@@ -14,7 +14,10 @@ from src.domain.liturgy.models import Feast, LiturgicalCalendar, LiturgicalObser
 from src.infrastructure.db.import_catalogue_persons import read_person_rows
 from src.infrastructure.db.import_liturgical_calendar import read_rows
 from src.infrastructure.db.import_liturgical_observances import read_observance_rows
-from src.presentation.api.v1.calendar.schemas import FeastEntryCreateSchema
+from src.presentation.api.v1.calendar.schemas import (
+    FeastEntryCreateSchema,
+    FeastEntryUpdateSchema,
+)
 
 DATA_DIRECTORY = Path(__file__).parents[2] / "data" / "liturgical-calendar"
 
@@ -131,6 +134,12 @@ def test_create_schema_accepts_leap_day_and_rejects_impossible_date() -> None:
 
     with pytest.raises(ValidationError):
         FeastEntryCreateSchema(calendar_code="roman_pl", month=2, day=29)
+
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        FeastEntryCreateSchema(**payload, is_moveable=True)
+
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        FeastEntryUpdateSchema(date_note="Poniedziałek po Pięćdziesiątnicy")
 
 
 def test_merge_supports_non_person_observance() -> None:

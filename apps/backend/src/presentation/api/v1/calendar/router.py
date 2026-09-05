@@ -211,6 +211,7 @@ async def get_today(
     "/day/{value}",
     response_model=CalendarDaySchema,
     summary="Get all commemorations for a date",
+    description="Returns resolved fixed-date assignments. Moveable rules are not accepted by the current API.",
 )
 async def get_day(
     value: date,
@@ -258,7 +259,10 @@ async def _get_day_response(
     "/month/{year}/{month}",
     response_model=CalendarMonthSchema,
     summary="Get a complete civil month with liturgical assignments",
-    description="Returns every day of the month, including empty dates and 29 February in leap years.",
+    description=(
+        "Returns every day of the month, including empty dates and 29 February in "
+        "leap years. Only resolved fixed-date assignments are included."
+    ),
 )
 async def get_month(
     year: Annotated[int, Path(ge=1900, le=2200)],

@@ -300,7 +300,7 @@ class CalendarService:
         include_universal: bool = True,
         include_martyrology: bool = True,
     ) -> tuple[LiturgicalCalendar, dict[int, list[Feast]]]:
-        """Return every assigned commemoration grouped by day of month."""
+        """Return fixed-date commemorations grouped by day of month."""
         date(year, month, 1)
         selected, codes = await self._calendar_codes(
             calendar_code,

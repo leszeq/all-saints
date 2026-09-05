@@ -226,7 +226,8 @@ class Feast(BaseModel, Base):
         nullable=False,
     )
 
-    # Date (fixed or moveable)
+    # Date. Current application use cases resolve fixed entries only; the moveable
+    # marker is retained for a future versioned rule engine described by ADR-004.
     month: Mapped[int | None] = mapped_column(
         SmallInteger, nullable=True, comment="Month (1-12) for fixed feasts"
     )
@@ -248,7 +249,7 @@ class Feast(BaseModel, Base):
         nullable=False,
         default=False,
         server_default=text("false"),
-        comment="True for moveable feasts",
+        comment="Unresolved moveable-rule marker; excluded from current public queries",
     )
 
     # Liturgical details

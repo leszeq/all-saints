@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import date
 
-from pydantic import BaseModel, Field, HttpUrl, model_validator
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
 
 from src.domain.hagiography.models import LiturgicalColor
 from src.domain.liturgy.models import FeastRank, ObservanceType
@@ -42,6 +42,8 @@ class UpdateLiturgicalObservanceCommand(BaseModel):
 class CreateFeastEntryCommand(BaseModel):
     """Validated input for a fixed-date commemoration."""
 
+    model_config = ConfigDict(extra="forbid")
+
     person_id: uuid.UUID | None = None
     observance_id: uuid.UUID | None = None
     calendar_code: str = Field(default="roman_pl", min_length=2, max_length=50)
@@ -66,6 +68,8 @@ class CreateFeastEntryCommand(BaseModel):
 
 class UpdateFeastEntryCommand(BaseModel):
     """Validated patch for a fixed-date commemoration."""
+
+    model_config = ConfigDict(extra="forbid")
 
     calendar_code: str | None = Field(None, min_length=2, max_length=50)
     month: int | None = Field(None, ge=1, le=12)

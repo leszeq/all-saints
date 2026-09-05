@@ -26,6 +26,7 @@ from src.application.services.calendar_service import (
 from src.domain.hagiography.models import Gender, Person, PersonType, PublicationStatus
 from src.domain.liturgy.models import (
     CalendarScope,
+    Feast,
     FeastRank,
     LiturgicalCalendar,
     LiturgicalObservance,
@@ -288,3 +289,33 @@ async def test_calendar_service_rejects_missing_targets_and_invalid_updates(
         await service.update_entry(entry.id, UpdateFeastEntryCommand(month=None))
     with pytest.raises(ValueError):
         await service.get_month(year=2026, month=13)
+
+
+@pytest.mark.asyncio
+async def test_public_calendar_excludes_unresolved_moveable_placeholders(
+    db_session: AsyncSession,
+) -> None:
+    calendars, published, _ = await _seed_catalogue(db_session)
+    db_session.add(
+        Feast(
+            person_id=published.id,
+            calendar_id=calendars["roman_pl"].id,
+            month=8,
+            day=30,
+            day_of_year=243,
+            date_note="Przykładowa nierozstrzygnięta reguła ruchoma",
+            is_moveable=True,
+            rank=FeastRank.MEMORIAL.value,
+            is_primary=False,
+            is_suppressed=False,
+        )
+    )
+    await db_session.flush()
+
+    _, entries = await CalendarService(db_session).get_day(
+        date(2026, 8, 30),
+        include_universal=False,
+        include_martyrology=False,
+    )
+
+    assert entries == []

@@ -38,7 +38,7 @@ Stan na 2026-09-05 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **209 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend pytest | **210 passed**, 0 failures, 0 errors, 0 warnings |
 | Backend coverage | **82.62%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0012_align_domain_indexes`, jeden head |
@@ -604,6 +604,13 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 ### LIT-001
 
 - **Severity:** P2
+- **Status po refaktoryzacji:** Zamknięte decyzją architektoniczną 2026-09-05.
+  `docs/adr/0004-versioned-liturgical-calendar-resolution.md` rozdziela obchód,
+  wersję kalendarza, typowaną regułę, wyjątek i wynik dla konkretnego roku. Obecny
+  kontrakt został jawnie ograniczony do dat stałych: odrzuca pozorne pola reguł
+  ruchomych, a nierozstrzygnięte rekordy nie trafiają do publicznych widoków. Migracja
+  modelu nastąpi dopiero po zatwierdzeniu źródeł dla kalendarza powszechnego, polskiego
+  i pierwszych kalendarzy własnych.
 - **Category:** Liturgical domain
 - **File:** `apps/backend/src/domain/liturgy/models.py`
 - **Lines:** `Feast.month/day/date_note/is_moveable`
