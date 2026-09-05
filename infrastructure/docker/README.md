@@ -36,6 +36,10 @@ docker compose --env-file infrastructure/docker/.env.production \
 curl --fail http://localhost/health
 ```
 
+Sonda `/health` sprawdza wyłącznie proces. Load balancer powinien używać
+`/health/ready`, które wymaga działającego PostgreSQL i Redis; awaria którejkolwiek
+z tych usług wycofuje instancję API z ruchu odpowiedzią `503`.
+
 Zatrzymanie usług bez usuwania danych:
 
 ```bash

@@ -2,6 +2,8 @@
 Integration tests for Health and Auth API endpoints.
 """
 
+from unittest.mock import AsyncMock
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
@@ -25,6 +27,42 @@ async def test_health_info_endpoint(async_client: AsyncClient):
     assert response.status_code == 200
     data = response.json()
     assert "features" in data
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("db_ok", "redis_ok", "expected_status"),
+    [
+        (True, True, 200),
+        (False, True, 503),
+        (True, False, 503),
+    ],
+)
+async def test_readiness_requires_database_and_redis(
+    async_client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+    db_ok: bool,
+    redis_ok: bool,
+    expected_status: int,
+):
+    monkeypatch.setattr(
+        "src.presentation.health.check_db_connection",
+        AsyncMock(return_value=db_ok),
+    )
+    monkeypatch.setattr(
+        "src.presentation.health.check_redis_connection",
+        AsyncMock(return_value=redis_ok),
+    )
+
+    response = await async_client.get("/health/ready")
+
+    assert response.status_code == expected_status
+    data = response.json()
+    assert data["status"] == ("ready" if expected_status == 200 else "unavailable")
+    assert data["checks"] == {
+        "database": "ok" if db_ok else "error",
+        "redis": "ok" if redis_ok else "error",
+    }
 
 
 @pytest.mark.asyncio

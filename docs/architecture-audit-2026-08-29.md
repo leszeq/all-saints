@@ -38,14 +38,14 @@ Stan na 2026-09-05 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **194 passed**, 0 failures, 0 errors, 0 warnings |
-| Backend coverage | **81.05%**, wymagany próg 80% spełniony |
+| Backend pytest | **197 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend coverage | **81.72%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0012_align_domain_indexes`, jeden head |
 | Nowa pusta baza | upgrade 0001 → 0012 oraz downgrade/re-upgrade: PASS |
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
-| Ruff / strict mypy | PASS, mypy analizuje 92 pliki źródłowe |
+| Ruff / strict mypy | PASS, mypy analizuje 101 plików źródłowych |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -704,6 +704,12 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 ### CACHE-001
 
 - **Severity:** P3
+- **Status po refaktoryzacji:** Zamknięte 2026-09-05. Redis ma jawnie ograniczone
+  odpowiedzialności: atomowy limiter logowania, broker Celery i cache embeddingów.
+  Usunięto nieużywany ogólny `CacheService` oraz martwe ustawienia TTL. Redis został
+  utrzymany jako krytyczna zależność sondy readiness, co pokrywają testy stanów
+  zdrowych i awarii każdej zależności. Cache odpowiedzi wymaga wcześniejszego
+  benchmarku oraz jawnej strategii unieważniania.
 - **Category:** Dead code / consistency
 - **File:** `apps/backend/src/infrastructure/cache`
 - **Lines:** cache manager, TTL i limiter
@@ -788,12 +794,13 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 
 ## Performance assessment
 
-Największe potwierdzone ryzyko to wyszukiwanie `ILIKE` po długich polach. Listy osób
-nie pobierają pełnych biografii do osobnego list DTO, a relacje obrazów/patronatów są
-ładowane przez `selectinload`, co ogranicza N+1. Dashboard redakcyjny wykonuje jednak
-wiele kolejnych agregacji, quality report ładuje i mapuje do 150+ rekordów, a cache
-nie jest aktywny. Przed optymalizacją należy zebrać `EXPLAIN (ANALYZE, BUFFERS)` na
-reprezentatywnych 10–20 tys. osób i zmierzyć p95.
+Historycznie największym potwierdzonym ryzykiem było wyszukiwanie `ILIKE` po długich
+polach; zostało zastąpione ważonym FTS i trigramami. Listy osób nie pobierają pełnych
+biografii, a relacje obrazów/patronatów są ładowane przez `selectinload`, co ogranicza
+N+1. Dashboard redakcyjny nadal wykonuje wiele agregacji, a quality report mapuje do
+150+ rekordów. Cache działa wyłącznie dla embeddingów. Przed cache'owaniem odpowiedzi
+należy zebrać `EXPLAIN (ANALYZE, BUFFERS)` na reprezentatywnych 10–20 tys. osób i
+zmierzyć p95.
 
 ## Database assessment
 

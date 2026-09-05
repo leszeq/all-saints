@@ -15,6 +15,12 @@ docker compose -f infrastructure/docker/docker-compose.yml exec backend alembic 
 API jest dostępne pod `http://localhost:8000`, a Swagger UI pod
 `http://localhost:8000/docs` poza środowiskiem produkcyjnym.
 
+Redis jest krytyczną zależnością instancji API: zapewnia współdzielony limiter
+logowania, pośredniczy w zadaniach Celery i opcjonalnie cache'uje embeddingi.
+Dlatego `/health/ready` zwraca `503`, gdy niedostępna jest baza albo Redis.
+Ogólny cache odpowiedzi HTTP nie jest włączony — należy go dodawać dopiero po
+pomiarze konkretnego endpointu wraz z jawną strategią unieważniania.
+
 ## Testy
 
 Integracje wymagają PostgreSQL. Development compose przekazuje bezpieczny adres

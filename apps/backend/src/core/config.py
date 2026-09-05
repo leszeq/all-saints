@@ -170,10 +170,6 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: str = ""
     REDIS_URL: str = "redis://localhost:6379/0"
 
-    CACHE_TTL_DEFAULT: int = 300  # 5 minutes
-    CACHE_TTL_PERSONS: int = 600  # 10 minutes
-    CACHE_TTL_STATIC: int = 3600  # 1 hour
-
     # ── Celery ─────────────────────────────────────────────────────────────────
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
