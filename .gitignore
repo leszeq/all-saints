@@ -124,6 +124,9 @@ apps/backend/alembic/versions/__pycache__/
 .pytest_cache/
 htmlcov/
 .coverage
+playwright-report/
+test-results/
+blob-report/
 
 # Secrets
 *.pem

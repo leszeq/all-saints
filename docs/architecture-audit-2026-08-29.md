@@ -34,19 +34,19 @@ Poniższy status jest aktualizacją wykonawczą do historycznego pomiaru bazoweg
 Nie zmienia pierwotnych findings ani ocen, dzięki czemu dokument zachowuje wartość
 porównawczą.
 
-Stan na 2026-09-04 po kolejnych etapach refaktoryzacji:
+Stan na 2026-09-05 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **173 passed**, 0 failures, 0 errors, 0 warnings |
-| Backend coverage | **80.62%**, wymagany próg 80% spełniony |
+| Backend pytest | **194 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend coverage | **81.05%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0012_align_domain_indexes`, jeden head |
 | Nowa pusta baza | upgrade 0001 → 0012 oraz downgrade/re-upgrade: PASS |
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | Ruff / strict mypy | PASS, mypy analizuje 92 pliki źródłowe |
-| Admin i web | ESLint, TypeScript i produkcyjne buildy Webpack: PASS |
+| Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
 | Sesja panelu | access token tylko w pamięci, rotowany refresh w cookie HttpOnly, bramka chronionego layoutu |
@@ -81,7 +81,7 @@ współdzielone sekrety, niebezpieczne wildcardy host/CORS i niezabezpieczone co
 
 Najważniejsze otwarte ryzyka są teraz klasy P2/P3: brak zewnętrznego TLS i
 platformowego zarządzania sekretami, skonfigurowanych reguł alertów, testu
-obciążenia, testów E2E oraz zautomatyzowanego release/CD do konkretnego środowiska.
+obciążenia oraz zautomatyzowanego release/CD do konkretnego środowiska.
 Kod udostępnia poprawne logi JSON, Prometheus i opcjonalny Sentry, ale odbiorniki i
 alerty są zadaniem platformowym. Backup PostgreSQL ma działający restore drill,
 lecz nadal wymaga harmonogramu, retencji, szyfrowania, kopii poza hostem i objęcia
@@ -412,8 +412,9 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
   deterministycznego obrazu backendu i `npm ci`, polecenia testów/lint/type-check
   wskazują rzeczywisty workdir `/app`, a konfiguracja produkcyjna istnieje i jest
   walidowana przez `prod-check`. Usunięto cele MkDocs bez konfiguracji. Eksporty
-  XLSX/PDF i E2E są jawnie oznaczone jako planowane, natomiast `openapi-export`
-  generuje aktualny kontrakt bezpośrednio z aplikacji FastAPI.
+  XLSX/PDF są jawnie oznaczone jako planowane, E2E uruchamiają rzeczywiste smoke
+  testy Playwright, a `openapi-export` generuje aktualny kontrakt bezpośrednio z
+  aplikacji FastAPI.
 - **Category:** Developer experience
 - **File:** `Makefile`
 - **Lines:** test, format, type-check, prod, export
@@ -731,6 +732,10 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 ### TEST-002
 
 - **Severity:** P2
+- **Status po refaktoryzacji:** Zamknięte 2026-09-05. Playwright sprawdza logowanie
+  przez UI, pełne przejście `draft → review → published`, brak publicznej widoczności
+  szkicu oraz upload i odczyt obrazu. `make test-e2e` przygotowuje bezpieczne konta
+  demonstracyjne i wymagane usługi, a CI uruchamia ten sam zestaw w Chromium.
 - **Category:** E2E
 - **File:** `Makefile`, frontendy
 - **Lines:** target `test-e2e`

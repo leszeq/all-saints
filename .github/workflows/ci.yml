@@ -94,6 +94,84 @@ jobs:
           NEXT_PUBLIC_API_URL: http://localhost:8000
         run: npm run build -- --webpack
 
+  e2e:
+    name: Critical user journeys
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [backend, frontend]
+    env:
+      E2E_PASSWORD: DemoE2E123!
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: CHANGE_THIS_MINIO_PASSWORD
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      INTERNAL_API_URL: http://localhost:8000
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            apps/admin/package-lock.json
+            apps/web/package-lock.json
+
+      - name: Install locked frontend dependencies
+        run: |
+          npm ci --prefix apps/admin
+          npm ci --prefix apps/web
+
+      - name: Install Chromium
+        working-directory: apps/admin
+        run: npx playwright install --with-deps chromium
+
+      - name: Prepare backend environment
+        run: cp .env.example infrastructure/docker/.env
+
+      - name: Start API dependencies
+        run: >-
+          docker compose
+          -f infrastructure/docker/docker-compose.yml
+          up -d --build --wait db redis minio backend
+
+      - name: Migrate and seed workflow accounts
+        run: |
+          docker compose -f infrastructure/docker/docker-compose.yml exec -T backend alembic upgrade head
+          docker compose -f infrastructure/docker/docker-compose.yml run --rm -T \
+            -e SEED_DEMO_USERS=true \
+            -e DEMO_USER_PASSWORD="$E2E_PASSWORD" \
+            backend python -m src.infrastructure.db.seed
+
+      - name: Run Playwright smoke tests
+        working-directory: apps/admin
+        run: npm run test:e2e
+
+      - name: Upload Playwright report after failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/admin/playwright-report
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Show service logs after failure
+        if: failure()
+        run: >-
+          docker compose
+          -f infrastructure/docker/docker-compose.yml
+          logs --no-color backend db redis minio
+
+      - name: Stop E2E services
+        if: always()
+        run: >-
+          docker compose
+          -f infrastructure/docker/docker-compose.yml
+          down -v --remove-orphans
+
   production-stack:
     name: Production stack smoke test
     runs-on: ubuntu-latest

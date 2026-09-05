@@ -16,6 +16,7 @@ COMPOSE_PROD=docker compose --env-file $(PROD_ENV) -f infrastructure/docker/dock
 BACKUP_DIR?=backups
 BACKUP_FILE?=$(BACKUP_DIR)/all-saints-$(shell date -u +%Y%m%dT%H%M%SZ).dump
 RESTORE_DB?=all_saints_restore_test_$(shell date -u +%Y%m%d%H%M%S)
+E2E_PASSWORD?=DemoE2E123!
 
 # Colours
 CYAN=\033[0;36m
@@ -128,9 +129,12 @@ test-unit: ## Run unit tests only
 test-integration: ## Run integration tests only
 	$(BACKEND_RUN) python -m pytest -q -o addopts='' tests/integration
 
-test-e2e: ## Planned: run Playwright smoke tests
-	@echo "$(YELLOW)Playwright E2E tests are not implemented yet.$(NC)"
-	@false
+test-e2e: ## Run Playwright smoke tests against the local development stack
+	$(COMPOSE_DEV) up -d --wait db redis minio backend
+	$(COMPOSE_DEV) exec -T backend alembic upgrade head
+	@$(COMPOSE_DEV) run --rm -T -e SEED_DEMO_USERS=true -e DEMO_USER_PASSWORD="$(E2E_PASSWORD)" backend python -m src.infrastructure.db.seed
+	cd apps/admin && npx playwright install chromium
+	@cd apps/admin && E2E_PASSWORD="$(E2E_PASSWORD)" npm run test:e2e
 
 test-coverage: ## Run tests with HTML coverage report
 	$(BACKEND_RUN) python -m pytest --cov-report=html:htmlcov
