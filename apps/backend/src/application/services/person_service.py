@@ -15,6 +15,15 @@ from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.application.commands.persons import (
+    PersonAliasInputSchema,
+    PersonAvatarInputSchema,
+    PersonBeatificationInputSchema,
+    PersonCanonizationInputSchema,
+    PersonCreateSchema,
+    PersonPatronageInputSchema,
+    PersonUpdateSchema,
+)
 from src.application.services.audit_service import AuditContext, add_audit_log
 from src.application.services.person_snapshot import serialize_person_snapshot
 from src.domain.hagiography.models import (
@@ -37,15 +46,6 @@ from src.domain.hagiography.models import (
 from src.domain.hagiography.person_names import normalize_person_name
 from src.domain.identity.models import AuditAction, User
 from src.domain.sources.models import Image
-from src.presentation.api.v1.persons.schemas import (
-    PersonAliasInputSchema,
-    PersonAvatarInputSchema,
-    PersonBeatificationInputSchema,
-    PersonCanonizationInputSchema,
-    PersonCreateSchema,
-    PersonPatronageInputSchema,
-    PersonUpdateSchema,
-)
 
 ERA_PERIOD_ERAS: dict[EraPeriod, tuple[Era, ...]] = {
     EraPeriod.EARLY_WITNESSES: (

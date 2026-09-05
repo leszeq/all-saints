@@ -5,9 +5,9 @@ from __future__ import annotations
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.application.commands.persons import PersonCreateSchema
 from src.application.services.person_service import PersonService
 from src.domain.hagiography.models import PersonTranslation, PublicationStatus
-from src.presentation.api.v1.persons.schemas import PersonCreateSchema
 
 
 @pytest.mark.asyncio

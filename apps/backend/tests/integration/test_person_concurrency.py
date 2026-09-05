@@ -8,12 +8,12 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from src.application.commands.persons import PersonUpdateSchema
 from src.application.services.person_service import (
     PersonService,
     PersonVersionConflictError,
 )
 from src.domain.hagiography.models import Gender, Person, PersonType, PublicationStatus
-from src.presentation.api.v1.persons.schemas import PersonUpdateSchema
 
 
 @pytest.mark.asyncio

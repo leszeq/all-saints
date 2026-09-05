@@ -33,4 +33,10 @@ wpisów kalendarza, razem z walidacją daty i rodzaju celu, znajdują się w
 `application.commands.liturgical_calendar`. Warstwa HTTP zachowuje dotychczasowe
 nazwy schematów i publiczny kontrakt.
 
-Ten sam wzorzec należy zastosować kolejno do osób i redakcji.
+Trzecim wydzielonym pionem są osoby. Walidowane dane osoby, avatara, aliasów,
+patronatów, beatyfikacji i kanonizacji należą do `application.commands.persons`.
+Zachowano dotychczasowe nazwy klas wejściowych, aby publiczne komponenty OpenAPI i
+importy klientów Pythona nie zmieniły się. `PersonService` oraz workflow redakcyjny
+nie importują już schematów HTTP osoby.
+
+Pozostały zastany dług dotyczy modeli wynikowych trzech modułów redakcyjnych.

@@ -10,6 +10,7 @@ from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.engine import Row
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.application.commands.persons import PersonUpdateSchema
 from src.application.services.audit_service import AuditContext
 from src.application.services.editorial_quality import EditorialQualityPolicy
 from src.application.services.editorial_source_quality import EditorialSourceQualityReader
@@ -42,7 +43,6 @@ from src.presentation.api.v1.editorial.schemas import (
     EditorialStatusCountSchema,
     EditorialTransitionResponseSchema,
 )
-from src.presentation.api.v1.persons.schemas import PersonUpdateSchema
 
 
 class EditorialNotFoundError(ValueError):

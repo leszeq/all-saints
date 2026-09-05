@@ -14,7 +14,6 @@ ALLOWED_PRESENTATION_DEPENDENCIES = {
     "application/services/editorial_quality.py",
     "application/services/editorial_service.py",
     "application/services/editorial_source_quality.py",
-    "application/services/person_service.py",
 }
 
 
