@@ -1,0 +1,30 @@
+# Polityka transakcji backendu
+
+Docelowo jedna warstwa jest właścicielem każdej transakcji. Metody aplikacyjne
+wykonują operacje domenowe i `flush`, natomiast nie wykonują samodzielnie `commit`.
+Dzięki temu kilka operacji serwisowych można połączyć atomowo bez ryzyka, że
+wcześniejszy krok zostanie zapisany mimo błędu późniejszego kroku.
+
+## Granice unit-of-work
+
+- Request HTTP: dependency `get_db_session` wykonuje `commit` po poprawnej obsłudze
+  requestu i `rollback` po wyjątku.
+- Zadanie Celery: funkcja zadania jest właścicielem transakcji i jawnie kończy ją
+  po pełnym przypadku użycia.
+- Import, seed i migracja: skrypt używa jawnego bloku transakcyjnego albo pary
+  `commit` / `rollback`, ponieważ nie działa wewnątrz requestu.
+- Serwis aplikacyjny: może wykonywać `flush`, aby uzyskać identyfikator i wcześnie
+  wykryć naruszenie constraintu, ale nie kończy transakcji.
+
+Wyjątek wymaga komentarza uzasadniającego trwały zapis przed zgłoszeniem błędu.
+Przykładem są zdarzenia bezpieczeństwa logowania, które muszą pozostać w audycie
+również wtedy, gdy endpoint zwraca odpowiedź błędną. Takie miejsca będą wydzielane
+do jawnych, izolowanych operacji podczas migracji modułu uwierzytelniania.
+
+## Stan migracji
+
+Moduł zakonów i zgromadzeń jest pierwszym pionem korzystającym z tej zasady.
+Tworzenie, edycja, soft-delete oraz zmiana członkostwa tylko flushują zmiany;
+produkcyjny provider sesji i jego odpowiednik w testach integracyjnych posiadają
+commit/rollback requestu. Pozostałe moduły należy przenosić osobnymi, testowanymi
+etapami — bez mechanicznej zmiany całego repozytorium naraz.

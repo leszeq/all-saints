@@ -6,14 +6,18 @@ import uuid
 
 import pytest
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.application.services.order_service import (
     OrderConflictError,
     OrderNotFoundError,
     OrderService,
 )
-from src.domain.geography.models import OrderCharism, ReligiousCommunityType
+from src.domain.geography.models import (
+    OrderCharism,
+    ReligiousCommunityType,
+    ReligiousOrder,
+)
 from src.domain.hagiography.models import (
     Gender,
     Person,
@@ -43,6 +47,33 @@ async def _person(db_session: AsyncSession, slug: str, status: PublicationStatus
     db_session.add(person)
     await db_session.commit()
     return person
+
+
+@pytest.mark.asyncio
+async def test_order_service_defers_commit_to_unit_of_work(
+    db_session: AsyncSession,
+    test_engine,
+) -> None:
+    order = await OrderService(db_session).create_order(
+        ReligiousOrderCreateSchema(
+            slug="transakcja-zakonu-test",
+            name="Transakcja Zakonu Test",
+        )
+    )
+    observer_factory = async_sessionmaker(test_engine, expire_on_commit=False)
+
+    async with observer_factory() as observer:
+        before_commit = await observer.scalar(
+            select(ReligiousOrder).where(ReligiousOrder.id == order.id)
+        )
+        assert before_commit is None
+
+        await db_session.commit()
+
+        after_commit = await observer.scalar(
+            select(ReligiousOrder).where(ReligiousOrder.id == order.id)
+        )
+        assert after_commit is not None
 
 
 @pytest.mark.asyncio

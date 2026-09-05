@@ -38,7 +38,7 @@ Stan na 2026-09-05 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **197 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend pytest | **198 passed**, 0 failures, 0 errors, 0 warnings |
 | Backend coverage | **81.72%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0012_align_domain_indexes`, jeden head |
@@ -456,6 +456,13 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 ### ARCH-002
 
 - **Severity:** P2
+- **Status po refaktoryzacji:** W toku od 2026-09-05. Ustalono i udokumentowano
+  jedną politykę unit-of-work: serwisy flushują, a granica requestu lub workera
+  commit/rollbackuje. Pierwszy pion — zakony, zgromadzenia i członkostwa — nie
+  wykonuje już commitów w serwisie. Test integracyjny potwierdza niewidoczność
+  zmiany w drugiej sesji przed commitem właściciela, a provider klienta testowego
+  odwzorowuje produkcyjną granicę requestu. Pozostałe moduły wymagają migracji
+  małymi etapami.
 - **Category:** Transactions
 - **File:** `apps/backend/src/infrastructure/db/session.py` i serwisy
 - **Lines:** `get_db_session` oraz jawne `commit()` w service/router

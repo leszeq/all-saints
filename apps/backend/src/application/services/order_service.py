@@ -34,7 +34,7 @@ class OrderConflictError(ValueError):
 
 
 class OrderService:
-    """Read public community profiles and manage their editorial records."""
+    """Read and mutate communities inside a caller-owned transaction."""
 
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
@@ -145,7 +145,7 @@ class OrderService:
         values = data.model_dump(mode="json")
         order = ReligiousOrder(**values)
         self.db.add(order)
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(order)
         return order
 
@@ -160,7 +160,7 @@ class OrderService:
         for field, value in changes.items():
             setattr(order, field, value)
         order.updated_at = datetime.now(UTC)
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(order)
         return order
 
@@ -168,7 +168,7 @@ class OrderService:
         """Soft-delete a community without deleting linked people."""
         order, _memberships = await self.get_order(identifier, public_members_only=False)
         order.deleted_at = datetime.now(UTC)
-        await self.db.commit()
+        await self.db.flush()
 
     async def add_membership(
         self,
@@ -216,7 +216,7 @@ class OrderService:
             new_value=current_snapshot,
             extra_metadata={"relation": "orders", "operation": "add"},
         )
-        await self.db.commit()
+        await self.db.flush()
         result = await self.db.execute(
             select(PersonOrder)
             .where(
@@ -266,4 +266,4 @@ class OrderService:
             new_value=current_snapshot,
             extra_metadata={"relation": "orders", "operation": "remove"},
         )
-        await self.db.commit()
+        await self.db.flush()
