@@ -482,5 +482,6 @@ async def test_person_service_uses_ranked_fts_and_indexed_fallbacks() -> None:
     assert "search_vector @@" in compiled
     assert "websearch_to_tsquery" in compiled
     assert "similarity" in compiled
+    assert "person_translations.search_vector @@" in compiled
     assert "lower(persons.biography_pl)" not in compiled
     assert "patronages" in compiled

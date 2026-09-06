@@ -79,6 +79,11 @@ the existing public API.
     without merging or overwriting them. Because copied values are a compatibility
     projection rather than a content edit, this one-time operation does not create
     person revisions; all later mutations use the protected workflow.
+12. Public text search evaluates active translations as weighted, language-neutral
+    PostgreSQL search documents. Names have the highest weight, followed by summary
+    and iconographic attributes, prayers, and biography. Translation matches use a
+    correlated subquery so multiple matching locales cannot duplicate a person in
+    pagination; soft-deleted translations never participate.
 
 ## Consequences
 
@@ -107,7 +112,8 @@ the existing public API.
    command and conflict report are implemented; applying it is an explicit
    environment-level decision after reviewing a dry run.
 5. Add localized public projections and extend search indexes to active translation
-   rows, with explicit fallback metadata.
+   rows, with explicit fallback metadata. Completed for person list/detail and
+   weighted translated-content search.
 6. Ship the first additional UI locale and locale-aware public routing only after
    dictionary, metadata, canonical/hreflang and E2E coverage are complete.
 7. Deprecate legacy language-specific API fields; remove columns only in a separate,

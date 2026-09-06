@@ -473,6 +473,16 @@ class PersonService:
                 func.ts_rank_cd(Person.search_vector, text_query),
                 0.0,
             )
+            translation_full_text_rank = (
+                select(func.max(func.ts_rank_cd(PersonTranslation.search_vector, text_query)))
+                .where(
+                    PersonTranslation.person_id == Person.id,
+                    PersonTranslation.deleted_at.is_(None),
+                    PersonTranslation.search_vector.op("@@")(text_query),
+                )
+                .correlate(Person)
+                .scalar_subquery()
+            )
             alias_similarity = (
                 select(func.max(func.similarity(PersonName.value, term)))
                 .where(
@@ -505,7 +515,10 @@ class PersonService:
                 func.coalesce(alias_similarity, 0.0),
                 func.coalesce(translation_similarity, 0.0),
             )
-            search_score = full_text_rank + (fuzzy_rank * 0.25)
+            search_score = func.greatest(
+                full_text_rank,
+                func.coalesce(translation_full_text_rank, 0.0),
+            ) + (fuzzy_rank * 0.25)
             query = query.where(
                 or_(
                     Person.search_vector.op("@@")(text_query),
@@ -529,6 +542,7 @@ class PersonService:
                         and_(
                             PersonTranslation.deleted_at.is_(None),
                             or_(
+                                PersonTranslation.search_vector.op("@@")(text_query),
                                 PersonTranslation.canonical_name.ilike(like_term),
                                 PersonTranslation.canonical_name.op("%")(term),
                             ),

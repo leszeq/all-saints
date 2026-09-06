@@ -14,8 +14,10 @@ def test_translation_rbac_migration_is_ordered_and_reversible() -> None:
     source = MIGRATION.read_text(encoding="utf-8")
 
     migration = scripts.get_revision("0017_translation_workflow_rbac")
+    successor = scripts.get_revision("0018_person_translation_search")
     assert migration is not None
-    assert scripts.get_current_head() == migration.revision
+    assert successor is not None
+    assert successor.down_revision == migration.revision
     assert len(scripts.get_heads()) == 1
     assert 'down_revision: str | None = "0016_person_names"' in source
     assert "translations', 'delete" in source

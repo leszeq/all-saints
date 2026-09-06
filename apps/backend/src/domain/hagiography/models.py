@@ -540,6 +540,13 @@ class PersonTranslation(BaseModel, Base):
             "canonical_name",
             postgresql_using="gin",
             postgresql_ops={"canonical_name": "gin_trgm_ops"},
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+        Index(
+            "ix_person_translations_search_vector",
+            "search_vector",
+            postgresql_using="gin",
+            postgresql_where=text("deleted_at IS NULL"),
         ),
         {"comment": "Multilingual content for persons"},
     )
@@ -550,13 +557,18 @@ class PersonTranslation(BaseModel, Base):
         nullable=False,
     )
     language_code: Mapped[str] = mapped_column(
-        String(10), nullable=False, comment="BCP 47 language tag (e.g. pl, en, la)"
+        String(35), nullable=False, comment="BCP 47 language tag (e.g. pl, en, la)"
     )
     canonical_name: Mapped[str | None] = mapped_column(String(500), nullable=True)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     biography: Mapped[str | None] = mapped_column(Text, nullable=True)
     prayers: Mapped[str | None] = mapped_column(Text, nullable=True)
     iconographic_attributes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    search_vector: Mapped[str | None] = mapped_column(
+        TSVECTOR,
+        nullable=True,
+        comment="Weighted localized content maintained by a PostgreSQL trigger",
+    )
     translated_by_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),

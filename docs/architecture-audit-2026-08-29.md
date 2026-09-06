@@ -746,8 +746,11 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
   wyłącznie odczyt tłumaczeń i zatwierdza cały rekord w istniejącym workflow.
   Backfill PL/EN ma osobne, domyślnie suche narzędzie: tworzy tylko brakujące
   projekcje, jest idempotentny i raportuje istniejące, usunięte, rozbieżne lub
-  nienormalizowane tłumaczenia bez nadpisywania. Pozostają teksty ekranów
-  funkcjonalnych oraz routing uruchamiany dopiero z kompletnym drugim językiem.
+  nienormalizowane tłumaczenia bez nadpisywania. Aktywne tłumaczenia uczestniczą
+  również w ważonym FTS przez indeks GIN; `EXISTS`/skorelowany ranking zachowuje
+  jedną osobę w wynikach niezależnie od liczby pasujących języków, a usunięte
+  tłumaczenia są wykluczone. Pozostają teksty ekranów funkcjonalnych oraz routing
+  uruchamiany dopiero z kompletnym drugim językiem.
 - **Category:** Internationalization
 - **File:** oba frontendy i modele Person/Translation
 - **Lines:** setki hardcoded strings
