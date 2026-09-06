@@ -3,7 +3,8 @@
 	seed reset-db test test-unit test-integration test-e2e test-coverage lint \
 	lint-backend lint-frontend format format-check type-check type-check-backend \
 	type-check-frontend audit logs logs-backend logs-db ps shell-backend shell-db clean \
-	build export-xlsx export-pdf openapi-export backup-db \
+	build export-xlsx export-pdf openapi-export backup-db translations-backfill-check \
+	translations-backfill \
 	prod-backup prod-restore-check
 
 # ==============================================================================
@@ -109,6 +110,12 @@ migrate-history: ## Show migration history
 
 seed: ## Seed the database with initial data
 	$(COMPOSE_DEV) exec backend python -m src.infrastructure.db.seed
+
+translations-backfill-check: ## Preview legacy PL/EN translation backfill without writes
+	$(COMPOSE_DEV) exec -T backend python -m src.infrastructure.db.backfill_person_translations
+
+translations-backfill: ## Apply unambiguous legacy PL/EN translation backfill
+	$(COMPOSE_DEV) exec -T backend python -m src.infrastructure.db.backfill_person_translations --apply
 
 reset-db: ## ⚠ Drop and recreate the database (DESTRUCTIVE!)
 	@echo "$(RED)⚠ This will DESTROY all data! Press Ctrl+C to abort...$(NC)"

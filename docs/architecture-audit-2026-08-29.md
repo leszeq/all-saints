@@ -744,8 +744,10 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
   Chronione API tłumaczeń egzekwuje osobne RBAC, blokadę optymistyczną i edycję tylko
   w szkicu, a każdą zmianę włącza do wersji osoby i dziennika audytu. Recenzent ma
   wyłącznie odczyt tłumaczeń i zatwierdza cały rekord w istniejącym workflow.
-  Pozostają teksty ekranów funkcjonalnych, backfill danych oraz routing uruchamiany
-  dopiero z kompletnym drugim językiem.
+  Backfill PL/EN ma osobne, domyślnie suche narzędzie: tworzy tylko brakujące
+  projekcje, jest idempotentny i raportuje istniejące, usunięte, rozbieżne lub
+  nienormalizowane tłumaczenia bez nadpisywania. Pozostają teksty ekranów
+  funkcjonalnych oraz routing uruchamiany dopiero z kompletnym drugim językiem.
 - **Category:** Internationalization
 - **File:** oba frontendy i modele Person/Translation
 - **Lines:** setki hardcoded strings

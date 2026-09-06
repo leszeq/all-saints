@@ -21,6 +21,30 @@ Dlatego `/health/ready` zwraca `503`, gdy niedostępna jest baza albo Redis.
 Ogólny cache odpowiedzi HTTP nie jest włączony — należy go dodawać dopiero po
 pomiarze konkretnego endpointu wraz z jawną strategią unieważniania.
 
+## Backfill tłumaczeń osoby
+
+Migracja treści z historycznych kolumn `*_pl` i `*_en` do tabeli
+`person_translations` jest jawna i domyślnie działa tylko do odczytu:
+
+```bash
+make translations-backfill-check
+```
+
+Raport wskazuje kandydatów oraz konflikty, ale nie zmienia danych. Po sprawdzeniu
+wyniku można utworzyć wyłącznie brakujące, jednoznaczne rekordy:
+
+```bash
+make translations-backfill
+```
+
+Istniejące tłumaczenia — również miękko usunięte lub zapisane z
+nienormalizowanym kodem języka — nie są nadpisywane ani przywracane. Do zapisu
+pełnego raportu JSON służy bezpośrednie wywołanie modułu z opcją
+`--report /bezpieczna/sciezka/report.json`. Skrypt przetwarza wszystkie osoby,
+także archiwalne i miękko usunięte, aby późniejsze przywrócenie rekordu nie
+zgubiło projekcji językowej. Jako techniczna migracja identycznej treści nie
+zwiększa wersji osoby; późniejsze zmiany przechodzą już przez chronione API.
+
 ## Testy
 
 Integracje wymagają PostgreSQL. Development compose przekazuje bezpieczny adres
