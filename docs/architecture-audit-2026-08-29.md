@@ -38,15 +38,15 @@ Stan na 2026-09-06 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **210 passed**, 0 failures, 0 errors, 0 warnings |
-| Backend coverage | **82.62%**, wymagany próg 80% spełniony |
+| Backend pytest | **218 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend coverage | **82.82%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0016_person_names`, jeden head |
 | Nowa pusta baza | upgrade 0001 → 0016 oraz downgrade/re-upgrade 0016: PASS |
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 108 plików źródłowych |
+| Ruff / strict mypy | PASS, mypy analizuje 109 plików źródłowych |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -736,9 +736,13 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
   lokalizację UI od wersji językowych treści, zabrania dokładania kolejnych kolumn
   `_xx` i wskazuje `PersonTranslation` jako docelowe źródło prawdy. Oba frontendy
   mają typowany rejestr obsługiwanych języków i ładowane po stronie serwera słowniki;
-  do pierwszego pionu przeniesiono metadata oraz globalne powłoki nawigacyjne.
-  Pozostają teksty ekranów funkcjonalnych, workflow tłumaczeń, projekcja API,
-  backfill danych oraz routing uruchamiany dopiero z kompletnym drugim językiem.
+  do pierwszego pionu przeniesiono metadata oraz globalne powłoki nawigacyjne. Publiczne
+  endpointy osób przyjmują teraz walidowany parametr `locale` i zwracają jawne
+  `localized_content` z językiem żądanym, rozstrzygniętym, źródłem oraz informacją o
+  fallbacku. Resolver preferuje aktywny `PersonTranslation`, obsługuje tag regionalny
+  i nie miesza brakujących pól z innym językiem; katalog nie zwraca pełnego biogramu.
+  Pozostają teksty ekranów funkcjonalnych, workflow tłumaczeń, backfill danych oraz
+  routing uruchamiany dopiero z kompletnym drugim językiem.
 - **Category:** Internationalization
 - **File:** oba frontendy i modele Person/Translation
 - **Lines:** setki hardcoded strings
@@ -797,8 +801,8 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 
 - **Severity:** P3
 - **Status po refaktoryzacji:** Zamknięte 2026-09-06. Ruff korzysta z aktualnej
-  sekcji `[tool.ruff.lint]`, mypy działa w trybie strict dla 108 plików źródłowych,
-  a 159 plików backendu i testów jest zgodnych z Black. `make lint`,
+  sekcji `[tool.ruff.lint]`, mypy działa w trybie strict dla 109 plików źródłowych,
+  a 161 plików backendu i testów jest zgodnych z Black. `make lint`,
   `make format-check` i `make type-check` rozdzielają kontrolę jakości od modyfikacji
   kodu; CI wykonuje formatter w trybie tylko do odczytu jako osobną bramkę.
 - **Category:** Code quality

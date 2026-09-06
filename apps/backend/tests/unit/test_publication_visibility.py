@@ -79,4 +79,8 @@ def test_public_contract_hides_status_filter_and_protects_editorial_detail() -> 
 
     assert "status" not in {parameter["name"] for parameter in public_parameters}
     assert "sort" in {parameter["name"] for parameter in public_parameters}
+    assert "locale" in {parameter["name"] for parameter in public_parameters}
+    assert (
+        "localized_content" in schema["components"]["schemas"]["PersonListItemSchema"]["properties"]
+    )
     assert admin_detail["security"] == [{"HTTPBearer": []}]

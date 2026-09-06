@@ -373,21 +373,21 @@ class PersonService:
         identifier: str,
         *,
         published_only: bool = False,
+        include_translations: bool = False,
     ) -> Person | None:
         """Fetch a person by UUID or slug, optionally limiting access to public records."""
-        stmt = (
-            select(Person)
-            .options(
-                selectinload(Person.images),
-                selectinload(Person.aliases),
-                selectinload(Person.state_of_life),
-                selectinload(Person.patronages),
-                selectinload(Person.orders).selectinload(PersonOrder.order),
-                selectinload(Person.beatification),
-                selectinload(Person.canonization),
-            )
-            .where(Person.deleted_at.is_(None))
-        )
+        load_options = [
+            selectinload(Person.images),
+            selectinload(Person.aliases),
+            selectinload(Person.state_of_life),
+            selectinload(Person.patronages),
+            selectinload(Person.orders).selectinload(PersonOrder.order),
+            selectinload(Person.beatification),
+            selectinload(Person.canonization),
+        ]
+        if include_translations:
+            load_options.append(selectinload(Person.translations))
+        stmt = select(Person).options(*load_options).where(Person.deleted_at.is_(None))
         if published_only:
             stmt = stmt.where(Person.status == PublicationStatus.PUBLISHED.value)
         try:
@@ -414,13 +414,13 @@ class PersonService:
         is_featured: bool | None = None,
         published_only: bool = False,
         sort: PersonSort = PersonSort.NAME_ASC,
+        include_translations: bool = False,
     ) -> tuple[list[Person], int]:
         """List persons with full-text search, filtering, and pagination."""
-        query = (
-            select(Person)
-            .options(selectinload(Person.images), selectinload(Person.patronages))
-            .where(Person.deleted_at.is_(None))
-        )
+        load_options = [selectinload(Person.images), selectinload(Person.patronages)]
+        if include_translations:
+            load_options.append(selectinload(Person.translations))
+        query = select(Person).options(*load_options).where(Person.deleted_at.is_(None))
 
         if published_only:
             query = query.where(Person.status == PublicationStatus.PUBLISHED.value)

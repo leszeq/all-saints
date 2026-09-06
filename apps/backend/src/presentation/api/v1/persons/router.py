@@ -19,6 +19,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.application.services.person_localization import resolve_person_content
 from src.application.services.person_service import (
     PersonService,
     PersonStatusChangeError,
@@ -29,6 +30,7 @@ from src.domain.hagiography.models import (
     EraPeriod,
     Gender,
     PatronageGroup,
+    Person,
     PersonSort,
     PersonType,
     PublicationStatus,
@@ -43,12 +45,32 @@ from src.presentation.api.v1.persons.schemas import (
     PersonDetailSchema,
     PersonListItemSchema,
     PersonListResponseSchema,
+    PersonLocalizedSummarySchema,
     PersonUpdateSchema,
     PersonVersionSchema,
 )
 from src.presentation.audit import audit_context_from_request
 
 router = APIRouter()
+
+LOCALE_QUERY = Query(
+    min_length=2,
+    max_length=35,
+    pattern=r"^[A-Za-z]{2,3}(?:[-_][A-Za-z0-9]{2,8})*$",
+    description="Requested BCP 47 content locale; falls back to the primary language and Polish",
+)
+
+
+def _localized_list_item(person: Person, locale: str) -> PersonListItemSchema:
+    payload = PersonListItemSchema.model_validate(person)
+    content = resolve_person_content(person, locale)
+    summary = PersonLocalizedSummarySchema.model_validate(content.model_dump())
+    return payload.model_copy(update={"localized_content": summary})
+
+
+def _localized_detail(person: Person, locale: str) -> PersonDetailSchema:
+    payload = PersonDetailSchema.model_validate(person)
+    return payload.model_copy(update={"localized_content": resolve_person_content(person, locale)})
 
 
 @router.get(
@@ -76,6 +98,7 @@ async def list_persons(
     country_id: uuid.UUID | None = None,
     is_featured: bool | None = None,
     sort: PersonSort = PersonSort.NAME_ASC,
+    locale: Annotated[str, LOCALE_QUERY] = "pl",
     db: AsyncSession = Depends(get_db_session),
 ) -> PersonListResponseSchema:
     """List persons with optional filters."""
@@ -93,12 +116,13 @@ async def list_persons(
         is_featured=is_featured,
         published_only=True,
         sort=sort,
+        include_translations=True,
     )
 
     pages = -(-total // per_page) if total > 0 else 1
 
     return PersonListResponseSchema(
-        items=[PersonListItemSchema.model_validate(p) for p in items],
+        items=[_localized_list_item(person, locale) for person in items],
         total=total,
         page=page,
         per_page=per_page,
@@ -223,11 +247,16 @@ async def create_person(
 )
 async def get_person(
     id_or_slug: str,
+    locale: Annotated[str, LOCALE_QUERY] = "pl",
     db: AsyncSession = Depends(get_db_session),
 ) -> PersonDetailSchema:
     """Fetch person details."""
     service = PersonService(db)
-    person = await service.get_by_id_or_slug(id_or_slug, published_only=True)
+    person = await service.get_by_id_or_slug(
+        id_or_slug,
+        published_only=True,
+        include_translations=True,
+    )
 
     if not person:
         raise HTTPException(
@@ -235,7 +264,7 @@ async def get_person(
             detail="Osoba nie została znaleziona",
         )
 
-    return PersonDetailSchema.model_validate(person)
+    return _localized_detail(person, locale)
 
 
 @router.patch(

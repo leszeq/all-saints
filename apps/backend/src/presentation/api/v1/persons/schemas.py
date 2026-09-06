@@ -31,6 +31,8 @@ PersonPatronageInputSchema = person_commands.PersonPatronageInputSchema
 PersonUpdateSchema = person_commands.PersonUpdateSchema
 PersonAvatarSchema = person_models.PersonAvatarSchema
 PersonLastEditorSchema = person_models.PersonLastEditorSchema
+PersonLocalizedContentSchema = person_models.PersonLocalizedContentSchema
+PersonLocalizedSummarySchema = person_models.PersonLocalizedSummarySchema
 
 
 class PersonPatronageSchema(BaseModel):
@@ -78,6 +80,7 @@ class PersonListItemSchema(BaseModel):
     liturgical_color: LiturgicalColor | None = None
     is_featured: bool
     avatar: PersonAvatarSchema | None = None
+    localized_content: PersonLocalizedSummarySchema | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -143,6 +146,8 @@ class PersonCanonizationSchema(BaseModel):
 
 class PersonDetailSchema(PersonListItemSchema):
     """Complete detail schema for single record view."""
+
+    localized_content: PersonLocalizedContentSchema | None = None
 
     latin_name: str | None = None
     original_name: str | None = None
