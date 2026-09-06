@@ -732,6 +732,13 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 ### I18N-001
 
 - **Severity:** P2
+- **Status po refaktoryzacji:** W realizacji od 2026-09-06. ADR 0005 rozdziela
+  lokalizację UI od wersji językowych treści, zabrania dokładania kolejnych kolumn
+  `_xx` i wskazuje `PersonTranslation` jako docelowe źródło prawdy. Oba frontendy
+  mają typowany rejestr obsługiwanych języków i ładowane po stronie serwera słowniki;
+  do pierwszego pionu przeniesiono metadata oraz globalne powłoki nawigacyjne.
+  Pozostają teksty ekranów funkcjonalnych, workflow tłumaczeń, projekcja API,
+  backfill danych oraz routing uruchamiany dopiero z kompletnym drugim językiem.
 - **Category:** Internationalization
 - **File:** oba frontendy i modele Person/Translation
 - **Lines:** setki hardcoded strings

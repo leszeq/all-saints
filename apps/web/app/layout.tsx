@@ -3,48 +3,48 @@ import "./globals.css";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { Providers } from "@/components/providers";
+import { DEFAULT_WEB_UI_LOCALE } from "@/lib/i18n/config";
+import { getWebDictionary } from "@/lib/i18n/dictionaries";
 
-export const metadata: Metadata = {
-  title: {
-    default: "Encyklopedia Świętych Kościoła Katolickiego",
-    template: "%s | Encyklopedia Świętych",
-  },
-  description:
-    "Kompletne cyfrowe leksykon hagiograficzny Kościoła Katolickiego. Wyszukuj świętych, błogosławionych, patronów, kalendarz liturgiczny i modlitwy.",
-  keywords: [
-    "święci",
-    "błogosławieni",
-    "Kościół Katolicki",
-    "patroni",
-    "hagiografia",
-    "kalendarz liturgiczny",
-    "modlitwy",
-    "sanktuaria",
-  ],
-  authors: [{ name: "Encyklopedia Świętych Team" }],
-  openGraph: {
-    type: "website",
-    locale: "pl_PL",
-    url: "https://encyklopediaswietych.pl",
-    siteName: "Encyklopedia Świętych",
-    title: "Encyklopedia Świętych Kościoła Katolickiego",
-    description:
-      "Wyszukuj świętych, błogosławionych, patronów i kalendarz liturgiczny.",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const dictionary = await getWebDictionary(DEFAULT_WEB_UI_LOCALE);
+  return {
+    title: {
+      default: dictionary.metadata.defaultTitle,
+      template: dictionary.metadata.titleTemplate,
+    },
+    description: dictionary.metadata.description,
+    keywords: dictionary.metadata.keywords,
+    authors: [{ name: dictionary.metadata.author }],
+    openGraph: {
+      type: "website",
+      locale: dictionary.metadata.openGraphLocale,
+      url: "https://encyklopediaswietych.pl",
+      siteName: dictionary.brand.name,
+      title: dictionary.metadata.openGraphTitle,
+      description: dictionary.metadata.openGraphDescription,
+    },
+  };
+}
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const dictionary = await getWebDictionary(DEFAULT_WEB_UI_LOCALE);
+
   return (
-    <html lang="pl" className="scroll-smooth" data-scroll-behavior="smooth">
+    <html
+      lang={DEFAULT_WEB_UI_LOCALE}
+      className="scroll-smooth"
+      data-scroll-behavior="smooth"
+    >
       <body className="flex min-h-screen flex-col antialiased">
         <Providers>
-          <Header />
+          <Header dictionary={{ brand: dictionary.brand, header: dictionary.header }} />
           <main className="flex-1">{children}</main>
-          <Footer />
+          <Footer dictionary={{ brand: dictionary.brand, footer: dictionary.footer }} />
         </Providers>
       </body>
     </html>
