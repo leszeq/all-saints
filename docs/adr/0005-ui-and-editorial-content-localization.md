@@ -105,6 +105,12 @@ the existing public API.
     Polish. Stable calendar codes and API enum values remain untranslated. Localizing
     observance editorial content is a separate data-model migration and is not
     simulated by mixing the existing `_pl` and `_en` fields.
+17. Public religious-community catalogue and profile UI copy, metadata, filters,
+    cards, loading labels and empty states live in the typed portal dictionary.
+    Order classifications keep their stable API keys and continue to resolve through
+    shared domain-label dictionaries. Existing order editorial fields remain one
+    language-neutral compatibility contract until their localization model is
+    designed separately.
 
 ## Consequences
 
@@ -131,8 +137,9 @@ the existing public API.
    by home, calendar and religious-community screens. The complete home-page copy
    and its truthful empty states are also dictionary-backed. The complete public
    calendar feature (month, day and non-person observance) now uses the typed
-   dictionary and explicit locale-aware date formatting; remaining community and
-   administrative page prose remains incremental work.
+   dictionary and explicit locale-aware date formatting. The public community
+   catalogue and profile are also complete at the UI-copy boundary; remaining public
+   error/loading edge states and administrative page prose remain incremental work.
 3. Add application-layer commands and protected endpoints for translation workflow.
 4. Backfill `pl` and `en` translation rows idempotently from legacy columns and
    report conflicts without overwriting reviewed translations. The maintenance

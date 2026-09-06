@@ -760,8 +760,11 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
   pokazuje jawny stan pusty zamiast fikcyjnych statystyk, osób i wspólnot. Miesięczny
   i dzienny kalendarz oraz profile obchodów niebędących osobami korzystają już z
   tego samego słownika dla treści UI, metadata, dostępności i etykiet domenowych;
-  formatery dat wymagają jawnego locale. Pozostają teksty funkcjonalne wspólnot i
-  panelu oraz routing uruchamiany dopiero z kompletnym drugim językiem.
+  formatery dat wymagają jawnego locale. Katalog i profil wspólnoty mają również
+  słownikowe metadata, filtry, karty, fallbacki, stany puste i etykiety ładowania,
+  przy zachowaniu stabilnych kluczy klasyfikacji w API. Pozostają publiczne stany
+  błędów/placeholderów, teksty panelu oraz routing uruchamiany dopiero z kompletnym
+  drugim językiem.
 - **Category:** Internationalization
 - **File:** oba frontendy i modele Person/Translation
 - **Lines:** setki hardcoded strings
