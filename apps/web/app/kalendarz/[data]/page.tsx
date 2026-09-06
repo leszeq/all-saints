@@ -20,7 +20,10 @@ import {
   OBSERVANCE_TYPE_LABELS,
   shiftDate,
 } from "@/lib/calendar";
-import { PERSON_TYPE_LABELS } from "@/lib/utils";
+import { DEFAULT_WEB_UI_LOCALE } from "@/lib/i18n/config";
+import { getWebDictionary } from "@/lib/i18n/dictionaries";
+import { resolveDictionaryValue } from "@/lib/i18n/labels";
+import type { WebDictionary } from "@/lib/i18n/types";
 
 
 export const revalidate = 300;
@@ -32,9 +35,15 @@ interface PageProps {
 }
 
 
-function entryTypeLabel(entry: CalendarEntry): string {
+function entryTypeLabel(
+  entry: CalendarEntry,
+  personTypes: WebDictionary["domain"]["personTypes"],
+): string {
   if (entry.person) {
-    return PERSON_TYPE_LABELS[entry.person.person_type] ?? entry.person.person_type;
+    return (
+      resolveDictionaryValue(personTypes, entry.person.person_type)?.label ??
+      entry.person.person_type
+    );
   }
   const type = entry.observance?.observance_type ?? "other";
   return OBSERVANCE_TYPE_LABELS[type] ?? type;
@@ -53,7 +62,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 
 export default async function CalendarDayPage({ params, searchParams }: PageProps) {
-  const { data } = await params;
+  const [{ data }, dictionary] = await Promise.all([
+    params,
+    getWebDictionary(DEFAULT_WEB_UI_LOCALE),
+  ]);
   if (!isValidCalendarDate(data)) notFound();
   const query = await searchParams;
   const calendarCode = query.calendar || "roman_pl";
@@ -101,7 +113,7 @@ export default async function CalendarDayPage({ params, searchParams }: PageProp
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-full bg-gold-100 px-3 py-1 text-xs font-bold text-gold-800">Główne wspomnienie</span>
                     <span className="rounded-full border border-[#ded8cd] px-3 py-1 text-xs font-semibold text-stone-600">{FEAST_RANK_LABELS[primary.rank] ?? primary.rank}</span>
-                    <span className="rounded-full border border-[#ded8cd] px-3 py-1 text-xs font-semibold text-stone-600">{entryTypeLabel(primary)}</span>
+                    <span className="rounded-full border border-[#ded8cd] px-3 py-1 text-xs font-semibold text-stone-600">{entryTypeLabel(primary, dictionary.domain.personTypes)}</span>
                   </div>
                   <h2 className="mt-5 font-serif text-4xl font-semibold text-charcoal">{calendarEntryTitle(primary)}</h2>
                   <p className="mt-4 max-w-3xl text-sm leading-7 text-stone-600">{calendarEntrySummary(primary) || "Opis tego wpisu jest obecnie opracowywany przez redakcję."}</p>

@@ -9,6 +9,23 @@ export interface FooterGroup {
 }
 
 export type GenderKey = "male" | "female" | "unknown";
+export type PersonTypeKey =
+  | "saint"
+  | "blessed"
+  | "venerable"
+  | "servant_of_god"
+  | "candidate";
+export type EraKey =
+  | "apostolic"
+  | "early_church"
+  | "late_antiquity"
+  | "medieval"
+  | "early_modern"
+  | "modern"
+  | "contemporary"
+  | "unknown";
+export type HistoricalPeriodKey = "early_witnesses" | "medieval" | "renewal" | "modern";
+export type PatronageGroupKey = "health" | "family" | "work" | "travel";
 export type PatronageTypeKey =
   | "illness"
   | "healthcare"
@@ -22,6 +39,33 @@ export type PatronageTypeKey =
   | "group"
   | "cause"
   | "other";
+export type ReligiousCommunityTypeKey =
+  | "religious_order"
+  | "congregation"
+  | "monastic_family"
+  | "society_apostolic_life"
+  | "secular_institute"
+  | "federation"
+  | "other";
+export type OrderCharismKey =
+  | "contemplative"
+  | "apostolic"
+  | "mendicant"
+  | "monastic"
+  | "missionary"
+  | "educational"
+  | "charitable"
+  | "military"
+  | "other";
+export type OrderMembershipTypeKey =
+  | "founder"
+  | "monk"
+  | "friar"
+  | "nun"
+  | "sister"
+  | "lay_member"
+  | "spiritual_patron"
+  | "member";
 
 export interface WebDictionary {
   metadata: {
@@ -55,6 +99,18 @@ export interface WebDictionary {
     disclaimer: string;
     groups: FooterGroup[];
     rightsReserved: string;
+  };
+  domain: {
+    personTypes: Record<PersonTypeKey, { label: string; description: string }>;
+    eras: Record<EraKey, string>;
+    historicalPeriods: Record<HistoricalPeriodKey, { range: string; title: string }>;
+    patronageGroups: Record<PatronageGroupKey, { title: string; detail: string }>;
+    religiousCommunities: {
+      communityTypes: Record<ReligiousCommunityTypeKey, string>;
+      charisms: Record<OrderCharismKey, string>;
+      spiritualFamilies: Record<string, string>;
+      membershipTypes: Record<OrderMembershipTypeKey, string>;
+    };
   };
   saintsDirectory: {
     title: string;

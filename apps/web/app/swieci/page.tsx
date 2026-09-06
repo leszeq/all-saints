@@ -1,20 +1,12 @@
 import Link from "next/link";
 import { BookOpen, ChevronRight, Search } from "lucide-react";
 import { fetchPersons } from "@/lib/api";
-import {
-  ERA_LABELS,
-  LEGACY_ERA_PERIODS,
-  LEGACY_SEARCH_PATRONAGES,
-  PATRONAGE_GROUPS,
-  PERSON_TYPE_DESCRIPTIONS,
-  PERSON_TYPE_LABELS,
-  TIME_PERIODS,
-} from "@/lib/utils";
 import { SaintAvatar, type SaintAvatarData } from "@/components/saint-avatar";
 import { DEFAULT_WEB_UI_LOCALE } from "@/lib/i18n/config";
 import { getWebDictionary } from "@/lib/i18n/dictionaries";
-import { resolveDictionaryLabel } from "@/lib/i18n/labels";
+import { resolveDictionaryLabel, resolveDictionaryValue } from "@/lib/i18n/labels";
 import { readPublicPersonContent } from "@/lib/person-content";
+import { LEGACY_ERA_PERIODS, LEGACY_SEARCH_PATRONAGES } from "@/lib/person-filters";
 
 export const revalidate = 30;
 
@@ -147,6 +139,7 @@ function FilterOption({
 export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
   const dictionary = await getWebDictionary(DEFAULT_WEB_UI_LOCALE);
   const copy = dictionary.saintsDirectory;
+  const domain = dictionary.domain;
   const params = await searchParams;
   const rawSearch = firstParamValue(params.search);
   const legacyPatronage = LEGACY_SEARCH_PATRONAGES[rawSearch]
@@ -157,34 +150,39 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
     .filter(Boolean);
   const patronageFilters = validParamValues(
     [params.patronage, legacyPatronage],
-    PATRONAGE_GROUPS,
+    domain.patronageGroups,
   );
   const search = legacyPatronage.length ? "" : rawSearch;
-  const typeFilters = validParamValues(params.type, PERSON_TYPE_LABELS);
+  const typeFilters = validParamValues(params.type, domain.personTypes);
   const genderFilters = validParamValues(params.gender, copy.genderLabels);
-  const periodFilters = validParamValues([params.period, legacyPeriods], TIME_PERIODS);
-  const eraFilters = periodFilters.length ? [] : validParamValues(params.era, ERA_LABELS);
+  const periodFilters = validParamValues(
+    [params.period, legacyPeriods],
+    domain.historicalPeriods,
+  );
+  const eraFilters = periodFilters.length
+    ? []
+    : validParamValues(params.era, domain.eras);
   const page = Number(firstParamValue(params.page) || "1");
   const activeFilters = [
     ...typeFilters.map((value) => ({
-      label: PERSON_TYPE_LABELS[value],
-      context: PERSON_TYPE_DESCRIPTIONS[value],
+      label: resolveDictionaryValue(domain.personTypes, value)?.label ?? value,
+      context: resolveDictionaryValue(domain.personTypes, value)?.description ?? value,
     })),
     ...genderFilters.map((value) => ({
       label: resolveDictionaryLabel(copy.genderLabels, value) ?? value,
       context: copy.genderContext,
     })),
     ...periodFilters.map((value) => ({
-      label: TIME_PERIODS[value as keyof typeof TIME_PERIODS].range,
-      context: TIME_PERIODS[value as keyof typeof TIME_PERIODS].title,
+      label: resolveDictionaryValue(domain.historicalPeriods, value)?.range ?? value,
+      context: resolveDictionaryValue(domain.historicalPeriods, value)?.title ?? value,
     })),
     ...eraFilters.map((value) => ({
-      label: ERA_LABELS[value],
+      label: resolveDictionaryLabel(domain.eras, value) ?? value,
       context: copy.eraContext,
     })),
     ...patronageFilters.map((value) => ({
-      label: PATRONAGE_GROUPS[value as keyof typeof PATRONAGE_GROUPS].title,
-      context: PATRONAGE_GROUPS[value as keyof typeof PATRONAGE_GROUPS].detail,
+      label: resolveDictionaryValue(domain.patronageGroups, value)?.title ?? value,
+      context: resolveDictionaryValue(domain.patronageGroups, value)?.detail ?? value,
     })),
   ];
 
@@ -234,12 +232,12 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
               {copy.personTypeLegend}
             </legend>
             <div className="mt-2 flex flex-wrap gap-2">
-              {Object.entries(PERSON_TYPE_LABELS).map(([value, label]) => (
+              {Object.entries(domain.personTypes).map(([value, personType]) => (
                 <FilterOption
                   key={value}
                   name="type"
                   value={value}
-                  label={label}
+                  label={personType.label}
                   checked={typeFilters.includes(value)}
                 />
               ))}
@@ -268,7 +266,7 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
               {copy.patronageLegend}
             </legend>
             <div className="mt-2 flex flex-wrap gap-2">
-              {Object.entries(PATRONAGE_GROUPS).map(([value, group]) => (
+              {Object.entries(domain.patronageGroups).map(([value, group]) => (
                 <FilterOption
                   key={value}
                   name="patronage"
@@ -285,7 +283,7 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
               {copy.historicalPeriodLegend}
             </legend>
             <div className="mt-2 flex flex-wrap gap-2">
-              {Object.entries(TIME_PERIODS).map(([value, period]) => (
+              {Object.entries(domain.historicalPeriods).map(([value, period]) => (
                 <FilterOption
                   key={value}
                   name="period"
@@ -380,7 +378,8 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
                       className="h-20 w-20 text-xl transition-transform duration-300 group-hover:scale-[1.03]"
                     />
                     <span className="inline-block rounded-full bg-gold-100 px-3 py-1 text-xs font-semibold text-gold-800">
-                      {PERSON_TYPE_LABELS[p.person_type as string] ?? (p.person_type as string)}
+                      {resolveDictionaryValue(domain.personTypes, p.person_type)?.label ??
+                        String(p.person_type)}
                     </span>
                   </div>
 

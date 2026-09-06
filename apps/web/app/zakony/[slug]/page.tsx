@@ -15,15 +15,13 @@ import {
 import { SaintAvatar } from "@/components/saint-avatar";
 import { fetchOrderDetail, fetchOrders, isApiNotFound } from "@/lib/api";
 import {
-  COMMUNITY_TYPE_LABELS,
-  MEMBERSHIP_TYPE_LABELS,
-  ORDER_CHARISM_LABELS,
   orderMonogram,
   type ReligiousOrder,
   type ReligiousOrderDetail,
-  SPIRITUAL_FAMILY_LABELS,
 } from "@/lib/orders";
-import { PERSON_TYPE_LABELS } from "@/lib/utils";
+import { DEFAULT_WEB_UI_LOCALE } from "@/lib/i18n/config";
+import { getWebDictionary } from "@/lib/i18n/dictionaries";
+import { resolveDictionaryLabel, resolveDictionaryValue } from "@/lib/i18n/labels";
 
 export const revalidate = 300;
 
@@ -46,7 +44,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function OrderDetailPage({ params }: PageProps) {
-  const { slug } = await params;
+  const [{ slug }, dictionary] = await Promise.all([
+    params,
+    getWebDictionary(DEFAULT_WEB_UI_LOCALE),
+  ]);
+  const domain = dictionary.domain;
+  const labels = domain.religiousCommunities;
   let order: ReligiousOrderDetail;
   try {
     order = (await fetchOrderDetail(slug)) as ReligiousOrderDetail;
@@ -91,10 +94,11 @@ export default async function OrderDetailPage({ params }: PageProps) {
             <div>
               <div className="flex flex-wrap gap-2">
                 <span className="rounded-full bg-gold-300 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-burgundy-950">
-                  {COMMUNITY_TYPE_LABELS[order.community_type] ?? order.community_type}
+                  {resolveDictionaryLabel(labels.communityTypes, order.community_type) ??
+                    order.community_type}
                 </span>
-                {order.charism && <span className="rounded-full border border-white/15 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-burgundy-100">{ORDER_CHARISM_LABELS[order.charism] ?? order.charism}</span>}
-                {order.spiritual_family && <span className="rounded-full border border-white/15 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-burgundy-100">Rodzina {SPIRITUAL_FAMILY_LABELS[order.spiritual_family] ?? order.spiritual_family}</span>}
+                {order.charism && <span className="rounded-full border border-white/15 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-burgundy-100">{resolveDictionaryLabel(labels.charisms, order.charism) ?? order.charism}</span>}
+                {order.spiritual_family && <span className="rounded-full border border-white/15 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-burgundy-100">Rodzina {labels.spiritualFamilies[order.spiritual_family] ?? order.spiritual_family}</span>}
               </div>
               <h1 className="mt-5 max-w-4xl font-serif text-4xl font-semibold leading-tight sm:text-6xl">{order.name}</h1>
               {order.name_la && <p className="mt-3 font-serif text-lg italic text-gold-100">{order.name_la}</p>}
@@ -167,10 +171,10 @@ export default async function OrderDetailPage({ params }: PageProps) {
                 <Link key={membership.person.id} href={`/swieci/${membership.person.slug}`} className="group surface-card flex min-h-64 flex-col p-6 transition-transform hover:-translate-y-1">
                   <div className="flex items-start justify-between gap-4">
                     <SaintAvatar name={membership.person.canonical_name} avatar={membership.person.avatar ?? null} className="h-16 w-16 text-lg" />
-                    <span className="rounded-full bg-gold-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-gold-800">{MEMBERSHIP_TYPE_LABELS[membership.membership_type] ?? membership.membership_type}</span>
+                    <span className="rounded-full bg-gold-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-gold-800">{resolveDictionaryLabel(labels.membershipTypes, membership.membership_type) ?? membership.membership_type}</span>
                   </div>
                   <div className="mt-auto pt-10">
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-stone-500">{PERSON_TYPE_LABELS[membership.person.person_type] ?? membership.person.person_type} · {membership.person.birth_year || "?"}–{membership.person.death_year || "?"}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-stone-500">{resolveDictionaryValue(domain.personTypes, membership.person.person_type)?.label ?? membership.person.person_type} · {membership.person.birth_year || "?"}–{membership.person.death_year || "?"}</p>
                     <h3 className="mt-2 font-serif text-2xl font-semibold text-charcoal group-hover:text-burgundy-700">{membership.person.canonical_name}</h3>
                     <p className="mt-3 line-clamp-2 text-sm leading-6 text-stone-600">{membership.notes || membership.person.summary_pl || "Profil w opracowaniu."}</p>
                     <span className="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-burgundy-700">Pełny profil <ArrowRight className="h-4 w-4" /></span>
@@ -191,7 +195,7 @@ export default async function OrderDetailPage({ params }: PageProps) {
           <div className="mt-7 grid gap-4 md:grid-cols-3">
             {related.map((item) => (
               <Link key={item.id} href={`/zakony/${item.slug}`} className="group rounded-xl border border-[#ded8cd] bg-white p-5 hover:border-gold-400">
-                <p className="text-xs font-bold text-gold-800">{item.abbreviation || COMMUNITY_TYPE_LABELS[item.community_type]}</p>
+                <p className="text-xs font-bold text-gold-800">{item.abbreviation || resolveDictionaryLabel(labels.communityTypes, item.community_type)}</p>
                 <h3 className="mt-2 font-serif text-xl font-semibold group-hover:text-burgundy-700">{item.name}</h3>
                 <span className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-burgundy-700">Zobacz profil <ArrowRight className="h-3.5 w-3.5" /></span>
               </Link>

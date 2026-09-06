@@ -752,8 +752,12 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
   tłumaczenia są wykluczone. Katalog i profil publiczny pobierają jawny język treści,
   renderują spójną projekcję `localized_content`, a ich teksty UI są częścią typowanego
   słownika; lekka projekcja katalogowa zawiera także lokalizowane atrybuty
-  ikonograficzne, bez pełnego biogramu i modlitw. Pozostają pozostałe ekrany
-  funkcjonalne oraz routing uruchamiany dopiero z kompletnym drugim językiem.
+  ikonograficzne, bez pełnego biogramu i modlitw. Wspólne etykiety typów osób, epok,
+  okresów, patronatów i wspólnot są oddzielone od stabilnych kluczy API i pobierane
+  z typowanego słownika przez stronę główną, katalog, profil, kalendarz oraz zakony;
+  stare polskie wartości zapytań pozostają wyłącznie izolowaną warstwą zgodności.
+  Pozostają teksty funkcjonalne poszczególnych ekranów oraz routing uruchamiany
+  dopiero z kompletnym drugim językiem.
 - **Category:** Internationalization
 - **File:** oba frontendy i modele Person/Translation
 - **Lines:** setki hardcoded strings

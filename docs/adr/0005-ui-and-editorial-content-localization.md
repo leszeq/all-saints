@@ -90,6 +90,11 @@ the existing public API.
     fields missing from an existing translation are not silently filled from another
     language. Catalogue projections include summary and iconographic attributes but
     continue to omit biography and prayers.
+14. Stable API/filter values are not UI copy. Person types, eras, public time and
+    patronage groups, and religious-community classifications keep their existing
+    language-neutral keys while every visible label lives in the typed UI dictionary.
+    Compatibility aliases for historical Polish query values are isolated from the
+    translated labels and remain accepted during the URL migration window.
 
 ## Consequences
 
@@ -112,8 +117,9 @@ the existing public API.
 
 1. Introduce typed Polish dictionaries and migrate global application shells.
 2. Move remaining page copy by feature, keeping UI behaviour unchanged. Completed
-   for the global shell and the person catalogue/profile vertical slice; other public
-   and administrative feature screens remain incremental work.
+   for the global shell, person catalogue/profile and shared domain labels consumed
+   by home, calendar and religious-community screens; remaining page prose and
+   administrative feature screens remain incremental work.
 3. Add application-layer commands and protected endpoints for translation workflow.
 4. Backfill `pl` and `en` translation rows idempotently from legacy columns and
    report conflicts without overwriting reviewed translations. The maintenance

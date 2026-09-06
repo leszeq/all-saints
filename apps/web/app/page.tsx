@@ -21,18 +21,13 @@ import {
   FEAST_RANK_LABELS,
   formatCalendarDate,
 } from "@/lib/calendar";
-import { PATRONAGE_GROUPS, TIME_PERIODS } from "@/lib/utils";
 import { SaintAvatar, type SaintAvatarData } from "@/components/saint-avatar";
 import { formatOrderMemberCount, orderMonogram, type ReligiousOrder } from "@/lib/orders";
+import { DEFAULT_WEB_UI_LOCALE } from "@/lib/i18n/config";
+import { getWebDictionary } from "@/lib/i18n/dictionaries";
+import { readPublicPersonContent } from "@/lib/person-content";
 
 export const revalidate = 60;
-
-const patronages = [
-  { key: "health", ...PATRONAGE_GROUPS.health, icon: HeartHandshake },
-  { key: "family", ...PATRONAGE_GROUPS.family, icon: Church },
-  { key: "work", ...PATRONAGE_GROUPS.work, icon: Landmark },
-  { key: "travel", ...PATRONAGE_GROUPS.travel, icon: Compass },
-];
 
 const fallbackPersons = [
   { id: "1", slug: "sw-franciszek-z-asyzu", name: "Św. Franciszek z Asyżu", years: "1181–1226", summary: "Założyciel Zakonu Braci Mniejszych, patron pokoju i troski o stworzenie.", avatar: null },
@@ -48,6 +43,14 @@ const formatLifeYears = (birthYear: unknown, deathYear: unknown) => {
 };
 
 export default async function HomePage() {
+  const dictionary = await getWebDictionary(DEFAULT_WEB_UI_LOCALE);
+  const domain = dictionary.domain;
+  const patronages = [
+    { key: "health", ...domain.patronageGroups.health, icon: HeartHandshake },
+    { key: "family", ...domain.patronageGroups.family, icon: Church },
+    { key: "work", ...domain.patronageGroups.work, icon: Landmark },
+    { key: "travel", ...domain.patronageGroups.travel, icon: Compass },
+  ];
   let recentPersons: Array<Record<string, unknown>> = [];
   let totalPersons = 0;
   let sourceAssignments: number | null = null;
@@ -78,20 +81,27 @@ export default async function HomePage() {
   }
 
   const recentlyUpdated = recentPersons.length
-    ? recentPersons.map((person) => ({
-        id: String(person.id),
-        slug: String(person.slug),
-        name: String(person.canonical_name),
-        years: formatLifeYears(person.birth_year, person.death_year),
-        summary: String(person.summary_pl || "Profil jest obecnie opracowywany przez redakcję."),
-        avatar: (person.avatar as SaintAvatarData | null) ?? null,
-      }))
+    ? recentPersons.map((person) => {
+        const content = readPublicPersonContent(person);
+        return {
+          id: String(person.id),
+          slug: String(person.slug),
+          name: content.canonicalName,
+          years: formatLifeYears(person.birth_year, person.death_year),
+          summary:
+            content.summary || "Profil jest obecnie opracowywany przez redakcję.",
+          avatar: (person.avatar as SaintAvatarData | null) ?? null,
+        };
+      })
     : fallbackPersons;
 
   const primaryCommemoration = calendarDay?.primary ?? null;
   const today = calendarDay
     ? formatCalendarDate(calendarDay.date, { day: "numeric", month: "long" })
-    : new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "long" }).format(new Date());
+    : new Intl.DateTimeFormat(DEFAULT_WEB_UI_LOCALE, {
+        day: "numeric",
+        month: "long",
+      }).format(new Date());
 
   return (
     <div className="overflow-hidden">
@@ -184,7 +194,7 @@ export default async function HomePage() {
           <div id="epoki">
             <div className="flex items-center justify-between"><div><p className="editorial-label">Oś czasu</p><h2 className="mt-3 font-serif text-3xl font-semibold">Święci przez wieki</h2></div><Clock3 className="h-7 w-7 text-gold-700" strokeWidth={1.4} /></div>
             <div className="relative mt-7 grid gap-3 before:absolute before:bottom-4 before:left-[6px] before:top-4 before:w-px before:bg-gold-300">
-              {Object.entries(TIME_PERIODS).map(([key, period]) => <Link key={key} href={`/swieci?period=${key}`} className="group relative grid grid-cols-[7.5rem_1fr] items-center gap-4 pl-7"><span className="absolute left-0 h-3 w-3 rounded-full border-2 border-[#fffdf8] bg-gold-500 ring-1 ring-gold-400" /><span className="text-xs font-semibold text-gold-800">{period.range}</span><span className="rounded-lg border border-transparent px-4 py-3 font-serif text-lg transition-colors group-hover:border-[#ded8cd] group-hover:bg-[#fffdf8]">{period.title}</span></Link>)}
+              {Object.entries(domain.historicalPeriods).map(([key, period]) => <Link key={key} href={`/swieci?period=${key}`} className="group relative grid grid-cols-[7.5rem_1fr] items-center gap-4 pl-7"><span className="absolute left-0 h-3 w-3 rounded-full border-2 border-[#fffdf8] bg-gold-500 ring-1 ring-gold-400" /><span className="text-xs font-semibold text-gold-800">{period.range}</span><span className="rounded-lg border border-transparent px-4 py-3 font-serif text-lg transition-colors group-hover:border-[#ded8cd] group-hover:bg-[#fffdf8]">{period.title}</span></Link>)}
             </div>
           </div>
         </section>

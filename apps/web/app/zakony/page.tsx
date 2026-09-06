@@ -12,13 +12,14 @@ import {
 
 import { fetchOrders } from "@/lib/api";
 import {
-  COMMUNITY_TYPE_LABELS,
   formatOrderMemberCount,
-  ORDER_CHARISM_LABELS,
   orderMonogram,
   type ReligiousOrder,
-  SPIRITUAL_FAMILY_LABELS,
 } from "@/lib/orders";
+import { DEFAULT_WEB_UI_LOCALE } from "@/lib/i18n/config";
+import { getWebDictionary } from "@/lib/i18n/dictionaries";
+import { resolveDictionaryLabel } from "@/lib/i18n/labels";
+import type { WebDictionary } from "@/lib/i18n/types";
 
 export const metadata: Metadata = {
   title: "Zakony i zgromadzenia | Encyklopedia Świętych",
@@ -37,7 +38,15 @@ interface PageProps {
   }>;
 }
 
-function OrderCard({ order, compact = false }: { order: ReligiousOrder; compact?: boolean }) {
+function OrderCard({
+  order,
+  labels,
+  compact = false,
+}: {
+  order: ReligiousOrder;
+  labels: WebDictionary["domain"]["religiousCommunities"];
+  compact?: boolean;
+}) {
   return (
     <Link
       href={`/zakony/${order.slug}`}
@@ -48,14 +57,15 @@ function OrderCard({ order, compact = false }: { order: ReligiousOrder; compact?
           {orderMonogram(order)}
         </span>
         <span className="rounded-full border border-[#ded8cd] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-stone-500">
-          {COMMUNITY_TYPE_LABELS[order.community_type] ?? order.community_type}
+          {resolveDictionaryLabel(labels.communityTypes, order.community_type) ??
+            order.community_type}
         </span>
       </div>
       <div className={compact ? "mt-5" : "mt-8"}>
         <p className="text-[10px] font-bold uppercase tracking-[0.13em] text-gold-800">
           {order.spiritual_family
-            ? `Rodzina ${SPIRITUAL_FAMILY_LABELS[order.spiritual_family] ?? order.spiritual_family}`
-            : ORDER_CHARISM_LABELS[order.charism ?? ""] ?? "Wspólnota zakonna"}
+            ? `Rodzina ${labels.spiritualFamilies[order.spiritual_family] ?? order.spiritual_family}`
+            : resolveDictionaryLabel(labels.charisms, order.charism) ?? "Wspólnota zakonna"}
         </p>
         <h2 className={`${compact ? "mt-2 text-xl" : "mt-3 text-3xl"} font-serif font-semibold leading-tight text-charcoal group-hover:text-burgundy-700`}>
           {order.name}
@@ -80,7 +90,11 @@ function OrderCard({ order, compact = false }: { order: ReligiousOrder; compact?
 }
 
 export default async function OrdersPage({ searchParams }: PageProps) {
-  const params = await searchParams;
+  const [params, dictionary] = await Promise.all([
+    searchParams,
+    getWebDictionary(DEFAULT_WEB_UI_LOCALE),
+  ]);
+  const labels = dictionary.domain.religiousCommunities;
   const query = {
     search: params.search?.trim() || undefined,
     charism: params.charism || undefined,
@@ -142,21 +156,21 @@ export default async function OrdersPage({ searchParams }: PageProps) {
             <span className="sr-only">Rodzina duchowa</span>
             <select name="family" defaultValue={params.family || ""} className="h-11 w-full rounded-lg border border-[#ded8cd] bg-[#fffdf8] px-3 text-sm outline-none focus:border-gold-500">
               <option value="">Wszystkie rodziny</option>
-              {Object.entries(SPIRITUAL_FAMILY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              {Object.entries(labels.spiritualFamilies).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select>
           </label>
           <label>
             <span className="sr-only">Charyzmat</span>
             <select name="charism" defaultValue={params.charism || ""} className="h-11 w-full rounded-lg border border-[#ded8cd] bg-[#fffdf8] px-3 text-sm outline-none focus:border-gold-500">
               <option value="">Wszystkie charyzmaty</option>
-              {Object.entries(ORDER_CHARISM_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              {Object.entries(labels.charisms).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select>
           </label>
           <label>
             <span className="sr-only">Typ wspólnoty</span>
             <select name="type" defaultValue={params.type || ""} className="h-11 w-full rounded-lg border border-[#ded8cd] bg-[#fffdf8] px-3 text-sm outline-none focus:border-gold-500">
               <option value="">Wszystkie typy</option>
-              {Object.entries(COMMUNITY_TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              {Object.entries(labels.communityTypes).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select>
           </label>
           <button className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-burgundy-700 px-5 text-sm font-semibold text-white hover:bg-burgundy-600">
@@ -181,7 +195,7 @@ export default async function OrdersPage({ searchParams }: PageProps) {
             <Sparkles className="h-7 w-7 text-gold-700" strokeWidth={1.4} />
           </div>
           <div className="mt-8 grid gap-5 lg:grid-cols-3">
-            {featured.map((order) => <OrderCard key={order.id} order={order} />)}
+            {featured.map((order) => <OrderCard key={order.id} order={order} labels={labels} />)}
           </div>
         </section>
       )}
@@ -199,7 +213,7 @@ export default async function OrdersPage({ searchParams }: PageProps) {
           </div>
           {remaining.length > 0 ? (
             <div className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {remaining.map((order) => <OrderCard key={order.id} order={order} compact />)}
+              {remaining.map((order) => <OrderCard key={order.id} order={order} labels={labels} compact />)}
             </div>
           ) : (
             <div className="mt-9 rounded-2xl border border-dashed border-[#ded8cd] bg-white p-10 text-center">

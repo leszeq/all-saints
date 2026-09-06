@@ -48,49 +48,6 @@ export interface ReligiousOrderDetail extends ReligiousOrder {
   members: OrderMember[];
 }
 
-export const COMMUNITY_TYPE_LABELS: Record<string, string> = {
-  religious_order: "Zakon",
-  congregation: "Zgromadzenie",
-  monastic_family: "Rodzina monastyczna",
-  society_apostolic_life: "Stowarzyszenie życia apostolskiego",
-  secular_institute: "Instytut świecki",
-  federation: "Federacja",
-  other: "Inna wspólnota",
-};
-
-export const ORDER_CHARISM_LABELS: Record<string, string> = {
-  contemplative: "Kontemplacyjny",
-  apostolic: "Apostolski",
-  mendicant: "Żebraczy",
-  monastic: "Monastyczny",
-  missionary: "Misyjny",
-  educational: "Edukacyjny",
-  charitable: "Charytatywny",
-  military: "Rycerski",
-  other: "Inny",
-};
-
-export const SPIRITUAL_FAMILY_LABELS: Record<string, string> = {
-  benedyktynska: "Benedyktyńska",
-  franciszkanska: "Franciszkańska",
-  dominikanska: "Dominikańska",
-  karmelitanska: "Karmelitańska",
-  augustynska: "Augustyńska",
-  kamiliańska: "Kamiliańska",
-  milosierdzia: "Miłosierdzia",
-};
-
-export const MEMBERSHIP_TYPE_LABELS: Record<string, string> = {
-  founder: "Założyciel / założycielka",
-  monk: "Mnich",
-  friar: "Brat zakonny",
-  nun: "Mniszka",
-  sister: "Siostra zakonna",
-  lay_member: "Członek świecki",
-  spiritual_patron: "Ojciec duchowy",
-  member: "Członek wspólnoty",
-};
-
 export function orderMonogram(order: Pick<ReligiousOrder, "abbreviation" | "name">): string {
   if (order.abbreviation) return order.abbreviation;
   return order.name

@@ -13,12 +13,10 @@ import {
   Sparkles,
 } from "lucide-react";
 import { fetchPersonDetail, isApiNotFound } from "@/lib/api";
-import { ERA_LABELS, PERSON_TYPE_LABELS } from "@/lib/utils";
 import { SaintAvatar, type SaintAvatarData } from "@/components/saint-avatar";
-import { MEMBERSHIP_TYPE_LABELS } from "@/lib/orders";
 import { DEFAULT_WEB_UI_LOCALE } from "@/lib/i18n/config";
 import { getWebDictionary } from "@/lib/i18n/dictionaries";
-import { resolveDictionaryLabel } from "@/lib/i18n/labels";
+import { resolveDictionaryLabel, resolveDictionaryValue } from "@/lib/i18n/labels";
 import { readPublicPersonContent } from "@/lib/person-content";
 
 interface PageProps {
@@ -85,6 +83,7 @@ export default async function PersonDetailPage({ params }: PageProps) {
     getWebDictionary(DEFAULT_WEB_UI_LOCALE),
   ]);
   const copy = dictionary.personProfile;
+  const domain = dictionary.domain;
   let person: Record<string, unknown> | null = null;
 
   try {
@@ -164,11 +163,13 @@ export default async function PersonDetailPage({ params }: PageProps) {
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full border border-gold-400/30 bg-gold-500/20 px-3 py-1 text-xs font-semibold text-gold-300 backdrop-blur-md">
-                  {PERSON_TYPE_LABELS[person.person_type as string] ?? (person.person_type as string)}
+                  {resolveDictionaryValue(domain.personTypes, person.person_type)?.label ??
+                    String(person.person_type)}
                 </span>
                 {Boolean(person.era) && (
                   <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-burgundy-200">
-                    {copy.eraPrefix} {ERA_LABELS[person.era as string] ?? String(person.era)}
+                    {copy.eraPrefix}{" "}
+                    {resolveDictionaryLabel(domain.eras, person.era) ?? String(person.era)}
                   </span>
                 )}
               </div>
@@ -336,7 +337,10 @@ export default async function PersonDetailPage({ params }: PageProps) {
                     className="group rounded-xl border border-[#ded8cd] bg-[#fffdf8] p-4 transition-colors hover:border-gold-400 hover:bg-gold-50"
                   >
                     <p className="text-[10px] font-bold uppercase tracking-wide text-gold-800">
-                      {MEMBERSHIP_TYPE_LABELS[String(membership.membership_type)] ?? String(membership.membership_type)}
+                      {resolveDictionaryLabel(
+                        domain.religiousCommunities.membershipTypes,
+                        membership.membership_type,
+                      ) ?? String(membership.membership_type)}
                     </p>
                     <h3 className="mt-1 font-serif text-lg font-semibold text-charcoal group-hover:text-burgundy-700">
                       {String(order.name)}
