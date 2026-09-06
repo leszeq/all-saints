@@ -18,13 +18,13 @@ import {
   calendarEntrySummary,
   calendarEntryTitle,
   type CalendarDay,
-  FEAST_RANK_LABELS,
   formatCalendarDate,
 } from "@/lib/calendar";
 import { SaintAvatar, type SaintAvatarData } from "@/components/saint-avatar";
 import { formatOrderMemberCount, orderMonogram, type ReligiousOrder } from "@/lib/orders";
 import { DEFAULT_WEB_UI_LOCALE } from "@/lib/i18n/config";
 import { getWebDictionary } from "@/lib/i18n/dictionaries";
+import { resolveDictionaryLabel } from "@/lib/i18n/labels";
 import { readPublicPersonContent } from "@/lib/person-content";
 
 export const revalidate = 60;
@@ -40,6 +40,7 @@ export default async function HomePage() {
   const dictionary = await getWebDictionary(DEFAULT_WEB_UI_LOCALE);
   const domain = dictionary.domain;
   const copy = dictionary.home;
+  const calendarCopy = dictionary.calendar;
   const patronages = [
     { key: "health", ...domain.patronageGroups.health, icon: HeartHandshake },
     { key: "family", ...domain.patronageGroups.family, icon: Church },
@@ -89,7 +90,10 @@ export default async function HomePage() {
 
   const primaryCommemoration = calendarDay?.primary ?? null;
   const today = calendarDay
-    ? formatCalendarDate(calendarDay.date, { day: "numeric", month: "long" })
+    ? formatCalendarDate(calendarDay.date, DEFAULT_WEB_UI_LOCALE, {
+        day: "numeric",
+        month: "long",
+      })
     : new Intl.DateTimeFormat(DEFAULT_WEB_UI_LOCALE, {
         day: "numeric",
         month: "long",
@@ -149,11 +153,11 @@ export default async function HomePage() {
             </div>
             <div className="p-7 md:p-9">
               <p className="editorial-label">{copy.featuredCommemoration} · {calendarDay?.calendar_name ?? copy.defaultCalendarName}</p>
-              <h2 className="mt-3 font-serif text-3xl font-semibold text-charcoal">{primaryCommemoration ? calendarEntryTitle(primaryCommemoration) : copy.pendingDayTitle}</h2>
+              <h2 className="mt-3 font-serif text-3xl font-semibold text-charcoal">{primaryCommemoration ? calendarEntryTitle(primaryCommemoration, calendarCopy.unknownObservance) : copy.pendingDayTitle}</h2>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600">{primaryCommemoration ? calendarEntrySummary(primaryCommemoration) ?? copy.pendingEntrySummary : copy.missingTodaySummary}</p>
               {primaryCommemoration && (
                 <div className="mt-5 flex flex-wrap gap-2">
-                  <span className="rounded-full border border-gold-200 bg-gold-50 px-3 py-1 text-xs text-gold-800">{FEAST_RANK_LABELS[primaryCommemoration.rank] ?? primaryCommemoration.rank}</span>
+                  <span className="rounded-full border border-gold-200 bg-gold-50 px-3 py-1 text-xs text-gold-800">{resolveDictionaryLabel(calendarCopy.feastRanks, primaryCommemoration.rank) ?? primaryCommemoration.rank}</span>
                   {primaryCommemoration.person?.patronages.slice(0, 2).map((patronage) => <span key={patronage.id} className="rounded-full border border-gold-200 bg-gold-50 px-3 py-1 text-xs text-gold-800">{patronage.name_pl}</span>)}
                 </div>
               )}
@@ -179,7 +183,7 @@ export default async function HomePage() {
           <div id="kalendarz">
             <div className="flex items-center justify-between"><div><p className="editorial-label">{copy.calendarKicker}</p><h2 className="mt-3 font-serif text-3xl font-semibold">{copy.todayTitle}</h2></div><Link href="/kalendarz" aria-label={copy.openCalendarAriaLabel}><CalendarDays className="h-7 w-7 text-gold-700" strokeWidth={1.4} /></Link></div>
             <div className="mt-7 divide-y divide-[#ded8cd] border-y border-[#ded8cd]">
-              {calendarDay?.entries.length ? calendarDay.entries.slice(0, 4).map((entry, index) => <Link key={entry.id} href={calendarEntryHref(entry)} className="group flex items-center gap-5 py-5"><span className="flex h-11 w-11 items-center justify-center rounded-full border border-gold-200 bg-gold-50 font-serif text-lg text-gold-800">{index + 1}</span><span className="flex-1"><span className="block font-serif text-xl font-semibold">{calendarEntryTitle(entry)}</span><span className="mt-1 block text-xs text-stone-500">{FEAST_RANK_LABELS[entry.rank] ?? entry.rank} · {entry.calendar.name}</span></span><ChevronRight className="h-4 w-4 text-stone-400 group-hover:text-burgundy-700" /></Link>) : <div className="py-8 text-sm leading-6 text-stone-500">{copy.emptyCalendar}</div>}
+              {calendarDay?.entries.length ? calendarDay.entries.slice(0, 4).map((entry, index) => <Link key={entry.id} href={calendarEntryHref(entry)} className="group flex items-center gap-5 py-5"><span className="flex h-11 w-11 items-center justify-center rounded-full border border-gold-200 bg-gold-50 font-serif text-lg text-gold-800">{index + 1}</span><span className="flex-1"><span className="block font-serif text-xl font-semibold">{calendarEntryTitle(entry, calendarCopy.unknownObservance)}</span><span className="mt-1 block text-xs text-stone-500">{resolveDictionaryLabel(calendarCopy.feastRanks, entry.rank) ?? entry.rank} · {entry.calendar.name}</span></span><ChevronRight className="h-4 w-4 text-stone-400 group-hover:text-burgundy-700" /></Link>) : <div className="py-8 text-sm leading-6 text-stone-500">{copy.emptyCalendar}</div>}
             </div>
             <Link href={calendarDay ? `/kalendarz/${calendarDay.date}` : "/kalendarz"} className="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-burgundy-700">{copy.fullDayList} <ChevronRight className="h-4 w-4" /></Link>
           </div>

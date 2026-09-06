@@ -757,9 +757,11 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
   z typowanego słownika przez stronę główną, katalog, profil, kalendarz oraz zakony;
   stare polskie wartości zapytań pozostają wyłącznie izolowaną warstwą zgodności.
   Cały tekst strony głównej jest już w słowniku, a brak API lub opublikowanych danych
-  pokazuje jawny stan pusty zamiast fikcyjnych statystyk, osób i wspólnot. Pozostają
-  teksty funkcjonalne kalendarza, wspólnot i panelu oraz routing uruchamiany dopiero
-  z kompletnym drugim językiem.
+  pokazuje jawny stan pusty zamiast fikcyjnych statystyk, osób i wspólnot. Miesięczny
+  i dzienny kalendarz oraz profile obchodów niebędących osobami korzystają już z
+  tego samego słownika dla treści UI, metadata, dostępności i etykiet domenowych;
+  formatery dat wymagają jawnego locale. Pozostają teksty funkcjonalne wspólnot i
+  panelu oraz routing uruchamiany dopiero z kompletnym drugim językiem.
 - **Category:** Internationalization
 - **File:** oba frontendy i modele Person/Translation
 - **Lines:** setki hardcoded strings

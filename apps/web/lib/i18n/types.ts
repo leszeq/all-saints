@@ -66,6 +66,13 @@ export type OrderMembershipTypeKey =
   | "lay_member"
   | "spiritual_patron"
   | "member";
+export type FeastRankKey =
+  | "solemnity"
+  | "feast"
+  | "memorial"
+  | "opt_memorial"
+  | "commemoration";
+export type ObservanceTypeKey = "lord" | "marian" | "church" | "mystery" | "other";
 
 export interface WebDictionary {
   metadata: {
@@ -163,6 +170,86 @@ export interface WebDictionary {
     methodologyKicker: string;
     methodologyDescription: string;
     methodologyAction: string;
+  };
+  calendar: {
+    unknownObservance: string;
+    feastRanks: Record<FeastRankKey, string>;
+    feastRankShortLabels: Record<FeastRankKey, string>;
+    observanceTypes: Record<ObservanceTypeKey, string>;
+    entryCount: {
+      one: string;
+      few: string;
+      many: string;
+    };
+    month: {
+      metadataTitle: string;
+      metadataDescription: string;
+      ritePrefix: string;
+      title: string;
+      withUniversalDescription: string;
+      selectedOnlyDescription: string;
+      withMartyrologyDescription: string;
+      multipleEntriesDescription: string;
+      populatedDays: string;
+      commemorations: string;
+      baseCalendar: string;
+      polishCalendar: string;
+      universalCalendar: string;
+      apply: string;
+      previousMonthAriaLabel: string;
+      nextMonthAriaLabel: string;
+      weekdays: string[];
+      emptyDay: string;
+      fullYearTitle: string;
+      fullYearDescription: string;
+      layersTitle: string;
+      layersDescription: string;
+      sourceTitle: string;
+      sourceDescription: string;
+    };
+    day: {
+      invalidDateTitle: string;
+      metadataTitlePrefix: string;
+      metadataTitleSuffix: string;
+      metadataDescriptionPrefix: string;
+      metadataDescriptionSuffix: string;
+      backToMonth: string;
+      calendarKicker: string;
+      todayTitle: string;
+      dayTitle: string;
+      previousDayAriaLabel: string;
+      nextDayAriaLabel: string;
+      primary: string;
+      pendingDescription: string;
+      fullProfile: string;
+      discoverObservance: string;
+      fullListKicker: string;
+      remainingTitle: string;
+      pendingListDescription: string;
+      profile: string;
+      observance: string;
+      onlyEntry: string;
+      scopeTitle: string;
+      universalSuffix: string;
+      martyrologySuffix: string;
+      sourceTitle: string;
+      sourceFallback: string;
+      emptyTitle: string;
+      emptyDescription: string;
+      wholeMonth: string;
+    };
+    observance: {
+      metadataFallbackTitle: string;
+      metadataTitleSuffix: string;
+      metadataDescriptionPrefix: string;
+      backToCalendar: string;
+      separateProfileNotice: string;
+      summaryFallback: string;
+      historyKicker: string;
+      iconographicAttributes: string;
+      pending: string;
+      viewCalendar: string;
+    };
   };
   saintsDirectory: {
     title: string;

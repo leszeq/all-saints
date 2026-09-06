@@ -88,32 +88,8 @@ export interface CalendarMonth {
   days: CalendarDay[];
 }
 
-export const FEAST_RANK_LABELS: Record<string, string> = {
-  solemnity: "Uroczystość",
-  feast: "Święto",
-  memorial: "Wspomnienie obowiązkowe",
-  opt_memorial: "Wspomnienie dowolne",
-  commemoration: "Wspomnienie",
-};
-
-export const FEAST_RANK_SHORT_LABELS: Record<string, string> = {
-  solemnity: "Uroczystość",
-  feast: "Święto",
-  memorial: "Wspomnienie",
-  opt_memorial: "Dowolne",
-  commemoration: "Wspomnienie",
-};
-
-export const OBSERVANCE_TYPE_LABELS: Record<string, string> = {
-  lord: "Święto Pańskie",
-  marian: "Obchód maryjny",
-  church: "Obchód Kościoła",
-  mystery: "Misterium wiary",
-  other: "Obchód liturgiczny",
-};
-
-export function calendarEntryTitle(entry: CalendarEntry): string {
-  return entry.person?.canonical_name ?? entry.observance?.title_pl ?? "Nieznany obchód";
+export function calendarEntryTitle(entry: CalendarEntry, fallback: string): string {
+  return entry.person?.canonical_name ?? entry.observance?.title_pl ?? fallback;
 }
 
 export function calendarEntrySummary(entry: CalendarEntry): string | null {
@@ -130,19 +106,26 @@ export function calendarEntryAvatar(entry: CalendarEntry): SaintAvatarData | nul
   return entry.person?.avatar ?? null;
 }
 
-export function formatCalendarEntryCount(count: number): string {
-  if (count === 1) return "1 wpis";
+export function formatCalendarEntryCount(
+  count: number,
+  labels: { one: string; few: string; many: string },
+): string {
+  if (count === 1) return `1 ${labels.one}`;
   const lastTwoDigits = count % 100;
   const lastDigit = count % 10;
   if (lastDigit >= 2 && lastDigit <= 4 && !(lastTwoDigits >= 12 && lastTwoDigits <= 14)) {
-    return `${count} wpisy`;
+    return `${count} ${labels.few}`;
   }
-  return `${count} wpisów`;
+  return `${count} ${labels.many}`;
 }
 
-export function formatCalendarDate(value: string, options?: Intl.DateTimeFormatOptions) {
+export function formatCalendarDate(
+  value: string,
+  locale: string,
+  options?: Intl.DateTimeFormatOptions,
+) {
   const [year, month, day] = value.split("-").map(Number);
-  return new Intl.DateTimeFormat("pl-PL", {
+  return new Intl.DateTimeFormat(locale, {
     timeZone: "UTC",
     day: "numeric",
     month: "long",

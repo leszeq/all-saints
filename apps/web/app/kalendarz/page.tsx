@@ -8,31 +8,35 @@ import {
   type CalendarMonth,
   currentWarsawDate,
   currentWarsawMonth,
-  FEAST_RANK_SHORT_LABELS,
   type LiturgicalCalendarInfo,
   parseMonthKey,
   shiftMonth,
 } from "@/lib/calendar";
-
-
-export const metadata: Metadata = {
-  title: "Kalendarz liturgiczny | Encyklopedia Świętych",
-  description:
-    "Osoby i obchody przypisane do kolejnych dni roku w kalendarzu powszechnym i polskim.",
-};
+import { DEFAULT_WEB_UI_LOCALE } from "@/lib/i18n/config";
+import { getWebDictionary } from "@/lib/i18n/dictionaries";
+import { resolveDictionaryLabel } from "@/lib/i18n/labels";
 
 export const revalidate = 300;
-
-const WEEKDAYS = ["Pon", "Wt", "Śr", "Czw", "Pt", "Sob", "Nd"];
-
 
 interface PageProps {
   searchParams: Promise<{ month?: string; calendar?: string }>;
 }
 
+export async function generateMetadata(): Promise<Metadata> {
+  const dictionary = await getWebDictionary(DEFAULT_WEB_UI_LOCALE);
+  return {
+    title: dictionary.calendar.month.metadataTitle,
+    description: dictionary.calendar.month.metadataDescription,
+  };
+}
 
 export default async function LiturgicalCalendarPage({ searchParams }: PageProps) {
-  const params = await searchParams;
+  const [params, dictionary] = await Promise.all([
+    searchParams,
+    getWebDictionary(DEFAULT_WEB_UI_LOCALE),
+  ]);
+  const copy = dictionary.calendar.month;
+  const calendarCopy = dictionary.calendar;
   const selected = parseMonthKey(params.month) ?? parseMonthKey(currentWarsawMonth())!;
   const calendars = (await fetchLiturgicalCalendars()) as LiturgicalCalendarInfo[];
   const requestedCalendar = params.calendar || "roman_pl";
@@ -47,7 +51,7 @@ export default async function LiturgicalCalendarPage({ searchParams }: PageProps
     calendarCode,
   )) as CalendarMonth;
 
-  const monthLabel = new Intl.DateTimeFormat("pl-PL", {
+  const monthLabel = new Intl.DateTimeFormat(DEFAULT_WEB_UI_LOCALE, {
     month: "long",
     year: "numeric",
     timeZone: "UTC",
@@ -64,24 +68,24 @@ export default async function LiturgicalCalendarPage({ searchParams }: PageProps
     <main>
       <section className="border-b border-[#ded8cd] bg-[#fffdf8]">
         <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-          <p className="editorial-label">Ryt rzymski · {monthData.calendar_name}</p>
+          <p className="editorial-label">{copy.ritePrefix} · {monthData.calendar_name}</p>
           <div className="mt-4 flex flex-col justify-between gap-6 md:flex-row md:items-end">
             <div className="max-w-3xl">
               <h1 className="font-serif text-4xl font-semibold tracking-tight text-charcoal sm:text-5xl">
-                Kalendarz liturgiczny
+                {copy.title}
               </h1>
               <p className="mt-4 max-w-2xl text-sm leading-6 text-stone-600">
                 {monthData.includes_universal
-                  ? "Wpisy wybranego kalendarza uzupełniamy obchodami Ogólnego Kalendarza Rzymskiego."
-                  : "Wpisy pochodzą z wybranego kalendarza bez nakładania kalendarzy lokalnych."}
+                  ? copy.withUniversalDescription
+                  : copy.selectedOnlyDescription}
                 {monthData.includes_martyrology
-                  ? " Osobno dołączamy postacie z Martyrologium Rzymskiego."
-                  : ""} Każdy dzień może prowadzić do wielu osób i obchodów.
+                  ? ` ${copy.withMartyrologyDescription}`
+                  : ""} {copy.multipleEntriesDescription}
               </p>
             </div>
             <div className="flex gap-6 text-sm">
-              <div><strong className="block font-serif text-3xl text-burgundy-700">{populatedDays}</strong><span className="text-stone-500">dni z wpisami</span></div>
-              <div><strong className="block font-serif text-3xl text-burgundy-700">{commemorations}</strong><span className="text-stone-500">wspomnień</span></div>
+              <div><strong className="block font-serif text-3xl text-burgundy-700">{populatedDays}</strong><span className="text-stone-500">{copy.populatedDays}</span></div>
+              <div><strong className="block font-serif text-3xl text-burgundy-700">{commemorations}</strong><span className="text-stone-500">{copy.commemorations}</span></div>
             </div>
           </div>
         </div>
@@ -91,18 +95,18 @@ export default async function LiturgicalCalendarPage({ searchParams }: PageProps
         <form method="GET" className="mb-6 flex flex-col gap-3 rounded-xl border border-[#ded8cd] bg-white p-4 sm:flex-row sm:items-end sm:justify-end">
           <input type="hidden" name="month" value={`${selected.year}-${String(selected.month).padStart(2, "0")}`} />
           <label className="w-full sm:w-80">
-            <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-stone-500">Kalendarz bazowy</span>
+            <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-stone-500">{copy.baseCalendar}</span>
             <select name="calendar" defaultValue={calendarCode} className="h-11 w-full rounded-lg border border-[#ded8cd] bg-[#fffdf8] px-3 text-sm text-charcoal outline-none focus:border-gold-500">
-              {calendars.length ? calendars.map((calendar) => <option key={calendar.code} value={calendar.code}>{calendar.name}</option>) : <><option value="roman_pl">Kalendarz Polski</option><option value="roman_universal">Ogólny Kalendarz Rzymski</option></>}
+              {calendars.length ? calendars.map((calendar) => <option key={calendar.code} value={calendar.code}>{calendar.name}</option>) : <><option value="roman_pl">{copy.polishCalendar}</option><option value="roman_universal">{copy.universalCalendar}</option></>}
             </select>
           </label>
-          <button type="submit" className="h-11 rounded-lg bg-burgundy-700 px-5 text-sm font-semibold text-white hover:bg-burgundy-600">Zastosuj</button>
+          <button type="submit" className="h-11 rounded-lg bg-burgundy-700 px-5 text-sm font-semibold text-white hover:bg-burgundy-600">{copy.apply}</button>
         </form>
 
         <div className="flex items-center justify-between gap-4 border-b border-[#ded8cd] pb-6">
           <Link
             href={`/kalendarz?month=${previousMonth}&calendar=${calendarCode}`}
-            aria-label="Poprzedni miesiąc"
+            aria-label={copy.previousMonthAriaLabel}
             className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#ded8cd] bg-white text-burgundy-700 hover:bg-gold-50"
           >
             <ChevronLeft className="h-5 w-5" />
@@ -113,7 +117,7 @@ export default async function LiturgicalCalendarPage({ searchParams }: PageProps
           </div>
           <Link
             href={`/kalendarz?month=${nextMonth}&calendar=${calendarCode}`}
-            aria-label="Następny miesiąc"
+            aria-label={copy.nextMonthAriaLabel}
             className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#ded8cd] bg-white text-burgundy-700 hover:bg-gold-50"
           >
             <ChevronRight className="h-5 w-5" />
@@ -123,7 +127,7 @@ export default async function LiturgicalCalendarPage({ searchParams }: PageProps
         <div className="mt-6 overflow-x-auto pb-2">
           <div className="min-w-[760px]">
             <div className="grid grid-cols-7 border-x border-t border-[#ded8cd] bg-[#f8f4eb]">
-              {WEEKDAYS.map((weekday) => (
+              {copy.weekdays.map((weekday) => (
                 <div key={weekday} className="border-r border-[#ded8cd] px-3 py-3 text-center text-[11px] font-bold uppercase tracking-[0.12em] text-stone-500 last:border-r-0">
                   {weekday}
                 </div>
@@ -153,14 +157,14 @@ export default async function LiturgicalCalendarPage({ searchParams }: PageProps
                     {primary ? (
                       <div className="mt-4">
                         <p className="line-clamp-2 font-serif text-base font-semibold leading-5 text-charcoal group-hover:text-burgundy-700">
-                          {calendarEntryTitle(primary)}
+                          {calendarEntryTitle(primary, calendarCopy.unknownObservance)}
                         </p>
                         <p className="mt-2 text-[10px] font-semibold uppercase tracking-wide text-gold-800">
-                          {FEAST_RANK_SHORT_LABELS[primary.rank] ?? primary.rank}
+                          {resolveDictionaryLabel(calendarCopy.feastRankShortLabels, primary.rank) ?? primary.rank}
                         </p>
                       </div>
                     ) : (
-                      <p className="mt-5 text-xs leading-5 text-stone-400">Brak opracowanych wpisów</p>
+                      <p className="mt-5 text-xs leading-5 text-stone-400">{copy.emptyDay}</p>
                     )}
                   </Link>
                 );
@@ -172,18 +176,18 @@ export default async function LiturgicalCalendarPage({ searchParams }: PageProps
         <div className="mt-10 grid gap-5 lg:grid-cols-3">
           <article className="surface-card p-6">
             <CalendarDays className="h-6 w-6 text-gold-700" strokeWidth={1.5} />
-            <h3 className="mt-6 font-serif text-xl font-semibold">Pełne 366 dni</h3>
-            <p className="mt-2 text-sm leading-6 text-stone-600">Widok obejmuje każdy dzień roku, w tym 29 lutego. Puste daty pozostają gotowe do dalszej pracy redakcyjnej.</p>
+            <h3 className="mt-6 font-serif text-xl font-semibold">{copy.fullYearTitle}</h3>
+            <p className="mt-2 text-sm leading-6 text-stone-600">{copy.fullYearDescription}</p>
           </article>
           <article className="surface-card p-6">
             <Layers3 className="h-6 w-6 text-gold-700" strokeWidth={1.5} />
-            <h3 className="mt-6 font-serif text-xl font-semibold">Kalendarze nakładają się</h3>
-            <p className="mt-2 text-sm leading-6 text-stone-600">Najpierw stosujemy kalendarz polski, a następnie uzupełniamy go wspomnieniami powszechnymi bez dublowania osób.</p>
+            <h3 className="mt-6 font-serif text-xl font-semibold">{copy.layersTitle}</h3>
+            <p className="mt-2 text-sm leading-6 text-stone-600">{copy.layersDescription}</p>
           </article>
           <article className="surface-card p-6">
             <BookOpen className="h-6 w-6 text-gold-700" strokeWidth={1.5} />
-            <h3 className="mt-6 font-serif text-xl font-semibold">Źródło przy wpisie</h3>
-            <p className="mt-2 text-sm leading-6 text-stone-600">Ranga i data są przechowywane razem z odnośnikiem do dokumentu liturgicznego użytego przez redakcję.</p>
+            <h3 className="mt-6 font-serif text-xl font-semibold">{copy.sourceTitle}</h3>
+            <p className="mt-2 text-sm leading-6 text-stone-600">{copy.sourceDescription}</p>
           </article>
         </div>
       </section>
