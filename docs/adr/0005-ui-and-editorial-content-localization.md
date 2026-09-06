@@ -95,6 +95,10 @@ the existing public API.
     language-neutral keys while every visible label lives in the typed UI dictionary.
     Compatibility aliases for historical Polish query values are isolated from the
     translated labels and remain accepted during the URL migration window.
+15. Localized public pages must distinguish missing data from example content. The
+    home page renders explicit translated empty states when API data is unavailable
+    or no records are published; it does not substitute fictional person, community
+    or statistic values that could be mistaken for editorially verified data.
 
 ## Consequences
 
@@ -118,8 +122,9 @@ the existing public API.
 1. Introduce typed Polish dictionaries and migrate global application shells.
 2. Move remaining page copy by feature, keeping UI behaviour unchanged. Completed
    for the global shell, person catalogue/profile and shared domain labels consumed
-   by home, calendar and religious-community screens; remaining page prose and
-   administrative feature screens remain incremental work.
+   by home, calendar and religious-community screens. The complete home-page copy
+   and its truthful empty states are also dictionary-backed; remaining calendar,
+   community and administrative page prose remains incremental work.
 3. Add application-layer commands and protected endpoints for translation workflow.
 4. Backfill `pl` and `en` translation rows idempotently from legacy columns and
    report conflicts without overwriting reviewed translations. The maintenance

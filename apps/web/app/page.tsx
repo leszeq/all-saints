@@ -29,22 +29,17 @@ import { readPublicPersonContent } from "@/lib/person-content";
 
 export const revalidate = 60;
 
-const fallbackPersons = [
-  { id: "1", slug: "sw-franciszek-z-asyzu", name: "Św. Franciszek z Asyżu", years: "1181–1226", summary: "Założyciel Zakonu Braci Mniejszych, patron pokoju i troski o stworzenie.", avatar: null },
-  { id: "2", slug: "sw-faustyna-kowalska", name: "Św. Faustyna Kowalska", years: "1905–1938", summary: "Apostołka Bożego Miłosierdzia i autorka Dzienniczka.", avatar: null },
-  { id: "3", slug: "bl-jerzy-popieluszko", name: "Bł. Jerzy Popiełuszko", years: "1947–1984", summary: "Kapłan, męczennik i duszpasterz ludzi pracy.", avatar: null },
-];
-
-const formatLifeYears = (birthYear: unknown, deathYear: unknown) => {
+const formatLifeYears = (birthYear: unknown, deathYear: unknown, fallback: string) => {
   const normalizedBirth = typeof birthYear === "number" && birthYear !== 0 ? birthYear : null;
   const normalizedDeath = typeof deathYear === "number" && deathYear !== 0 ? deathYear : null;
-  if (normalizedBirth === null && normalizedDeath === null) return "Daty w opracowaniu";
+  if (normalizedBirth === null && normalizedDeath === null) return fallback;
   return `${normalizedBirth ?? "?"}–${normalizedDeath ?? "?"}`;
 };
 
 export default async function HomePage() {
   const dictionary = await getWebDictionary(DEFAULT_WEB_UI_LOCALE);
   const domain = dictionary.domain;
+  const copy = dictionary.home;
   const patronages = [
     { key: "health", ...domain.patronageGroups.health, icon: HeartHandshake },
     { key: "family", ...domain.patronageGroups.family, icon: Church },
@@ -52,7 +47,7 @@ export default async function HomePage() {
     { key: "travel", ...domain.patronageGroups.travel, icon: Compass },
   ];
   let recentPersons: Array<Record<string, unknown>> = [];
-  let totalPersons = 0;
+  let totalPersons: number | null = null;
   let sourceAssignments: number | null = null;
   let calendarDay: CalendarDay | null = null;
   let featuredOrders: ReligiousOrder[] = [];
@@ -68,7 +63,7 @@ export default async function HomePage() {
     recentPersons = personsResult.value?.items ?? [];
   }
   if (totalResult.status === "fulfilled") {
-    totalPersons = totalResult.value?.total ?? 0;
+    totalPersons = Number(totalResult.value?.total ?? 0);
   }
   if (calendarResult.status === "fulfilled") {
     calendarDay = calendarResult.value as CalendarDay;
@@ -80,20 +75,17 @@ export default async function HomePage() {
     sourceAssignments = Number(sourceStatsResult.value?.person_source_links ?? 0);
   }
 
-  const recentlyUpdated = recentPersons.length
-    ? recentPersons.map((person) => {
-        const content = readPublicPersonContent(person);
-        return {
-          id: String(person.id),
-          slug: String(person.slug),
-          name: content.canonicalName,
-          years: formatLifeYears(person.birth_year, person.death_year),
-          summary:
-            content.summary || "Profil jest obecnie opracowywany przez redakcję.",
-          avatar: (person.avatar as SaintAvatarData | null) ?? null,
-        };
-      })
-    : fallbackPersons;
+  const recentlyUpdated = recentPersons.map((person) => {
+    const content = readPublicPersonContent(person);
+    return {
+      id: String(person.id),
+      slug: String(person.slug),
+      name: content.canonicalName,
+      years: formatLifeYears(person.birth_year, person.death_year, copy.datesPending),
+      summary: content.summary || copy.profilePending,
+      avatar: (person.avatar as SaintAvatarData | null) ?? null,
+    };
+  });
 
   const primaryCommemoration = calendarDay?.primary ?? null;
   const today = calendarDay
@@ -114,35 +106,36 @@ export default async function HomePage() {
 
         <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[1.25fr_.75fr] lg:px-8 lg:py-28">
           <div className="max-w-3xl">
-            <p className="editorial-label ornament-rule max-w-[16rem]">Cyfrowe kompendium</p>
+            <p className="editorial-label ornament-rule max-w-[16rem]">{copy.heroKicker}</p>
             <h1 className="mt-7 font-serif text-5xl font-semibold leading-[1.04] tracking-[-0.035em] text-charcoal sm:text-6xl lg:text-7xl">
-              Poznaj historię <span className="text-burgundy-700">świętych</span>
+              {copy.heroTitlePrefix}{" "}
+              <span className="text-burgundy-700">{copy.heroTitleAccent}</span>
             </h1>
             <p className="mt-7 max-w-2xl text-base leading-7 text-stone-600 sm:text-lg">
-              Rzetelne biogramy, patronaty i źródła — uporządkowane tak, by prowadzić od prostego pytania do pogłębionej wiedzy.
+              {copy.heroDescription}
             </p>
 
             <form action="/swieci" method="GET" className="glass-search mt-9 flex max-w-2xl flex-col gap-2 rounded-xl p-2 sm:flex-row">
               <label className="relative min-w-0 flex-1">
-                <span className="sr-only">Zapytaj o świętych</span>
+                <span className="sr-only">{copy.searchAriaLabel}</span>
                 <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gold-700" />
-                <input name="search" className="h-12 w-full rounded-lg bg-transparent pl-12 pr-4 text-sm text-charcoal outline-none placeholder:text-stone-400" placeholder="Np. patron osób chorych w średniowieczu…" />
+                <input name="search" className="h-12 w-full rounded-lg bg-transparent pl-12 pr-4 text-sm text-charcoal outline-none placeholder:text-stone-400" placeholder={copy.searchPlaceholder} />
               </label>
               <button className="h-12 rounded-lg bg-burgundy-700 px-6 text-sm font-semibold text-white transition-colors hover:bg-burgundy-600">
-                Szukaj w encyklopedii
+                {copy.searchButton}
               </button>
             </form>
-            <p className="mt-3 text-xs text-stone-500">Możesz wpisać imię, miejsce, patronat albo pytanie naturalnym językiem.</p>
+            <p className="mt-3 text-xs text-stone-500">{copy.searchHint}</p>
           </div>
 
-          <aside className="surface-card relative mx-auto w-full max-w-sm overflow-hidden p-7 lg:mr-0" aria-label="O projekcie">
+          <aside className="surface-card relative mx-auto w-full max-w-sm overflow-hidden p-7 lg:mr-0" aria-label={copy.projectAriaLabel}>
             <div className="absolute right-0 top-0 h-32 w-24 rounded-bl-full bg-gold-100/70" />
             <BookOpen className="h-7 w-7 text-gold-700" strokeWidth={1.5} />
-            <p className="mt-12 font-serif text-3xl font-semibold leading-tight text-charcoal">Wiedza budowana źródło po źródle.</p>
-            <p className="mt-4 text-sm leading-6 text-stone-600">Profile przechodzą przez proces redakcyjny, weryfikację danych i kontrolę bibliografii.</p>
+            <p className="mt-12 font-serif text-3xl font-semibold leading-tight text-charcoal">{copy.projectTitle}</p>
+            <p className="mt-4 text-sm leading-6 text-stone-600">{copy.projectDescription}</p>
             <div className="mt-8 grid grid-cols-2 gap-6 border-t border-[#ded8cd] pt-6">
-              <div><p className="font-serif text-2xl font-semibold text-burgundy-700">{totalPersons || "12 456"}</p><p className="mt-1 text-xs text-stone-500">opracowanych postaci</p></div>
-              <div><p className="font-serif text-2xl font-semibold text-burgundy-700">{sourceAssignments?.toLocaleString("pl-PL") ?? "—"}</p><p className="mt-1 text-xs text-stone-500">przypisanych źródeł</p></div>
+              <div><p className="font-serif text-2xl font-semibold text-burgundy-700">{totalPersons?.toLocaleString(DEFAULT_WEB_UI_LOCALE) ?? "—"}</p><p className="mt-1 text-xs text-stone-500">{copy.peopleStat}</p></div>
+              <div><p className="font-serif text-2xl font-semibold text-burgundy-700">{sourceAssignments?.toLocaleString(DEFAULT_WEB_UI_LOCALE) ?? "—"}</p><p className="mt-1 text-xs text-stone-500">{copy.sourcesStat}</p></div>
             </div>
           </aside>
         </div>
@@ -155,9 +148,9 @@ export default async function HomePage() {
               <div className="text-center"><Sparkles className="mx-auto h-8 w-8" strokeWidth={1.25} /><p className="mt-4 font-serif text-2xl capitalize">{today}</p></div>
             </div>
             <div className="p-7 md:p-9">
-              <p className="editorial-label">Główne wspomnienie · {calendarDay?.calendar_name ?? "Kalendarz liturgiczny"}</p>
-              <h2 className="mt-3 font-serif text-3xl font-semibold text-charcoal">{primaryCommemoration ? calendarEntryTitle(primaryCommemoration) : "Dzień czeka na opracowanie"}</h2>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600">{primaryCommemoration ? calendarEntrySummary(primaryCommemoration) ?? "Opis tego wpisu jest obecnie opracowywany przez redakcję." : "Redakcja nie przypisała jeszcze zweryfikowanego wpisu do dzisiejszej daty."}</p>
+              <p className="editorial-label">{copy.featuredCommemoration} · {calendarDay?.calendar_name ?? copy.defaultCalendarName}</p>
+              <h2 className="mt-3 font-serif text-3xl font-semibold text-charcoal">{primaryCommemoration ? calendarEntryTitle(primaryCommemoration) : copy.pendingDayTitle}</h2>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600">{primaryCommemoration ? calendarEntrySummary(primaryCommemoration) ?? copy.pendingEntrySummary : copy.missingTodaySummary}</p>
               {primaryCommemoration && (
                 <div className="mt-5 flex flex-wrap gap-2">
                   <span className="rounded-full border border-gold-200 bg-gold-50 px-3 py-1 text-xs text-gold-800">{FEAST_RANK_LABELS[primaryCommemoration.rank] ?? primaryCommemoration.rank}</span>
@@ -165,17 +158,17 @@ export default async function HomePage() {
                 </div>
               )}
             </div>
-            <div className="p-7 md:pr-9"><Link href={calendarDay ? `/kalendarz/${calendarDay.date}` : "/kalendarz"} className="inline-flex h-11 items-center gap-2 rounded-lg border border-burgundy-200 px-4 text-sm font-semibold text-burgundy-700 hover:bg-burgundy-50">Zobacz cały dzień <ArrowRight className="h-4 w-4" /></Link></div>
+            <div className="p-7 md:pr-9"><Link href={calendarDay ? `/kalendarz/${calendarDay.date}` : "/kalendarz"} className="inline-flex h-11 items-center gap-2 rounded-lg border border-burgundy-200 px-4 text-sm font-semibold text-burgundy-700 hover:bg-burgundy-50">{copy.viewWholeDay} <ArrowRight className="h-4 w-4" /></Link></div>
           </article>
         </section>
 
         <section id="odkrywaj" className="border-y border-[#ded8cd] bg-[#fffdf8] py-20">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="editorial-label">Punkty wyjścia</p><h2 className="mt-3 font-serif text-4xl font-semibold text-charcoal">Odkrywaj według patronatu</h2></div><Link href="/swieci" className="inline-flex items-center gap-1 text-sm font-semibold text-burgundy-700">Zobacz katalog <ChevronRight className="h-4 w-4" /></Link></div>
+            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="editorial-label">{copy.discoverKicker}</p><h2 className="mt-3 font-serif text-4xl font-semibold text-charcoal">{copy.discoverTitle}</h2></div><Link href="/swieci" className="inline-flex items-center gap-1 text-sm font-semibold text-burgundy-700">{copy.viewCatalogue} <ChevronRight className="h-4 w-4" /></Link></div>
             <div className="mt-9 grid gap-px overflow-hidden rounded-xl border border-[#ded8cd] bg-[#ded8cd] sm:grid-cols-2 lg:grid-cols-4">
               {patronages.map(({ key, title, detail, icon: Icon }) => (
                 <Link key={key} href={`/swieci?patronage=${key}`} className="group bg-[#fffdf8] p-6 transition-colors hover:bg-gold-50">
-                  <Icon className="h-6 w-6 text-gold-700" strokeWidth={1.5} /><h3 className="mt-8 font-serif text-2xl font-semibold text-charcoal">{title}</h3><p className="mt-2 text-sm leading-6 text-stone-600">{detail}</p><span className="mt-7 inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-burgundy-700">Przeglądaj <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" /></span>
+                  <Icon className="h-6 w-6 text-gold-700" strokeWidth={1.5} /><h3 className="mt-8 font-serif text-2xl font-semibold text-charcoal">{title}</h3><p className="mt-2 text-sm leading-6 text-stone-600">{detail}</p><span className="mt-7 inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-burgundy-700">{copy.browse} <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" /></span>
                 </Link>
               ))}
             </div>
@@ -184,15 +177,15 @@ export default async function HomePage() {
 
         <section className="mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:px-8">
           <div id="kalendarz">
-            <div className="flex items-center justify-between"><div><p className="editorial-label">Kalendarz liturgiczny</p><h2 className="mt-3 font-serif text-3xl font-semibold">Dzisiaj wspominamy</h2></div><Link href="/kalendarz" aria-label="Otwórz kalendarz liturgiczny"><CalendarDays className="h-7 w-7 text-gold-700" strokeWidth={1.4} /></Link></div>
+            <div className="flex items-center justify-between"><div><p className="editorial-label">{copy.calendarKicker}</p><h2 className="mt-3 font-serif text-3xl font-semibold">{copy.todayTitle}</h2></div><Link href="/kalendarz" aria-label={copy.openCalendarAriaLabel}><CalendarDays className="h-7 w-7 text-gold-700" strokeWidth={1.4} /></Link></div>
             <div className="mt-7 divide-y divide-[#ded8cd] border-y border-[#ded8cd]">
-              {calendarDay?.entries.length ? calendarDay.entries.slice(0, 4).map((entry, index) => <Link key={entry.id} href={calendarEntryHref(entry)} className="group flex items-center gap-5 py-5"><span className="flex h-11 w-11 items-center justify-center rounded-full border border-gold-200 bg-gold-50 font-serif text-lg text-gold-800">{index + 1}</span><span className="flex-1"><span className="block font-serif text-xl font-semibold">{calendarEntryTitle(entry)}</span><span className="mt-1 block text-xs text-stone-500">{FEAST_RANK_LABELS[entry.rank] ?? entry.rank} · {entry.calendar.name}</span></span><ChevronRight className="h-4 w-4 text-stone-400 group-hover:text-burgundy-700" /></Link>) : <div className="py-8 text-sm leading-6 text-stone-500">Brak zweryfikowanych wpisów na dzisiejszy dzień. Kalendarz jest sukcesywnie uzupełniany przez redakcję.</div>}
+              {calendarDay?.entries.length ? calendarDay.entries.slice(0, 4).map((entry, index) => <Link key={entry.id} href={calendarEntryHref(entry)} className="group flex items-center gap-5 py-5"><span className="flex h-11 w-11 items-center justify-center rounded-full border border-gold-200 bg-gold-50 font-serif text-lg text-gold-800">{index + 1}</span><span className="flex-1"><span className="block font-serif text-xl font-semibold">{calendarEntryTitle(entry)}</span><span className="mt-1 block text-xs text-stone-500">{FEAST_RANK_LABELS[entry.rank] ?? entry.rank} · {entry.calendar.name}</span></span><ChevronRight className="h-4 w-4 text-stone-400 group-hover:text-burgundy-700" /></Link>) : <div className="py-8 text-sm leading-6 text-stone-500">{copy.emptyCalendar}</div>}
             </div>
-            <Link href={calendarDay ? `/kalendarz/${calendarDay.date}` : "/kalendarz"} className="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-burgundy-700">Pełna lista dnia <ChevronRight className="h-4 w-4" /></Link>
+            <Link href={calendarDay ? `/kalendarz/${calendarDay.date}` : "/kalendarz"} className="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-burgundy-700">{copy.fullDayList} <ChevronRight className="h-4 w-4" /></Link>
           </div>
 
           <div id="epoki">
-            <div className="flex items-center justify-between"><div><p className="editorial-label">Oś czasu</p><h2 className="mt-3 font-serif text-3xl font-semibold">Święci przez wieki</h2></div><Clock3 className="h-7 w-7 text-gold-700" strokeWidth={1.4} /></div>
+            <div className="flex items-center justify-between"><div><p className="editorial-label">{copy.timelineKicker}</p><h2 className="mt-3 font-serif text-3xl font-semibold">{copy.timelineTitle}</h2></div><Clock3 className="h-7 w-7 text-gold-700" strokeWidth={1.4} /></div>
             <div className="relative mt-7 grid gap-3 before:absolute before:bottom-4 before:left-[6px] before:top-4 before:w-px before:bg-gold-300">
               {Object.entries(domain.historicalPeriods).map(([key, period]) => <Link key={key} href={`/swieci?period=${key}`} className="group relative grid grid-cols-[7.5rem_1fr] items-center gap-4 pl-7"><span className="absolute left-0 h-3 w-3 rounded-full border-2 border-[#fffdf8] bg-gold-500 ring-1 ring-gold-400" /><span className="text-xs font-semibold text-gold-800">{period.range}</span><span className="rounded-lg border border-transparent px-4 py-3 font-serif text-lg transition-colors group-hover:border-[#ded8cd] group-hover:bg-[#fffdf8]">{period.title}</span></Link>)}
             </div>
@@ -201,38 +194,44 @@ export default async function HomePage() {
 
         <section id="zakony" className="bg-burgundy-800 py-16 text-white">
           <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[1fr_1.2fr] lg:items-center lg:px-8">
-            <div className="max-w-2xl"><p className="text-xs font-bold uppercase tracking-[0.16em] text-gold-300">Zakony i zgromadzenia</p><h2 className="mt-3 font-serif text-4xl font-semibold">Wspólnoty, które kształtowały historię</h2><p className="mt-4 text-sm leading-6 text-burgundy-100">Odkrywaj postacie przez duchowość benedyktyńską, franciszkańską, dominikańską i wiele innych tradycji.</p><Link href="/zakony" className="mt-7 inline-flex h-11 items-center gap-2 rounded-lg border border-gold-300/40 px-5 text-sm font-semibold text-gold-100 hover:bg-white/5">Pełny katalog wspólnot <ArrowRight className="h-4 w-4" /></Link></div>
+            <div className="max-w-2xl"><p className="text-xs font-bold uppercase tracking-[0.16em] text-gold-300">{copy.ordersKicker}</p><h2 className="mt-3 font-serif text-4xl font-semibold">{copy.ordersTitle}</h2><p className="mt-4 text-sm leading-6 text-burgundy-100">{copy.ordersDescription}</p><Link href="/zakony" className="mt-7 inline-flex h-11 items-center gap-2 rounded-lg border border-gold-300/40 px-5 text-sm font-semibold text-gold-100 hover:bg-white/5">{copy.ordersCatalogue} <ArrowRight className="h-4 w-4" /></Link></div>
             <div className="grid gap-3 sm:grid-cols-3">
-              {(featuredOrders.length ? featuredOrders : [
-                { id: "benedyktyni", slug: "benedyktyni", name: "Benedyktyni", abbreviation: "OSB", member_count: 0 },
-                { id: "franciszkanie", slug: "bracia-mniejsi", name: "Franciszkanie", abbreviation: "OFM", member_count: 0 },
-                { id: "dominikanie", slug: "dominikanie", name: "Dominikanie", abbreviation: "OP", member_count: 0 },
-              ] as ReligiousOrder[]).map((order) => (
+              {featuredOrders.map((order) => (
                 <Link key={order.id} href={`/zakony/${order.slug}`} className="group rounded-xl border border-white/15 bg-white/5 p-5 transition-colors hover:border-gold-300/50 hover:bg-white/10">
                   <span className="flex h-12 min-w-12 w-fit items-center justify-center rounded-lg border border-gold-300/30 px-2 font-serif text-sm font-semibold text-gold-200">{orderMonogram(order)}</span>
                   <h3 className="mt-5 font-serif text-lg font-semibold leading-tight">{order.name}</h3>
-                  <p className="mt-2 text-[10px] uppercase tracking-wide text-burgundy-200">{formatOrderMemberCount(order.member_count)}</p>
+                  <p className="mt-2 text-[10px] uppercase tracking-wide text-burgundy-200">{formatOrderMemberCount(order.member_count, domain.religiousCommunities.memberCount)}</p>
                   <ChevronRight className="mt-4 h-4 w-4 text-gold-300 transition-transform group-hover:translate-x-1" />
                 </Link>
               ))}
+              {featuredOrders.length === 0 && (
+                <p className="rounded-xl border border-white/15 bg-white/5 p-5 text-sm leading-6 text-burgundy-100 sm:col-span-3">
+                  {copy.ordersEmpty}
+                </p>
+              )}
             </div>
           </div>
         </section>
 
         <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-          <div className="flex items-end justify-between gap-4"><div><p className="editorial-label">Praca redakcji</p><h2 className="mt-3 font-serif text-4xl font-semibold">Ostatnio opracowane</h2></div><Link href="/swieci" className="hidden items-center gap-1 text-sm font-semibold text-burgundy-700 sm:inline-flex">Wszystkie profile <ChevronRight className="h-4 w-4" /></Link></div>
+          <div className="flex items-end justify-between gap-4"><div><p className="editorial-label">{copy.editorialKicker}</p><h2 className="mt-3 font-serif text-4xl font-semibold">{copy.recentTitle}</h2></div><Link href="/swieci" className="hidden items-center gap-1 text-sm font-semibold text-burgundy-700 sm:inline-flex">{copy.allProfiles} <ChevronRight className="h-4 w-4" /></Link></div>
           <div className="mt-9 grid gap-5 md:grid-cols-3">
             {recentlyUpdated.map((person) => (
               <Link key={person.id} href={`/swieci/${person.slug}`} className="surface-card group flex min-h-72 flex-col p-6 transition-transform hover:-translate-y-1">
-                <div className="flex items-start justify-between gap-4"><SaintAvatar name={person.name} avatar={person.avatar} className="h-16 w-16 text-lg" /><span className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-700">Zweryfikowany</span></div>
+                <div className="flex items-start justify-between gap-4"><SaintAvatar name={person.name} avatar={person.avatar} className="h-16 w-16 text-lg" /><span className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-700">{copy.verified}</span></div>
                 <div className="mt-auto pt-12"><p className="text-xs text-gold-800">{person.years}</p><h3 className="mt-2 font-serif text-2xl font-semibold text-charcoal group-hover:text-burgundy-700">{person.name}</h3><p className="mt-3 line-clamp-3 text-sm leading-6 text-stone-600">{person.summary}</p></div>
               </Link>
             ))}
+            {recentlyUpdated.length === 0 && (
+              <p className="surface-card p-7 text-sm text-stone-500 md:col-span-3">
+                {copy.recentEmpty}
+              </p>
+            )}
           </div>
         </section>
 
         <section id="metodologia" className="border-t border-[#ded8cd] bg-[#fffdf8] py-12">
-          <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8"><div><p className="editorial-label">Metodologia</p><p className="mt-2 max-w-3xl text-sm leading-6 text-stone-600">Oddzielamy tradycję hagiograficzną od ustaleń historycznych, oznaczamy rozbieżności i wskazujemy źródła przy konkretnych informacjach.</p></div><Link href="/swieci" className="inline-flex h-11 shrink-0 items-center gap-2 rounded-lg border border-[#ded8cd] px-4 text-sm font-semibold text-charcoal hover:bg-gold-50">Rozpocznij odkrywanie <ArrowRight className="h-4 w-4" /></Link></div>
+          <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8"><div><p className="editorial-label">{copy.methodologyKicker}</p><p className="mt-2 max-w-3xl text-sm leading-6 text-stone-600">{copy.methodologyDescription}</p></div><Link href="/swieci" className="inline-flex h-11 shrink-0 items-center gap-2 rounded-lg border border-[#ded8cd] px-4 text-sm font-semibold text-charcoal hover:bg-gold-50">{copy.methodologyAction} <ArrowRight className="h-4 w-4" /></Link></div>
         </section>
       </main>
     </div>

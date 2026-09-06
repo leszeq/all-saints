@@ -59,12 +59,15 @@ export function orderMonogram(order: Pick<ReligiousOrder, "abbreviation" | "name
     .toUpperCase();
 }
 
-export function formatOrderMemberCount(count: number): string {
-  if (count === 1) return "1 powiązana postać";
+export function formatOrderMemberCount(
+  count: number,
+  labels: { one: string; few: string; many: string },
+): string {
+  if (count === 1) return `1 ${labels.one}`;
   const lastTwoDigits = count % 100;
   const lastDigit = count % 10;
   if (lastDigit >= 2 && lastDigit <= 4 && !(lastTwoDigits >= 12 && lastTwoDigits <= 14)) {
-    return `${count} powiązane postacie`;
+    return `${count} ${labels.few}`;
   }
-  return `${count} powiązanych postaci`;
+  return `${count} ${labels.many}`;
 }

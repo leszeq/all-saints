@@ -756,8 +756,10 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
   okresów, patronatów i wspólnot są oddzielone od stabilnych kluczy API i pobierane
   z typowanego słownika przez stronę główną, katalog, profil, kalendarz oraz zakony;
   stare polskie wartości zapytań pozostają wyłącznie izolowaną warstwą zgodności.
-  Pozostają teksty funkcjonalne poszczególnych ekranów oraz routing uruchamiany
-  dopiero z kompletnym drugim językiem.
+  Cały tekst strony głównej jest już w słowniku, a brak API lub opublikowanych danych
+  pokazuje jawny stan pusty zamiast fikcyjnych statystyk, osób i wspólnot. Pozostają
+  teksty funkcjonalne kalendarza, wspólnot i panelu oraz routing uruchamiany dopiero
+  z kompletnym drugim językiem.
 - **Category:** Internationalization
 - **File:** oba frontendy i modele Person/Translation
 - **Lines:** setki hardcoded strings

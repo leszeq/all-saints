@@ -79,7 +79,7 @@ function OrderCard({
       </div>
       <div className="mt-auto flex items-center justify-between gap-3 border-t border-[#ded8cd] pt-5 text-xs">
         <span className="text-stone-500">
-          {formatOrderMemberCount(order.member_count)}
+          {formatOrderMemberCount(order.member_count, labels.memberCount)}
         </span>
         <span className="inline-flex items-center gap-1 font-semibold text-burgundy-700">
           Poznaj <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
