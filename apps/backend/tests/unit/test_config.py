@@ -55,8 +55,7 @@ def test_database_url_components_are_percent_encoded() -> None:
         "@localhost:5432/all%20saints"
     )
     assert settings.DATABASE_URL_SYNC == (
-        "postgresql://saints%2Beditor:p%40ss%3A%2F%3F%23%5B%5D"
-        "@localhost:5432/all%20saints"
+        "postgresql://saints%2Beditor:p%40ss%3A%2F%3F%23%5B%5D" "@localhost:5432/all%20saints"
     )
 
 

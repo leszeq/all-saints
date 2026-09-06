@@ -72,8 +72,7 @@ async def get_order(
     return ReligiousOrderDetailSchema(
         **base.model_dump(),
         members=[
-            ReligiousOrderMembershipSchema.model_validate(membership)
-            for membership in memberships
+            ReligiousOrderMembershipSchema.model_validate(membership) for membership in memberships
         ],
     )
 

@@ -50,6 +50,4 @@ def test_reviewer_can_decide_but_cannot_edit_content() -> None:
 
 
 def test_development_demo_accounts_cover_every_non_owner_system_role() -> None:
-    assert {role for _, _, role in DEMO_ACCOUNTS} == set(SystemRole) - {
-        SystemRole.SUPER_ADMIN
-    }
+    assert {role for _, _, role in DEMO_ACCOUNTS} == set(SystemRole) - {SystemRole.SUPER_ADMIN}

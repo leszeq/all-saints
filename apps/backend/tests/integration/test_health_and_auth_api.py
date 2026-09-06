@@ -67,9 +67,7 @@ async def test_readiness_requires_database_and_redis(
 
 @pytest.mark.asyncio
 async def test_untrusted_host_is_rejected(async_client: AsyncClient):
-    response = await async_client.get(
-        "/health", headers={"Host": "attacker.example"}
-    )
+    response = await async_client.get("/health", headers={"Host": "attacker.example"})
 
     assert response.status_code == 400
     assert response.text == "Invalid host header"

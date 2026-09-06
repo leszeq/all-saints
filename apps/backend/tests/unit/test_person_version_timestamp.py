@@ -13,12 +13,7 @@ from alembic.script import ScriptDirectory
 from src.domain.hagiography.models import PersonVersion
 from src.presentation.api.v1.persons.schemas import PersonVersionSchema
 
-MIGRATION = (
-    Path(__file__).parents[2]
-    / "alembic"
-    / "versions"
-    / "0014_person_version_changed_at.py"
-)
+MIGRATION = Path(__file__).parents[2] / "alembic" / "versions" / "0014_person_version_changed_at.py"
 
 
 def test_changed_at_column_is_timezone_aware() -> None:

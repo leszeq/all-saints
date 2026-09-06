@@ -354,8 +354,7 @@ async def test_custom_roles_can_be_created_only_from_content_permissions(
     assert matrix.status_code == 200
     assert any(role["id"] == role_id for role in matrix.json()["items"])
     assert any(
-        permission["key"] == "users:create"
-        and permission["assignable_to_custom_roles"] is False
+        permission["key"] == "users:create" and permission["assignable_to_custom_roles"] is False
         for permission in matrix.json()["permissions"]
     )
     assert deleted.status_code == 204

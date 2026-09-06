@@ -4,12 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-MIGRATION = (
-    Path(__file__).parents[2]
-    / "alembic"
-    / "versions"
-    / "0010_enable_person_search.py"
-)
+MIGRATION = Path(__file__).parents[2] / "alembic" / "versions" / "0010_enable_person_search.py"
 
 
 def test_search_migration_is_reversible_and_backfills_existing_people() -> None:

@@ -62,9 +62,7 @@ def _feast(person: Person, calendar: LiturgicalCalendar, *, primary: bool = Fals
     return feast
 
 
-def _observance_feast(
-    title: str, calendar: LiturgicalCalendar, *, primary: bool = False
-) -> Feast:
+def _observance_feast(title: str, calendar: LiturgicalCalendar, *, primary: bool = False) -> Feast:
     observance = LiturgicalObservance(
         id=uuid.uuid4(),
         slug=title.lower().replace(" ", "-"),
@@ -216,9 +214,7 @@ def test_august_25_dataset_contains_current_statuses_and_recognition_dates() -> 
     assert primary["person_slug"] == "sw-ludwik-ix-krol-francji"
     assert primary["rank"] == "opt_memorial"
     assert {
-        entry["person_slug"]
-        for entry in entries
-        if entry["calendar_code"] == "roman_universal"
+        entry["person_slug"] for entry in entries if entry["calendar_code"] == "roman_universal"
     } == {"sw-ludwik-ix-krol-francji", "sw-jozef-kalasanty"}
 
     troncatti = next(person for person in people if person["slug"] == "sw-maria-troncatti")
@@ -258,14 +254,10 @@ def test_august_26_dataset_separates_polish_solemnity_from_martyrology() -> None
     )
 
     teresa = next(
-        person
-        for person in people
-        if person["slug"] == "sw-teresa-od-jezusa-jornet-e-ibars"
+        person for person in people if person["slug"] == "sw-teresa-od-jezusa-jornet-e-ibars"
     )
     maria = next(
-        person
-        for person in people
-        if person["slug"] == "bl-maria-od-aniolow-ginard-marti"
+        person for person in people if person["slug"] == "bl-maria-od-aniolow-ginard-marti"
     )
     assert teresa["birth_year"] == "1843"
     assert teresa["beatification_date"] == "1958-04-27"

@@ -499,9 +499,7 @@ class AIService:
                 status=(
                     "ready"
                     if embedding_ready and total_embeddings > 0
-                    else "needs_data"
-                    if embedding_ready
-                    else "disabled"
+                    else "needs_data" if embedding_ready else "disabled"
                 ),
                 description="Wyszukiwanie po intencji i znaczeniu, nie tylko po słowach.",
                 detail=(

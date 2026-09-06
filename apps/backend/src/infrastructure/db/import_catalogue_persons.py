@@ -42,8 +42,7 @@ async def _upsert_recognition_records(
     beatification_year = _as_int(row.get("beatification_year", ""))
     if beatification_date or beatification_year:
         await connection.execute(
-            text(
-                """
+            text("""
                 INSERT INTO beatifications (
                     id, person_id, beatification_date, beatification_year, notes
                 ) VALUES (
@@ -54,8 +53,7 @@ async def _upsert_recognition_records(
                     beatification_year = EXCLUDED.beatification_year,
                     notes = EXCLUDED.notes,
                     updated_at = now()
-                """
-            ),
+                """),
             {
                 "id": uuid.uuid4(),
                 "person_id": person_id,
@@ -69,8 +67,7 @@ async def _upsert_recognition_records(
     canonization_year = _as_int(row.get("canonization_year", ""))
     if canonization_date or canonization_year:
         await connection.execute(
-            text(
-                """
+            text("""
                 INSERT INTO canonizations (
                     id, person_id, canonization_date, canonization_year, notes
                 ) VALUES (
@@ -81,8 +78,7 @@ async def _upsert_recognition_records(
                     canonization_year = EXCLUDED.canonization_year,
                     notes = EXCLUDED.notes,
                     updated_at = now()
-                """
-            ),
+                """),
             {
                 "id": uuid.uuid4(),
                 "person_id": person_id,
@@ -138,12 +134,10 @@ async def import_person_rows_on_connection(
         else:
             state_of_life_id = (
                 await connection.execute(
-                    text(
-                        """
+                    text("""
                         SELECT id FROM states_of_life
                         WHERE name_pl = :state_of_life_name AND deleted_at IS NULL
-                        """
-                    ),
+                        """),
                     row,
                 )
             ).scalar_one_or_none()
@@ -161,8 +155,7 @@ async def import_person_rows_on_connection(
                 ),
             }
             await connection.execute(
-                text(
-                    """
+                text("""
                     INSERT INTO persons (
                         id, slug, canonical_name, canonical_name_en, latin_name,
                         person_type, status, gender, era, century, birth_year,
@@ -175,8 +168,7 @@ async def import_person_rows_on_connection(
                         :iconographic_attributes, :is_featured,
                         CAST(:external_ids AS jsonb), 1
                     )
-                    """
-                ),
+                    """),
                 values,
             )
             snapshot = {
@@ -188,16 +180,14 @@ async def import_person_rows_on_connection(
                 "source": source_label,
             }
             await connection.execute(
-                text(
-                    """
+                text("""
                     INSERT INTO person_versions (
                         id, person_id, version_number, snapshot, changed_at, change_summary
                     ) VALUES (
                         :id, :person_id, 1, CAST(:snapshot AS jsonb),
                         :changed_at, :change_summary
                     )
-                    """
-                ),
+                    """),
                 {
                     "id": uuid.uuid4(),
                     "person_id": person_id,

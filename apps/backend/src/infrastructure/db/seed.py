@@ -183,13 +183,17 @@ async def seed_admin_user(
 
     super_admin_role = role_map[SystemRole.SUPER_ADMIN]
     existing_super_admins = (
-        await session.execute(
-            select(User)
-            .join(UserRole, UserRole.user_id == User.id)
-            .where(UserRole.role_id == super_admin_role.id)
-            .where(User.deleted_at.is_(None))
+        (
+            await session.execute(
+                select(User)
+                .join(UserRole, UserRole.user_id == User.id)
+                .where(UserRole.role_id == super_admin_role.id)
+                .where(User.deleted_at.is_(None))
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     if len(existing_super_admins) > 1:
         raise RuntimeError("W bazie istnieje więcej niż jeden aktywny superadministrator")
     if existing_super_admins:
@@ -270,9 +274,7 @@ async def seed_demo_users(
     password_hash = password_hasher.hash(settings.DEMO_USER_PASSWORD)
 
     for email, full_name, role_name in DEMO_ACCOUNTS:
-        user = (
-            await session.execute(select(User).where(User.email == email))
-        ).scalar_one_or_none()
+        user = (await session.execute(select(User).where(User.email == email))).scalar_one_or_none()
         if user is None:
             user = User(
                 email=email,
@@ -285,7 +287,9 @@ async def seed_demo_users(
             await session.flush()
         else:
             if user.has_role(SystemRole.SUPER_ADMIN):
-                raise RuntimeError(f"Konto demonstracyjne {email} nie może być superadministratorem")
+                raise RuntimeError(
+                    f"Konto demonstracyjne {email} nie może być superadministratorem"
+                )
             user.hashed_password = password_hash
             user.full_name = full_name
             user.status = UserStatus.ACTIVE

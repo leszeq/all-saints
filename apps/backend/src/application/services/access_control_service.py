@@ -49,15 +49,19 @@ class AccessControlService:
 
     @staticmethod
     def _user_query() -> Select[tuple[User]]:
-        return select(User).options(
-            selectinload(User.roles).selectinload(UserRole.role)
-        ).execution_options(populate_existing=True)
+        return (
+            select(User)
+            .options(selectinload(User.roles).selectinload(UserRole.role))
+            .execution_options(populate_existing=True)
+        )
 
     @staticmethod
     def _role_query() -> Select[tuple[Role]]:
-        return select(Role).options(
-            selectinload(Role.permissions).selectinload(RolePermission.permission)
-        ).execution_options(populate_existing=True)
+        return (
+            select(Role)
+            .options(selectinload(Role.permissions).selectinload(RolePermission.permission))
+            .execution_options(populate_existing=True)
+        )
 
     async def list_users(
         self,
@@ -78,9 +82,7 @@ class AccessControlService:
             await self.db.execute(select(func.count()).select_from(query.subquery()))
         ).scalar_one()
         result = await self.db.execute(
-            query.order_by(User.created_at.desc())
-            .offset((page - 1) * per_page)
-            .limit(per_page)
+            query.order_by(User.created_at.desc()).offset((page - 1) * per_page).limit(per_page)
         )
         return result.scalars().all(), total
 
@@ -182,12 +184,16 @@ class AccessControlService:
 
     async def list_roles(self) -> tuple[Sequence[Role], dict[uuid.UUID, int]]:
         roles = (
-            await self.db.execute(
-                self._role_query()
-                .where(Role.deleted_at.is_(None))
-                .order_by(Role.is_system.desc(), Role.display_name.asc())
+            (
+                await self.db.execute(
+                    self._role_query()
+                    .where(Role.deleted_at.is_(None))
+                    .order_by(Role.is_system.desc(), Role.display_name.asc())
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         counts_result = await self.db.execute(
             select(UserRole.role_id, func.count(UserRole.user_id))
             .join(User, User.id == UserRole.user_id)
@@ -249,9 +255,7 @@ class AccessControlService:
             role.description = description.strip() or None
         if permission_keys is not None:
             permissions = await self._resolve_custom_permissions(permission_keys)
-            await self.db.execute(
-                delete(RolePermission).where(RolePermission.role_id == role.id)
-            )
+            await self.db.execute(delete(RolePermission).where(RolePermission.role_id == role.id))
             self._assign_permissions(role, permissions)
         role.version += 1
         role.updated_at = datetime.now(UTC)
@@ -268,9 +272,7 @@ class AccessControlService:
             )
         ).scalar_one()
         if assignment_count:
-            raise AccessControlConflictError(
-                "Nie można usunąć roli przypisanej do użytkowników"
-            )
+            raise AccessControlConflictError("Nie można usunąć roli przypisanej do użytkowników")
         role.deleted_at = datetime.now(UTC)
         role.version += 1
         await self.db.flush()
@@ -304,9 +306,7 @@ class AccessControlService:
     @staticmethod
     def _ensure_managed_user(user: User, *, actor_id: uuid.UUID) -> None:
         if user.id == actor_id:
-            raise AccessControlConflictError(
-                "Własny profil należy zmieniać w ustawieniach konta"
-            )
+            raise AccessControlConflictError("Własny profil należy zmieniać w ustawieniach konta")
         if user.has_role(SystemRole.SUPER_ADMIN):
             raise AccessControlConflictError("Konta superadministratora nie można modyfikować")
 
@@ -326,13 +326,17 @@ class AccessControlService:
 
         pairs = [split_permission_key(key) for key in permission_keys]
         permissions = (
-            await self.db.execute(
-                select(Permission).where(
-                    tuple_(Permission.resource, Permission.action).in_(pairs),
-                    Permission.deleted_at.is_(None),
+            (
+                await self.db.execute(
+                    select(Permission).where(
+                        tuple_(Permission.resource, Permission.action).in_(pairs),
+                        Permission.deleted_at.is_(None),
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         found = {f"{permission.resource}:{permission.action}" for permission in permissions}
         missing = permission_keys - found
         if missing:

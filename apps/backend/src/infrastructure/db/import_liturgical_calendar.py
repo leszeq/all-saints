@@ -96,15 +96,13 @@ async def import_rows(rows: list[dict[str, object]], *, dry_run: bool = False) -
         for row in rows:
             calendar_id = (
                 await connection.execute(
-                    text(
-                        """
+                    text("""
                         SELECT c.id
                         FROM liturgical_calendars c
                         WHERE c.code = :calendar_code
                           AND c.deleted_at IS NULL
                           AND c.is_active = true
-                        """
-                    ),
+                        """),
                     row,
                 )
             ).scalar_one_or_none()
@@ -117,24 +115,20 @@ async def import_rows(rows: list[dict[str, object]], *, dry_run: bool = False) -
             if row["person_slug"]:
                 person_id = (
                     await connection.execute(
-                        text(
-                            """
+                        text("""
                             SELECT id FROM persons
                             WHERE slug = :person_slug AND deleted_at IS NULL
-                            """
-                        ),
+                            """),
                         row,
                     )
                 ).scalar_one_or_none()
             else:
                 observance_id = (
                     await connection.execute(
-                        text(
-                            """
+                        text("""
                             SELECT id FROM liturgical_observances
                             WHERE slug = :observance_slug AND deleted_at IS NULL
-                            """
-                        ),
+                            """),
                         row,
                     )
                 ).scalar_one_or_none()
@@ -150,8 +144,7 @@ async def import_rows(rows: list[dict[str, object]], *, dry_run: bool = False) -
             }
             if values["is_primary"]:
                 await connection.execute(
-                    text(
-                        """
+                    text("""
                         UPDATE feasts
                         SET is_primary = false, updated_at = now()
                         WHERE calendar_id = :calendar_id
@@ -159,29 +152,24 @@ async def import_rows(rows: list[dict[str, object]], *, dry_run: bool = False) -
                           AND day = :day
                           AND deleted_at IS NULL
                           AND is_primary = true
-                        """
-                    ),
+                        """),
                     values,
                 )
 
             existing_query = (
-                text(
-                    """
+                text("""
                     SELECT id FROM feasts
                     WHERE person_id = :target_id
                       AND calendar_id = :calendar_id
                       AND month = :month AND day = :day AND deleted_at IS NULL
-                    """
-                )
+                    """)
                 if person_id is not None
-                else text(
-                    """
+                else text("""
                     SELECT id FROM feasts
                     WHERE observance_id = :target_id
                       AND calendar_id = :calendar_id
                       AND month = :month AND day = :day AND deleted_at IS NULL
-                    """
-                )
+                    """)
             )
             existing_id = (
                 await connection.execute(
@@ -195,8 +183,7 @@ async def import_rows(rows: list[dict[str, object]], *, dry_run: bool = False) -
 
             if existing_id is None:
                 await connection.execute(
-                    text(
-                        """
+                    text("""
                         INSERT INTO feasts (
                             id, person_id, observance_id, calendar_id, month, day, day_of_year,
                             is_moveable, rank, liturgical_color, is_primary,
@@ -206,15 +193,13 @@ async def import_rows(rows: list[dict[str, object]], *, dry_run: bool = False) -
                             false, :rank, :liturgical_color, :is_primary,
                             false, :source_title, :source_url, :notes
                         )
-                        """
-                    ),
+                        """),
                     {**values, "id": uuid.uuid4()},
                 )
                 result.created += 1
             else:
                 await connection.execute(
-                    text(
-                        """
+                    text("""
                         UPDATE feasts
                         SET day_of_year = :day_of_year,
                             rank = :rank,
@@ -225,8 +210,7 @@ async def import_rows(rows: list[dict[str, object]], *, dry_run: bool = False) -
                             notes = :notes,
                             updated_at = now()
                         WHERE id = :id
-                        """
-                    ),
+                        """),
                     {**values, "id": existing_id},
                 )
                 result.updated += 1

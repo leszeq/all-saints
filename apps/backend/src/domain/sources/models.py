@@ -63,7 +63,7 @@ class DocumentType(StrEnum):
     BIOGRAPHY = "biography"
     LETTER = "letter"
     VITA = "vita"
-    PROCESS = "process"       # Causa documentation
+    PROCESS = "process"  # Causa documentation
     OTHER = "other"
 
 

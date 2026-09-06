@@ -83,9 +83,7 @@ async def test_refresh_rotates_the_stored_token_and_cookie() -> None:
     db.commit.assert_not_called()
     assert "FOR UPDATE" in str(db.execute.await_args.args[0])
     new_token = next(
-        call.args[0]
-        for call in db.add.call_args_list
-        if isinstance(call.args[0], RefreshToken)
+        call.args[0] for call in db.add.call_args_list if isinstance(call.args[0], RefreshToken)
     )
     assert new_token.token_hash != jwt_service.hash_refresh_token("old-raw-refresh-token")
     assert any(
@@ -128,8 +126,7 @@ async def test_password_change_revokes_all_refresh_tokens() -> None:
     assert "UPDATE refresh_tokens" in str(statement)
     assert "revoked_at" in str(statement)
     assert any(
-        header == b"set-cookie" and b"Max-Age=0" in value
-        for header, value in response.raw_headers
+        header == b"set-cookie" and b"Max-Age=0" in value for header, value in response.raw_headers
     )
     audit_log = next(
         call.args[0] for call in db.add.call_args_list if isinstance(call.args[0], AuditLog)

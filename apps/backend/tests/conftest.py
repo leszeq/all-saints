@@ -29,9 +29,7 @@ async def _recreate_test_database(database_url: str) -> None:
     url = make_url(database_url)
     database_name = url.database or ""
     if not SAFE_TEST_DATABASE_NAME.fullmatch(database_name):
-        pytest.fail(
-            "TEST_DATABASE_URL must target a database whose name ends with '_test'"
-        )
+        pytest.fail("TEST_DATABASE_URL must target a database whose name ends with '_test'")
     if not url.drivername.startswith("postgresql"):
         pytest.fail("Integration tests require PostgreSQL")
 
@@ -128,11 +126,7 @@ async def async_client(
         return AuthenticationSecurityRecorder(security_session_factory)
 
     app.dependency_overrides[get_db_session] = override_get_db
-    app.dependency_overrides[get_authentication_security_recorder] = (
-        override_security_recorder
-    )
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://localhost"
-    ) as client:
+    app.dependency_overrides[get_authentication_security_recorder] = override_security_recorder
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://localhost") as client:
         yield client
     app.dependency_overrides.clear()

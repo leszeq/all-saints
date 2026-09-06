@@ -28,9 +28,7 @@ MAX_AVATAR_EDGE = 2400
 THUMBNAIL_EDGE = 512
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp"}
 ALLOWED_FORMATS = {"JPEG", "PNG", "WEBP"}
-STORAGE_KEY_PATTERN = re.compile(
-    r"^avatars/\d{4}/\d{2}/[0-9a-f-]{36}(?:-thumbnail)?\.webp$"
-)
+STORAGE_KEY_PATTERN = re.compile(r"^avatars/\d{4}/\d{2}/[0-9a-f-]{36}(?:-thumbnail)?\.webp$")
 
 
 class InvalidAvatarError(ValueError):

@@ -39,6 +39,9 @@ jobs:
       - name: Run Ruff
         run: make lint-backend
 
+      - name: Check Python formatting
+        run: make format-check
+
       - name: Run strict mypy
         run: make type-check-backend
 

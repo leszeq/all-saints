@@ -33,9 +33,7 @@ def _validate_date(value: str, *, field: str, line_number: int) -> None:
     try:
         date.fromisoformat(value)
     except ValueError as exc:
-        raise ValueError(
-            f"Wiersz {line_number}: {field} musi mieć format RRRR-MM-DD"
-        ) from exc
+        raise ValueError(f"Wiersz {line_number}: {field} musi mieć format RRRR-MM-DD") from exc
 
 
 def read_recognition_rows(path: Path) -> list[dict[str, str]]:
@@ -83,12 +81,10 @@ async def import_recognition_rows(
         for row in rows:
             person_id = (
                 await connection.execute(
-                    text(
-                        """
+                    text("""
                         SELECT id FROM persons
                         WHERE slug = :person_slug AND deleted_at IS NULL
-                        """
-                    ),
+                        """),
                     row,
                 )
             ).scalar_one_or_none()
@@ -100,8 +96,7 @@ async def import_recognition_rows(
             beatification_year = _as_int(row["beatification_year"])
             if row["beatification_date"] or beatification_year:
                 await connection.execute(
-                    text(
-                        """
+                    text("""
                         INSERT INTO beatifications (
                             id, person_id, beatification_date, beatification_year, notes
                         ) VALUES (
@@ -112,8 +107,7 @@ async def import_recognition_rows(
                             beatification_year = EXCLUDED.beatification_year,
                             notes = EXCLUDED.notes,
                             updated_at = now()
-                        """
-                    ),
+                        """),
                     {
                         "id": uuid.uuid4(),
                         "person_id": person_id,
@@ -126,8 +120,7 @@ async def import_recognition_rows(
             canonization_year = _as_int(row["canonization_year"])
             if row["canonization_date"] or canonization_year:
                 await connection.execute(
-                    text(
-                        """
+                    text("""
                         INSERT INTO canonizations (
                             id, person_id, canonization_date, canonization_year, notes
                         ) VALUES (
@@ -138,8 +131,7 @@ async def import_recognition_rows(
                             canonization_year = EXCLUDED.canonization_year,
                             notes = EXCLUDED.notes,
                             updated_at = now()
-                        """
-                    ),
+                        """),
                     {
                         "id": uuid.uuid4(),
                         "person_id": person_id,

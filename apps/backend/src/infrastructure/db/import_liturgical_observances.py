@@ -35,9 +35,7 @@ def read_observance_rows(path: Path) -> list[dict[str, object]]:
         for line_number, raw in enumerate(csv.DictReader(source), start=2):
             observance_type = raw["observance_type"].strip()
             if observance_type not in valid_types:
-                raise ValueError(
-                    f"Wiersz {line_number}: nieznany typ obchodu {observance_type!r}"
-                )
+                raise ValueError(f"Wiersz {line_number}: nieznany typ obchodu {observance_type!r}")
             slug = raw["slug"].strip()
             title_pl = raw["title_pl"].strip()
             if not slug or not title_pl:
@@ -75,8 +73,7 @@ async def import_observance_rows(
             ).scalar_one_or_none()
             if existing_id is None:
                 await connection.execute(
-                    text(
-                        """
+                    text("""
                         INSERT INTO liturgical_observances (
                             id, slug, title_pl, title_en, latin_title, observance_type,
                             summary_pl, description_pl, iconographic_attributes, is_featured
@@ -84,15 +81,13 @@ async def import_observance_rows(
                             :id, :slug, :title_pl, :title_en, :latin_title, :observance_type,
                             :summary_pl, :description_pl, :iconographic_attributes, :is_featured
                         )
-                        """
-                    ),
+                        """),
                     {**row, "id": uuid.uuid4()},
                 )
                 result.created += 1
             else:
                 await connection.execute(
-                    text(
-                        """
+                    text("""
                         UPDATE liturgical_observances
                         SET title_pl = :title_pl,
                             title_en = :title_en,
@@ -105,8 +100,7 @@ async def import_observance_rows(
                             deleted_at = NULL,
                             updated_at = now()
                         WHERE id = :id
-                        """
-                    ),
+                        """),
                     {**row, "id": existing_id},
                 )
                 result.updated += 1

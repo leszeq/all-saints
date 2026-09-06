@@ -137,23 +137,29 @@ async def test_source_relation_waits_for_request_unit_of_work(
             await observer_session.execute(select(Person).where(Person.id == person_id))
         ).scalar_one()
         observed_link = (
-            await observer_session.execute(
-                select(PersonSource).where(PersonSource.id == link_id)
-            )
+            await observer_session.execute(select(PersonSource).where(PersonSource.id == link_id))
         ).scalar_one_or_none()
         observed_versions = (
-            await observer_session.execute(
-                select(PersonVersion).where(PersonVersion.person_id == person_id)
-            )
-        ).scalars().all()
-        observed_audit = (
-            await observer_session.execute(
-                select(AuditLog).where(
-                    AuditLog.resource_id == person_id,
-                    AuditLog.user_id == user_id,
+            (
+                await observer_session.execute(
+                    select(PersonVersion).where(PersonVersion.person_id == person_id)
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
+        observed_audit = (
+            (
+                await observer_session.execute(
+                    select(AuditLog).where(
+                        AuditLog.resource_id == person_id,
+                        AuditLog.user_id == user_id,
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
         assert observed_person.version == 1
         assert observed_link is None
         assert observed_versions == []
@@ -162,9 +168,7 @@ async def test_source_relation_waits_for_request_unit_of_work(
         await writer_session.commit()
         await observer_session.refresh(observed_person)
         committed_link = (
-            await observer_session.execute(
-                select(PersonSource).where(PersonSource.id == link_id)
-            )
+            await observer_session.execute(select(PersonSource).where(PersonSource.id == link_id))
         ).scalar_one()
         committed_version = (
             await observer_session.execute(
@@ -184,9 +188,7 @@ async def test_source_relation_waits_for_request_unit_of_work(
         ).scalar_one()
         assert observed_person.version == 2
         assert committed_link.bibliography_id == bibliography_id
-        assert committed_version.snapshot["sources"][0]["bibliography_id"] == str(
-            bibliography_id
-        )
+        assert committed_version.snapshot["sources"][0]["bibliography_id"] == str(bibliography_id)
         assert committed_audit.extra_metadata["relation"] == "sources"
 
 
@@ -231,9 +233,7 @@ async def test_adding_and_removing_source_creates_person_versions(
         )
     ).scalar_one()
     assert created_version.changed_by_id == user.id
-    assert created_version.snapshot["sources"][0]["bibliography_id"] == str(
-        bibliography.id
-    )
+    assert created_version.snapshot["sources"][0]["bibliography_id"] == str(bibliography.id)
 
     delete_response = await async_client.delete(
         f"/api/v1/sources/person-links/{person.id}/{link_id}",

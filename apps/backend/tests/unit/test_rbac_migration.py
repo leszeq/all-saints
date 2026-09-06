@@ -2,12 +2,7 @@
 
 from pathlib import Path
 
-MIGRATION = (
-    Path(__file__).parents[2]
-    / "alembic"
-    / "versions"
-    / "0013_refine_editorial_rbac.py"
-)
+MIGRATION = Path(__file__).parents[2] / "alembic" / "versions" / "0013_refine_editorial_rbac.py"
 
 
 def test_rbac_migration_is_ordered_and_reversible() -> None:

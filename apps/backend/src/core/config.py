@@ -147,15 +147,11 @@ class Settings(BaseSettings):
                 )
 
         if self.APP_SECRET_KEY == self.JWT_SECRET_KEY:
-            raise ValueError(
-                "APP_SECRET_KEY and JWT_SECRET_KEY must be different in production"
-            )
+            raise ValueError("APP_SECRET_KEY and JWT_SECRET_KEY must be different in production")
         if not self.SECURE_COOKIES:
             raise ValueError("SECURE_COOKIES must be enabled in production")
         if not self.ALLOWED_HOSTS or "*" in self.ALLOWED_HOSTS:
-            raise ValueError(
-                "ALLOWED_HOSTS must explicitly list production hostnames"
-            )
+            raise ValueError("ALLOWED_HOSTS must explicitly list production hostnames")
         if "*" in self.CORS_ORIGINS:
             raise ValueError("CORS_ORIGINS cannot contain '*' in production")
         if self.SEED_DEMO_USERS:

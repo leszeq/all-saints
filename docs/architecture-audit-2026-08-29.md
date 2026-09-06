@@ -789,6 +789,11 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 ### TOOL-001
 
 - **Severity:** P3
+- **Status po refaktoryzacji:** Zamknięte 2026-09-06. Ruff korzysta z aktualnej
+  sekcji `[tool.ruff.lint]`, mypy działa w trybie strict dla 108 plików źródłowych,
+  a 159 plików backendu i testów jest zgodnych z Black. `make lint`,
+  `make format-check` i `make type-check` rozdzielają kontrolę jakości od modyfikacji
+  kodu; CI wykonuje formatter w trybie tylko do odczytu jako osobną bramkę.
 - **Category:** Code quality
 - **File:** `apps/backend/pyproject.toml`, pakiety `src`
 - **Lines:** Ruff config i brakujące `__init__.py`

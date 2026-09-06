@@ -1,7 +1,7 @@
 .PHONY: help install setup dev dev-build dev-backend dev-db dev-detach stop \
 	prod-check prod-build prod-up prod-down migrate migrate-create migrate-down migrate-history \
 	seed reset-db test test-unit test-integration test-e2e test-coverage lint \
-	lint-backend lint-frontend format type-check type-check-backend \
+	lint-backend lint-frontend format format-check type-check type-check-backend \
 	type-check-frontend audit logs logs-backend logs-db ps shell-backend shell-db clean \
 	build export-xlsx export-pdf openapi-export backup-db \
 	prod-backup prod-restore-check
@@ -150,6 +150,9 @@ lint: ## Run linters (Ruff + ESLint)
 lint-backend: ## Run Ruff for backend source and tests
 	@echo "$(CYAN)Running Python linters...$(NC)"
 	$(BACKEND_RUN) .venv/bin/ruff check src tests
+
+format-check: ## Check backend formatting without modifying files
+	$(BACKEND_RUN) .venv/bin/black --check src tests
 
 lint-frontend: ## Run ESLint for admin and public portal
 	@echo "$(CYAN)Running TypeScript linters...$(NC)"

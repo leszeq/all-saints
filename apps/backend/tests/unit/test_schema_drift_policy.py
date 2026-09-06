@@ -6,12 +6,7 @@ from pathlib import Path
 
 from src.domain.hagiography.models import Person
 
-MIGRATION = (
-    Path(__file__).parents[2]
-    / "alembic"
-    / "versions"
-    / "0011_align_base_indexes.py"
-)
+MIGRATION = Path(__file__).parents[2] / "alembic" / "versions" / "0011_align_base_indexes.py"
 
 
 def test_base_mixins_do_not_request_redundant_generic_indexes() -> None:

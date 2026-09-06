@@ -11,12 +11,7 @@ from src.domain.hagiography.models import Person
 from src.domain.identity.models import AuditLog, RolePermission, UserRole
 from src.domain.sources.models import Image
 
-MIGRATION = (
-    Path(__file__).parents[2]
-    / "alembic"
-    / "versions"
-    / "0012_align_domain_indexes.py"
-)
+MIGRATION = Path(__file__).parents[2] / "alembic" / "versions" / "0012_align_domain_indexes.py"
 
 
 def _index(table: object, name: str):

@@ -95,9 +95,7 @@ def register_exception_handlers(app: FastAPI) -> None:
     """Register safe, correlated and backward-compatible exception handlers."""
 
     @app.exception_handler(StarletteHTTPException)
-    async def http_exception_handler(
-        request: Request, exc: StarletteHTTPException
-    ) -> JSONResponse:
+    async def http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
         return JSONResponse(
             status_code=exc.status_code,
             content=error_content(
@@ -136,9 +134,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         )
 
     @app.exception_handler(IntegrityError)
-    async def integrity_error_handler(
-        request: Request, exc: IntegrityError
-    ) -> JSONResponse:
+    async def integrity_error_handler(request: Request, exc: IntegrityError) -> JSONResponse:
         logger.warning("Database integrity error: {error}", error=exc)
         message = "Naruszenie unikalności danych – rekord już istnieje"
         return JSONResponse(

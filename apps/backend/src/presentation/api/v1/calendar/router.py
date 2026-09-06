@@ -52,9 +52,7 @@ def _day_response(
         calendar_code=calendar.code,
         calendar_name=calendar.name,
         includes_universal=include_universal and calendar.code != "roman_universal",
-        includes_martyrology=(
-            include_martyrology and calendar.code != "roman_martyrology"
-        ),
+        includes_martyrology=(include_martyrology and calendar.code != "roman_martyrology"),
         primary=serialized[0] if serialized else None,
         entries=serialized,
         total=len(serialized),
@@ -300,9 +298,7 @@ async def get_month(
         calendar_code=selected.code,
         calendar_name=selected.name,
         includes_universal=include_universal and selected.code != "roman_universal",
-        includes_martyrology=(
-            include_martyrology and selected.code != "roman_martyrology"
-        ),
+        includes_martyrology=(include_martyrology and selected.code != "roman_martyrology"),
         days=days,
     )
 

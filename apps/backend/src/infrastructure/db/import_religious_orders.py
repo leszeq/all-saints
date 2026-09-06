@@ -105,12 +105,10 @@ async def import_dataset(directory: Path, *, dry_run: bool = False) -> ImportRes
 
             state_of_life_id = (
                 await connection.execute(
-                    text(
-                        """
+                    text("""
                         SELECT id FROM states_of_life
                         WHERE name_pl = :state_of_life_name AND deleted_at IS NULL
-                        """
-                    ),
+                        """),
                     row,
                 )
             ).scalar_one_or_none()
@@ -128,8 +126,7 @@ async def import_dataset(directory: Path, *, dry_run: bool = False) -> ImportRes
                 ),
             }
             await connection.execute(
-                text(
-                    """
+                text("""
                     INSERT INTO persons (
                         id, slug, canonical_name, canonical_name_en, latin_name,
                         person_type, status, gender, era, century, birth_year,
@@ -142,8 +139,7 @@ async def import_dataset(directory: Path, *, dry_run: bool = False) -> ImportRes
                         :iconographic_attributes, :is_featured,
                         CAST(:external_ids AS jsonb), 1
                     )
-                    """
-                ),
+                    """),
                 values,
             )
             snapshot = {
@@ -155,16 +151,14 @@ async def import_dataset(directory: Path, *, dry_run: bool = False) -> ImportRes
                 "source": "religious-orders/persons.csv",
             }
             await connection.execute(
-                text(
-                    """
+                text("""
                     INSERT INTO person_versions (
                         id, person_id, version_number, snapshot, changed_at, change_summary
                     ) VALUES (
                         :id, :person_id, 1, CAST(:snapshot AS jsonb),
                         :changed_at, :change_summary
                     )
-                    """
-                ),
+                    """),
                 {
                     "id": uuid.uuid4(),
                     "person_id": person_id,
@@ -198,8 +192,7 @@ async def import_dataset(directory: Path, *, dry_run: bool = False) -> ImportRes
             ).scalar_one_or_none()
             if existing_id is None:
                 await connection.execute(
-                    text(
-                        """
+                    text("""
                         INSERT INTO religious_orders (
                             id, slug, name, name_la, name_local, abbreviation,
                             community_type, spiritual_family, founded_year, founder_id,
@@ -213,15 +206,13 @@ async def import_dataset(directory: Path, *, dry_run: bool = False) -> ImportRes
                             :history, :mission, :motto, :website_url, :source_title,
                             :source_url, :is_featured, :sort_order, false
                         )
-                        """
-                    ),
+                        """),
                     {**values, "id": uuid.uuid4()},
                 )
                 result.orders_created += 1
             else:
                 await connection.execute(
-                    text(
-                        """
+                    text("""
                         UPDATE religious_orders SET
                             name = :name, name_la = :name_la, name_local = :name_local,
                             abbreviation = :abbreviation, community_type = :community_type,
@@ -234,27 +225,28 @@ async def import_dataset(directory: Path, *, dry_run: bool = False) -> ImportRes
                             is_featured = :is_featured, sort_order = :sort_order,
                             is_suppressed = false, deleted_at = NULL, updated_at = now()
                         WHERE id = :id
-                        """
-                    ),
+                        """),
                     {**values, "id": existing_id},
                 )
                 result.orders_updated += 1
 
         for row in memberships:
             resolved = (
-                await connection.execute(
-                    text(
-                        """
+                (
+                    await connection.execute(
+                        text("""
                         SELECT p.id AS person_id, r.id AS order_id
                         FROM persons p
                         CROSS JOIN religious_orders r
                         WHERE p.slug = :person_slug AND p.deleted_at IS NULL
                           AND r.slug = :order_slug AND r.deleted_at IS NULL
-                        """
-                    ),
-                    row,
+                        """),
+                        row,
+                    )
                 )
-            ).mappings().one_or_none()
+                .mappings()
+                .one_or_none()
+            )
             if resolved is None:
                 result.memberships_skipped += 1
                 continue
@@ -269,19 +261,16 @@ async def import_dataset(directory: Path, *, dry_run: bool = False) -> ImportRes
             }
             existing = (
                 await connection.execute(
-                    text(
-                        """
+                    text("""
                         SELECT 1 FROM person_orders
                         WHERE person_id = :person_id AND order_id = :order_id
-                        """
-                    ),
+                        """),
                     values,
                 )
             ).scalar_one_or_none()
             if existing is None:
                 await connection.execute(
-                    text(
-                        """
+                    text("""
                         INSERT INTO person_orders (
                             person_id, order_id, entry_date, exit_date, is_founder,
                             membership_type, notes
@@ -289,22 +278,19 @@ async def import_dataset(directory: Path, *, dry_run: bool = False) -> ImportRes
                             :person_id, :order_id, :entry_date, :exit_date, :is_founder,
                             :membership_type, :notes
                         )
-                        """
-                    ),
+                        """),
                     values,
                 )
                 result.memberships_created += 1
             else:
                 await connection.execute(
-                    text(
-                        """
+                    text("""
                         UPDATE person_orders SET
                             entry_date = :entry_date, exit_date = :exit_date,
                             is_founder = :is_founder, membership_type = :membership_type,
                             notes = :notes
                         WHERE person_id = :person_id AND order_id = :order_id
-                        """
-                    ),
+                        """),
                     values,
                 )
                 result.memberships_updated += 1

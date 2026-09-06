@@ -161,12 +161,8 @@ def test_embedding_validation_factories_and_document_builder() -> None:
         "Patronaty: chorzy | Tagi: miłosierdzie | Streszczenie"
     )
 
-    assert isinstance(
-        build_embedding_provider(provider_name="openai"), DisabledEmbeddingProvider
-    )
-    assert isinstance(
-        build_embedding_provider(provider_name="ollama"), DisabledEmbeddingProvider
-    )
+    assert isinstance(build_embedding_provider(provider_name="openai"), DisabledEmbeddingProvider)
+    assert isinstance(build_embedding_provider(provider_name="ollama"), DisabledEmbeddingProvider)
     assert isinstance(
         build_embedding_provider(provider_name="none", vector_dimensions=768),
         DisabledEmbeddingProvider,

@@ -102,7 +102,9 @@ async def get_application_settings(
             openai_configured=bool(settings.OPENAI_API_KEY),
             embedding_model=settings.OPENAI_EMBEDDING_MODEL,
             completion_model=settings.OPENAI_COMPLETION_MODEL,
-            ollama_base_url=settings.OLLAMA_BASE_URL if settings.AI_PROVIDER.value == "ollama" else None,
+            ollama_base_url=(
+                settings.OLLAMA_BASE_URL if settings.AI_PROVIDER.value == "ollama" else None
+            ),
             ollama_embedding_model=settings.OLLAMA_EMBEDDING_MODEL,
             ollama_llm_model=settings.OLLAMA_LLM_MODEL,
             embedding_dimensions=settings.EMBEDDING_DIMENSIONS,

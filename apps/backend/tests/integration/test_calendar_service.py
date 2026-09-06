@@ -91,18 +91,14 @@ async def test_calendar_service_defers_commit_to_unit_of_work(
 
     async with observer_factory() as observer:
         before_commit = await observer.scalar(
-            select(LiturgicalObservance).where(
-                LiturgicalObservance.id == observance.id
-            )
+            select(LiturgicalObservance).where(LiturgicalObservance.id == observance.id)
         )
         assert before_commit is None
 
         await db_session.commit()
 
         after_commit = await observer.scalar(
-            select(LiturgicalObservance).where(
-                LiturgicalObservance.id == observance.id
-            )
+            select(LiturgicalObservance).where(LiturgicalObservance.id == observance.id)
         )
         assert after_commit is not None
 
@@ -214,9 +210,7 @@ async def test_calendar_entries_merge_public_targets_and_maintain_primary(
         include_martyrology=False,
     )
     assert [entry.id for entry in grouped[29]] == [observance_entry.id, universal.id]
-    assert [entry.id for entry in await service.list_person_entries(published.id)] == [
-        universal.id
-    ]
+    assert [entry.id for entry in await service.list_person_entries(published.id)] == [universal.id]
 
     with pytest.raises(FeastConflictError):
         await service.create_entry(

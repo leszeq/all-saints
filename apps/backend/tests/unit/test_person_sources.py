@@ -48,12 +48,10 @@ def test_person_source_management_is_exposed_as_protected_api() -> None:
     schema = app.openapi()
     list_operation = schema["paths"]["/api/v1/sources/person-links/{person_id}"]["get"]
     create_operation = schema["paths"]["/api/v1/sources/person-links/{person_id}"]["post"]
-    create_web_operation = schema["paths"][
-        "/api/v1/sources/person-links/{person_id}/web"
-    ]["post"]
-    delete_operation = schema["paths"][
-        "/api/v1/sources/person-links/{person_id}/{link_id}"
-    ]["delete"]
+    create_web_operation = schema["paths"]["/api/v1/sources/person-links/{person_id}/web"]["post"]
+    delete_operation = schema["paths"]["/api/v1/sources/person-links/{person_id}/{link_id}"][
+        "delete"
+    ]
 
     assert list_operation["security"] == [{"HTTPBearer": []}]
     assert create_operation["security"] == [{"HTTPBearer": []}]

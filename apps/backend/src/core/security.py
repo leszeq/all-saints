@@ -38,9 +38,7 @@ class PasswordHasher:
 
     def __init__(self) -> None:
         self._rounds = settings.BCRYPT_ROUNDS
-        self._hash_pattern = re.compile(
-            r"^\$2[aby]\$(?P<rounds>\d{2})\$[./A-Za-z0-9]{53}$"
-        )
+        self._hash_pattern = re.compile(r"^\$2[aby]\$(?P<rounds>\d{2})\$[./A-Za-z0-9]{53}$")
 
     def hash(self, plain_password: str) -> str:
         """
@@ -103,9 +101,9 @@ class TokenPayload:
     """Parsed JWT token payload."""
 
     def __init__(self, data: dict[str, Any]) -> None:
-        self.sub: str = data.get("sub", "")          # User UUID
-        self.type: str = data.get("type", "")         # "access" or "refresh"
-        self.jti: str = data.get("jti", "")           # Token ID (for revocation)
+        self.sub: str = data.get("sub", "")  # User UUID
+        self.type: str = data.get("type", "")  # "access" or "refresh"
+        self.jti: str = data.get("jti", "")  # Token ID (for revocation)
         self.exp: int = data.get("exp", 0)
         self.iat: int = data.get("iat", 0)
         self.roles: list[str] = data.get("roles", [])
@@ -177,20 +175,20 @@ class JWTService:
         jti = secrets.token_urlsafe(16)
 
         payload: dict[str, Any] = dict(extra_claims or {})
-        payload.update({
-            "sub": str(user_id),
-            "email": email,
-            "roles": roles,
-            "type": "access",
-            "jti": jti,
-            "iat": int(now.timestamp()),
-            "exp": int((now + self._access_ttl).timestamp()),
-            "pwd": (
-                int(password_changed_at.timestamp() * 1_000_000)
-                if password_changed_at
-                else 0
-            ),
-        })
+        payload.update(
+            {
+                "sub": str(user_id),
+                "email": email,
+                "roles": roles,
+                "type": "access",
+                "jti": jti,
+                "iat": int(now.timestamp()),
+                "exp": int((now + self._access_ttl).timestamp()),
+                "pwd": (
+                    int(password_changed_at.timestamp() * 1_000_000) if password_changed_at else 0
+                ),
+            }
+        )
 
         return jwt.encode(payload, self._secret, algorithm=self._algorithm)
 

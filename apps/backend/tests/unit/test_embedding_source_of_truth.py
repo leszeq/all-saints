@@ -10,10 +10,7 @@ from src.domain.hagiography.embedding_model import PersonEmbedding
 from src.domain.hagiography.models import Person
 
 MIGRATION = (
-    Path(__file__).parents[2]
-    / "alembic"
-    / "versions"
-    / "0015_remove_legacy_person_embeddings.py"
+    Path(__file__).parents[2] / "alembic" / "versions" / "0015_remove_legacy_person_embeddings.py"
 )
 
 
