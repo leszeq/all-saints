@@ -34,15 +34,15 @@ Poniższy status jest aktualizacją wykonawczą do historycznego pomiaru bazoweg
 Nie zmienia pierwotnych findings ani ocen, dzięki czemu dokument zachowuje wartość
 porównawczą.
 
-Stan na 2026-09-05 po kolejnych etapach refaktoryzacji:
+Stan na 2026-09-06 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
 | Backend pytest | **210 passed**, 0 failures, 0 errors, 0 warnings |
 | Backend coverage | **82.62%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
-| `alembic current` / heads | `0012_align_domain_indexes`, jeden head |
-| Nowa pusta baza | upgrade 0001 → 0012 oraz downgrade/re-upgrade: PASS |
+| `alembic current` / heads | `0016_person_names`, jeden head |
+| Nowa pusta baza | upgrade 0001 → 0016 oraz downgrade/re-upgrade 0016: PASS |
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
@@ -52,8 +52,8 @@ Stan na 2026-09-05 po kolejnych etapach refaktoryzacji:
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
 | Sesja panelu | access token tylko w pamięci, rotowany refresh w cookie HttpOnly, bramka chronionego layoutu |
 | Formularz osoby | 379-liniowy orkiestrator, osobne sekcje UI, schema i mapper payloadu |
-| Produkcyjny stack | świeża baza, migracje, API, web, admin i Nginx: PASS |
-| Backup/restore PostgreSQL | format custom, restore 42 tabel, Alembic 0012: PASS |
+| Produkcyjny stack | świeża baza, migracje, API, web, admin i Nginx: PASS; procesy aplikacyjne non-root |
+| Backup/restore PostgreSQL | format custom, restore 43 tabel, Alembic 0016: PASS |
 | Obserwowalność | poprawny JSON logging, request ID, Prometheus i opcjonalny Sentry |
 | Pydantic / Alembic / Ruff config | zdeprecjonowane konfiguracje usunięte |
 | Hashowanie haseł | bezpośredni bcrypt, zgodny z istniejącymi hashami Passlib |
@@ -87,8 +87,8 @@ obciążenia oraz zautomatyzowanego release/CD do konkretnego środowiska.
 Kod udostępnia poprawne logi JSON, Prometheus i opcjonalny Sentry, ale odbiorniki i
 alerty są zadaniem platformowym. Backup PostgreSQL ma działający restore drill,
 lecz nadal wymaga harmonogramu, retencji, szyfrowania, kopii poza hostem i objęcia
-storage plikowego. W kodzie pozostają przejściowe naruszenia kierunku zależności
-warstw oraz duże routery. Bieżąca gotowość wykonawcza to
+storage plikowego. Granice warstw backendu są egzekwowane bez wyjątków; w kodzie
+pozostają duże routery oraz brak docelowej warstwy i18n. Bieżąca gotowość wykonawcza to
 **BETA**; przed publicznym wdrożeniem nadal trzeba zamknąć wymienione kroki
 operacyjne.
 
@@ -370,6 +370,11 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 ### DX-001
 
 - **Severity:** P2
+- **Status po refaktoryzacji:** Zamknięte 2026-09-06. `apps/backend/poetry.lock`
+  jest wersjonowany, kopiowany do deterministycznych etapów obrazu i sprawdzany przez
+  `poetry check --lock`; instalacja developerska oraz produkcyjna korzysta z lockfile.
+  Dependabot aktualizuje zależności kontrolowanymi pull requestami, a CI wykonuje
+  `pip-audit` na zablokowanym zestawie.
 - **Category:** Reproducibility
 - **File:** `.gitignore`, `apps/backend/pyproject.toml`
 - **Lines:** reguła `poetry.lock`
@@ -383,6 +388,13 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 ### OPS-001
 
 - **Severity:** P2
+- **Status po refaktoryzacji:** Zamknięte 2026-09-06. Produkcyjny Compose uruchamia
+  migrator, backend, dwa samodzielne obrazy Next.js i Nginx; PostgreSQL i Redis nie
+  publikują portów i działają w sieci wewnętrznej. Obrazy aplikacyjne są non-root,
+  usługi mają healthchecki, a pełny smoke test świeżego projektu potwierdził routing,
+  ukrycie dokumentacji, migrację do `0016_person_names` oraz backup/restore 43 tabel.
+  `PROD_PROJECT` umożliwia izolowane uruchomienia, a runbook opisuje bezpieczną rotację
+  hasła istniejącego wolumenu PostgreSQL.
 - **Category:** Deployment
 - **File:** `infrastructure/docker`, `Makefile`
 - **Lines:** prod targets i zakomentowane frontend services

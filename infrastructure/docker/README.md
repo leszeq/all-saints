@@ -28,6 +28,15 @@ make prod-build
 make prod-up
 ```
 
+Domyślna nazwa projektu Compose to `all-saints-prod`. Można ją jawnie zmienić, na
+przykład dla izolowanego smoke testu, bez współdzielenia kontenerów i wolumenów z
+właściwym środowiskiem:
+
+```bash
+make prod-up PROD_PROJECT=all-saints-smoke PROD_ENV=infrastructure/docker/.env.production
+make prod-down PROD_PROJECT=all-saints-smoke PROD_ENV=infrastructure/docker/.env.production
+```
+
 Status i podstawowy healthcheck:
 
 ```bash
@@ -49,6 +58,26 @@ make prod-down
 `prod-down` zachowuje nazwane wolumeny PostgreSQL, Redis i lokalnego storage.
 Usunięcie wolumenów jest operacją destrukcyjną i nie jest częścią standardowego
 runbooka.
+
+### Zmiana hasła PostgreSQL
+
+`POSTGRES_PASSWORD` inicjalizuje użytkownika tylko podczas tworzenia pustego wolumenu
+PostgreSQL. Sama zmiana wartości w `.env.production` nie aktualizuje hasła roli w już
+działającej bazie i spowoduje błąd uwierzytelnienia migratora przy kolejnym starcie.
+
+Rotację należy wykonać jako kontrolowaną operację:
+
+1. utworzyć i zweryfikować aktualny backup;
+2. wygenerować nowe hasło w menedżerze sekretów;
+3. połączyć się z bazą przy użyciu dotychczasowego sekretu i zmienić hasło roli;
+4. atomowo zaktualizować sekret używany przez Compose;
+5. uruchomić migrator i sprawdzić `/health/ready`;
+6. zachować możliwość szybkiego rollbacku konfiguracji do czasu zakończenia smoke
+   testu.
+
+Nie należy naprawiać rozjazdu hasła przez usunięcie wolumenu. Dla lokalnych testów
+lepiej użyć osobnego `PROD_PROJECT`; w środowisku rzeczywistym procedura rotacji musi
+być dopasowana do używanego menedżera sekretów i platformy bazodanowej.
 
 ## TLS i sieć
 

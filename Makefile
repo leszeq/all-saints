@@ -12,7 +12,8 @@
 COMPOSE_DEV=docker compose -f infrastructure/docker/docker-compose.yml
 BACKEND_RUN=$(COMPOSE_DEV) run --rm -T backend
 PROD_ENV?=infrastructure/docker/.env.production
-COMPOSE_PROD=docker compose --env-file $(PROD_ENV) -f infrastructure/docker/docker-compose.prod.yml
+PROD_PROJECT?=all-saints-prod
+COMPOSE_PROD=docker compose -p $(PROD_PROJECT) --env-file $(PROD_ENV) -f infrastructure/docker/docker-compose.prod.yml
 BACKUP_DIR?=backups
 BACKUP_FILE?=$(BACKUP_DIR)/all-saints-$(shell date -u +%Y%m%dT%H%M%SZ).dump
 RESTORE_DB?=all_saints_restore_test_$(shell date -u +%Y%m%d%H%M%S)
