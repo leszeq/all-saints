@@ -116,6 +116,12 @@ the existing public API.
     this serializable subset through a client context, so error boundaries and image
     fallback state do not import the server-only dictionary loader. Loading variants
     and locale-specific honorifics are data, not constants embedded in components.
+19. The administrative shell uses its own typed dictionary and locale registry.
+    Cross-cutting 404, route-error and loading copy is grouped under an administrative
+    `system` section and passed from the root server layout as a serializable client
+    context. The topbar resolves built-in role keys through its dictionary while
+    preserving custom role names returned by the API. Feature-page copy continues to
+    migrate independently and does not block this shell boundary.
 
 ## Consequences
 
@@ -145,8 +151,9 @@ the existing public API.
    dictionary and explicit locale-aware date formatting. The public community
    catalogue and profile are also complete at the UI-copy boundary. Cross-cutting
    404, error, loading and avatar accessibility states complete the dictionary
-   boundary for all currently implemented public routes; administrative page prose
-   remains incremental work.
+   boundary for all currently implemented public routes. The administrative shell,
+   system states and topbar role labels now use the separate typed admin dictionary;
+   administrative feature-page prose remains incremental work.
 3. Add application-layer commands and protected endpoints for translation workflow.
 4. Backfill `pl` and `en` translation rows idempotently from legacy columns and
    report conflicts without overwriting reviewed translations. The maintenance

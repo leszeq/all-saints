@@ -1,4 +1,10 @@
+"use client";
+
+import { useAdminSystemCopy } from "@/components/admin-system-copy-context";
+
 export default function DashboardLoading() {
+  const copy = useAdminSystemCopy().loading;
+
   return (
     <div className="animate-pulse space-y-6" aria-live="polite">
       <div className="space-y-2">
@@ -14,7 +20,7 @@ export default function DashboardLoading() {
         <div className="admin-card h-80 bg-card" />
         <div className="admin-card h-80 bg-card" />
       </div>
-      <span className="sr-only">Trwa wczytywanie panelu administracyjnego.</span>
+      <span className="sr-only">{copy.dashboard}</span>
     </div>
   );
 }

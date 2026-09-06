@@ -766,8 +766,11 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
   wszystkie warianty ładowania i dostępność awatarów korzystają ze słownikowego
   kontekstu przekazującego do klienta wyłącznie serializowalny wycinek treści. Tym
   samym wszystkie obecnie istniejące trasy portalu mają kompletną granicę UI-copy;
-  pozostają teksty panelu oraz routing uruchamiany dopiero z kompletnym drugim
-  językiem.
+  panel ma osobny typowany słownik dla metadata, sidebara, topbara, globalnych 404,
+  error/loading oraz wbudowanych etykiet ról. Klienckie granice panelu otrzymują z
+  layoutu wyłącznie serializowalny wycinek `system`, a niestandardowe nazwy ról z API
+  pozostają bez zmian. Pozostają teksty ekranów funkcjonalnych panelu oraz routing
+  uruchamiany dopiero z kompletnym drugim językiem.
 - **Category:** Internationalization
 - **File:** oba frontendy i modele Person/Translation
 - **Lines:** setki hardcoded strings

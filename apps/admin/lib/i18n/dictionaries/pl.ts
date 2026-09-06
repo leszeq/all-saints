@@ -51,7 +51,37 @@ const dictionary = {
     notificationsAriaLabel: "Powiadomienia",
     userFallback: "Użytkownik",
     noRoleFallback: "Brak roli",
+    roleLabels: {
+      super_admin: "Superadministrator",
+      admin: "Administrator",
+      editor: "Redaktor",
+      reviewer: "Recenzent",
+      translator: "Tłumacz",
+      reader: "Czytelnik wewnętrzny",
+      guest: "Gość",
+    },
     logoutAriaLabel: "Wyloguj",
+  },
+  system: {
+    notFound: {
+      kicker: "Błąd 404",
+      title: "Nie znaleziono widoku",
+      description: "Ten adres nie istnieje albo nie jest już dostępny w panelu redakcyjnym.",
+      dashboardAction: "Wróć do pulpitu",
+    },
+    error: {
+      kicker: "Błąd aplikacji",
+      title: "Nie udało się wczytać widoku",
+      description:
+        "Spróbuj ponownie. Jeżeli problem nadal występuje, przekaż administratorowi identyfikator błędu.",
+      digestPrefix: "Identyfikator błędu:",
+      retryAction: "Spróbuj ponownie",
+      dashboardAction: "Pulpit",
+    },
+    loading: {
+      application: "Trwa wczytywanie aplikacji.",
+      dashboard: "Trwa wczytywanie panelu administracyjnego.",
+    },
   },
 } satisfies AdminDictionary;
 

@@ -5,8 +5,7 @@ import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/store/auth";
 import { authApi } from "@/lib/api";
-import { ROLE_LABELS } from "@/lib/access-control";
-import type { AdminTopbarDictionary } from "@/lib/i18n/types";
+import type { AdminSystemRoleKey, AdminTopbarDictionary } from "@/lib/i18n/types";
 
 interface TopbarProps { title?: string; }
 
@@ -14,6 +13,10 @@ export function Topbar({ title, dictionary }: TopbarProps & { dictionary: AdminT
   const { resolvedTheme, setTheme } = useTheme();
   const { user, logout } = useAuthStore();
   const router = useRouter();
+  const role = user?.roles?.[0];
+  const roleLabel = role
+    ? dictionary.roleLabels[role as AdminSystemRoleKey] ?? role
+    : dictionary.noRoleFallback;
 
   const handleLogout = async () => {
     try { await authApi.logout(); } finally { logout(); router.push("/login"); }
@@ -29,7 +32,7 @@ export function Topbar({ title, dictionary }: TopbarProps & { dictionary: AdminT
         <button type="button" onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")} className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground" aria-label={dictionary.changeThemeAriaLabel}><Moon className="h-4 w-4 dark:hidden" /><Sun className="hidden h-4 w-4 dark:block" /></button>
         <button type="button" className="relative flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground" aria-label={dictionary.notificationsAriaLabel}><Bell className="h-4 w-4" /><span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-primary ring-2 ring-card" /></button>
         <div className="mx-2 h-7 w-px bg-border" />
-        <div className="flex items-center gap-2.5"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary"><User className="h-4 w-4" /></span><span className="hidden sm:block"><span className="block text-[12px] font-semibold leading-none">{user?.full_name || dictionary.userFallback}</span><span className="mt-1 block text-[10px] text-muted-foreground">{ROLE_LABELS[user?.roles?.[0] ?? ""] ?? user?.roles?.[0] ?? dictionary.noRoleFallback}</span></span></div>
+        <div className="flex items-center gap-2.5"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary"><User className="h-4 w-4" /></span><span className="hidden sm:block"><span className="block text-[12px] font-semibold leading-none">{user?.full_name || dictionary.userFallback}</span><span className="mt-1 block text-[10px] text-muted-foreground">{roleLabel}</span></span></div>
         <button type="button" onClick={handleLogout} className="ml-1 flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label={dictionary.logoutAriaLabel}><LogOut className="h-4 w-4" /></button>
       </div>
     </header>

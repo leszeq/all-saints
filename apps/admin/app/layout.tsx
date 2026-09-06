@@ -16,15 +16,17 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const dictionary = await getAdminDictionary(DEFAULT_ADMIN_UI_LOCALE);
+
   return (
     <html lang={DEFAULT_ADMIN_UI_LOCALE} suppressHydrationWarning>
       <body>
-        <Providers>{children}</Providers>
+        <Providers systemCopy={dictionary.system}>{children}</Providers>
       </body>
     </html>
   );

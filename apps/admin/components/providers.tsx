@@ -4,7 +4,16 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { useEffect, useState } from "react";
 
-export function Providers({ children }: { children: React.ReactNode }) {
+import { AdminSystemCopyProvider } from "@/components/admin-system-copy-context";
+import type { AdminSystemDictionary } from "@/lib/i18n/types";
+
+export function Providers({
+  children,
+  systemCopy,
+}: {
+  children: React.ReactNode;
+  systemCopy: AdminSystemDictionary;
+}) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -27,7 +36,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
       <QueryClientProvider client={queryClient}>
-        {children}
+        <AdminSystemCopyProvider value={systemCopy}>{children}</AdminSystemCopyProvider>
       </QueryClientProvider>
     </ThemeProvider>
   );

@@ -1,3 +1,12 @@
+export type AdminSystemRoleKey =
+  | "super_admin"
+  | "admin"
+  | "editor"
+  | "reviewer"
+  | "translator"
+  | "reader"
+  | "guest";
+
 export interface AdminDictionary {
   metadata: {
     defaultTitle: string;
@@ -49,9 +58,31 @@ export interface AdminDictionary {
     notificationsAriaLabel: string;
     userFallback: string;
     noRoleFallback: string;
+    roleLabels: Record<AdminSystemRoleKey, string>;
     logoutAriaLabel: string;
+  };
+  system: {
+    notFound: {
+      kicker: string;
+      title: string;
+      description: string;
+      dashboardAction: string;
+    };
+    error: {
+      kicker: string;
+      title: string;
+      description: string;
+      digestPrefix: string;
+      retryAction: string;
+      dashboardAction: string;
+    };
+    loading: {
+      application: string;
+      dashboard: string;
+    };
   };
 }
 
 export type AdminSidebarDictionary = Pick<AdminDictionary, "brand" | "sidebar">;
 export type AdminTopbarDictionary = AdminDictionary["topbar"];
+export type AdminSystemDictionary = AdminDictionary["system"];
