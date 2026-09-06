@@ -16,6 +16,10 @@ import { fetchPersonDetail, isApiNotFound } from "@/lib/api";
 import { ERA_LABELS, PERSON_TYPE_LABELS } from "@/lib/utils";
 import { SaintAvatar, type SaintAvatarData } from "@/components/saint-avatar";
 import { MEMBERSHIP_TYPE_LABELS } from "@/lib/orders";
+import { DEFAULT_WEB_UI_LOCALE } from "@/lib/i18n/config";
+import { getWebDictionary } from "@/lib/i18n/dictionaries";
+import { resolveDictionaryLabel } from "@/lib/i18n/labels";
+import { readPublicPersonContent } from "@/lib/person-content";
 
 interface PageProps {
   params: Promise<{
@@ -23,9 +27,13 @@ interface PageProps {
   }>;
 }
 
-function formatRecognitionDate(value?: string | null, year?: number | null) {
+function formatRecognitionDate(
+  value?: string | null,
+  year?: number | null,
+  locale = DEFAULT_WEB_UI_LOCALE,
+) {
   if (value && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return new Intl.DateTimeFormat("pl-PL", {
+    return new Intl.DateTimeFormat(locale, {
       day: "numeric",
       month: "long",
       year: "numeric",
@@ -36,33 +44,51 @@ function formatRecognitionDate(value?: string | null, year?: number | null) {
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { slug } = await params;
+  const [{ slug }, dictionary] = await Promise.all([
+    params,
+    getWebDictionary(DEFAULT_WEB_UI_LOCALE),
+  ]);
+  const copy = dictionary.personProfile;
   try {
-    const person = await fetchPersonDetail(slug);
-    if (!person) return { title: "Nie znaleziono" };
+    const person = await fetchPersonDetail(slug, DEFAULT_WEB_UI_LOCALE);
+    if (!person) return { title: copy.notFoundTitle };
+    const content = readPublicPersonContent(person);
     return {
-      title: `${person.canonical_name} – Życiorys, modlitwy i patronaty`,
-      description: person.summary_pl || `Życiorys i informacje o ${person.canonical_name}.`,
+      title: `${content.canonicalName}${copy.metadataTitleSuffix}`,
+      description:
+        content.summary || `${copy.metadataDescriptionPrefix}${content.canonicalName}.`,
       openGraph: {
-        title: person.canonical_name,
-        description: person.summary_pl || `Życiorys ${person.canonical_name}`,
+        title: content.canonicalName,
+        description:
+          content.summary || `${copy.metadataBiographyPrefix}${content.canonicalName}`,
         images: person.avatar?.url
-          ? [{ url: person.avatar.url, alt: person.avatar.title || `Portret: ${person.canonical_name}` }]
+          ? [
+              {
+                url: person.avatar.url,
+                alt:
+                  person.avatar.title ||
+                  `${copy.portraitPrefix}${content.canonicalName}`,
+              },
+            ]
           : undefined,
       },
     };
   } catch (error) {
-    if (isApiNotFound(error)) return { title: "Nie znaleziono" };
+    if (isApiNotFound(error)) return { title: copy.notFoundTitle };
     throw error;
   }
 }
 
 export default async function PersonDetailPage({ params }: PageProps) {
-  const { slug } = await params;
+  const [{ slug }, dictionary] = await Promise.all([
+    params,
+    getWebDictionary(DEFAULT_WEB_UI_LOCALE),
+  ]);
+  const copy = dictionary.personProfile;
   let person: Record<string, unknown> | null = null;
 
   try {
-    person = await fetchPersonDetail(slug);
+    person = await fetchPersonDetail(slug, DEFAULT_WEB_UI_LOCALE);
   } catch (error) {
     if (isApiNotFound(error)) notFound();
     throw error;
@@ -71,6 +97,8 @@ export default async function PersonDetailPage({ params }: PageProps) {
   if (!person) {
     notFound();
   }
+
+  const content = readPublicPersonContent(person);
 
   const aliases = (Array.isArray(person.aliases) ? person.aliases : [])
     .map((alias) => String((alias as Record<string, unknown>).value ?? "").trim())
@@ -86,9 +114,9 @@ export default async function PersonDetailPage({ params }: PageProps) {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Person",
-    name: person.canonical_name,
+    name: content.canonicalName,
     alternateName: alternateNames.length > 0 ? alternateNames : undefined,
-    description: person.summary_pl,
+    description: content.summary,
     birthDate: person.birth_year ? String(person.birth_year) : undefined,
     deathDate: person.death_year ? String(person.death_year) : undefined,
     image: (person.avatar as SaintAvatarData | null)?.url || undefined,
@@ -98,10 +126,12 @@ export default async function PersonDetailPage({ params }: PageProps) {
   const beatificationLabel = formatRecognitionDate(
     beatification?.beatification_date as string | null,
     beatification?.beatification_year as number | null,
+    DEFAULT_WEB_UI_LOCALE,
   );
   const canonizationLabel = formatRecognitionDate(
     canonization?.canonization_date as string | null,
     canonization?.canonization_year as number | null,
+    DEFAULT_WEB_UI_LOCALE,
   );
 
   return (
@@ -120,12 +150,12 @@ export default async function PersonDetailPage({ params }: PageProps) {
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-gold-400 hover:text-gold-300 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
-            Wróć do katalogu
+            {copy.backToDirectory}
           </Link>
 
           <div className="grid items-center gap-8 sm:grid-cols-[12rem_1fr]">
             <SaintAvatar
-              name={String(person.canonical_name)}
+              name={content.canonicalName}
               avatar={person.avatar as SaintAvatarData | null}
               className="h-48 w-48 rounded-2xl border-gold-300/40 bg-burgundy-800 text-5xl text-gold-300 shadow-2xl shadow-black/20"
               eager
@@ -138,13 +168,13 @@ export default async function PersonDetailPage({ params }: PageProps) {
                 </span>
                 {Boolean(person.era) && (
                   <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-burgundy-200">
-                    Era: {ERA_LABELS[person.era as string] ?? String(person.era)}
+                    {copy.eraPrefix} {ERA_LABELS[person.era as string] ?? String(person.era)}
                   </span>
                 )}
               </div>
 
               <h1 className="font-serif text-3xl font-bold tracking-tight text-white sm:text-5xl">
-                {String(person.canonical_name)}
+                {content.canonicalName}
               </h1>
 
               {Boolean(person.latin_name) && (
@@ -155,7 +185,7 @@ export default async function PersonDetailPage({ params }: PageProps) {
 
               {aliases.length > 0 && (
                 <p className="max-w-2xl text-sm leading-6 text-burgundy-100">
-                  <span className="font-semibold text-gold-200">Znany także jako:</span>{" "}
+                  <span className="font-semibold text-gold-200">{copy.aliasesPrefix}</span>{" "}
                   {aliases.join(", ")}
                 </p>
               )}
@@ -164,27 +194,27 @@ export default async function PersonDetailPage({ params }: PageProps) {
               <dl className="grid grid-cols-2 overflow-hidden rounded-xl border border-white/15 bg-black/10 shadow-sm sm:grid-cols-4">
                 {Boolean(person.birth_year) && (
                   <div className="border-b border-r border-white/10 bg-burgundy-900/55 px-4 py-3 sm:border-b-0">
-                    <dt className="text-[10px] font-bold uppercase tracking-wider text-gold-300">Rok urodzenia</dt>
+                    <dt className="text-[10px] font-bold uppercase tracking-wider text-gold-300">{copy.birthYear}</dt>
                     <dd className="mt-1 text-sm font-semibold text-white">{String(person.birth_year)}</dd>
                   </div>
                 )}
                 {Boolean(person.death_year) && (
                   <div className="border-b border-white/10 bg-burgundy-900/55 px-4 py-3 sm:border-b-0 sm:border-r">
-                    <dt className="text-[10px] font-bold uppercase tracking-wider text-gold-300">Rok śmierci</dt>
+                    <dt className="text-[10px] font-bold uppercase tracking-wider text-gold-300">{copy.deathYear}</dt>
                     <dd className="mt-1 text-sm font-semibold text-white">{String(person.death_year)}</dd>
                   </div>
                 )}
                 {Boolean(person.gender) && (
                   <div className="border-r border-white/10 bg-burgundy-900/55 px-4 py-3">
-                    <dt className="text-[10px] font-bold uppercase tracking-wider text-gold-300">Płeć</dt>
+                    <dt className="text-[10px] font-bold uppercase tracking-wider text-gold-300">{copy.gender}</dt>
                     <dd className="mt-1 text-sm font-semibold text-white">
-                      {person.gender === "male" ? "Mężczyzna" : person.gender === "female" ? "Kobieta" : "—"}
+                      {resolveDictionaryLabel(copy.genderLabels, person.gender) ?? "—"}
                     </dd>
                   </div>
                 )}
                 {Boolean((person.state_of_life as Record<string, unknown> | null)?.name_pl) && (
                   <div className="bg-burgundy-900/55 px-4 py-3">
-                    <dt className="text-[10px] font-bold uppercase tracking-wider text-gold-300">Stan życia</dt>
+                    <dt className="text-[10px] font-bold uppercase tracking-wider text-gold-300">{copy.stateOfLife}</dt>
                     <dd className="mt-1 text-sm font-semibold text-white">
                       {String((person.state_of_life as Record<string, unknown>).name_pl)}
                     </dd>
@@ -199,14 +229,14 @@ export default async function PersonDetailPage({ params }: PageProps) {
       {/* ─── Content Body ─────────────────────────────────────────────────── */}
       <section className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 space-y-8">
         {/* Summary Card */}
-        {Boolean(person.summary_pl) && (
+        {Boolean(content.summary) && (
           <div className="rounded-2xl border border-gold-500/30 bg-gold-50/50 p-6 sm:p-8 shadow-sm">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-gold-800 mb-2 flex items-center gap-1.5">
               <Sparkles className="h-4 w-4 text-gold-600" />
-              Streszczenie
+              {copy.summary}
             </h2>
             <p className="font-serif text-base sm:text-lg text-burgundy-950 leading-relaxed italic">
-              {String(person.summary_pl)}
+              {content.summary}
             </p>
           </div>
         )}
@@ -219,10 +249,10 @@ export default async function PersonDetailPage({ params }: PageProps) {
               </span>
               <div>
                 <h2 className="font-serif text-2xl font-bold text-burgundy-900">
-                  Droga do chwały ołtarzy
+                  {copy.recognitionTitle}
                 </h2>
                 <p className="mt-1 text-sm leading-6 text-stone-600">
-                  Udokumentowane daty oficjalnego ogłoszenia przez Kościół.
+                  {copy.recognitionDescription}
                 </p>
               </div>
             </div>
@@ -232,7 +262,7 @@ export default async function PersonDetailPage({ params }: PageProps) {
                 <div className="rounded-xl border border-[#ded8cd] bg-white px-4 py-4">
                   <dt className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em] text-gold-800">
                     <CalendarDays className="h-4 w-4" />
-                    Beatyfikacja
+                    {copy.beatification}
                   </dt>
                   <dd className="mt-2 font-serif text-xl font-semibold text-burgundy-950">
                     {beatificationLabel}
@@ -243,7 +273,7 @@ export default async function PersonDetailPage({ params }: PageProps) {
                 <div className="rounded-xl border border-[#ded8cd] bg-white px-4 py-4">
                   <dt className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em] text-gold-800">
                     <CalendarDays className="h-4 w-4" />
-                    Kanonizacja
+                    {copy.canonization}
                   </dt>
                   <dd className="mt-2 font-serif text-xl font-semibold text-burgundy-950">
                     {canonizationLabel}
@@ -258,14 +288,14 @@ export default async function PersonDetailPage({ params }: PageProps) {
         <div className="rounded-2xl border border-gold-500/20 bg-white p-6 sm:p-8 shadow-sm space-y-4">
           <h2 className="font-serif text-2xl font-bold text-burgundy-900 flex items-center gap-2 border-b border-gray-100 pb-3">
             <BookOpen className="h-5 w-5 text-gold-600" />
-            Życiorys i Dzieło
+            {copy.biographyTitle}
           </h2>
-          {Boolean(person.biography_pl) ? (
+          {Boolean(content.biography) ? (
             <div className="prose prose-burgundy max-w-none text-base text-gray-800 leading-relaxed whitespace-pre-line">
-              {String(person.biography_pl)}
+              {content.biography}
             </div>
           ) : (
-            <p className="text-sm text-gray-500">Brak pełnego biogramu w bazie danych.</p>
+            <p className="text-sm text-gray-500">{copy.biographyMissing}</p>
           )}
         </div>
 
@@ -274,7 +304,7 @@ export default async function PersonDetailPage({ params }: PageProps) {
           <section className="rounded-2xl border border-gold-500/20 bg-white p-6 shadow-sm sm:p-8">
             <h2 className="flex items-center gap-2 font-serif text-2xl font-bold text-burgundy-900">
               <HeartHandshake className="h-5 w-5 text-gold-600" />
-              Patronaty
+              {copy.patronages}
             </h2>
             <ul className="mt-4 flex flex-wrap gap-2">
               {(person.patronages as Array<Record<string, unknown>>).map((patronage) => (
@@ -294,7 +324,7 @@ export default async function PersonDetailPage({ params }: PageProps) {
           <section className="rounded-2xl border border-gold-500/20 bg-white p-6 shadow-sm sm:p-8">
             <h2 className="flex items-center gap-2 font-serif text-2xl font-bold text-burgundy-900">
               <Landmark className="h-5 w-5 text-gold-600" />
-              Zakony i zgromadzenia
+              {copy.orders}
             </h2>
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               {(person.orders as Array<Record<string, unknown>>).map((membership) => {
@@ -326,14 +356,14 @@ export default async function PersonDetailPage({ params }: PageProps) {
           <div className="rounded-2xl border border-gold-500/20 bg-white p-6 shadow-sm space-y-3">
             <h3 className="font-serif text-lg font-bold text-burgundy-900 flex items-center gap-2">
               <Heart className="h-4 w-4 text-gold-600" />
-              Modlitwa
+              {copy.prayer}
             </h3>
-            {Boolean(person.prayers) ? (
+            {Boolean(content.prayers) ? (
               <p className="whitespace-pre-line text-sm leading-relaxed text-gray-700 italic">
-                {String(person.prayers)}
+                {content.prayers}
               </p>
             ) : (
-              <p className="text-xs text-gray-400">Brak przypisanych modlitw.</p>
+              <p className="text-xs text-gray-400">{copy.prayerMissing}</p>
             )}
           </div>
 
@@ -341,11 +371,11 @@ export default async function PersonDetailPage({ params }: PageProps) {
           <div className="rounded-2xl border border-gold-500/20 bg-white p-6 shadow-sm space-y-3">
             <h3 className="font-serif text-lg font-bold text-burgundy-900 flex items-center gap-2">
               <Crown className="h-4 w-4 text-gold-600" />
-              Atrybuty Ikonograficzne
+              {copy.iconographicAttributes}
             </h3>
-            {Boolean(person.iconographic_attributes) ? (
+            {Boolean(content.iconographicAttributes) ? (
               <ul className="flex flex-wrap gap-2">
-                {String(person.iconographic_attributes)
+                {String(content.iconographicAttributes)
                   .split(/[;\n]+/)
                   .map((attribute) => attribute.trim())
                   .filter(Boolean)
@@ -356,7 +386,9 @@ export default async function PersonDetailPage({ params }: PageProps) {
                   ))}
               </ul>
             ) : (
-              <p className="text-xs text-gray-400">Brak podanych atrybutów.</p>
+              <p className="text-xs text-gray-400">
+                {copy.iconographicAttributesMissing}
+              </p>
             )}
           </div>
         </div>

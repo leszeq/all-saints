@@ -55,6 +55,7 @@ async def test_public_person_endpoints_expose_explicit_localization_projection(
             canonical_name="San Giovanni di Test",
             summary="Sommario italiano",
             biography="Biografia italiana",
+            iconographic_attributes="Giglio; libro",
         )
     )
     await db_session.commit()
@@ -74,11 +75,12 @@ async def test_public_person_endpoints_expose_explicit_localization_projection(
         "summary": "Sommario italiano",
         "biography": "Biografia italiana",
         "prayers": None,
-        "iconographic_attributes": None,
+        "iconographic_attributes": "Giglio; libro",
     }
     assert list_response.status_code == 200
     list_content = list_response.json()["items"][0]["localized_content"]
     assert list_content["canonical_name"] == "San Giovanni di Test"
+    assert list_content["iconographic_attributes"] == "Giglio; libro"
     assert "biography" not in list_content
 
 

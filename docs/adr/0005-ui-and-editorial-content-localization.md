@@ -84,6 +84,12 @@ the existing public API.
     and iconographic attributes, prayers, and biography. Translation matches use a
     correlated subquery so multiple matching locales cannot duplicate a person in
     pagination; soft-deleted translations never participate.
+13. Public person consumers request an explicit content locale and render the
+    `localized_content` projection for names and editorial text. They may use legacy
+    fields only when talking to an older backend that does not return the projection;
+    fields missing from an existing translation are not silently filled from another
+    language. Catalogue projections include summary and iconographic attributes but
+    continue to omit biography and prayers.
 
 ## Consequences
 
@@ -105,7 +111,9 @@ the existing public API.
 ## Migration path
 
 1. Introduce typed Polish dictionaries and migrate global application shells.
-2. Move remaining page copy by feature, keeping UI behaviour unchanged.
+2. Move remaining page copy by feature, keeping UI behaviour unchanged. Completed
+   for the global shell and the person catalogue/profile vertical slice; other public
+   and administrative feature screens remain incremental work.
 3. Add application-layer commands and protected endpoints for translation workflow.
 4. Backfill `pl` and `en` translation rows idempotently from legacy columns and
    report conflicts without overwriting reviewed translations. The maintenance

@@ -11,6 +11,10 @@ import {
   TIME_PERIODS,
 } from "@/lib/utils";
 import { SaintAvatar, type SaintAvatarData } from "@/components/saint-avatar";
+import { DEFAULT_WEB_UI_LOCALE } from "@/lib/i18n/config";
+import { getWebDictionary } from "@/lib/i18n/dictionaries";
+import { resolveDictionaryLabel } from "@/lib/i18n/labels";
+import { readPublicPersonContent } from "@/lib/person-content";
 
 export const revalidate = 30;
 
@@ -27,27 +31,6 @@ interface PageProps {
     page?: SearchParamValue;
   }>;
 }
-
-const GENDER_LABELS: Record<string, string> = {
-  male: "Mężczyźni",
-  female: "Kobiety",
-  unknown: "Nieustalone",
-};
-
-const PATRONAGE_TYPE_LABELS: Record<string, string> = {
-  illness: "choroba",
-  healthcare: "opieka",
-  family: "rodzina",
-  profession: "zawód",
-  work: "praca",
-  travel: "droga",
-  country: "kraj",
-  city: "miasto",
-  diocese: "diecezja",
-  group: "grupa osób",
-  cause: "sprawa",
-  other: "inne",
-};
 
 type PatronageRecord = {
   id?: string;
@@ -162,6 +145,8 @@ function FilterOption({
 }
 
 export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
+  const dictionary = await getWebDictionary(DEFAULT_WEB_UI_LOCALE);
+  const copy = dictionary.saintsDirectory;
   const params = await searchParams;
   const rawSearch = firstParamValue(params.search);
   const legacyPatronage = LEGACY_SEARCH_PATRONAGES[rawSearch]
@@ -176,7 +161,7 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
   );
   const search = legacyPatronage.length ? "" : rawSearch;
   const typeFilters = validParamValues(params.type, PERSON_TYPE_LABELS);
-  const genderFilters = validParamValues(params.gender, GENDER_LABELS);
+  const genderFilters = validParamValues(params.gender, copy.genderLabels);
   const periodFilters = validParamValues([params.period, legacyPeriods], TIME_PERIODS);
   const eraFilters = periodFilters.length ? [] : validParamValues(params.era, ERA_LABELS);
   const page = Number(firstParamValue(params.page) || "1");
@@ -186,8 +171,8 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
       context: PERSON_TYPE_DESCRIPTIONS[value],
     })),
     ...genderFilters.map((value) => ({
-      label: GENDER_LABELS[value],
-      context: "Płeć",
+      label: resolveDictionaryLabel(copy.genderLabels, value) ?? value,
+      context: copy.genderContext,
     })),
     ...periodFilters.map((value) => ({
       label: TIME_PERIODS[value as keyof typeof TIME_PERIODS].range,
@@ -195,7 +180,7 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
     })),
     ...eraFilters.map((value) => ({
       label: ERA_LABELS[value],
-      context: "Epoka",
+      context: copy.eraContext,
     })),
     ...patronageFilters.map((value) => ({
       label: PATRONAGE_GROUPS[value as keyof typeof PATRONAGE_GROUPS].title,
@@ -222,10 +207,10 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
       {/* Page Title */}
       <div>
         <h1 className="font-serif text-3xl sm:text-4xl font-bold text-burgundy-900">
-          Katalog Świętych i Błogosławionych
+          {copy.title}
         </h1>
         <p className="mt-1 text-sm text-gray-600">
-          Przeszukaj całą bazę hagiograficzną Kościoła Katolickiego
+          {copy.description}
         </p>
       </div>
 
@@ -238,7 +223,7 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
             type="text"
             name="search"
             defaultValue={search}
-            placeholder="Szukaj po imieniu, patronacie lub atrybucie ikonograficznym..."
+            placeholder={copy.searchPlaceholder}
             className="w-full rounded-xl border border-gold-500/30 bg-gray-50/50 py-2.5 pl-10 pr-4 text-sm text-gray-900 focus:border-gold-500 focus:outline-none focus:ring-2 focus:ring-gold-400/20"
           />
         </div>
@@ -246,7 +231,7 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
         <div className="mt-4 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
           <fieldset>
             <legend className="text-[11px] font-bold uppercase tracking-[0.16em] text-stone-500">
-              Typ osoby
+              {copy.personTypeLegend}
             </legend>
             <div className="mt-2 flex flex-wrap gap-2">
               {Object.entries(PERSON_TYPE_LABELS).map(([value, label]) => (
@@ -263,10 +248,10 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
 
           <fieldset>
             <legend className="text-[11px] font-bold uppercase tracking-[0.16em] text-stone-500">
-              Płeć
+              {copy.genderLegend}
             </legend>
             <div className="mt-2 flex flex-wrap gap-2">
-              {Object.entries(GENDER_LABELS).map(([value, label]) => (
+              {Object.entries(copy.genderLabels).map(([value, label]) => (
                 <FilterOption
                   key={value}
                   name="gender"
@@ -280,7 +265,7 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
 
           <fieldset>
             <legend className="text-[11px] font-bold uppercase tracking-[0.16em] text-stone-500">
-              Patronaty
+              {copy.patronageLegend}
             </legend>
             <div className="mt-2 flex flex-wrap gap-2">
               {Object.entries(PATRONAGE_GROUPS).map(([value, group]) => (
@@ -297,7 +282,7 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
 
           <fieldset>
             <legend className="text-[11px] font-bold uppercase tracking-[0.16em] text-stone-500">
-              Okres historyczny
+              {copy.historicalPeriodLegend}
             </legend>
             <div className="mt-2 flex flex-wrap gap-2">
               {Object.entries(TIME_PERIODS).map(([value, period]) => (
@@ -315,20 +300,20 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-gold-500/15 pt-4">
           <p className="text-xs text-stone-500">
-            Wyszukiwanie obejmuje nazwy, streszczenia, patronaty oraz atrybuty ikonograficzne.
+            {copy.searchScope}
           </p>
           <div className="flex flex-wrap gap-2">
             <Link
               href="/swieci"
               className="rounded-xl border border-gold-500/30 px-5 py-2.5 text-sm font-semibold text-burgundy-800 transition-colors hover:bg-gold-50"
             >
-              Wyczyść
+              {copy.clear}
             </Link>
             <button
               type="submit"
               className="rounded-xl bg-burgundy-900 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-burgundy-800"
             >
-              Filtruj
+              {copy.submit}
             </button>
           </div>
         </div>
@@ -337,7 +322,7 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
       {activeFilters.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gold-500/25 bg-gold-50/60 px-4 py-3">
           <div className="flex flex-wrap items-center gap-2 text-sm text-burgundy-900">
-            <span className="font-semibold">Aktywne filtry:</span>
+            <span className="font-semibold">{copy.activeFilters}</span>
             {activeFilters.map((filter) => (
               <span
                 key={`${filter.context}-${filter.label}`}
@@ -349,26 +334,28 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
             ))}
           </div>
           <Link href="/swieci" className="text-xs font-semibold text-burgundy-700 hover:underline">
-            Wyczyść filtry
+            {copy.clearFilters}
           </Link>
         </div>
       )}
 
       {/* Results Counter */}
       <p className="text-xs font-medium text-gray-500">
-        Znaleziono <strong className="text-burgundy-900">{total}</strong> postaci
+        {copy.resultsPrefix} <strong className="text-burgundy-900">{total}</strong>{" "}
+        {copy.resultsSuffix}
       </p>
 
       {/* Directory Grid */}
       {persons.length === 0 ? (
         <div className="rounded-2xl border border-gold-500/20 bg-white p-12 text-center">
           <BookOpen className="mx-auto h-10 w-10 text-gold-600 mb-3" />
-          <p className="text-base font-semibold text-burgundy-900">Brak wyników</p>
-          <p className="mt-1 text-xs text-gray-500">Zmień kryteria wyszukiwania lub filtry.</p>
+          <p className="text-base font-semibold text-burgundy-900">{copy.emptyTitle}</p>
+          <p className="mt-1 text-xs text-gray-500">{copy.emptyDescription}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {persons.map((p) => {
+            const content = readPublicPersonContent(p);
             const patronages = getPersonPatronages(p);
             const officialPatronages = patronages.filter((patronage) => patronage.is_official);
             const highlightedPatronages = officialPatronages.length
@@ -377,7 +364,7 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
             const secondaryPatronages = officialPatronages.length
               ? patronages.filter((patronage) => !patronage.is_official)
               : patronages.slice(3);
-            const attributes = splitAttributes(p.iconographic_attributes);
+            const attributes = splitAttributes(content.iconographicAttributes);
 
             return (
               <Link
@@ -388,7 +375,7 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
                 <div>
                   <div className="mb-5 flex items-start justify-between gap-4">
                     <SaintAvatar
-                      name={p.canonical_name as string}
+                      name={content.canonicalName}
                       avatar={p.avatar as SaintAvatarData | null}
                       className="h-20 w-20 text-xl transition-transform duration-300 group-hover:scale-[1.03]"
                     />
@@ -398,7 +385,7 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
                   </div>
 
                   <h2 className="font-serif text-xl font-bold text-burgundy-900 transition-colors group-hover:text-gold-700">
-                    {p.canonical_name as string}
+                    {content.canonicalName}
                   </h2>
 
                   {Boolean(p.latin_name) && (
@@ -408,19 +395,27 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
                   )}
 
                   <p className="mt-3 line-clamp-3 text-xs leading-relaxed text-gray-600">
-                    {(p.summary_pl as string) || "Brak szczegółowego streszczenia w bazie."}
+                    {content.summary || copy.summaryFallback}
                   </p>
 
                   {highlightedPatronages.length > 0 && (
                     <div className="mt-4 space-y-2">
                       <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-stone-400">
-                        {officialPatronages.length ? "Patronaty główne" : "Patronaty"}
+                        {officialPatronages.length
+                          ? copy.primaryPatronages
+                          : copy.patronages}
                       </p>
                       <div className="flex flex-wrap gap-1.5">
                         {highlightedPatronages.map((patronage) => (
                           <span
                             key={patronage.id ?? patronage.name_pl}
-                            title={PATRONAGE_TYPE_LABELS[patronage.patronage_type ?? ""] ?? patronage.patronage_type}
+                            title={
+                              resolveDictionaryLabel(
+                                copy.patronageTypeLabels,
+                                patronage.patronage_type,
+                              ) ??
+                              patronage.patronage_type
+                            }
                             className="rounded-full border border-gold-500/25 bg-gold-50 px-2.5 py-1 text-[11px] font-semibold text-gold-800"
                           >
                             {patronage.name_pl}
@@ -432,11 +427,19 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
 
                   {secondaryPatronages.length > 0 && (
                     <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-stone-500">
-                      <span className="font-semibold text-stone-400">Rzadziej:</span>
+                      <span className="font-semibold text-stone-400">
+                        {copy.secondaryPatronages}
+                      </span>
                       {secondaryPatronages.slice(0, 2).map((patronage) => (
                         <span
                           key={patronage.id ?? patronage.name_pl}
-                          title={PATRONAGE_TYPE_LABELS[patronage.patronage_type ?? ""] ?? patronage.patronage_type}
+                          title={
+                            resolveDictionaryLabel(
+                              copy.patronageTypeLabels,
+                              patronage.patronage_type,
+                            ) ??
+                            patronage.patronage_type
+                          }
                           className="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1"
                         >
                           {patronage.name_pl}
@@ -469,10 +472,10 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
 
                 <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs">
                   <span className="font-medium text-gray-500">
-                    {p.death_year ? `zm. ${p.death_year}` : "—"}
+                    {p.death_year ? `${copy.deathAbbreviation} ${p.death_year}` : "—"}
                   </span>
                   <span className="flex items-center gap-1 font-semibold text-gold-700 transition-transform group-hover:translate-x-1">
-                    Życiorys <ChevronRight className="h-3.5 w-3.5" />
+                    {copy.biographyLink} <ChevronRight className="h-3.5 w-3.5" />
                   </span>
                 </div>
               </Link>

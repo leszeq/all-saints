@@ -8,6 +8,21 @@ export interface FooterGroup {
   links: NavigationLink[];
 }
 
+export type GenderKey = "male" | "female" | "unknown";
+export type PatronageTypeKey =
+  | "illness"
+  | "healthcare"
+  | "family"
+  | "profession"
+  | "work"
+  | "travel"
+  | "country"
+  | "city"
+  | "diocese"
+  | "group"
+  | "cause"
+  | "other";
+
 export interface WebDictionary {
   metadata: {
     defaultTitle: string;
@@ -40,6 +55,62 @@ export interface WebDictionary {
     disclaimer: string;
     groups: FooterGroup[];
     rightsReserved: string;
+  };
+  saintsDirectory: {
+    title: string;
+    description: string;
+    searchPlaceholder: string;
+    personTypeLegend: string;
+    genderLegend: string;
+    patronageLegend: string;
+    historicalPeriodLegend: string;
+    genderContext: string;
+    eraContext: string;
+    searchScope: string;
+    clear: string;
+    submit: string;
+    activeFilters: string;
+    clearFilters: string;
+    resultsPrefix: string;
+    resultsSuffix: string;
+    emptyTitle: string;
+    emptyDescription: string;
+    summaryFallback: string;
+    primaryPatronages: string;
+    patronages: string;
+    secondaryPatronages: string;
+    deathAbbreviation: string;
+    biographyLink: string;
+    genderLabels: Record<GenderKey, string>;
+    patronageTypeLabels: Record<PatronageTypeKey, string>;
+  };
+  personProfile: {
+    notFoundTitle: string;
+    metadataTitleSuffix: string;
+    metadataDescriptionPrefix: string;
+    metadataBiographyPrefix: string;
+    portraitPrefix: string;
+    backToDirectory: string;
+    eraPrefix: string;
+    aliasesPrefix: string;
+    birthYear: string;
+    deathYear: string;
+    gender: string;
+    genderLabels: Record<GenderKey, string>;
+    stateOfLife: string;
+    summary: string;
+    recognitionTitle: string;
+    recognitionDescription: string;
+    beatification: string;
+    canonization: string;
+    biographyTitle: string;
+    biographyMissing: string;
+    patronages: string;
+    orders: string;
+    prayer: string;
+    prayerMissing: string;
+    iconographicAttributes: string;
+    iconographicAttributesMissing: string;
   };
 }
 

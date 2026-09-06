@@ -43,6 +43,7 @@ class PersonLocalizedSummarySchema(BaseModel):
     source: Literal["translation", "legacy_person_columns"]
     canonical_name: str | None = None
     summary: str | None = None
+    iconographic_attributes: str | None = None
 
 
 class PersonLocalizedContentSchema(PersonLocalizedSummarySchema):
@@ -50,4 +51,3 @@ class PersonLocalizedContentSchema(PersonLocalizedSummarySchema):
 
     biography: str | None = None
     prayers: str | None = None
-    iconographic_attributes: str | None = None

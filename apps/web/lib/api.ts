@@ -1,4 +1,5 @@
 import axios from "axios";
+import { DEFAULT_WEB_UI_LOCALE, type WebUiLocale } from "@/lib/i18n/config";
 
 const API_BASE_URL =
   typeof window === "undefined"
@@ -35,12 +36,17 @@ export function isApiNotFound(error: unknown): boolean {
 }
 
 export const fetchPersons = async (params?: Record<string, unknown>) => {
-  const { data } = await publicApi.get("/persons", { params });
+  const { data } = await publicApi.get("/persons", {
+    params: { locale: DEFAULT_WEB_UI_LOCALE, ...params },
+  });
   return data;
 };
 
-export const fetchPersonDetail = async (idOrSlug: string) => {
-  const { data } = await publicApi.get(`/persons/${idOrSlug}`);
+export const fetchPersonDetail = async (
+  idOrSlug: string,
+  locale: WebUiLocale = DEFAULT_WEB_UI_LOCALE,
+) => {
+  const { data } = await publicApi.get(`/persons/${idOrSlug}`, { params: { locale } });
   return data;
 };
 

@@ -749,8 +749,11 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
   nienormalizowane tłumaczenia bez nadpisywania. Aktywne tłumaczenia uczestniczą
   również w ważonym FTS przez indeks GIN; `EXISTS`/skorelowany ranking zachowuje
   jedną osobę w wynikach niezależnie od liczby pasujących języków, a usunięte
-  tłumaczenia są wykluczone. Pozostają teksty ekranów funkcjonalnych oraz routing
-  uruchamiany dopiero z kompletnym drugim językiem.
+  tłumaczenia są wykluczone. Katalog i profil publiczny pobierają jawny język treści,
+  renderują spójną projekcję `localized_content`, a ich teksty UI są częścią typowanego
+  słownika; lekka projekcja katalogowa zawiera także lokalizowane atrybuty
+  ikonograficzne, bez pełnego biogramu i modlitw. Pozostają pozostałe ekrany
+  funkcjonalne oraz routing uruchamiany dopiero z kompletnym drugim językiem.
 - **Category:** Internationalization
 - **File:** oba frontendy i modele Person/Translation
 - **Lines:** setki hardcoded strings
