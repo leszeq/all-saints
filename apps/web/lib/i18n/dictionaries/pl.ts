@@ -70,6 +70,39 @@ const dictionary = {
     ],
     rightsReserved: "Wszelkie prawa zastrzeżone.",
   },
+  system: {
+    notFound: {
+      kicker: "Błąd 404",
+      title: "Nie znaleziono strony",
+      description:
+        "Adres mógł się zmienić albo wskazany profil nie jest opublikowany. Możesz wrócić do katalogu i odszukać właściwy wpis.",
+      catalogueAction: "Otwórz katalog",
+      homeAction: "Strona główna",
+    },
+    error: {
+      kicker: "Chwilowy problem techniczny",
+      title: "Nie udało się wczytać tej strony",
+      description:
+        "Dane encyklopedii są teraz niedostępne. Spróbuj ponownie — jeżeli problem się powtórzy, podaj redakcji identyfikator widoczny poniżej.",
+      digestPrefix: "Identyfikator błędu:",
+      retryAction: "Spróbuj ponownie",
+      homeAction: "Strona główna",
+    },
+    loading: {
+      labels: {
+        default: "Wczytywanie danych",
+        saintsDirectory: "Wczytywanie katalogu świętych",
+        calendar: "Wczytywanie kalendarza liturgicznego",
+        ordersDirectory: "Wczytywanie katalogu wspólnot",
+      },
+      screenReaderLabel: "Trwa wczytywanie strony.",
+    },
+    avatar: {
+      fallbackLabelPrefix: "Avatar zastępczy:",
+      portraitLabelPrefix: "Portret:",
+      honorificPrefixes: ["św.", "bł.", "czcigodny", "sługa boży"],
+    },
+  },
   domain: {
     personTypes: {
       saint: { label: "Święty/a", description: "Osoby kanonizowane" },
@@ -322,7 +355,6 @@ const dictionary = {
     },
   },
   ordersDirectory: {
-    loadingLabel: "Wczytywanie katalogu wspólnot",
     metadataTitle: "Zakony i zgromadzenia",
     metadataDescription:
       "Historia, duchowość i misja zakonów oraz zgromadzeń wraz ze świętymi należącymi do poszczególnych wspólnot.",

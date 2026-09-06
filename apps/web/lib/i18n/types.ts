@@ -107,6 +107,37 @@ export interface WebDictionary {
     groups: FooterGroup[];
     rightsReserved: string;
   };
+  system: {
+    notFound: {
+      kicker: string;
+      title: string;
+      description: string;
+      catalogueAction: string;
+      homeAction: string;
+    };
+    error: {
+      kicker: string;
+      title: string;
+      description: string;
+      digestPrefix: string;
+      retryAction: string;
+      homeAction: string;
+    };
+    loading: {
+      labels: {
+        default: string;
+        saintsDirectory: string;
+        calendar: string;
+        ordersDirectory: string;
+      };
+      screenReaderLabel: string;
+    };
+    avatar: {
+      fallbackLabelPrefix: string;
+      portraitLabelPrefix: string;
+      honorificPrefixes: string[];
+    };
+  };
   domain: {
     personTypes: Record<PersonTypeKey, { label: string; description: string }>;
     eras: Record<EraKey, string>;
@@ -252,7 +283,6 @@ export interface WebDictionary {
     };
   };
   ordersDirectory: {
-    loadingLabel: string;
     metadataTitle: string;
     metadataDescription: string;
     familyPrefix: string;

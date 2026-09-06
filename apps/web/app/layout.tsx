@@ -41,7 +41,7 @@ export default async function RootLayout({
       data-scroll-behavior="smooth"
     >
       <body className="flex min-h-screen flex-col antialiased">
-        <Providers>
+        <Providers systemCopy={dictionary.system}>
           <Header dictionary={{ brand: dictionary.brand, header: dictionary.header }} />
           <main className="flex-1">{children}</main>
           <Footer dictionary={{ brand: dictionary.brand, footer: dictionary.footer }} />

@@ -111,6 +111,11 @@ the existing public API.
     shared domain-label dictionaries. Existing order editorial fields remain one
     language-neutral compatibility contract until their localization model is
     designed separately.
+18. Cross-cutting public 404, route-error, loading and avatar accessibility copy
+    lives in a typed `system` dictionary section. The root server layout passes only
+    this serializable subset through a client context, so error boundaries and image
+    fallback state do not import the server-only dictionary loader. Loading variants
+    and locale-specific honorifics are data, not constants embedded in components.
 
 ## Consequences
 
@@ -138,8 +143,10 @@ the existing public API.
    and its truthful empty states are also dictionary-backed. The complete public
    calendar feature (month, day and non-person observance) now uses the typed
    dictionary and explicit locale-aware date formatting. The public community
-   catalogue and profile are also complete at the UI-copy boundary; remaining public
-   error/loading edge states and administrative page prose remain incremental work.
+   catalogue and profile are also complete at the UI-copy boundary. Cross-cutting
+   404, error, loading and avatar accessibility states complete the dictionary
+   boundary for all currently implemented public routes; administrative page prose
+   remains incremental work.
 3. Add application-layer commands and protected endpoints for translation workflow.
 4. Backfill `pl` and `en` translation rows idempotently from legacy columns and
    report conflicts without overwriting reviewed translations. The maintenance
