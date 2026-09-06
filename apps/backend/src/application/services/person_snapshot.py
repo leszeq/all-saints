@@ -17,11 +17,12 @@ from src.domain.hagiography.models import (
     Person,
     PersonName,
     PersonOrder,
+    PersonTranslation,
     PersonVersion,
 )
 from src.domain.sources.models import Image, PersonSource
 
-SNAPSHOT_SCHEMA_VERSION = 1
+SNAPSHOT_SCHEMA_VERSION = 2
 
 PATRONAGE_FIELDS = (
     "id",
@@ -94,6 +95,17 @@ CANONIZATION_FIELDS = (
     "decree_number",
     "acta_reference",
     "notes",
+)
+TRANSLATION_FIELDS = (
+    "id",
+    "language_code",
+    "canonical_name",
+    "summary",
+    "biography",
+    "prayers",
+    "iconographic_attributes",
+    "translated_by_id",
+    "version",
 )
 
 
@@ -178,6 +190,20 @@ async def serialize_person_snapshot(
         .scalars()
         .all()
     )
+    translations = list(
+        (
+            await db.execute(
+                select(PersonTranslation)
+                .where(
+                    PersonTranslation.person_id == person_id,
+                    PersonTranslation.deleted_at.is_(None),
+                )
+                .order_by(PersonTranslation.language_code.asc(), PersonTranslation.id.asc())
+            )
+        )
+        .scalars()
+        .all()
+    )
     beatification = (
         await db.execute(select(Beatification).where(Beatification.person_id == person_id))
     ).scalar_one_or_none()
@@ -193,6 +219,7 @@ async def serialize_person_snapshot(
         "orders": [_fields(item, ORDER_FIELDS) for item in orders],
         "sources": [_fields(item, SOURCE_FIELDS) for item in sources],
         "aliases": [_fields(item, ALIAS_FIELDS) for item in aliases],
+        "translations": [_fields(item, TRANSLATION_FIELDS) for item in translations],
         "beatification": (
             _fields(beatification, BEATIFICATION_FIELDS) if beatification is not None else None
         ),

@@ -68,6 +68,7 @@ PERMISSIONS: tuple[PermissionDefinition, ...] = (
     PermissionDefinition("translations", "read", "Przeglądanie tłumaczeń", "Tłumaczenia"),
     PermissionDefinition("translations", "create", "Tworzenie tłumaczeń", "Tłumaczenia"),
     PermissionDefinition("translations", "update", "Edycja tłumaczeń", "Tłumaczenia"),
+    PermissionDefinition("translations", "delete", "Usuwanie tłumaczeń", "Tłumaczenia"),
     PermissionDefinition("export", "read", "Pobieranie eksportów", "Import i eksport"),
     PermissionDefinition("export", "create", "Generowanie eksportów", "Import i eksport"),
     PermissionDefinition("import", "create", "Importowanie danych", "Import i eksport"),
@@ -148,6 +149,7 @@ ROLE_PERMISSIONS: dict[SystemRole, frozenset[str]] = {
             "export:read",
             "export:create",
             "calendar:read",
+            "translations:read",
         }
     ),
     SystemRole.REVIEWER: frozenset(
@@ -160,6 +162,7 @@ ROLE_PERMISSIONS: dict[SystemRole, frozenset[str]] = {
             "images:read",
             "export:read",
             "calendar:read",
+            "translations:read",
         }
     ),
     SystemRole.TRANSLATOR: frozenset(
@@ -168,6 +171,7 @@ ROLE_PERMISSIONS: dict[SystemRole, frozenset[str]] = {
             "translations:read",
             "translations:create",
             "translations:update",
+            "translations:delete",
             "geography:read",
             "calendar:read",
         }
@@ -181,6 +185,7 @@ ROLE_PERMISSIONS: dict[SystemRole, frozenset[str]] = {
             "images:read",
             "export:read",
             "calendar:read",
+            "translations:read",
         }
     ),
     SystemRole.GUEST: frozenset({"persons:read", "geography:read"}),

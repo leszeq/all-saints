@@ -68,6 +68,11 @@ the existing public API.
    different languages into one apparently complete translation.
 9. Latin (`la`) is a valid content language. It is not automatically an interface
    locale.
+10. A translation shares its parent person's editorial lifecycle. Authors may
+    create, update or soft-delete translations only while the person is a draft.
+    Every mutation increments the parent revision and is included in the same
+    version snapshot and audit trail. Reviewers can read translations but cannot
+    edit them, so localized content cannot bypass review or publication.
 
 ## Consequences
 

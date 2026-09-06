@@ -32,8 +32,10 @@ def test_alias_migration_extends_the_single_history_and_backfills_names() -> Non
     source = MIGRATION.read_text(encoding="utf-8")
 
     migration = scripts.get_revision("0016_person_names")
+    successor = scripts.get_revision("0017_translation_workflow_rbac")
     assert migration is not None
-    assert scripts.get_current_head() == migration.revision
+    assert successor is not None
+    assert successor.down_revision == migration.revision
     assert len(scripts.get_heads()) == 1
     assert migration.down_revision == "0015_drop_legacy_embedding"
     assert "original_name AS value" in source

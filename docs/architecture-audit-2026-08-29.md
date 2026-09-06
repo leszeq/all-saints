@@ -741,8 +741,11 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
   `localized_content` z językiem żądanym, rozstrzygniętym, źródłem oraz informacją o
   fallbacku. Resolver preferuje aktywny `PersonTranslation`, obsługuje tag regionalny
   i nie miesza brakujących pól z innym językiem; katalog nie zwraca pełnego biogramu.
-  Pozostają teksty ekranów funkcjonalnych, workflow tłumaczeń, backfill danych oraz
-  routing uruchamiany dopiero z kompletnym drugim językiem.
+  Chronione API tłumaczeń egzekwuje osobne RBAC, blokadę optymistyczną i edycję tylko
+  w szkicu, a każdą zmianę włącza do wersji osoby i dziennika audytu. Recenzent ma
+  wyłącznie odczyt tłumaczeń i zatwierdza cały rekord w istniejącym workflow.
+  Pozostają teksty ekranów funkcjonalnych, backfill danych oraz routing uruchamiany
+  dopiero z kompletnym drugim językiem.
 - **Category:** Internationalization
 - **File:** oba frontendy i modele Person/Translation
 - **Lines:** setki hardcoded strings

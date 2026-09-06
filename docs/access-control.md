@@ -6,23 +6,25 @@ materializowana w bazie przez Alembic oraz idempotentny seed. Panel nie jest
 
 ## Role systemowe
 
-| Obszar | Superadministrator | Administrator | Redaktor | Recenzent |
-| --- | :---: | :---: | :---: | :---: |
-| Odczyt rekordów redakcyjnych | ✓ | ✓ | ✓ | ✓ |
-| Tworzenie osoby | ✓ | ✓ | ✓ | — |
-| Edycja danych osoby | ✓ | ✓ | ✓ | — |
-| Przekazanie szkicu do recenzji | ✓ | ✓ | ✓ | — |
-| Zwrot z obowiązkowym komentarzem | ✓ | ✓ | — | ✓ |
-| Akceptacja i publikacja po recenzji | ✓ | ✓ | — | ✓ |
-| Wycofanie lub archiwizacja publikacji | ✓ | ✓ | — | — |
-| Usuwanie i przywracanie osoby | ✓ | ✓ | — | — |
-| Pełne zarządzanie źródłami i mediami | ✓ | ✓ | — | — |
-| Dodawanie i edycja źródeł/obrazów | ✓ | ✓ | ✓ | — |
-| Odczyt źródeł, geografii i kalendarza | ✓ | ✓ | ✓ | ✓ |
-| Pełne zarządzanie geografią, zakonami i kalendarzem | ✓ | ✓ | — | — |
-| Import, eksport i dziennik audytu | ✓ | ✓ | częściowo | odczyt eksportów |
-| Zarządzanie użytkownikami | ✓ | — | — | — |
-| Zarządzanie rolami i macierzą | ✓ | — | — | — |
+| Obszar | Superadministrator | Administrator | Redaktor | Recenzent | Tłumacz |
+| --- | :---: | :---: | :---: | :---: | :---: |
+| Odczyt rekordów redakcyjnych | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Tworzenie osoby | ✓ | ✓ | ✓ | — | — |
+| Edycja danych osoby | ✓ | ✓ | ✓ | — | — |
+| Przekazanie szkicu do recenzji | ✓ | ✓ | ✓ | — | — |
+| Zwrot z obowiązkowym komentarzem | ✓ | ✓ | — | ✓ | — |
+| Akceptacja i publikacja po recenzji | ✓ | ✓ | — | ✓ | — |
+| Wycofanie lub archiwizacja publikacji | ✓ | ✓ | — | — | — |
+| Usuwanie i przywracanie osoby | ✓ | ✓ | — | — | — |
+| Odczyt tłumaczeń | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Tworzenie, edycja i usuwanie tłumaczeń szkicu | ✓ | ✓ | — | — | ✓ |
+| Pełne zarządzanie źródłami i mediami | ✓ | ✓ | — | — | — |
+| Dodawanie i edycja źródeł/obrazów | ✓ | ✓ | ✓ | — | — |
+| Odczyt źródeł, geografii i kalendarza | ✓ | ✓ | ✓ | ✓ | częściowo |
+| Pełne zarządzanie geografią, zakonami i kalendarzem | ✓ | ✓ | — | — | — |
+| Import, eksport i dziennik audytu | ✓ | ✓ | częściowo | odczyt eksportów | — |
+| Zarządzanie użytkownikami | ✓ | — | — | — | — |
+| Zarządzanie rolami i macierzą | ✓ | — | — | — | — |
 
 Superadministrator jest pojedynczym kontem właściciela. API nie pozwala
 przypisać tej roli, seed zachowuje istniejącego właściciela, a trigger bazy
@@ -40,6 +42,12 @@ draft ── przekazuje ──> review ── akceptuje ──> published
 Recenzent nie otrzymuje `persons:update`. Jego uprawnienie `persons:review`
 działa wyłącznie w kontrolowanym endpoincie decyzji redakcyjnej. Dzięki temu
 nie może zmienić biogramu tuż przed akceptacją.
+
+Tłumaczenie jest częścią wersji osoby, a nie niezależną ścieżką publikacji.
+Tłumacz może je zmieniać wyłącznie, gdy osoba ma status `draft`. Każda taka
+operacja zwiększa wersję osoby, zapisuje snapshot i trafia do dziennika audytu.
+Redaktor przekazuje cały rekord do recenzji, a recenzent widzi tłumaczenia i
+akceptuje albo zwraca osobę w istniejącym workflow.
 
 ## Role niestandardowe
 
