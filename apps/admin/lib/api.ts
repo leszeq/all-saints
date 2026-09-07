@@ -46,6 +46,15 @@ interface TokenResponse {
 
 let refreshPromise: Promise<string> | null = null;
 
+export interface ApiErrorMessageOptions {
+  messagesByCode?: Readonly<Record<string, string>>;
+  unexpected?: string;
+  invalidValue?: string;
+  invalidData?: string;
+  network?: string;
+  httpError?: (status: number) => string;
+}
+
 async function refreshAccessToken(): Promise<string> {
   if (!refreshPromise) {
     refreshPromise = axios
@@ -66,17 +75,27 @@ async function refreshAccessToken(): Promise<string> {
   return refreshPromise;
 }
 
-export function getApiErrorMessage(error: unknown): string {
+export function getApiErrorMessage(
+  error: unknown,
+  options: ApiErrorMessageOptions = {},
+): string {
   if (!axios.isAxiosError<ApiErrorPayload>(error)) {
-    return "Wystąpił nieoczekiwany błąd podczas zapisu.";
+    return options.unexpected ?? "Wystąpił nieoczekiwany błąd podczas zapisu.";
   }
 
   const payload = error.response?.data;
+  const localizedCodeMessage = payload?.error
+    ? options.messagesByCode?.[payload.error]
+    : undefined;
+  if (localizedCodeMessage) return localizedCodeMessage;
+
   if (payload?.details?.length) {
     return payload.details
       .map(({ field, message }) => {
         const fieldName = field?.replace(/^body\./, "");
-        return fieldName ? `${fieldName}: ${message ?? "nieprawidłowa wartość"}` : message;
+        return fieldName
+          ? `${fieldName}: ${message ?? options.invalidValue ?? "nieprawidłowa wartość"}`
+          : message;
       })
       .filter(Boolean)
       .join(" · ");
@@ -87,10 +106,20 @@ export function getApiErrorMessage(error: unknown): string {
   if (payload?.detail && !Array.isArray(payload.detail) && typeof payload.detail === "object") {
     const detailMessage = payload.detail.message;
     const detailErrors = payload.detail.errors;
-    return [detailMessage, ...(detailErrors ?? [])].filter(Boolean).join(" · ") || "API zwróciło nieprawidłowe dane.";
+    return (
+      [detailMessage, ...(detailErrors ?? [])].filter(Boolean).join(" · ") ||
+      options.invalidData ||
+      "API zwróciło nieprawidłowe dane."
+    );
   }
-  if (!error.response) return "Nie udało się połączyć z API. Sprawdź, czy backend działa na porcie 8000.";
-  return `Zapis nie powiódł się (HTTP ${error.response.status}).`;
+  if (!error.response) {
+    return (
+      options.network ??
+      "Nie udało się połączyć z API. Sprawdź, czy backend działa na porcie 8000."
+    );
+  }
+  return options.httpError?.(error.response.status) ??
+    `Zapis nie powiódł się (HTTP ${error.response.status}).`;
 }
 
 // Access token lives only in memory. The persistent session is the HttpOnly cookie.

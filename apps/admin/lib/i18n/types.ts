@@ -79,6 +79,45 @@ export interface AdminDictionary {
     loading: {
       application: string;
       dashboard: string;
+      sessionVerification: string;
+    };
+  };
+  login: {
+    metadataTitle: string;
+    metadataDescription: string;
+    editorialPanelAriaLabel: string;
+    quote: string;
+    quoteDescription: string;
+    securityStatement: string;
+    accessKicker: string;
+    title: string;
+    description: string;
+    emailLabel: string;
+    emailPlaceholder: string;
+    passwordLabel: string;
+    passwordRecovery: string;
+    hidePasswordAriaLabel: string;
+    showPasswordAriaLabel: string;
+    sessionStorageNotice: string;
+    submitting: string;
+    submit: string;
+    auditNotice: string;
+    validation: {
+      invalidEmail: string;
+      requiredPassword: string;
+    };
+    errors: {
+      unauthorized: string;
+      forbidden: string;
+      rateLimited: string;
+      validation: string;
+      server: string;
+      unexpected: string;
+      invalidValue: string;
+      invalidData: string;
+      network: string;
+      requestFailedPrefix: string;
+      requestFailedSuffix: string;
     };
   };
 }
@@ -86,3 +125,4 @@ export interface AdminDictionary {
 export type AdminSidebarDictionary = Pick<AdminDictionary, "brand" | "sidebar">;
 export type AdminTopbarDictionary = AdminDictionary["topbar"];
 export type AdminSystemDictionary = AdminDictionary["system"];
+export type AdminLoginDictionary = Pick<AdminDictionary, "brand" | "login">;

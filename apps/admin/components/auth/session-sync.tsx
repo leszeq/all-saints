@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { Loader2, ShieldCheck } from "lucide-react";
+import { useAdminSystemCopy } from "@/components/admin-system-copy-context";
 import { authApi } from "@/lib/api";
 import { useAuthStore } from "@/lib/store/auth";
 
 export function SessionSync({ children }: { children: React.ReactNode }) {
+  const copy = useAdminSystemCopy().loading;
   const setAuth = useAuthStore((state) => state.setAuth);
   const [sessionReady, setSessionReady] = useState(false);
 
@@ -45,7 +47,7 @@ export function SessionSync({ children }: { children: React.ReactNode }) {
             <ShieldCheck className="h-5 w-5" />
             <Loader2 className="absolute h-8 w-8 animate-spin opacity-35" />
           </span>
-          Weryfikowanie bezpiecznej sesji…
+          {copy.sessionVerification}
         </div>
       </div>
     );

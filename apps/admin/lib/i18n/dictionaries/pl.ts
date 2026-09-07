@@ -81,6 +81,48 @@ const dictionary = {
     loading: {
       application: "Trwa wczytywanie aplikacji.",
       dashboard: "Trwa wczytywanie panelu administracyjnego.",
+      sessionVerification: "Weryfikowanie bezpiecznej sesji…",
+    },
+  },
+  login: {
+    metadataTitle: "Logowanie",
+    metadataDescription: "Bezpieczne logowanie do panelu redakcyjnego Encyklopedii Świętych.",
+    editorialPanelAriaLabel: "Panel redakcyjny",
+    quote: "Rzetelna wiedza zaczyna się od uważnej redakcji.",
+    quoteDescription:
+      "Weryfikuj biogramy, źródła i relacje. Każda decyzja pozostaje w historii zmian.",
+    securityStatement: "Połączenie szyfrowane · pełny dziennik audytowy",
+    accessKicker: "Bezpieczny dostęp",
+    title: "Zaloguj się do panelu",
+    description: "Użyj konta przydzielonego przez administratora redakcji.",
+    emailLabel: "Adres e-mail",
+    emailPlaceholder: "redaktor@encyklopedia.pl",
+    passwordLabel: "Hasło",
+    passwordRecovery: "Nie pamiętasz hasła? Skontaktuj się z administratorem.",
+    hidePasswordAriaLabel: "Ukryj hasło",
+    showPasswordAriaLabel: "Pokaż hasło",
+    sessionStorageNotice:
+      "Dostęp jest przechowywany w bezpiecznym cookie HttpOnly. Token panelu nie jest zapisywany w pamięci trwałej przeglądarki.",
+    submitting: "Logowanie…",
+    submit: "Zaloguj się",
+    auditNotice:
+      "Dostęp jest monitorowany. Nieudane próby logowania i zmiany uprawnień są zapisywane w dzienniku audytowym.",
+    validation: {
+      invalidEmail: "Podaj prawidłowy adres email",
+      requiredPassword: "Hasło jest wymagane",
+    },
+    errors: {
+      unauthorized: "Nieprawidłowy email lub hasło.",
+      forbidden: "Konto jest nieaktywne lub zablokowane. Skontaktuj się z administratorem.",
+      rateLimited: "Zbyt wiele prób logowania. Spróbuj ponownie później.",
+      validation: "Dane logowania są nieprawidłowe.",
+      server: "Serwer logowania jest chwilowo niedostępny.",
+      unexpected: "Wystąpił nieoczekiwany błąd podczas logowania.",
+      invalidValue: "nieprawidłowa wartość",
+      invalidData: "API zwróciło nieprawidłowe dane.",
+      network: "Nie udało się połączyć z API. Sprawdź, czy backend działa na porcie 8000.",
+      requestFailedPrefix: "Logowanie nie powiodło się (HTTP ",
+      requestFailedSuffix: ").",
     },
   },
 } satisfies AdminDictionary;

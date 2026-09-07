@@ -122,6 +122,13 @@ the existing public API.
     context. The topbar resolves built-in role keys through its dictionary while
     preserving custom role names returned by the API. Feature-page copy continues to
     migrate independently and does not block this shell boundary.
+20. The administrative login route loads metadata and typed copy on the server and
+    passes only its `brand` and `login` dictionary sections to the interactive client
+    form. Validation, accessibility labels, request states and session-verification
+    copy are localized. Authentication failures are resolved from stable API error
+    codes before any human-readable backend message, so backend prose is not an
+    interface-locale contract. Password recovery is not presented as an available
+    action until a recovery endpoint and workflow exist.
 
 ## Consequences
 
@@ -152,8 +159,9 @@ the existing public API.
    catalogue and profile are also complete at the UI-copy boundary. Cross-cutting
    404, error, loading and avatar accessibility states complete the dictionary
    boundary for all currently implemented public routes. The administrative shell,
-   system states and topbar role labels now use the separate typed admin dictionary;
-   administrative feature-page prose remains incremental work.
+   system states, topbar role labels and complete login/authentication flow now use
+   the separate typed admin dictionary. Administrative feature-page prose remains
+   incremental work.
 3. Add application-layer commands and protected endpoints for translation workflow.
 4. Backfill `pl` and `en` translation rows idempotently from legacy columns and
    report conflicts without overwriting reviewed translations. The maintenance

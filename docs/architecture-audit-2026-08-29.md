@@ -769,8 +769,12 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
   panel ma osobny typowany słownik dla metadata, sidebara, topbara, globalnych 404,
   error/loading oraz wbudowanych etykiet ról. Klienckie granice panelu otrzymują z
   layoutu wyłącznie serializowalny wycinek `system`, a niestandardowe nazwy ról z API
-  pozostają bez zmian. Pozostają teksty ekranów funkcjonalnych panelu oraz routing
-  uruchamiany dopiero z kompletnym drugim językiem.
+  pozostają bez zmian. Ekran logowania ma słownikowe metadata, walidację, treść,
+  dostępność i stany żądania; błędy uwierzytelniania są mapowane po stabilnych kodach
+  API zamiast po tekście odpowiedzi backendu. Weryfikacja sesji korzysta ze wspólnego
+  kontekstu systemowego, a niezaimplementowane odzyskiwanie hasła nie jest już
+  przedstawiane jako aktywna akcja. Pozostają teksty ekranów funkcjonalnych panelu
+  oraz routing uruchamiany dopiero z kompletnym drugim językiem.
 - **Category:** Internationalization
 - **File:** oba frontendy i modele Person/Translation
 - **Lines:** setki hardcoded strings
