@@ -136,6 +136,14 @@ the existing public API.
     resolve from stable API keys through the shared domain dictionary; unknown future
     keys preserve the API label as a compatibility fallback. Dashboard queries, links
     and metric calculations are unaffected by localization.
+22. The editorial review route keeps URL-filter parsing and dictionary loading on the
+    server, then passes typed `review` and shared `domain` copy to the interactive
+    queue. Person types, workflow priorities, completeness criteria and quality issues
+    resolve from stable API keys; descriptive API labels are compatibility fallbacks
+    only. Transition failures resolve from the canonical API error envelope before
+    backend prose. Dashboard and review screens share locale-aware date and relative-
+    time formatters, while permissions, query keys and transition payloads remain
+    unchanged.
 
 ## Consequences
 
@@ -169,7 +177,9 @@ the existing public API.
    system states, topbar role labels and complete login/authentication flow now use
    the separate typed admin dictionary. The complete editorial dashboard, including
    its metadata, operational states and shared workflow/quality labels, is also
-   dictionary-backed. Remaining administrative feature-page prose is incremental work.
+   dictionary-backed. The review queue now has the same boundary for metadata, URL
+   filters, tabular states, RBAC actions, pagination and return-to-editor dialog.
+   Remaining administrative feature-page prose is incremental work.
 3. Add application-layer commands and protected endpoints for translation workflow.
 4. Backfill `pl` and `en` translation rows idempotently from legacy columns and
    report conflicts without overwriting reviewed translations. The maintenance

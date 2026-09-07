@@ -25,6 +25,7 @@ import type {
   AdminDomainDictionary,
   AdminEditorialIssueKey,
 } from "@/lib/i18n/types";
+import { formatAdminDateTime, formatAdminRelativeDays } from "@/lib/i18n/format";
 import { cn, PERSON_STATUS_COLORS } from "@/lib/utils";
 
 const metricTones = {
@@ -46,27 +47,6 @@ function formatMonth(value: string, locale: string) {
   return new Intl.DateTimeFormat(locale, { month: "short" })
     .format(new Date(year, month - 1, 1))
     .replace(".", "");
-}
-
-function formatEditorialAge(days: number, locale: string): string {
-  return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(
-    -Math.max(0, days),
-    "day",
-  );
-}
-
-function formatDashboardDateTime(value: string, locale: string): string {
-  try {
-    return new Intl.DateTimeFormat(locale, {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(new Date(value));
-  } catch {
-    return value;
-  }
 }
 
 function getIssueLabel(
@@ -126,7 +106,7 @@ function QueuePreviewRow({
         </p>
       </div>
       <span className="text-[10px] text-muted-foreground">
-        {formatEditorialAge(item.age_days, locale)}
+        {formatAdminRelativeDays(item.age_days, locale)}
       </span>
     </li>
   );
@@ -364,7 +344,7 @@ export function EditorialDashboardClient({
                   </Link>
                   <p className="mt-1 truncate text-[10px] text-muted-foreground">
                     {person.last_modified_by?.full_name ?? copy.recent.systemActor} ·{" "}
-                    {formatDashboardDateTime(person.updated_at, locale)}
+                    {formatAdminDateTime(person.updated_at, locale)}
                   </p>
                 </div>
                 <span className={cn("rounded-full px-2 py-1 text-[9px] font-semibold", PERSON_STATUS_COLORS[person.status])}>

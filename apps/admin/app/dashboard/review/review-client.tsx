@@ -26,17 +26,21 @@ import { editorialApi, getApiErrorMessage } from "@/lib/api";
 import { useAuthStore } from "@/lib/store/auth";
 import {
   EDITORIAL_PRIORITY_COLORS,
-  EDITORIAL_PRIORITY_LABELS,
-  formatEditorialAge,
+  type EditorialQueueItem,
   type EditorialPriority,
   type PublicationStatus,
 } from "@/lib/editorial";
+import { formatAdminDateTime, formatAdminRelativeDays } from "@/lib/i18n/format";
+import type {
+  AdminCompletenessCriterionKey,
+  AdminDomainDictionary,
+  AdminEditorialIssueKey,
+  AdminPersonTypeKey,
+  AdminReviewDictionary,
+} from "@/lib/i18n/types";
 import {
   cn,
-  formatDateTime,
   PERSON_STATUS_COLORS,
-  PERSON_STATUS_LABELS,
-  PERSON_TYPE_LABELS,
 } from "@/lib/utils";
 
 const PER_PAGE = 15;
@@ -50,10 +54,45 @@ export interface EditorialQueueInitialFilters {
   attention: boolean;
 }
 
+function getPersonTypeLabel(key: string, domainCopy: AdminDomainDictionary): string {
+  return Object.prototype.hasOwnProperty.call(domainCopy.personTypeLabels, key)
+    ? domainCopy.personTypeLabels[key as AdminPersonTypeKey]
+    : key;
+}
+
+function getCriterionLabel(
+  criterion: EditorialQueueItem["completeness_criteria"][number],
+  domainCopy: AdminDomainDictionary,
+): string {
+  return Object.prototype.hasOwnProperty.call(
+    domainCopy.completenessCriterionLabels,
+    criterion.key,
+  )
+    ? domainCopy.completenessCriterionLabels[
+        criterion.key as AdminCompletenessCriterionKey
+      ]
+    : criterion.label;
+}
+
+function getIssueLabel(
+  issue: EditorialQueueItem["issues"][number],
+  domainCopy: AdminDomainDictionary,
+): string {
+  return Object.prototype.hasOwnProperty.call(domainCopy.editorialIssueLabels, issue.code)
+    ? domainCopy.editorialIssueLabels[issue.code as AdminEditorialIssueKey]
+    : issue.label;
+}
+
 export function EditorialQueueClient({
   initialFilters,
+  copy,
+  domainCopy,
+  locale,
 }: {
   initialFilters: EditorialQueueInitialFilters;
+  copy: AdminReviewDictionary;
+  domainCopy: AdminDomainDictionary;
+  locale: string;
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -109,12 +148,31 @@ export function EditorialQueueClient({
         queryClient.invalidateQueries({ queryKey: ["persons"] }),
       ]);
     },
-    onError: (error) => setActionError(getApiErrorMessage(error)),
+    onError: (error) =>
+      setActionError(
+        getApiErrorMessage(error, {
+          messagesByCode: {
+            UNAUTHORIZED: copy.errors.unauthorized,
+            FORBIDDEN: copy.errors.forbidden,
+            NOT_FOUND: copy.errors.notFound,
+            CONFLICT: copy.errors.conflict,
+            VALIDATION_ERROR: copy.errors.validation,
+            INTERNAL_SERVER_ERROR: copy.errors.server,
+          },
+          unexpected: copy.errors.unexpected,
+          invalidValue: copy.errors.invalidValue,
+          invalidData: copy.errors.invalidData,
+          network: copy.errors.network,
+          httpError: (status) =>
+            `${copy.errors.requestFailedPrefix}${status}${copy.errors.requestFailedSuffix}`,
+        }),
+      ),
   });
 
   const queue = queueQuery.data?.data;
   const items = queue?.items ?? [];
   const counts = queue?.counts;
+  const numberFormatter = new Intl.NumberFormat(locale);
 
   const changeFilters = (
     status: QueueStatusFilter,
@@ -140,30 +198,31 @@ export function EditorialQueueClient({
     <div className="mx-auto max-w-[1500px] space-y-5">
       <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="admin-label">Redakcja</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">Kolejka redakcyjna</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Przygotuj szkice, przekaż je do recenzji i publikuj zweryfikowane rekordy.
-          </p>
+          <p className="admin-label">{copy.kicker}</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight">{copy.title}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{copy.description}</p>
         </div>
         {canCreate && (
           <Link
             href="/dashboard/persons/new"
             className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
           >
-            Dodaj nowy rekord <ArrowRight className="h-4 w-4" />
+            {copy.addRecordAction} <ArrowRight className="h-4 w-4" />
           </Link>
         )}
       </header>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6" aria-label="Stan kolejki">
+      <section
+        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6"
+        aria-label={copy.queueStateAriaLabel}
+      >
         {[
-          { label: "Wszystkie", value: counts?.total ?? 0, status: "" as const, priority: "" as const },
-          { label: "Szkice", value: counts?.draft ?? 0, status: "draft" as const, priority: "" as const },
-          { label: "W recenzji", value: counts?.review ?? 0, status: "review" as const, priority: "" as const },
-          { label: "Wymagają uwagi", value: counts?.attention ?? 0, status: "" as const, priority: "" as const, attention: true },
-          { label: "Pilne", value: counts?.urgent ?? 0, status: "" as const, priority: "urgent" as const },
-          { label: "Wysoki priorytet", value: counts?.high ?? 0, status: "" as const, priority: "high" as const },
+          { label: copy.summary.all, value: counts?.total ?? 0, status: "" as const, priority: "" as const },
+          { label: copy.summary.drafts, value: counts?.draft ?? 0, status: "draft" as const, priority: "" as const },
+          { label: copy.summary.inReview, value: counts?.review ?? 0, status: "review" as const, priority: "" as const },
+          { label: copy.summary.attention, value: counts?.attention ?? 0, status: "" as const, priority: "" as const, attention: true },
+          { label: copy.summary.urgent, value: counts?.urgent ?? 0, status: "" as const, priority: "urgent" as const },
+          { label: copy.summary.highPriority, value: counts?.high ?? 0, status: "" as const, priority: "high" as const },
         ].map(({ label, value, status, priority, attention = false }) => {
           const selected =
             statusFilter === status &&
@@ -173,13 +232,16 @@ export function EditorialQueueClient({
             <button
               key={label}
               onClick={() => changeFilters(status, priority, attention)}
+              aria-pressed={selected}
               className={cn(
                 "admin-card p-4 text-left transition-colors hover:border-primary/40",
                 selected && "border-primary bg-primary/[0.04] ring-1 ring-primary/20",
               )}
             >
               <span className="text-xs text-muted-foreground">{label}</span>
-              <span className="mt-1 block text-2xl font-semibold">{value.toLocaleString("pl-PL")}</span>
+              <span className="mt-1 block text-2xl font-semibold">
+                {numberFormatter.format(value)}
+              </span>
             </button>
           );
         })}
@@ -192,34 +254,38 @@ export function EditorialQueueClient({
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Szukaj po imieniu lub nazwie łacińskiej…"
+              placeholder={copy.searchPlaceholder}
+              aria-label={copy.searchPlaceholder}
               className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
             />
           </div>
           <select
             value={statusFilter}
             onChange={(event) => changeFilters(event.target.value as QueueStatusFilter, priorityFilter)}
+            aria-label={copy.stageFilterAriaLabel}
             className="h-10 rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-primary"
           >
-            <option value="">Wszystkie etapy</option>
-            <option value="draft">Szkice</option>
-            <option value="review">W recenzji</option>
+            <option value="">{copy.filters.allStages}</option>
+            <option value="draft">{copy.filters.drafts}</option>
+            <option value="review">{copy.filters.inReview}</option>
           </select>
           <select
             value={priorityFilter}
             onChange={(event) => changeFilters(statusFilter, event.target.value as QueuePriorityFilter)}
+            aria-label={copy.priorityFilterAriaLabel}
             className="h-10 rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-primary"
           >
-            <option value="">Każdy priorytet</option>
-            <option value="urgent">Pilny</option>
-            <option value="high">Wysoki</option>
-            <option value="normal">Standardowy</option>
+            <option value="">{copy.filters.everyPriority}</option>
+            <option value="urgent">{domainCopy.editorialPriorityLabels.urgent}</option>
+            <option value="high">{domainCopy.editorialPriorityLabels.high}</option>
+            <option value="normal">{domainCopy.editorialPriorityLabels.normal}</option>
           </select>
           <button
             onClick={() => queueQuery.refetch()}
             className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border px-3 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
           >
-            <RefreshCw className={cn("h-4 w-4", queueQuery.isFetching && "animate-spin")} /> Odśwież
+            <RefreshCw className={cn("h-4 w-4", queueQuery.isFetching && "animate-spin")} />
+            {copy.refreshAction}
           </button>
         </div>
 
@@ -233,21 +299,21 @@ export function EditorialQueueClient({
           <table className="min-w-[1180px] w-full text-sm">
             <thead className="border-b border-border bg-muted/40">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Rekord</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Etap / priorytet</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Kompletność</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Problemy</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ostatnia zmiana</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Decyzja</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">{copy.table.record}</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">{copy.table.stageAndPriority}</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">{copy.table.completeness}</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">{copy.table.issues}</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">{copy.table.lastChange}</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">{copy.table.decision}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {queueQuery.isLoading ? (
-                <tr><td colSpan={6} className="py-16 text-center text-muted-foreground"><Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />Ładowanie kolejki…</td></tr>
+                <tr><td colSpan={6} className="py-16 text-center text-muted-foreground"><Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />{copy.states.loading}</td></tr>
               ) : queueQuery.isError ? (
-                <tr><td colSpan={6} className="py-16 text-center text-rose-600">Nie udało się pobrać kolejki redakcyjnej.</td></tr>
+                <tr><td colSpan={6} className="py-16 text-center text-rose-600">{copy.states.loadError}</td></tr>
               ) : items.length === 0 ? (
-                <tr><td colSpan={6} className="py-16 text-center"><Check className="mx-auto mb-2 h-7 w-7 text-emerald-500" /><p className="font-medium">Brak rekordów dla wybranych filtrów</p><p className="mt-1 text-xs text-muted-foreground">Zmień kryteria albo dodaj nowy szkic.</p></td></tr>
+                <tr><td colSpan={6} className="py-16 text-center"><Check className="mx-auto mb-2 h-7 w-7 text-emerald-500" /><p className="font-medium">{copy.states.emptyTitle}</p><p className="mt-1 text-xs text-muted-foreground">{copy.states.emptyDescription}</p></td></tr>
               ) : items.map((item) => {
                 const mutationForItem = transitionMutation.isPending && transitionMutation.variables?.id === item.id;
                 return (
@@ -257,14 +323,16 @@ export function EditorialQueueClient({
                         <SaintAvatar name={item.canonical_name} avatar={item.avatar} className="h-10 w-10 text-xs" />
                         <div className="min-w-0">
                           <Link href={`/dashboard/persons/${item.id}`} className="block max-w-64 truncate font-medium hover:text-primary">{item.canonical_name}</Link>
-                          <p className="mt-1 text-xs text-muted-foreground">{PERSON_TYPE_LABELS[item.person_type] ?? item.person_type}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {getPersonTypeLabel(item.person_type, domainCopy)}
+                          </p>
                         </div>
                       </div>
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex flex-col items-start gap-1.5">
-                        <span className={cn("rounded-full px-2 py-1 text-[10px] font-semibold", PERSON_STATUS_COLORS[item.status])}>{PERSON_STATUS_LABELS[item.status]}</span>
-                        <span className={cn("rounded-full px-2 py-1 text-[10px] font-semibold", EDITORIAL_PRIORITY_COLORS[item.priority])}>{EDITORIAL_PRIORITY_LABELS[item.priority]}</span>
+                        <span className={cn("rounded-full px-2 py-1 text-[10px] font-semibold", PERSON_STATUS_COLORS[item.status])}>{domainCopy.personStatusLabels[item.status]}</span>
+                        <span className={cn("rounded-full px-2 py-1 text-[10px] font-semibold", EDITORIAL_PRIORITY_COLORS[item.priority])}>{domainCopy.editorialPriorityLabels[item.priority]}</span>
                       </div>
                     </td>
                     <td className="px-4 py-4">
@@ -275,13 +343,14 @@ export function EditorialQueueClient({
                         </div>
                         <details className="group mt-2 text-[10px]">
                           <summary className="flex cursor-pointer list-none items-center gap-1 text-muted-foreground hover:text-foreground">
-                            <CircleHelp className="h-3 w-3" /> Jak liczymy?
+                            <CircleHelp className="h-3 w-3" /> {copy.completenessExplanation}
                           </summary>
                           <ul className="mt-2 space-y-1.5 rounded-lg border border-border bg-background p-2.5 shadow-sm">
                             {item.completeness_criteria.map((criterion) => (
                               <li key={criterion.key} className="flex items-start justify-between gap-2">
                                 <span className={criterion.completed ? "text-foreground" : "text-muted-foreground"}>
-                                  {criterion.completed ? "✓" : "—"} {criterion.label}
+                                  {criterion.completed ? "✓" : "—"}{" "}
+                                  {getCriterionLabel(criterion, domainCopy)}
                                 </span>
                                 <span className="shrink-0 font-semibold">+{criterion.weight}</span>
                               </li>
@@ -292,27 +361,31 @@ export function EditorialQueueClient({
                     </td>
                     <td className="max-w-[310px] px-4 py-4">
                       <div className="flex flex-wrap gap-1.5">
-                        {item.issues.length ? item.issues.slice(0, 3).map((issue) => <span key={issue.code} className={cn("rounded-md border px-2 py-1 text-[10px]", issue.severity === "critical" ? "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-300" : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300")}>{issue.label}</span>) : <span className="text-xs text-emerald-600">Brak wykrytych problemów</span>}
+                        {item.issues.length ? item.issues.slice(0, 3).map((issue) => <span key={issue.code} className={cn("rounded-md border px-2 py-1 text-[10px]", issue.severity === "critical" ? "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-300" : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300")}>{getIssueLabel(issue, domainCopy)}</span>) : <span className="text-xs text-emerald-600">{copy.noDetectedIssues}</span>}
                         {item.issues.length > 3 && <span className="px-1 py-1 text-[10px] text-muted-foreground">+{item.issues.length - 3}</span>}
                       </div>
                     </td>
                     <td className="px-4 py-4 text-xs">
-                      <p className="font-medium">{item.last_modified_by?.full_name ?? "System"}</p>
-                      <p className="mt-1 text-muted-foreground">{formatDateTime(item.updated_at)}</p>
-                      <p className="mt-0.5 text-[10px] text-muted-foreground">{formatEditorialAge(item.age_days)}</p>
+                      <p className="font-medium">{item.last_modified_by?.full_name ?? copy.systemActor}</p>
+                      <p className="mt-1 text-muted-foreground">
+                        {formatAdminDateTime(item.updated_at, locale)}
+                      </p>
+                      <p className="mt-0.5 text-[10px] text-muted-foreground">
+                        {formatAdminRelativeDays(item.age_days, locale)}
+                      </p>
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex justify-end gap-1.5">
-                        {canEdit && <Link href={`/dashboard/persons/${item.id}/edit`} className="inline-flex h-8 items-center gap-1 rounded-md border border-border px-2.5 text-xs hover:bg-accent"><Edit3 className="h-3.5 w-3.5" /> Edytuj</Link>}
+                        {canEdit && <Link href={`/dashboard/persons/${item.id}/edit`} className="inline-flex h-8 items-center gap-1 rounded-md border border-border px-2.5 text-xs hover:bg-accent"><Edit3 className="h-3.5 w-3.5" /> {copy.actions.edit}</Link>}
                         {item.status === "draft" && canSubmit ? (
-                          <button disabled={mutationForItem} onClick={() => transitionMutation.mutate({ id: item.id, targetStatus: "review", version: item.version })} className="inline-flex h-8 items-center gap-1 rounded-md bg-blue-600 px-2.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50">{mutationForItem ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />} Do recenzji</button>
+                          <button disabled={mutationForItem} onClick={() => transitionMutation.mutate({ id: item.id, targetStatus: "review", version: item.version })} className="inline-flex h-8 items-center gap-1 rounded-md bg-blue-600 px-2.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50">{mutationForItem ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />} {copy.actions.submitForReview}</button>
                         ) : item.status === "review" && canReview ? (
                           <>
-                            <button disabled={mutationForItem} onClick={() => { setActionError(""); setReturnNote(""); setReturnDecision({ id: item.id, version: item.version, name: item.canonical_name }); }} className="inline-flex h-8 items-center gap-1 rounded-md border border-border px-2.5 text-xs hover:bg-accent disabled:opacity-50"><ArrowLeft className="h-3.5 w-3.5" /> Zwróć</button>
-                            <button disabled={mutationForItem || !item.can_publish} title={!item.can_publish ? "Uzupełnij krytyczne braki przed akceptacją" : "Zatwierdź i opublikuj rekord"} onClick={() => transitionMutation.mutate({ id: item.id, targetStatus: "published", version: item.version })} className="inline-flex h-8 items-center gap-1 rounded-md bg-emerald-600 px-2.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40">{mutationForItem ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} Zatwierdź</button>
+                            <button disabled={mutationForItem} onClick={() => { setActionError(""); setReturnNote(""); setReturnDecision({ id: item.id, version: item.version, name: item.canonical_name }); }} className="inline-flex h-8 items-center gap-1 rounded-md border border-border px-2.5 text-xs hover:bg-accent disabled:opacity-50"><ArrowLeft className="h-3.5 w-3.5" /> {copy.actions.return}</button>
+                            <button disabled={mutationForItem || !item.can_publish} title={!item.can_publish ? copy.actions.publishBlockedTitle : copy.actions.publishReadyTitle} onClick={() => transitionMutation.mutate({ id: item.id, targetStatus: "published", version: item.version })} className="inline-flex h-8 items-center gap-1 rounded-md bg-emerald-600 px-2.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40">{mutationForItem ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} {copy.actions.approve}</button>
                           </>
                         ) : (
-                          <span className="inline-flex h-8 items-center rounded-md bg-muted px-2.5 text-[10px] font-medium text-muted-foreground">Tylko podgląd</span>
+                          <span className="inline-flex h-8 items-center rounded-md bg-muted px-2.5 text-[10px] font-medium text-muted-foreground">{copy.actions.viewOnly}</span>
                         )}
                       </div>
                     </td>
@@ -324,11 +397,18 @@ export function EditorialQueueClient({
         </div>
 
         <footer className="flex flex-col gap-3 border-t border-border px-4 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <span>{queue ? `Wyświetlono ${items.length} z ${queue.total} rekordów` : "—"}</span>
+          <span>
+            {queue
+              ? `${copy.pagination.displayedPrefix} ${numberFormatter.format(items.length)} ${copy.pagination.of} ${numberFormatter.format(queue.total)} ${copy.pagination.recordsSuffix}`
+              : "—"}
+          </span>
           <div className="flex items-center gap-2">
-            <button disabled={page <= 1} onClick={() => setPage((value) => value - 1)} className="inline-flex h-8 items-center gap-1 rounded-md border border-border px-2.5 hover:bg-accent disabled:opacity-40"><ChevronLeft className="h-3.5 w-3.5" /> Wstecz</button>
-            <span className="px-2">Strona {page} z {queue?.pages ?? 1}</span>
-            <button disabled={!queue || page >= queue.pages} onClick={() => setPage((value) => value + 1)} className="inline-flex h-8 items-center gap-1 rounded-md border border-border px-2.5 hover:bg-accent disabled:opacity-40">Dalej <ChevronRight className="h-3.5 w-3.5" /></button>
+            <button disabled={page <= 1} onClick={() => setPage((value) => value - 1)} className="inline-flex h-8 items-center gap-1 rounded-md border border-border px-2.5 hover:bg-accent disabled:opacity-40"><ChevronLeft className="h-3.5 w-3.5" /> {copy.pagination.previous}</button>
+            <span className="px-2">
+              {copy.pagination.pagePrefix} {numberFormatter.format(page)}{" "}
+              {copy.pagination.pageSeparator} {numberFormatter.format(queue?.pages ?? 1)}
+            </span>
+            <button disabled={!queue || page >= queue.pages} onClick={() => setPage((value) => value + 1)} className="inline-flex h-8 items-center gap-1 rounded-md border border-border px-2.5 hover:bg-accent disabled:opacity-40">{copy.pagination.next} <ChevronRight className="h-3.5 w-3.5" /></button>
           </div>
         </footer>
       </section>
@@ -337,25 +417,26 @@ export function EditorialQueueClient({
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-50 bg-slate-950/55 backdrop-blur-[2px]" />
           <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 shadow-2xl focus:outline-none">
-            <Dialog.Title className="pr-10 text-lg font-semibold">Zwróć rekord do przeredagowania</Dialog.Title>
+            <Dialog.Title className="pr-10 text-lg font-semibold">{copy.returnDialog.title}</Dialog.Title>
             <Dialog.Description className="mt-1 text-sm leading-6 text-muted-foreground">
-              Wskaż redaktorowi konkretne poprawki dla: <span className="font-medium text-foreground">{returnDecision?.name}</span>.
+              {copy.returnDialog.descriptionPrefix}{" "}
+              <span className="font-medium text-foreground">{returnDecision?.name}</span>.
             </Dialog.Description>
-            <Dialog.Close className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Zamknij"><X className="h-4 w-4" /></Dialog.Close>
-            <label className="mt-5 block text-sm font-medium" htmlFor="review-note">Komentarz recenzenta</label>
+            <Dialog.Close className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground" aria-label={copy.returnDialog.closeAriaLabel}><X className="h-4 w-4" /></Dialog.Close>
+            <label className="mt-5 block text-sm font-medium" htmlFor="review-note">{copy.returnDialog.noteLabel}</label>
             <div className="relative mt-2">
               <MessageSquareText className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <textarea id="review-note" value={returnNote} onChange={(event) => setReturnNote(event.target.value)} rows={5} maxLength={2000} placeholder="Np. uzupełnij źródło dla daty kanonizacji i doprecyzuj drugi akapit biogramu…" className="w-full rounded-lg border border-input bg-background py-2.5 pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" />
+              <textarea id="review-note" value={returnNote} onChange={(event) => setReturnNote(event.target.value)} rows={5} maxLength={2000} placeholder={copy.returnDialog.notePlaceholder} className="w-full rounded-lg border border-input bg-background py-2.5 pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" />
             </div>
-            <p className="mt-1 text-[11px] text-muted-foreground">Komentarz jest wymagany i zostanie zapisany w historii rekordu.</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">{copy.returnDialog.noteRequirement}</p>
             <div className="mt-5 flex justify-end gap-2 border-t border-border pt-4">
-              <Dialog.Close className="h-10 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted">Anuluj</Dialog.Close>
+              <Dialog.Close className="h-10 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted">{copy.returnDialog.cancelAction}</Dialog.Close>
               <button
                 disabled={!returnDecision || !returnNote.trim() || transitionMutation.isPending}
                 onClick={() => returnDecision && transitionMutation.mutate({ id: returnDecision.id, targetStatus: "draft", version: returnDecision.version, note: returnNote.trim() })}
                 className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {transitionMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowLeft className="h-4 w-4" />} Zwróć redaktorowi
+                {transitionMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowLeft className="h-4 w-4" />} {copy.returnDialog.confirmAction}
               </button>
             </div>
           </Dialog.Content>

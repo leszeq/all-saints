@@ -9,6 +9,22 @@ export type AdminSystemRoleKey =
 
 export type AdminPublicationStatusKey = "draft" | "review" | "published" | "archived";
 export type AdminCompletionKey = "complete" | "partial" | "low" | "critical";
+export type AdminPersonTypeKey =
+  | "saint"
+  | "blessed"
+  | "venerable"
+  | "servant_of_god"
+  | "candidate";
+export type AdminEditorialPriorityKey = "urgent" | "high" | "normal";
+export type AdminCompletenessCriterionKey =
+  | "basic_data"
+  | "summary"
+  | "biography"
+  | "life_dates"
+  | "state_of_life"
+  | "sources"
+  | "image"
+  | "image_license";
 export type AdminEditorialIssueKey =
   | "missing_biography"
   | "missing_summary"
@@ -30,7 +46,10 @@ export interface AdminDictionary {
   };
   domain: {
     personStatusLabels: Record<AdminPublicationStatusKey, string>;
+    personTypeLabels: Record<AdminPersonTypeKey, string>;
+    editorialPriorityLabels: Record<AdminEditorialPriorityKey, string>;
     completionLabels: Record<AdminCompletionKey, string>;
+    completenessCriterionLabels: Record<AdminCompletenessCriterionKey, string>;
     editorialIssueLabels: Record<AdminEditorialIssueKey, string>;
   };
   sidebar: {
@@ -199,6 +218,92 @@ export interface AdminDictionary {
       suffix: string;
     };
   };
+  review: {
+    metadataTitle: string;
+    metadataDescription: string;
+    kicker: string;
+    title: string;
+    description: string;
+    addRecordAction: string;
+    queueStateAriaLabel: string;
+    summary: {
+      all: string;
+      drafts: string;
+      inReview: string;
+      attention: string;
+      urgent: string;
+      highPriority: string;
+    };
+    searchPlaceholder: string;
+    stageFilterAriaLabel: string;
+    priorityFilterAriaLabel: string;
+    filters: {
+      allStages: string;
+      drafts: string;
+      inReview: string;
+      everyPriority: string;
+    };
+    refreshAction: string;
+    table: {
+      record: string;
+      stageAndPriority: string;
+      completeness: string;
+      issues: string;
+      lastChange: string;
+      decision: string;
+    };
+    states: {
+      loading: string;
+      loadError: string;
+      emptyTitle: string;
+      emptyDescription: string;
+    };
+    completenessExplanation: string;
+    noDetectedIssues: string;
+    systemActor: string;
+    actions: {
+      edit: string;
+      submitForReview: string;
+      return: string;
+      approve: string;
+      viewOnly: string;
+      publishBlockedTitle: string;
+      publishReadyTitle: string;
+    };
+    pagination: {
+      displayedPrefix: string;
+      of: string;
+      recordsSuffix: string;
+      previous: string;
+      pagePrefix: string;
+      pageSeparator: string;
+      next: string;
+    };
+    returnDialog: {
+      title: string;
+      descriptionPrefix: string;
+      closeAriaLabel: string;
+      noteLabel: string;
+      notePlaceholder: string;
+      noteRequirement: string;
+      cancelAction: string;
+      confirmAction: string;
+    };
+    errors: {
+      unauthorized: string;
+      forbidden: string;
+      notFound: string;
+      conflict: string;
+      validation: string;
+      server: string;
+      unexpected: string;
+      invalidValue: string;
+      invalidData: string;
+      network: string;
+      requestFailedPrefix: string;
+      requestFailedSuffix: string;
+    };
+  };
 }
 
 export type AdminSidebarDictionary = Pick<AdminDictionary, "brand" | "sidebar">;
@@ -207,3 +312,4 @@ export type AdminSystemDictionary = AdminDictionary["system"];
 export type AdminLoginDictionary = Pick<AdminDictionary, "brand" | "login">;
 export type AdminDashboardDictionary = AdminDictionary["dashboard"];
 export type AdminDomainDictionary = AdminDictionary["domain"];
+export type AdminReviewDictionary = AdminDictionary["review"];

@@ -1,8 +1,12 @@
+import type { Metadata } from "next";
+
 import {
   EditorialQueueClient,
   type EditorialQueueInitialFilters,
 } from "./review-client";
 import type { EditorialPriority } from "@/lib/editorial";
+import { DEFAULT_ADMIN_UI_LOCALE } from "@/lib/i18n/config";
+import { getAdminDictionary } from "@/lib/i18n/dictionaries";
 
 type SearchParams = Promise<{
   status?: string | string[];
@@ -15,6 +19,14 @@ const queuePriorities = new Set(["urgent", "high", "normal"]);
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const dictionary = await getAdminDictionary(DEFAULT_ADMIN_UI_LOCALE);
+  return {
+    title: dictionary.review.metadataTitle,
+    description: dictionary.review.metadataDescription,
+  };
 }
 
 export default async function EditorialQueuePage({
@@ -37,6 +49,15 @@ export default async function EditorialQueuePage({
     attention: attentionParam === "1" || attentionParam === "true",
   };
   const filterKey = `${initialFilters.status}:${initialFilters.priority}:${initialFilters.attention}`;
+  const dictionary = await getAdminDictionary(DEFAULT_ADMIN_UI_LOCALE);
 
-  return <EditorialQueueClient key={filterKey} initialFilters={initialFilters} />;
+  return (
+    <EditorialQueueClient
+      key={filterKey}
+      initialFilters={initialFilters}
+      copy={dictionary.review}
+      domainCopy={dictionary.domain}
+      locale={DEFAULT_ADMIN_UI_LOCALE}
+    />
+  );
 }

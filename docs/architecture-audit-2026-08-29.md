@@ -777,9 +777,13 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
   kafelki, wykres, kolejkę, zasoby i komunikat licencyjny. Daty, liczby i względny czas
   otrzymują jawne locale, a statusy publikacji, progi kompletności i problemy jakości
   są mapowane po stabilnych kluczach API przez współdzieloną sekcję domenową słownika;
-  nieznane przyszłe klucze zachowują kontrolowany fallback. Pozostają teksty innych
-  ekranów funkcjonalnych panelu oraz routing uruchamiany dopiero z kompletnym drugim
-  językiem.
+  nieznane przyszłe klucze zachowują kontrolowany fallback. Kolejka redakcyjna ma już
+  słownikowe metadata, filtry URL, tabelę, stany, działania zależne od RBAC, paginację
+  i dialog zwrotu do redaktora. Typy osób, priorytety oraz kryteria kompletności zostały
+  dodane do wspólnej sekcji domenowej, a pulpit i kolejka współdzielą formatery dat i
+  czasu względnego z jawnym locale. Błędy decyzji są mapowane po kodach wspólnej
+  koperty API przed tekstem backendu. Pozostają teksty innych ekranów funkcjonalnych
+  panelu oraz routing uruchamiany dopiero z kompletnym drugim językiem.
 - **Category:** Internationalization
 - **File:** oba frontendy i modele Person/Translation
 - **Lines:** setki hardcoded strings
