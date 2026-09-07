@@ -129,6 +129,13 @@ the existing public API.
     codes before any human-readable backend message, so backend prose is not an
     interface-locale contract. Password recovery is not presented as an available
     action until a recovery endpoint and workflow exist.
+21. The editorial dashboard route is a server boundary that owns localized metadata
+    and passes only typed `dashboard` and shared `domain` copy to its interactive
+    query client. Number, date, month and relative-time formatting require an explicit
+    interface locale. Known workflow statuses, completeness buckets and quality issues
+    resolve from stable API keys through the shared domain dictionary; unknown future
+    keys preserve the API label as a compatibility fallback. Dashboard queries, links
+    and metric calculations are unaffected by localization.
 
 ## Consequences
 
@@ -160,8 +167,9 @@ the existing public API.
    404, error, loading and avatar accessibility states complete the dictionary
    boundary for all currently implemented public routes. The administrative shell,
    system states, topbar role labels and complete login/authentication flow now use
-   the separate typed admin dictionary. Administrative feature-page prose remains
-   incremental work.
+   the separate typed admin dictionary. The complete editorial dashboard, including
+   its metadata, operational states and shared workflow/quality labels, is also
+   dictionary-backed. Remaining administrative feature-page prose is incremental work.
 3. Add application-layer commands and protected endpoints for translation workflow.
 4. Backfill `pl` and `en` translation rows idempotently from legacy columns and
    report conflicts without overwriting reviewed translations. The maintenance

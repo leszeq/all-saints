@@ -10,6 +10,29 @@ const dictionary = {
     name: "Encyklopedia Świętych",
     product: "Panel redakcyjny",
   },
+  domain: {
+    personStatusLabels: {
+      draft: "Szkic",
+      review: "W recenzji",
+      published: "Opublikowany",
+      archived: "Zarchiwizowany",
+    },
+    completionLabels: {
+      complete: "Pełne",
+      partial: "Częściowe",
+      low: "Niskie",
+      critical: "Brak krytyczny",
+    },
+    editorialIssueLabels: {
+      missing_biography: "Brak biogramu",
+      missing_summary: "Brak streszczenia",
+      missing_sources: "Brak przypisanych źródeł",
+      missing_image: "Brak obrazu",
+      unknown_image_license: "Nieznana licencja obrazu",
+      missing_dates: "Brak dat życia",
+      missing_state_of_life: "Brak stanu życia",
+    },
+  },
   sidebar: {
     navigationAriaLabel: "Nawigacja panelu",
     modulePlannedTitle: "Moduł przewidziany w kolejnym etapie",
@@ -123,6 +146,73 @@ const dictionary = {
       network: "Nie udało się połączyć z API. Sprawdź, czy backend działa na porcie 8000.",
       requestFailedPrefix: "Logowanie nie powiodło się (HTTP ",
       requestFailedSuffix: ").",
+    },
+  },
+  dashboard: {
+    metadataTitle: "Pulpit redakcyjny",
+    metadataDescription: "Bieżąca kondycja rekordów i kolejek redakcyjnych.",
+    loading: "Ładowanie danych redakcyjnych…",
+    loadError: {
+      title: "Nie udało się pobrać pulpitu",
+      description: "Sprawdź połączenie z API i spróbuj ponownie.",
+      refreshAction: "Odśwież dane",
+    },
+    header: {
+      title: "Pulpit redakcyjny",
+      recordsDescriptionPrefix: "Bieżąca kondycja",
+      recordsDescriptionSuffix: "rekordów w bazie wiedzy.",
+      queueAction: "Kolejka",
+      addPersonAction: "Dodaj postać",
+    },
+    operationalQueuesAriaLabel: "Kolejki operacyjne",
+    metricOpenAriaLabelSuffix: "Otwórz powiązany widok.",
+    metrics: {
+      review: { label: "Do recenzji", detail: "rekordy oczekujące na decyzję" },
+      draft: { label: "Szkice", detail: "rekordy w przygotowaniu" },
+      quality: { label: "Wymagają uwagi", detail: "profile z istotnymi brakami danych" },
+      license: {
+        label: "Licencje do sprawdzenia",
+        detail: "obrazy z nieznanym statusem licencji",
+      },
+    },
+    activity: {
+      title: "Aktywność opublikowanych profili",
+      description: "Rekordy zmienione w ostatnich 12 miesiącach",
+      currentData: "dane bieżące",
+    },
+    queue: {
+      title: "Najpilniejsze w kolejce",
+      recordsSuffix: "rekordów wymaga pracy redakcyjnej",
+      openAction: "Otwórz kolejkę",
+      empty: "Kolejka jest pusta — wszystkie rekordy zostały obsłużone.",
+      readyForNextStage: "Gotowy do dalszego etapu",
+      completenessPrefix: "kompletność",
+    },
+    recent: {
+      title: "Ostatnio zmienione rekordy",
+      description: "Najnowsza aktywność w bazie",
+      personsAction: "Lista osób",
+      systemActor: "System",
+    },
+    completion: {
+      title: "Kompletność danych",
+      description: "Wszystkie aktywne profile",
+    },
+    resources: {
+      title: "Zasoby redakcyjne",
+      description: "Aktywne dane dostępne przez API",
+      labels: {
+        users: "Użytkownicy",
+        countries: "Państwa",
+        orders: "Zakony",
+        bibliography: "Bibliografia",
+      },
+      synchronized: "Dane zsynchronizowane z API",
+    },
+    licenseAlert: {
+      prefix: "Do uzupełnienia:",
+      suffix:
+        "obrazów ma nieznaną licencję. Publikacja powiązanych profili jest blokowana.",
     },
   },
 } satisfies AdminDictionary;

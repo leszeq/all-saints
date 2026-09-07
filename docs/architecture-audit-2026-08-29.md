@@ -773,8 +773,13 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
   dostępność i stany żądania; błędy uwierzytelniania są mapowane po stabilnych kodach
   API zamiast po tekście odpowiedzi backendu. Weryfikacja sesji korzysta ze wspólnego
   kontekstu systemowego, a niezaimplementowane odzyskiwanie hasła nie jest już
-  przedstawiane jako aktywna akcja. Pozostają teksty ekranów funkcjonalnych panelu
-  oraz routing uruchamiany dopiero z kompletnym drugim językiem.
+  przedstawiane jako aktywna akcja. Pulpit redakcyjny ma słownikowe metadata, stany,
+  kafelki, wykres, kolejkę, zasoby i komunikat licencyjny. Daty, liczby i względny czas
+  otrzymują jawne locale, a statusy publikacji, progi kompletności i problemy jakości
+  są mapowane po stabilnych kluczach API przez współdzieloną sekcję domenową słownika;
+  nieznane przyszłe klucze zachowują kontrolowany fallback. Pozostają teksty innych
+  ekranów funkcjonalnych panelu oraz routing uruchamiany dopiero z kompletnym drugim
+  językiem.
 - **Category:** Internationalization
 - **File:** oba frontendy i modele Person/Translation
 - **Lines:** setki hardcoded strings
