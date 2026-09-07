@@ -115,6 +115,7 @@ export interface EditorialDuplicatePerson {
 export interface EditorialDuplicateGroup {
   key: string;
   confidence: number;
+  reason_code: string;
   reason: string;
   persons: EditorialDuplicatePerson[];
 }
@@ -133,6 +134,7 @@ export interface EditorialSourceVerificationItem {
   id: string;
   item_type: string;
   title: string;
+  issue_code: string;
   issue: string;
   severity: "critical" | "warning" | string;
   related_person_id?: string | null;

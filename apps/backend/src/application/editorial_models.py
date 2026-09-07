@@ -144,6 +144,7 @@ class EditorialDuplicateGroupSchema(BaseModel):
 
     key: str
     confidence: int = Field(ge=0, le=100)
+    reason_code: str
     reason: str
     persons: list[EditorialDuplicatePersonSchema]
 
@@ -166,6 +167,7 @@ class EditorialSourceVerificationItemSchema(BaseModel):
     id: uuid.UUID
     item_type: str
     title: str
+    issue_code: str
     issue: str
     severity: str
     related_person_id: uuid.UUID | None = None

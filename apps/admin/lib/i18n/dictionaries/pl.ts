@@ -54,6 +54,30 @@ const dictionary = {
       missing_dates: "Brak dat życia",
       missing_state_of_life: "Brak stanu życia",
     },
+    severityLabels: {
+      critical: "Krytyczne",
+      warning: "Ostrzeżenie",
+    },
+    sourceVerificationTypeLabels: {
+      bibliography: "Bibliografia",
+      historical_source: "Źródło historyczne",
+      image: "Obraz",
+      person_source: "Przypis do postaci",
+    },
+    sourceVerificationIssueLabels: {
+      missing_reliability_score: "Brak oceny wiarygodności źródła",
+      missing_website_url: "Źródło internetowe nie ma adresu URL",
+      missing_website_access_date: "Brak daty dostępu do źródła internetowego",
+      missing_digitization_url: "Źródło oznaczone jako zdigitalizowane bez linku",
+      unknown_image_license: "Nieznana licencja obrazu",
+      missing_image_source_url: "Brak adresu źródła obrazu",
+      orphan_person_source: "Przypis nie wskazuje na bibliografię ani źródło historyczne",
+    },
+    duplicateReasonLabels: {
+      same_normalized_name_and_life_years: "Ta sama znormalizowana nazwa oraz zgodne lata życia",
+      same_normalized_name_different_life_years:
+        "Ta sama znormalizowana nazwa; lata życia wymagają porównania",
+    },
   },
   sidebar: {
     navigationAriaLabel: "Nawigacja panelu",
@@ -322,6 +346,134 @@ const dictionary = {
       network: "Nie udało się połączyć z API. Sprawdź, czy backend działa na porcie 8000.",
       requestFailedPrefix: "Nie udało się zapisać decyzji (HTTP ",
       requestFailedSuffix: ").",
+    },
+  },
+  quality: {
+    metadataTitle: "Centrum jakości danych",
+    metadataDescription: "Problemy jakości, duplikaty i źródła wymagające weryfikacji.",
+    tabsAriaLabel: "Zakładki jakości danych",
+    tabs: {
+      issues: "Problemy jakości",
+      duplicates: "Duplikaty",
+      sources: "Weryfikacja źródeł",
+    },
+    header: {
+      kicker: "Jakość danych",
+      title: "Centrum jakości danych",
+      description:
+        "Operacyjny widok braków, potencjalnych duplikatów i źródeł wymagających weryfikacji redakcyjnej.",
+      refreshAction: "Odśwież raport",
+    },
+    states: {
+      loading: "Ładowanie centrum jakości…",
+      loadErrorTitle: "Nie udało się pobrać raportu jakości",
+      loadErrorDescription: "Sprawdź połączenie z API i spróbuj ponownie.",
+      refreshAction: "Odśwież dane",
+    },
+    summaryAriaLabel: "Podsumowanie jakości danych",
+    summary: {
+      recordsWithIssues: {
+        label: "Rekordy z problemami",
+        detail: "Aktywne profile wymagające uzupełnienia",
+      },
+      totalIssues: { label: "Problemy łącznie", detail: "Suma wykrytych braków jakości" },
+      duplicateGroups: { label: "Grupy duplikatów", recordsSuffix: "rekordów do porównania" },
+      sourcesToReview: {
+        label: "Źródła do weryfikacji",
+        detail: "Bibliografia, przypisy i media",
+      },
+      undocumentedProfiles: {
+        label: "Profile bez źródeł",
+        documentedSuffix: "profili ma źródło",
+      },
+    },
+    issues: {
+      typesAriaLabel: "Rodzaje problemów",
+      emptyTitle: "Nie wykryto problemów jakości",
+      emptyDescription:
+        "Wszystkie aktywne rekordy mają wymagane pola, źródła i media zgodnie z aktualnym modelem jakości.",
+      recordsTitle: "Rekordy wymagające uzupełnienia",
+      shownPrefix: "Pokazujemy",
+      shownSeparator: "z",
+      shownSuffix: "rekordów z problemami.",
+      openAttentionQueue: "Otwórz kolejkę uwagi",
+      table: {
+        record: "Rekord",
+        status: "Status",
+        completeness: "Kompletność",
+        documentation: "Dokumentacja",
+        issues: "Problemy",
+        actions: "Akcje",
+      },
+      attachedSourcesSuffix: "źródeł przypiętych",
+      imagesSuffix: "obrazów",
+      licensesToReviewSuffix: "licencji do sprawdzenia",
+      editAction: "Edytuj",
+    },
+    duplicates: {
+      emptyTitle: "Nie wykryto potencjalnych duplikatów",
+      emptyDescription:
+        "Aktualny algorytm nie znalazł aktywnych rekordów o tej samej znormalizowanej nazwie.",
+      suspicionPrefix: "Podejrzenie duplikatu:",
+      confidencePrefix: "Pewność",
+      unknownLifeDates: "Daty nieuzupełnione",
+      sourcesSuffix: "źródeł",
+      openAction: "Otwórz",
+    },
+    sources: {
+      explanationTitle: "Co znaczy „udokumentowane źródła”?",
+      explanationDescription:
+        "W bazie rozróżniamy same rekordy źródłowe, czyli bibliografię i źródła historyczne, oraz przypisania tych źródeł do konkretnych postaci. Dla jakości encyklopedii najważniejszy jest wskaźnik „przypisania do profili”, bo pokazuje, ile informacji faktycznie ma dokumentację redakcyjną.",
+      statisticsAriaLabel: "Statystyki źródeł",
+      metrics: {
+        bibliography: { label: "Bibliografia", detail: "Książki, artykuły, strony i opracowania" },
+        historical: {
+          label: "Źródła historyczne",
+          detail: "Rękopisy, archiwa i świadectwa pierwotne",
+        },
+        assignments: { label: "Przypisania do profili", detail: "Źródła realnie przypięte do postaci" },
+        documented: { label: "Udokumentowane profile", detail: "Postacie z co najmniej jednym źródłem" },
+        undocumented: { label: "Profile bez źródeł", detail: "Wymagają uzupełnienia bibliografii" },
+        unknownLicenses: {
+          label: "Nieznane licencje",
+          detailPrefix: "Z",
+          detailSuffix: "obrazów w bazie",
+        },
+      },
+      emptyTitle: "Źródła nie wymagają dodatkowej weryfikacji",
+      emptyDescription:
+        "Nie znaleziono brakujących ocen wiarygodności, dat dostępu, linków digitalizacji ani obrazów bez informacji o licencji.",
+      itemsTitle: "Elementy wymagające weryfikacji",
+      shownPrefix: "Pokazujemy",
+      shownSuffix: "najważniejszych zgłoszeń źródłowych.",
+      mediaWithoutLicense: "Media bez licencji",
+      table: {
+        item: "Element",
+        issue: "Problem",
+        relatedPerson: "Powiązana postać",
+        sourceUrl: "Źródło URL",
+        destination: "Dokąd przejść",
+      },
+      noUrl: "Brak",
+      personSourceTitlePrefix: "Przypis źródłowy",
+      targets: {
+        editAvatar: {
+          label: "Edytuj avatar",
+          hint: "Otworzy formularz osoby w zakładce Avatar.",
+        },
+        editSources: {
+          label: "Edytuj źródła",
+          hint: "Otworzy formularz osoby w zakładce Źródła.",
+        },
+        checkMedia: {
+          label: "Sprawdź media",
+          hint: "Otworzy media z filtrem obrazów bez zweryfikowanej licencji.",
+        },
+        openSection: {
+          label: "Otwórz sekcję",
+          hint: "Otworzy sekcję Źródła i media, w której można uzupełnić dane źródłowe.",
+        },
+      },
     },
   },
 } satisfies AdminDictionary;

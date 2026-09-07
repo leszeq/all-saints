@@ -211,8 +211,20 @@ async def test_editorial_queue_quality_report_and_dashboard_use_real_data(
     assert report.summary.undocumented_persons == 2
     assert report.summary.unknown_license_images == 1
     assert {group.confidence for group in report.duplicate_groups} == {95}
+    assert {group.reason_code for group in report.duplicate_groups} == {
+        "same_normalized_name_and_life_years"
+    }
     item_types = {item.item_type for item in report.source_verification_items}
     assert {"bibliography", "historical_source", "image", "person_source"} <= item_types
+    issue_codes = {item.issue_code for item in report.source_verification_items}
+    assert {
+        "missing_reliability_score",
+        "missing_website_url",
+        "missing_digitization_url",
+        "unknown_image_license",
+        "missing_image_source_url",
+        "orphan_person_source",
+    } <= issue_codes
 
     dashboard = await service.dashboard()
     assert dashboard.total_persons == 4

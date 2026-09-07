@@ -25,6 +25,23 @@ export type AdminCompletenessCriterionKey =
   | "sources"
   | "image"
   | "image_license";
+export type AdminSeverityKey = "critical" | "warning";
+export type AdminSourceVerificationTypeKey =
+  | "bibliography"
+  | "historical_source"
+  | "image"
+  | "person_source";
+export type AdminSourceVerificationIssueKey =
+  | "missing_reliability_score"
+  | "missing_website_url"
+  | "missing_website_access_date"
+  | "missing_digitization_url"
+  | "unknown_image_license"
+  | "missing_image_source_url"
+  | "orphan_person_source";
+export type AdminDuplicateReasonKey =
+  | "same_normalized_name_and_life_years"
+  | "same_normalized_name_different_life_years";
 export type AdminEditorialIssueKey =
   | "missing_biography"
   | "missing_summary"
@@ -51,6 +68,10 @@ export interface AdminDictionary {
     completionLabels: Record<AdminCompletionKey, string>;
     completenessCriterionLabels: Record<AdminCompletenessCriterionKey, string>;
     editorialIssueLabels: Record<AdminEditorialIssueKey, string>;
+    severityLabels: Record<AdminSeverityKey, string>;
+    sourceVerificationTypeLabels: Record<AdminSourceVerificationTypeKey, string>;
+    sourceVerificationIssueLabels: Record<AdminSourceVerificationIssueKey, string>;
+    duplicateReasonLabels: Record<AdminDuplicateReasonKey, string>;
   };
   sidebar: {
     navigationAriaLabel: string;
@@ -304,6 +325,101 @@ export interface AdminDictionary {
       requestFailedSuffix: string;
     };
   };
+  quality: {
+    metadataTitle: string;
+    metadataDescription: string;
+    tabsAriaLabel: string;
+    tabs: {
+      issues: string;
+      duplicates: string;
+      sources: string;
+    };
+    header: {
+      kicker: string;
+      title: string;
+      description: string;
+      refreshAction: string;
+    };
+    states: {
+      loading: string;
+      loadErrorTitle: string;
+      loadErrorDescription: string;
+      refreshAction: string;
+    };
+    summaryAriaLabel: string;
+    summary: {
+      recordsWithIssues: { label: string; detail: string };
+      totalIssues: { label: string; detail: string };
+      duplicateGroups: { label: string; recordsSuffix: string };
+      sourcesToReview: { label: string; detail: string };
+      undocumentedProfiles: { label: string; documentedSuffix: string };
+    };
+    issues: {
+      typesAriaLabel: string;
+      emptyTitle: string;
+      emptyDescription: string;
+      recordsTitle: string;
+      shownPrefix: string;
+      shownSeparator: string;
+      shownSuffix: string;
+      openAttentionQueue: string;
+      table: {
+        record: string;
+        status: string;
+        completeness: string;
+        documentation: string;
+        issues: string;
+        actions: string;
+      };
+      attachedSourcesSuffix: string;
+      imagesSuffix: string;
+      licensesToReviewSuffix: string;
+      editAction: string;
+    };
+    duplicates: {
+      emptyTitle: string;
+      emptyDescription: string;
+      suspicionPrefix: string;
+      confidencePrefix: string;
+      unknownLifeDates: string;
+      sourcesSuffix: string;
+      openAction: string;
+    };
+    sources: {
+      explanationTitle: string;
+      explanationDescription: string;
+      statisticsAriaLabel: string;
+      metrics: {
+        bibliography: { label: string; detail: string };
+        historical: { label: string; detail: string };
+        assignments: { label: string; detail: string };
+        documented: { label: string; detail: string };
+        undocumented: { label: string; detail: string };
+        unknownLicenses: { label: string; detailPrefix: string; detailSuffix: string };
+      };
+      emptyTitle: string;
+      emptyDescription: string;
+      itemsTitle: string;
+      shownPrefix: string;
+      shownSuffix: string;
+      mediaWithoutLicense: string;
+      table: {
+        item: string;
+        issue: string;
+        relatedPerson: string;
+        sourceUrl: string;
+        destination: string;
+      };
+      noUrl: string;
+      personSourceTitlePrefix: string;
+      targets: {
+        editAvatar: { label: string; hint: string };
+        editSources: { label: string; hint: string };
+        checkMedia: { label: string; hint: string };
+        openSection: { label: string; hint: string };
+      };
+    };
+  };
 }
 
 export type AdminSidebarDictionary = Pick<AdminDictionary, "brand" | "sidebar">;
@@ -313,3 +429,4 @@ export type AdminLoginDictionary = Pick<AdminDictionary, "brand" | "login">;
 export type AdminDashboardDictionary = AdminDictionary["dashboard"];
 export type AdminDomainDictionary = AdminDictionary["domain"];
 export type AdminReviewDictionary = AdminDictionary["review"];
+export type AdminQualityDictionary = AdminDictionary["quality"];

@@ -271,15 +271,18 @@ class EditorialService:
         for group in duplicate_rows[:limit]:
             years = {(row[0].birth_year, row[0].death_year) for row in group}
             confidence = 95 if len(years) == 1 else 85
+            reason_code = "same_normalized_name_and_life_years"
             reason = "Ta sama znormalizowana nazwa"
             if len(years) == 1:
                 reason += " oraz zgodne lata życia"
             else:
+                reason_code = "same_normalized_name_different_life_years"
                 reason += "; lata życia wymagają porównania"
             groups.append(
                 EditorialDuplicateGroupSchema(
                     key=self._normalize_duplicate_key(group[0][0].canonical_name),
                     confidence=confidence,
+                    reason_code=reason_code,
                     reason=reason,
                     persons=[self._duplicate_person(row) for row in group],
                 )

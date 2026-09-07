@@ -28,32 +28,30 @@ import type {
   EditorialQualityReport,
   EditorialSourceVerificationItem,
 } from "@/lib/editorial";
-import {
-  cn,
-  formatDateTime,
-  PERSON_STATUS_COLORS,
-  PERSON_STATUS_LABELS,
-  PERSON_TYPE_LABELS,
-} from "@/lib/utils";
+import { formatAdminDateTime } from "@/lib/i18n/format";
+import type {
+  AdminDomainDictionary,
+  AdminDuplicateReasonKey,
+  AdminEditorialIssueKey,
+  AdminPersonTypeKey,
+  AdminQualityDictionary,
+  AdminSeverityKey,
+  AdminSourceVerificationIssueKey,
+  AdminSourceVerificationTypeKey,
+} from "@/lib/i18n/types";
+import { cn, PERSON_STATUS_COLORS } from "@/lib/utils";
 
 export type QualityTab = "issues" | "duplicates" | "sources";
 
-const tabs: Array<{ key: QualityTab; label: string; href: string; icon: ElementType }> = [
-  { key: "issues", label: "Problemy jakości", href: "/dashboard/quality/issues", icon: Database },
-  { key: "duplicates", label: "Duplikaty", href: "/dashboard/quality/duplicates", icon: Network },
-  { key: "sources", label: "Weryfikacja źródeł", href: "/dashboard/quality/sources", icon: ShieldCheck },
+const tabs: Array<{ key: QualityTab; href: string; icon: ElementType }> = [
+  { key: "issues", href: "/dashboard/quality/issues", icon: Database },
+  { key: "duplicates", href: "/dashboard/quality/duplicates", icon: Network },
+  { key: "sources", href: "/dashboard/quality/sources", icon: ShieldCheck },
 ];
 
 const severityTone: Record<string, string> = {
   critical: "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-300",
   warning: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300",
-};
-
-const sourceTypeLabels: Record<string, string> = {
-  bibliography: "Bibliografia",
-  historical_source: "Źródło historyczne",
-  image: "Obraz",
-  person_source: "Przypis do postaci",
 };
 
 const sourceSectionHrefs: Record<string, string> = {
@@ -63,32 +61,86 @@ const sourceSectionHrefs: Record<string, string> = {
   person_source: "/dashboard/sources#bibliography",
 };
 
-function sourceVerificationTarget(item: EditorialSourceVerificationItem) {
+function sourceVerificationTarget(
+  item: EditorialSourceVerificationItem,
+  copy: AdminQualityDictionary,
+) {
   if (item.related_person_id) {
     const hash = item.item_type === "image" ? "avatar" : "sources";
+    const target = item.item_type === "image"
+      ? copy.sources.targets.editAvatar
+      : copy.sources.targets.editSources;
     return {
       href: `/dashboard/persons/${item.related_person_id}/edit#${hash}`,
-      label: item.item_type === "image" ? "Edytuj avatar" : "Edytuj źródła",
-      hint:
-        item.item_type === "image"
-          ? "Otworzy formularz osoby w zakładce Avatar."
-          : "Otworzy formularz osoby w zakładce Źródła.",
+      ...target,
     };
   }
 
-  if (item.item_type === "image" && item.issue.toLowerCase().includes("licencj")) {
+  if (item.item_type === "image" && item.issue_code === "unknown_image_license") {
     return {
       href: "/dashboard/sources?license=unknown#media",
-      label: "Sprawdź media",
-      hint: "Otworzy media z filtrem obrazów bez zweryfikowanej licencji.",
+      ...copy.sources.targets.checkMedia,
     };
   }
 
   return {
     href: sourceSectionHrefs[item.item_type] ?? "/dashboard/sources",
-    label: "Otwórz sekcję",
-    hint: "Otworzy sekcję Źródła i media, w której można uzupełnić dane źródłowe.",
+    ...copy.sources.targets.openSection,
   };
+}
+
+function getPersonTypeLabel(key: string, domainCopy: AdminDomainDictionary): string {
+  return Object.prototype.hasOwnProperty.call(domainCopy.personTypeLabels, key)
+    ? domainCopy.personTypeLabels[key as AdminPersonTypeKey]
+    : key;
+}
+
+function getEditorialIssueLabel(
+  code: string,
+  fallback: string,
+  domainCopy: AdminDomainDictionary,
+): string {
+  return Object.prototype.hasOwnProperty.call(domainCopy.editorialIssueLabels, code)
+    ? domainCopy.editorialIssueLabels[code as AdminEditorialIssueKey]
+    : fallback;
+}
+
+function getSeverityLabel(key: string, domainCopy: AdminDomainDictionary): string {
+  return Object.prototype.hasOwnProperty.call(domainCopy.severityLabels, key)
+    ? domainCopy.severityLabels[key as AdminSeverityKey]
+    : key;
+}
+
+function getSourceTypeLabel(key: string, domainCopy: AdminDomainDictionary): string {
+  return Object.prototype.hasOwnProperty.call(domainCopy.sourceVerificationTypeLabels, key)
+    ? domainCopy.sourceVerificationTypeLabels[key as AdminSourceVerificationTypeKey]
+    : key;
+}
+
+function getSourceIssueLabel(
+  item: EditorialSourceVerificationItem,
+  domainCopy: AdminDomainDictionary,
+): string {
+  return Object.prototype.hasOwnProperty.call(
+    domainCopy.sourceVerificationIssueLabels,
+    item.issue_code,
+  )
+    ? domainCopy.sourceVerificationIssueLabels[
+        item.issue_code as AdminSourceVerificationIssueKey
+      ]
+    : item.issue;
+}
+
+function getDuplicateReason(
+  group: EditorialDuplicateGroup,
+  domainCopy: AdminDomainDictionary,
+): string {
+  return Object.prototype.hasOwnProperty.call(
+    domainCopy.duplicateReasonLabels,
+    group.reason_code,
+  )
+    ? domainCopy.duplicateReasonLabels[group.reason_code as AdminDuplicateReasonKey]
+    : group.reason;
 }
 
 function stopRowNavigation(event: MouseEvent<HTMLElement>) {
@@ -100,12 +152,14 @@ function MetricCard({
   value,
   detail,
   icon: Icon,
+  locale,
   tone = "text-primary bg-primary/10",
 }: {
   label: string;
   value: number;
   detail: string;
   icon: ElementType;
+  locale: string;
   tone?: string;
 }) {
   return (
@@ -114,7 +168,7 @@ function MetricCard({
         <div>
           <p className="text-xs font-medium text-muted-foreground">{label}</p>
           <p className="mt-2 text-3xl font-semibold tracking-tight">
-            {value.toLocaleString("pl-PL")}
+            {new Intl.NumberFormat(locale).format(value)}
           </p>
         </div>
         <span className={cn("flex h-9 w-9 items-center justify-center rounded-lg", tone)}>
@@ -148,26 +202,49 @@ function scoreBar(score: number) {
   return score >= 85 ? "bg-emerald-500" : score >= 60 ? "bg-blue-500" : score >= 35 ? "bg-amber-500" : "bg-rose-500";
 }
 
-function lifeYears(person: { birth_year?: number | null; death_year?: number | null }) {
-  if (!person.birth_year && !person.death_year) return "Daty nieuzupełnione";
+function lifeYears(
+  person: { birth_year?: number | null; death_year?: number | null },
+  copy: AdminQualityDictionary,
+) {
+  if (person.birth_year == null && person.death_year == null) {
+    return copy.duplicates.unknownLifeDates;
+  }
   return `${person.birth_year ?? "?"}–${person.death_year ?? "?"}`;
 }
 
-function IssuesPanel({ report }: { report: EditorialQualityReport }) {
+function IssuesPanel({
+  report,
+  copy,
+  domainCopy,
+  locale,
+}: {
+  report: EditorialQualityReport;
+  copy: AdminQualityDictionary;
+  domainCopy: AdminDomainDictionary;
+  locale: string;
+}) {
   const { issue_breakdown: breakdown, problem_records: records, summary } = report;
+  const numberFormatter = new Intl.NumberFormat(locale);
 
   return (
     <div className="space-y-5">
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-label="Rodzaje problemów">
+      <section
+        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
+        aria-label={copy.issues.typesAriaLabel}
+      >
         {breakdown.map((issue) => (
           <article key={issue.code} className="admin-card p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-xs font-medium text-muted-foreground">{issue.label}</p>
-                <p className="mt-2 text-2xl font-semibold">{issue.count.toLocaleString("pl-PL")}</p>
+                <p className="text-xs font-medium text-muted-foreground">
+                  {getEditorialIssueLabel(issue.code, issue.label, domainCopy)}
+                </p>
+                <p className="mt-2 text-2xl font-semibold">
+                  {numberFormatter.format(issue.count)}
+                </p>
               </div>
               <span className={cn("rounded-full border px-2 py-1 text-[10px] font-semibold", severityTone[issue.severity] ?? "border-border bg-muted text-muted-foreground")}>
-                {issue.severity === "critical" ? "Krytyczne" : "Ostrzeżenie"}
+                {getSeverityLabel(issue.severity, domainCopy)}
               </span>
             </div>
           </article>
@@ -177,32 +254,34 @@ function IssuesPanel({ report }: { report: EditorialQualityReport }) {
       {records.length === 0 ? (
         <EmptyState
           icon={CheckCircle2}
-          title="Nie wykryto problemów jakości"
-          description="Wszystkie aktywne rekordy mają wymagane pola, źródła i media zgodnie z aktualnym modelem jakości."
+          title={copy.issues.emptyTitle}
+          description={copy.issues.emptyDescription}
         />
       ) : (
         <section className="admin-card overflow-hidden">
           <div className="flex flex-col gap-2 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-sm font-semibold">Rekordy wymagające uzupełnienia</h2>
+              <h2 className="text-sm font-semibold">{copy.issues.recordsTitle}</h2>
               <p className="mt-1 text-xs text-muted-foreground">
-                Pokazujemy {records.length.toLocaleString("pl-PL")} z {summary.records_with_issues.toLocaleString("pl-PL")} rekordów z problemami.
+                {copy.issues.shownPrefix} {numberFormatter.format(records.length)}{" "}
+                {copy.issues.shownSeparator} {numberFormatter.format(summary.records_with_issues)}{" "}
+                {copy.issues.shownSuffix}
               </p>
             </div>
             <Link href="/dashboard/review?attention=1" className="text-xs font-semibold text-primary">
-              Otwórz kolejkę uwagi
+              {copy.issues.openAttentionQueue}
             </Link>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-[1180px] w-full text-sm">
               <thead className="border-b border-border bg-muted/40 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 <tr>
-                  <th className="px-4 py-3">Rekord</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Kompletność</th>
-                  <th className="px-4 py-3">Dokumentacja</th>
-                  <th className="px-4 py-3">Problemy</th>
-                  <th className="px-4 py-3 text-right">Akcje</th>
+                  <th className="px-4 py-3">{copy.issues.table.record}</th>
+                  <th className="px-4 py-3">{copy.issues.table.status}</th>
+                  <th className="px-4 py-3">{copy.issues.table.completeness}</th>
+                  <th className="px-4 py-3">{copy.issues.table.documentation}</th>
+                  <th className="px-4 py-3">{copy.issues.table.issues}</th>
+                  <th className="px-4 py-3 text-right">{copy.issues.table.actions}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -215,15 +294,19 @@ function IssuesPanel({ report }: { report: EditorialQualityReport }) {
                           <Link href={`/dashboard/persons/${record.id}`} className="block max-w-64 truncate font-medium hover:text-primary">
                             {record.canonical_name}
                           </Link>
-                          <p className="mt-1 text-xs text-muted-foreground">{PERSON_TYPE_LABELS[record.person_type] ?? record.person_type}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {getPersonTypeLabel(record.person_type, domainCopy)}
+                          </p>
                         </div>
                       </div>
                     </td>
                     <td className="px-4 py-4">
                       <span className={cn("rounded-full px-2 py-1 text-[10px] font-semibold", PERSON_STATUS_COLORS[record.status])}>
-                        {PERSON_STATUS_LABELS[record.status] ?? record.status}
+                        {domainCopy.personStatusLabels[record.status] ?? record.status}
                       </span>
-                      <p className="mt-2 text-[10px] text-muted-foreground">{formatDateTime(record.updated_at)}</p>
+                      <p className="mt-2 text-[10px] text-muted-foreground">
+                        {formatAdminDateTime(record.updated_at, locale)}
+                      </p>
                     </td>
                     <td className="px-4 py-4">
                       <div className="w-44">
@@ -236,22 +319,32 @@ function IssuesPanel({ report }: { report: EditorialQualityReport }) {
                       </div>
                     </td>
                     <td className="px-4 py-4 text-xs text-muted-foreground">
-                      <p>{record.source_count} źródeł przypiętych</p>
-                      <p>{record.image_count} obrazów</p>
-                      {record.unknown_license_count > 0 && <p className="text-rose-600">{record.unknown_license_count} licencji do sprawdzenia</p>}
+                      <p>
+                        {numberFormatter.format(record.source_count)}{" "}
+                        {copy.issues.attachedSourcesSuffix}
+                      </p>
+                      <p>
+                        {numberFormatter.format(record.image_count)} {copy.issues.imagesSuffix}
+                      </p>
+                      {record.unknown_license_count > 0 && (
+                        <p className="text-rose-600">
+                          {numberFormatter.format(record.unknown_license_count)}{" "}
+                          {copy.issues.licensesToReviewSuffix}
+                        </p>
+                      )}
                     </td>
                     <td className="max-w-[360px] px-4 py-4">
                       <div className="flex flex-wrap gap-1.5">
                         {record.issues.map((issue) => (
                           <span key={issue.code} className={cn("rounded-md border px-2 py-1 text-[10px]", severityTone[issue.severity] ?? "border-border bg-muted text-muted-foreground")}>
-                            {issue.label}
+                            {getEditorialIssueLabel(issue.code, issue.label, domainCopy)}
                           </span>
                         ))}
                       </div>
                     </td>
                     <td className="px-4 py-4 text-right">
                       <Link href={`/dashboard/persons/${record.id}/edit`} className="inline-flex h-8 items-center gap-1 rounded-md border border-border px-2.5 text-xs hover:bg-accent">
-                        Edytuj <ArrowRight className="h-3.5 w-3.5" />
+                        {copy.issues.editAction} <ArrowRight className="h-3.5 w-3.5" />
                       </Link>
                     </td>
                   </tr>
@@ -265,13 +358,25 @@ function IssuesPanel({ report }: { report: EditorialQualityReport }) {
   );
 }
 
-function DuplicatesPanel({ groups }: { groups: EditorialDuplicateGroup[] }) {
+function DuplicatesPanel({
+  groups,
+  copy,
+  domainCopy,
+  locale,
+}: {
+  groups: EditorialDuplicateGroup[];
+  copy: AdminQualityDictionary;
+  domainCopy: AdminDomainDictionary;
+  locale: string;
+}) {
+  const numberFormatter = new Intl.NumberFormat(locale);
+
   if (groups.length === 0) {
     return (
       <EmptyState
         icon={CheckCircle2}
-        title="Nie wykryto potencjalnych duplikatów"
-        description="Aktualny algorytm nie znalazł aktywnych rekordów o tej samej znormalizowanej nazwie."
+        title={copy.duplicates.emptyTitle}
+        description={copy.duplicates.emptyDescription}
       />
     );
   }
@@ -282,11 +387,15 @@ function DuplicatesPanel({ groups }: { groups: EditorialDuplicateGroup[] }) {
         <article key={group.key} className="admin-card overflow-hidden">
           <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-sm font-semibold">Podejrzenie duplikatu: {group.key}</h2>
-              <p className="mt-1 text-xs text-muted-foreground">{group.reason}</p>
+              <h2 className="text-sm font-semibold">
+                {copy.duplicates.suspicionPrefix} {group.key}
+              </h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {getDuplicateReason(group, domainCopy)}
+              </p>
             </div>
             <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-              Pewność {group.confidence}%
+              {copy.duplicates.confidencePrefix} {group.confidence}%
             </span>
           </div>
           <div className="divide-y divide-border">
@@ -298,14 +407,16 @@ function DuplicatesPanel({ groups }: { groups: EditorialDuplicateGroup[] }) {
                     {person.canonical_name}
                   </Link>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {PERSON_TYPE_LABELS[person.person_type] ?? person.person_type} · {lifeYears(person)} · {person.source_count} źródeł
+                    {getPersonTypeLabel(person.person_type, domainCopy)} ·{" "}
+                    {lifeYears(person, copy)} · {numberFormatter.format(person.source_count)}{" "}
+                    {copy.duplicates.sourcesSuffix}
                   </p>
                 </div>
                 <span className={cn("w-fit rounded-full px-2 py-1 text-[10px] font-semibold", PERSON_STATUS_COLORS[person.status])}>
-                  {PERSON_STATUS_LABELS[person.status] ?? person.status}
+                  {domainCopy.personStatusLabels[person.status] ?? person.status}
                 </span>
                 <Link href={`/dashboard/persons/${person.id}/edit`} className="inline-flex h-8 items-center gap-1 rounded-md border border-border px-2.5 text-xs hover:bg-accent">
-                  Otwórz <ArrowRight className="h-3.5 w-3.5" />
+                  {copy.duplicates.openAction} <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </div>
             ))}
@@ -316,9 +427,20 @@ function DuplicatesPanel({ groups }: { groups: EditorialDuplicateGroup[] }) {
   );
 }
 
-function SourcesPanel({ report }: { report: EditorialQualityReport }) {
+function SourcesPanel({
+  report,
+  copy,
+  domainCopy,
+  locale,
+}: {
+  report: EditorialQualityReport;
+  copy: AdminQualityDictionary;
+  domainCopy: AdminDomainDictionary;
+  locale: string;
+}) {
   const router = useRouter();
   const { source_stats: stats, source_verification_items: items } = report;
+  const numberFormatter = new Intl.NumberFormat(locale);
   const navigateToTarget = (href: string) => router.push(href);
   const handleRowKeyDown = (
     event: KeyboardEvent<HTMLTableRowElement>,
@@ -333,58 +455,66 @@ function SourcesPanel({ report }: { report: EditorialQualityReport }) {
   return (
     <div className="space-y-5">
       <section className="admin-card border-l-4 border-l-primary/60 p-5">
-        <h2 className="text-sm font-semibold">Co znaczy „udokumentowane źródła”?</h2>
+        <h2 className="text-sm font-semibold">{copy.sources.explanationTitle}</h2>
         <p className="mt-2 max-w-4xl text-sm leading-6 text-muted-foreground">
-          W bazie rozróżniamy same rekordy źródłowe, czyli bibliografię i źródła historyczne, oraz przypisania tych źródeł do konkretnych postaci. Dla jakości encyklopedii najważniejszy jest wskaźnik „przypisania do profili”, bo pokazuje, ile informacji faktycznie ma dokumentację redakcyjną.
+          {copy.sources.explanationDescription}
         </p>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-label="Statystyki źródeł">
-        <MetricCard label="Bibliografia" value={stats.bibliography_sources} detail="Książki, artykuły, strony i opracowania" icon={BookOpenText} />
-        <MetricCard label="Źródła historyczne" value={stats.historical_sources} detail="Rękopisy, archiwa i świadectwa pierwotne" icon={FileWarning} />
-        <MetricCard label="Przypisania do profili" value={stats.person_source_links} detail="Źródła realnie przypięte do postaci" icon={ShieldCheck} />
-        <MetricCard label="Udokumentowane profile" value={stats.documented_persons} detail="Postacie z co najmniej jednym źródłem" icon={CheckCircle2} tone="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300" />
-        <MetricCard label="Profile bez źródeł" value={stats.undocumented_persons} detail="Wymagają uzupełnienia bibliografii" icon={AlertTriangle} tone="bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300" />
-        <MetricCard label="Nieznane licencje" value={stats.unknown_license_images} detail={`Z ${stats.images.toLocaleString("pl-PL")} obrazów w bazie`} icon={ImageOff} tone="bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-300" />
+      <section
+        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
+        aria-label={copy.sources.statisticsAriaLabel}
+      >
+        <MetricCard label={copy.sources.metrics.bibliography.label} value={stats.bibliography_sources} detail={copy.sources.metrics.bibliography.detail} icon={BookOpenText} locale={locale} />
+        <MetricCard label={copy.sources.metrics.historical.label} value={stats.historical_sources} detail={copy.sources.metrics.historical.detail} icon={FileWarning} locale={locale} />
+        <MetricCard label={copy.sources.metrics.assignments.label} value={stats.person_source_links} detail={copy.sources.metrics.assignments.detail} icon={ShieldCheck} locale={locale} />
+        <MetricCard label={copy.sources.metrics.documented.label} value={stats.documented_persons} detail={copy.sources.metrics.documented.detail} icon={CheckCircle2} locale={locale} tone="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300" />
+        <MetricCard label={copy.sources.metrics.undocumented.label} value={stats.undocumented_persons} detail={copy.sources.metrics.undocumented.detail} icon={AlertTriangle} locale={locale} tone="bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300" />
+        <MetricCard label={copy.sources.metrics.unknownLicenses.label} value={stats.unknown_license_images} detail={`${copy.sources.metrics.unknownLicenses.detailPrefix} ${numberFormatter.format(stats.images)} ${copy.sources.metrics.unknownLicenses.detailSuffix}`} icon={ImageOff} locale={locale} tone="bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-300" />
       </section>
 
       {items.length === 0 ? (
         <EmptyState
           icon={CheckCircle2}
-          title="Źródła nie wymagają dodatkowej weryfikacji"
-          description="Nie znaleziono brakujących ocen wiarygodności, dat dostępu, linków digitalizacji ani obrazów bez informacji o licencji."
+          title={copy.sources.emptyTitle}
+          description={copy.sources.emptyDescription}
         />
       ) : (
         <section className="admin-card overflow-hidden">
           <div className="flex flex-col gap-2 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-sm font-semibold">Elementy wymagające weryfikacji</h2>
+              <h2 className="text-sm font-semibold">{copy.sources.itemsTitle}</h2>
               <p className="mt-1 text-xs text-muted-foreground">
-                Pokazujemy {items.length.toLocaleString("pl-PL")} najważniejszych zgłoszeń źródłowych.
+                {copy.sources.shownPrefix} {numberFormatter.format(items.length)}{" "}
+                {copy.sources.shownSuffix}
               </p>
             </div>
             <Link href="/dashboard/sources?license=unknown#media" className="text-xs font-semibold text-primary">
-              Media bez licencji
+              {copy.sources.mediaWithoutLicense}
             </Link>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-[1040px] w-full text-sm">
               <thead className="border-b border-border bg-muted/40 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 <tr>
-                  <th className="px-4 py-3">Element</th>
-                  <th className="px-4 py-3">Problem</th>
-                  <th className="px-4 py-3">Powiązana postać</th>
-                  <th className="px-4 py-3">Źródło URL</th>
-                  <th className="px-4 py-3 text-right">Dokąd przejść</th>
+                  <th className="px-4 py-3">{copy.sources.table.item}</th>
+                  <th className="px-4 py-3">{copy.sources.table.issue}</th>
+                  <th className="px-4 py-3">{copy.sources.table.relatedPerson}</th>
+                  <th className="px-4 py-3">{copy.sources.table.sourceUrl}</th>
+                  <th className="px-4 py-3 text-right">{copy.sources.table.destination}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {items.map((item: EditorialSourceVerificationItem) => {
-                  const target = sourceVerificationTarget(item);
+                  const target = sourceVerificationTarget(item, copy);
+                  const itemTitle =
+                    item.item_type === "person_source" && item.related_person_name
+                      ? `${copy.sources.personSourceTitlePrefix}: ${item.related_person_name}`
+                      : item.title;
 
                   return (
                     <tr
-                      key={`${item.item_type}:${item.id}:${item.issue}`}
+                      key={`${item.item_type}:${item.id}:${item.issue_code}`}
                       role="link"
                       tabIndex={0}
                       title={target.hint}
@@ -398,14 +528,16 @@ function SourcesPanel({ report }: { report: EditorialQualityReport }) {
                           onClick={stopRowNavigation}
                           className="font-medium hover:text-primary"
                         >
-                          {item.title}
+                          {itemTitle}
                         </Link>
-                        <p className="mt-1 text-xs text-muted-foreground">{sourceTypeLabels[item.item_type] ?? item.item_type}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {getSourceTypeLabel(item.item_type, domainCopy)}
+                        </p>
                         <p className="mt-1 text-[10px] text-muted-foreground">{target.hint}</p>
                       </td>
                       <td className="px-4 py-4">
                         <span className={cn("rounded-md border px-2 py-1 text-[10px]", severityTone[item.severity] ?? "border-border bg-muted text-muted-foreground")}>
-                          {item.issue}
+                          {getSourceIssueLabel(item, domainCopy)}
                         </span>
                       </td>
                       <td className="px-4 py-4">
@@ -434,7 +566,7 @@ function SourcesPanel({ report }: { report: EditorialQualityReport }) {
                             <span className="truncate">{item.source_url}</span>
                           </a>
                         ) : (
-                          <span className="text-xs text-muted-foreground">Brak</span>
+                          <span className="text-xs text-muted-foreground">{copy.sources.noUrl}</span>
                         )}
                       </td>
                       <td className="px-4 py-4 text-right">
@@ -445,7 +577,9 @@ function SourcesPanel({ report }: { report: EditorialQualityReport }) {
                         >
                           {target.label} <ArrowRight className="h-3.5 w-3.5" />
                         </Link>
-                        <p className="mt-2 text-[10px] text-muted-foreground">{formatDateTime(item.updated_at)}</p>
+                        <p className="mt-2 text-[10px] text-muted-foreground">
+                          {formatAdminDateTime(item.updated_at, locale)}
+                        </p>
                       </td>
                     </tr>
                   );
@@ -459,17 +593,28 @@ function SourcesPanel({ report }: { report: EditorialQualityReport }) {
   );
 }
 
-export function QualityClient({ activeTab }: { activeTab: QualityTab }) {
+export function QualityClient({
+  activeTab,
+  copy,
+  domainCopy,
+  locale,
+}: {
+  activeTab: QualityTab;
+  copy: AdminQualityDictionary;
+  domainCopy: AdminDomainDictionary;
+  locale: string;
+}) {
   const qualityQuery = useQuery({
     queryKey: ["editorial", "quality"],
     queryFn: () => editorialApi.quality(),
   });
   const report = qualityQuery.data?.data;
+  const numberFormatter = new Intl.NumberFormat(locale);
 
   if (qualityQuery.isLoading) {
     return (
       <div className="flex min-h-[420px] items-center justify-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" /> Ładowanie centrum jakości…
+        <Loader2 className="h-4 w-4 animate-spin" /> {copy.states.loading}
       </div>
     );
   }
@@ -478,16 +623,14 @@ export function QualityClient({ activeTab }: { activeTab: QualityTab }) {
     return (
       <div className="admin-card mx-auto max-w-xl p-8 text-center">
         <ShieldAlert className="mx-auto h-8 w-8 text-amber-500" />
-        <h1 className="mt-3 text-lg font-semibold">Nie udało się pobrać raportu jakości</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Sprawdź połączenie z API i spróbuj ponownie.
-        </p>
+        <h1 className="mt-3 text-lg font-semibold">{copy.states.loadErrorTitle}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{copy.states.loadErrorDescription}</p>
         <button
           type="button"
           onClick={() => qualityQuery.refetch()}
           className="mt-5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
         >
-          Odśwież dane
+          {copy.states.refreshAction}
         </button>
       </div>
     );
@@ -499,11 +642,9 @@ export function QualityClient({ activeTab }: { activeTab: QualityTab }) {
     <div className="mx-auto max-w-[1500px] space-y-6">
       <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="admin-label">Jakość danych</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">Centrum jakości danych</h1>
-          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-            Operacyjny widok braków, potencjalnych duplikatów i źródeł wymagających weryfikacji redakcyjnej.
-          </p>
+          <p className="admin-label">{copy.header.kicker}</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight">{copy.header.title}</h1>
+          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{copy.header.description}</p>
         </div>
         <button
           type="button"
@@ -511,39 +652,54 @@ export function QualityClient({ activeTab }: { activeTab: QualityTab }) {
           className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border px-4 text-sm font-semibold hover:bg-accent"
         >
           <RefreshCw className={cn("h-4 w-4", qualityQuery.isFetching && "animate-spin")} />
-          Odśwież raport
+          {copy.header.refreshAction}
         </button>
       </header>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5" aria-label="Podsumowanie jakości danych">
-        <MetricCard label="Rekordy z problemami" value={summary.records_with_issues} detail="Aktywne profile wymagające uzupełnienia" icon={AlertTriangle} tone="bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-300" />
-        <MetricCard label="Problemy łącznie" value={summary.total_issues} detail="Suma wykrytych braków jakości" icon={Database} />
-        <MetricCard label="Grupy duplikatów" value={summary.duplicate_groups} detail={`${summary.duplicate_records.toLocaleString("pl-PL")} rekordów do porównania`} icon={Copy} />
-        <MetricCard label="Źródła do weryfikacji" value={summary.source_items_to_review} detail="Bibliografia, przypisy i media" icon={ShieldCheck} />
-        <MetricCard label="Profile bez źródeł" value={summary.undocumented_persons} detail={`${summary.documented_persons.toLocaleString("pl-PL")} profili ma źródło`} icon={BookOpenText} />
+      <section
+        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5"
+        aria-label={copy.summaryAriaLabel}
+      >
+        <MetricCard label={copy.summary.recordsWithIssues.label} value={summary.records_with_issues} detail={copy.summary.recordsWithIssues.detail} icon={AlertTriangle} locale={locale} tone="bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-300" />
+        <MetricCard label={copy.summary.totalIssues.label} value={summary.total_issues} detail={copy.summary.totalIssues.detail} icon={Database} locale={locale} />
+        <MetricCard label={copy.summary.duplicateGroups.label} value={summary.duplicate_groups} detail={`${numberFormatter.format(summary.duplicate_records)} ${copy.summary.duplicateGroups.recordsSuffix}`} icon={Copy} locale={locale} />
+        <MetricCard label={copy.summary.sourcesToReview.label} value={summary.source_items_to_review} detail={copy.summary.sourcesToReview.detail} icon={ShieldCheck} locale={locale} />
+        <MetricCard label={copy.summary.undocumentedProfiles.label} value={summary.undocumented_persons} detail={`${numberFormatter.format(summary.documented_persons)} ${copy.summary.undocumentedProfiles.documentedSuffix}`} icon={BookOpenText} locale={locale} />
       </section>
 
-      <nav className="admin-card flex flex-col gap-2 p-2 sm:flex-row" aria-label="Zakładki jakości danych">
-        {tabs.map(({ key, label, href, icon: Icon }) => {
+      <nav className="admin-card flex flex-col gap-2 p-2 sm:flex-row" aria-label={copy.tabsAriaLabel}>
+        {tabs.map(({ key, href, icon: Icon }) => {
           const active = activeTab === key;
           return (
             <Link
               key={key}
               href={href}
+              aria-current={active ? "page" : undefined}
               className={cn(
                 "inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold transition-colors",
                 active ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-accent hover:text-foreground",
               )}
             >
-              <Icon className="h-4 w-4" /> {label}
+              <Icon className="h-4 w-4" /> {copy.tabs[key]}
             </Link>
           );
         })}
       </nav>
 
-      {activeTab === "issues" && <IssuesPanel report={report} />}
-      {activeTab === "duplicates" && <DuplicatesPanel groups={report.duplicate_groups} />}
-      {activeTab === "sources" && <SourcesPanel report={report} />}
+      {activeTab === "issues" && (
+        <IssuesPanel report={report} copy={copy} domainCopy={domainCopy} locale={locale} />
+      )}
+      {activeTab === "duplicates" && (
+        <DuplicatesPanel
+          groups={report.duplicate_groups}
+          copy={copy}
+          domainCopy={domainCopy}
+          locale={locale}
+        />
+      )}
+      {activeTab === "sources" && (
+        <SourcesPanel report={report} copy={copy} domainCopy={domainCopy} locale={locale} />
+      )}
     </div>
   );
 }

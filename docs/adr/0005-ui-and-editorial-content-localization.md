@@ -144,6 +144,13 @@ the existing public API.
     backend prose. Dashboard and review screens share locale-aware date and relative-
     time formatters, while permissions, query keys and transition payloads remain
     unchanged.
+23. The data-quality report exposes additive stable `reason_code` and `issue_code`
+    fields alongside its existing human-readable duplicate reasons and source-
+    verification issues. Quality UI routing, labels and decisions use those codes;
+    legacy prose remains a display fallback for rolling compatibility. Both quality
+    routes load localized metadata and pass typed `quality` and shared `domain` copy
+    to the client. The three tabs, metrics, tables, empty/error states and repair
+    targets use explicit locale formatting and dictionary-backed accessibility copy.
 
 ## Consequences
 
@@ -179,7 +186,10 @@ the existing public API.
    its metadata, operational states and shared workflow/quality labels, is also
    dictionary-backed. The review queue now has the same boundary for metadata, URL
    filters, tabular states, RBAC actions, pagination and return-to-editor dialog.
-   Remaining administrative feature-page prose is incremental work.
+   The complete data-quality centre and all three tabs are dictionary-backed as well;
+   stable duplicate/source-verification reason codes remove routing decisions based
+   on Polish backend prose. Remaining administrative feature-page prose is incremental
+   work.
 3. Add application-layer commands and protected endpoints for translation workflow.
 4. Backfill `pl` and `en` translation rows idempotently from legacy columns and
    report conflicts without overwriting reviewed translations. The maintenance

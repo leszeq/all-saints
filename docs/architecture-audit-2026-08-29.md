@@ -782,8 +782,13 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
   i dialog zwrotu do redaktora. Typy osób, priorytety oraz kryteria kompletności zostały
   dodane do wspólnej sekcji domenowej, a pulpit i kolejka współdzielą formatery dat i
   czasu względnego z jawnym locale. Błędy decyzji są mapowane po kodach wspólnej
-  koperty API przed tekstem backendu. Pozostają teksty innych ekranów funkcjonalnych
-  panelu oraz routing uruchamiany dopiero z kompletnym drugim językiem.
+  koperty API przed tekstem backendu. Centrum jakości i jego trzy zakładki mają
+  słownikowe metadata, metryki, tabele, stany, dostępność i linki naprawcze. Raport API
+  zwraca addytywne `reason_code` dla duplikatów oraz `issue_code` dla weryfikacji
+  źródeł; frontend nie rozpoznaje już braku licencji przez polski fragment opisu, a
+  dotychczasowe teksty pozostają fallbackiem zgodności. Pozostają teksty innych
+  ekranów funkcjonalnych panelu oraz routing uruchamiany dopiero z kompletnym drugim
+  językiem.
 - **Category:** Internationalization
 - **File:** oba frontendy i modele Person/Translation
 - **Lines:** setki hardcoded strings
