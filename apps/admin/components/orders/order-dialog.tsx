@@ -9,6 +9,12 @@ import {
   type TextareaHTMLAttributes,
 } from "react";
 import type {
+  AdminCommunityTypeKey,
+  AdminDomainDictionary,
+  AdminOrderCharismKey,
+  AdminOrdersDictionary,
+} from "@/lib/i18n/types";
+import type {
   CommunityType,
   OrderCharism,
   ReligiousOrder,
@@ -48,26 +54,26 @@ const EMPTY_DRAFT: OrderDraft = {
   sort_order: "0",
 };
 
-const COMMUNITY_TYPES: Array<{ value: CommunityType; label: string }> = [
-  { value: "religious_order", label: "Zakon" },
-  { value: "congregation", label: "Zgromadzenie zakonne" },
-  { value: "monastic_family", label: "Rodzina monastyczna" },
-  { value: "society_apostolic_life", label: "Stowarzyszenie życia apostolskiego" },
-  { value: "secular_institute", label: "Instytut świecki" },
-  { value: "federation", label: "Federacja" },
-  { value: "other", label: "Inna wspólnota" },
+const COMMUNITY_TYPE_KEYS: CommunityType[] = [
+  "religious_order",
+  "congregation",
+  "monastic_family",
+  "society_apostolic_life",
+  "secular_institute",
+  "federation",
+  "other",
 ];
 
-const CHARISMS: Array<{ value: OrderCharism; label: string }> = [
-  { value: "contemplative", label: "Kontemplacyjny" },
-  { value: "apostolic", label: "Apostolski" },
-  { value: "mendicant", label: "Żebraczy" },
-  { value: "monastic", label: "Monastyczny" },
-  { value: "missionary", label: "Misyjny" },
-  { value: "educational", label: "Edukacyjny" },
-  { value: "charitable", label: "Charytatywny" },
-  { value: "military", label: "Rycerski" },
-  { value: "other", label: "Inny" },
+const CHARISM_KEYS: OrderCharism[] = [
+  "contemplative",
+  "apostolic",
+  "mendicant",
+  "monastic",
+  "missionary",
+  "educational",
+  "charitable",
+  "military",
+  "other",
 ];
 
 function nullableText(value: string | null) {
@@ -143,6 +149,8 @@ export function OrderDialog({
   order,
   pending,
   error,
+  copy,
+  domainCopy,
   onOpenChange,
   onSubmit,
 }: {
@@ -150,6 +158,8 @@ export function OrderDialog({
   order: ReligiousOrder | null;
   pending: boolean;
   error: string | null;
+  copy: AdminOrdersDictionary["dialog"];
+  domainCopy: AdminDomainDictionary;
   onOpenChange: (open: boolean) => void;
   onSubmit: (payload: ReligiousOrderPayload) => void;
 }) {
@@ -192,80 +202,80 @@ export function OrderDialog({
         <Dialog.Overlay className="fixed inset-0 z-50 bg-slate-950/55 backdrop-blur-[2px]" />
         <Dialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[92vh] w-[calc(100%-2rem)] max-w-5xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-border bg-card p-6 shadow-2xl focus:outline-none">
           <Dialog.Title className="pr-12 text-xl font-semibold">
-            {order ? "Edytuj wspólnotę" : "Dodaj zakon lub zgromadzenie"}
+            {order ? copy.editTitle : copy.createTitle}
           </Dialog.Title>
           <Dialog.Description className="mt-1 text-sm text-muted-foreground">
-            Uzupełnij dane identyfikacyjne, historię i misję wspólnoty. Pola oznaczone * są wymagane.
+            {copy.description}
           </Dialog.Description>
-          <Dialog.Close className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted" aria-label="Zamknij">
+          <Dialog.Close className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted" aria-label={copy.closeAriaLabel}>
             <X className="h-4 w-4" />
           </Dialog.Close>
 
           <form onSubmit={submit} className="mt-6 space-y-6">
             <fieldset className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <legend className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tożsamość wspólnoty</legend>
-              <Input required label="Nazwa *" value={draft.name} onChange={(event) => {
+              <legend className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{copy.sections.identity}</legend>
+              <Input required label={copy.fields.name} value={draft.name} onChange={(event) => {
                 const name = event.target.value;
                 update("name", name);
                 if (!slugWasEdited) update("slug", slugify(name));
               }} />
-              <Input required minLength={2} pattern="[a-z0-9-]+" label="Slug *" value={draft.slug} onChange={(event) => { setSlugWasEdited(true); update("slug", event.target.value); }} />
-              <Input label="Skrót" maxLength={20} value={draft.abbreviation ?? ""} onChange={(event) => update("abbreviation", event.target.value)} />
-              <Input label="Nazwa łacińska" value={draft.name_la ?? ""} onChange={(event) => update("name_la", event.target.value)} />
-              <Input label="Nazwa lokalna" value={draft.name_local ?? ""} onChange={(event) => update("name_local", event.target.value)} />
+              <Input required minLength={2} pattern="[a-z0-9-]+" label={copy.fields.slug} value={draft.slug} onChange={(event) => { setSlugWasEdited(true); update("slug", event.target.value); }} />
+              <Input label={copy.fields.abbreviation} maxLength={20} value={draft.abbreviation ?? ""} onChange={(event) => update("abbreviation", event.target.value)} />
+              <Input label={copy.fields.latinName} value={draft.name_la ?? ""} onChange={(event) => update("name_la", event.target.value)} />
+              <Input label={copy.fields.localName} value={draft.name_local ?? ""} onChange={(event) => update("name_local", event.target.value)} />
               <label className="space-y-1.5 text-sm font-medium">
-                <span>Typ wspólnoty</span>
+                <span>{copy.fields.communityType}</span>
                 <select value={draft.community_type} onChange={(event) => update("community_type", event.target.value as CommunityType)} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
-                  {COMMUNITY_TYPES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                  {COMMUNITY_TYPE_KEYS.map((key) => <option key={key} value={key}>{domainCopy.communityTypeLabels[key as AdminCommunityTypeKey]}</option>)}
                 </select>
               </label>
-              <Input label="Rodzina duchowa" placeholder="np. franciszkańska" value={draft.spiritual_family ?? ""} onChange={(event) => update("spiritual_family", event.target.value)} />
+              <Input label={copy.fields.spiritualFamily} placeholder={copy.fields.spiritualFamilyPlaceholder} value={draft.spiritual_family ?? ""} onChange={(event) => update("spiritual_family", event.target.value)} />
               <label className="space-y-1.5 text-sm font-medium">
-                <span>Charyzmat</span>
+                <span>{copy.fields.charism}</span>
                 <select value={draft.charism ?? ""} onChange={(event) => update("charism", (event.target.value || null) as OrderCharism | null)} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
-                  <option value="">Nie określono</option>
-                  {CHARISMS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                  <option value="">{copy.fields.unspecified}</option>
+                  {CHARISM_KEYS.map((key) => <option key={key} value={key}>{domainCopy.orderCharismLabels[key as AdminOrderCharismKey]}</option>)}
                 </select>
               </label>
-              <Input label="Kolejność" type="number" value={draft.sort_order} onChange={(event) => update("sort_order", event.target.value)} />
+              <Input label={copy.fields.sortOrder} type="number" value={draft.sort_order} onChange={(event) => update("sort_order", event.target.value)} />
             </fieldset>
 
             <fieldset className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <legend className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Historia instytucjonalna</legend>
-              <Input label="Rok założenia" type="number" value={draft.founded_year} onChange={(event) => update("founded_year", event.target.value)} />
-              <Input label="Założyciel / założycielka" value={draft.founder_name ?? ""} onChange={(event) => update("founder_name", event.target.value)} />
-              <Input label="Rok zatwierdzenia papieskiego" type="number" value={draft.papal_approval_year} onChange={(event) => update("papal_approval_year", event.target.value)} />
-              <Input label="Rok zniesienia" type="number" value={draft.suppressed_year} onChange={(event) => update("suppressed_year", event.target.value)} />
+              <legend className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{copy.sections.institutionalHistory}</legend>
+              <Input label={copy.fields.foundedYear} type="number" value={draft.founded_year} onChange={(event) => update("founded_year", event.target.value)} />
+              <Input label={copy.fields.founder} value={draft.founder_name ?? ""} onChange={(event) => update("founder_name", event.target.value)} />
+              <Input label={copy.fields.papalApprovalYear} type="number" value={draft.papal_approval_year} onChange={(event) => update("papal_approval_year", event.target.value)} />
+              <Input label={copy.fields.suppressedYear} type="number" value={draft.suppressed_year} onChange={(event) => update("suppressed_year", event.target.value)} />
             </fieldset>
 
             <fieldset className="grid gap-4 md:grid-cols-2">
-              <legend className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Opis redakcyjny</legend>
-              <Textarea label="Krótki opis" rows={4} value={draft.description ?? ""} onChange={(event) => update("description", event.target.value)} />
-              <Textarea label="Misja" rows={4} value={draft.mission ?? ""} onChange={(event) => update("mission", event.target.value)} />
-              <Textarea label="Historia" rows={7} value={draft.history ?? ""} onChange={(event) => update("history", event.target.value)} />
+              <legend className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{copy.sections.editorialDescription}</legend>
+              <Textarea label={copy.fields.shortDescription} rows={4} value={draft.description ?? ""} onChange={(event) => update("description", event.target.value)} />
+              <Textarea label={copy.fields.mission} rows={4} value={draft.mission ?? ""} onChange={(event) => update("mission", event.target.value)} />
+              <Textarea label={copy.fields.history} rows={7} value={draft.history ?? ""} onChange={(event) => update("history", event.target.value)} />
               <div className="space-y-4">
-                <Textarea label="Opis angielski" rows={3} value={draft.description_en ?? ""} onChange={(event) => update("description_en", event.target.value)} />
-                <Input label="Dewiza" value={draft.motto ?? ""} onChange={(event) => update("motto", event.target.value)} />
+                <Textarea label={copy.fields.englishDescription} rows={3} value={draft.description_en ?? ""} onChange={(event) => update("description_en", event.target.value)} />
+                <Input label={copy.fields.motto} value={draft.motto ?? ""} onChange={(event) => update("motto", event.target.value)} />
               </div>
             </fieldset>
 
             <fieldset className="grid gap-4 md:grid-cols-2">
-              <legend className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Źródła i publikacja</legend>
-              <Input label="Strona internetowa" type="url" value={draft.website_url ?? ""} onChange={(event) => update("website_url", event.target.value)} />
-              <Input label="Tytuł źródła" value={draft.source_title ?? ""} onChange={(event) => update("source_title", event.target.value)} />
-              <Input label="Link do źródła" type="url" value={draft.source_url ?? ""} onChange={(event) => update("source_url", event.target.value)} />
+              <legend className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{copy.sections.sourcesAndPublication}</legend>
+              <Input label={copy.fields.website} type="url" value={draft.website_url ?? ""} onChange={(event) => update("website_url", event.target.value)} />
+              <Input label={copy.fields.sourceTitle} value={draft.source_title ?? ""} onChange={(event) => update("source_title", event.target.value)} />
+              <Input label={copy.fields.sourceUrl} type="url" value={draft.source_url ?? ""} onChange={(event) => update("source_url", event.target.value)} />
               <div className="flex flex-wrap items-center gap-5 pt-7">
-                <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={draft.is_featured} onChange={(event) => update("is_featured", event.target.checked)} /> Wyróżniona</label>
-                <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={draft.is_suppressed} onChange={(event) => update("is_suppressed", event.target.checked)} /> Wspólnota zniesiona</label>
+                <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={draft.is_featured} onChange={(event) => update("is_featured", event.target.checked)} /> {copy.fields.featured}</label>
+                <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={draft.is_suppressed} onChange={(event) => update("is_suppressed", event.target.checked)} /> {copy.fields.suppressed}</label>
               </div>
             </fieldset>
 
             {error && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">{error}</p>}
             <div className="flex justify-end gap-3 border-t border-border pt-4">
-              <Dialog.Close type="button" className="h-10 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted">Anuluj</Dialog.Close>
+              <Dialog.Close type="button" className="h-10 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted">{copy.cancelAction}</Dialog.Close>
               <button disabled={pending} type="submit" className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-60">
                 {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                {order ? "Zapisz zmiany" : "Dodaj wspólnotę"}
+                {order ? copy.saveAction : copy.createAction}
               </button>
             </div>
           </form>

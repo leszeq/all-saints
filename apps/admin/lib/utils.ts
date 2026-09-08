@@ -138,25 +138,3 @@ export const CHURCH_TYPE_LABELS: Record<string, string> = {
   pilgrimage_site: "Miejsce pielgrzymkowe",
   other: "Inne",
 };
-
-export const ORDER_CHARISM_LABELS: Record<string, string> = {
-  contemplative: "Kontemplacyjny",
-  apostolic: "Apostolski",
-  mendicant: "Żebraczy",
-  monastic: "Monastyczny",
-  missionary: "Misyjny",
-  educational: "Edukacyjny",
-  charitable: "Charytatywny",
-  military: "Rycerski",
-  other: "Inny",
-};
-
-export const COMMUNITY_TYPE_LABELS: Record<string, string> = {
-  religious_order: "Zakon",
-  congregation: "Zgromadzenie",
-  monastic_family: "Rodzina monastyczna",
-  society_apostolic_life: "Stowarzyszenie życia apostolskiego",
-  secular_institute: "Instytut świecki",
-  federation: "Federacja",
-  other: "Inne",
-};

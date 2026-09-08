@@ -182,6 +182,11 @@ the existing public API.
     resolve from stable API values. Dates and counts no longer use implicit Polish
     formatting. The legacy country-only route remains a compatible URL but redirects
     to the complete geography workspace, removing its duplicate query and table UI.
+29. The administrative religious-community and controlled-dictionary routes follow
+    the same server-page/client-query boundary. Community types and charisms resolve
+    from shared stable domain keys in both the table and create/edit dialog; feature
+    copy, metadata, dates and counts receive the explicit interface locale. The former
+    Polish label constants have been removed from the generic utility module.
 
 ## Consequences
 
@@ -227,9 +232,10 @@ the existing public API.
    permissions, headings, tab navigation, prerequisite states, avatar validation and
    save actions. All person-editor field sections and schema-validation messages now
    use the same typed boundary, including aliases, patronages, media, communities and
-   sources. The geography and source/media workspaces are also complete at the UI-copy
-   boundary, including metadata, filters, metrics, tables, domain labels and states.
-   Remaining administrative feature-page prose is incremental work.
+   sources. The geography, source/media, religious-community and controlled-dictionary
+   workspaces are also complete at the UI-copy boundary, including metadata, filters,
+   metrics, tables, dialogs, domain labels and states. Remaining administrative
+   feature-page prose is incremental work.
 3. Add application-layer commands and protected endpoints for translation workflow.
 4. Backfill `pl` and `en` translation rows idempotently from legacy columns and
    report conflicts without overwriting reviewed translations. The maintenance

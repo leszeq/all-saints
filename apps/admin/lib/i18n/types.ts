@@ -68,6 +68,16 @@ export type AdminCommunityTypeKey =
   | "secular_institute"
   | "federation"
   | "other";
+export type AdminOrderCharismKey =
+  | "contemplative"
+  | "apostolic"
+  | "mendicant"
+  | "monastic"
+  | "missionary"
+  | "educational"
+  | "charitable"
+  | "military"
+  | "other";
 export type AdminChurchTypeKey =
   | "parish"
   | "cathedral"
@@ -172,6 +182,7 @@ export interface AdminDictionary {
     avatarLicenseLabels: Record<AdminAvatarLicenseKey, string>;
     orderMembershipTypeLabels: Record<AdminOrderMembershipTypeKey, string>;
     communityTypeLabels: Record<AdminCommunityTypeKey, string>;
+    orderCharismLabels: Record<AdminOrderCharismKey, string>;
     churchTypeLabels: Record<AdminChurchTypeKey, string>;
     sourceTypeLabels: Record<AdminSourceTypeKey, string>;
     documentTypeLabels: Record<AdminDocumentTypeKey, string>;
@@ -529,6 +540,172 @@ export interface AdminDictionary {
         checkMedia: { label: string; hint: string };
         openSection: { label: string; hint: string };
       };
+    };
+  };
+  ordersWorkspace: {
+    metadataTitle: string;
+    metadataDescription: string;
+    kicker: string;
+    title: string;
+    description: string;
+    refreshAction: string;
+    addAction: string;
+    summaryAriaLabel: string;
+    metrics: {
+      communities: string;
+      activeSuffix: string;
+      featured: string;
+      featuredDetail: string;
+      members: string;
+      membersDetail: string;
+      documented: string;
+      documentedDetail: string;
+    };
+    filters: {
+      all: string;
+      featured: string;
+      active: string;
+      suppressed: string;
+      members: string;
+    };
+    searchAriaLabel: string;
+    searchPlaceholder: string;
+    table: {
+      community: string;
+      type: string;
+      charism: string;
+      foundation: string;
+      missionHistory: string;
+      persons: string;
+      status: string;
+      updated: string;
+      actions: string;
+    };
+    states: {
+      loading: string;
+      empty: string;
+    };
+    labels: {
+      descriptionMissing: string;
+      source: string;
+      suppressed: string;
+      active: string;
+    };
+    actions: {
+      edit: string;
+      deleteAriaPrefix: string;
+      deleteBlockedTitle: string;
+      deleteTitle: string;
+      deleteConfirmPrefix: string;
+      deleteConfirmSuffix: string;
+    };
+    dialog: {
+      editTitle: string;
+      createTitle: string;
+      description: string;
+      closeAriaLabel: string;
+      sections: {
+        identity: string;
+        institutionalHistory: string;
+        editorialDescription: string;
+        sourcesAndPublication: string;
+      };
+      fields: {
+        name: string;
+        slug: string;
+        abbreviation: string;
+        latinName: string;
+        localName: string;
+        communityType: string;
+        spiritualFamily: string;
+        spiritualFamilyPlaceholder: string;
+        charism: string;
+        unspecified: string;
+        sortOrder: string;
+        foundedYear: string;
+        founder: string;
+        papalApprovalYear: string;
+        suppressedYear: string;
+        shortDescription: string;
+        mission: string;
+        history: string;
+        englishDescription: string;
+        motto: string;
+        website: string;
+        sourceTitle: string;
+        sourceUrl: string;
+        featured: string;
+        suppressed: string;
+      };
+      cancelAction: string;
+      saveAction: string;
+      createAction: string;
+    };
+  };
+  dictionariesWorkspace: {
+    metadataTitle: string;
+    metadataDescription: string;
+    kicker: string;
+    title: string;
+    description: string;
+    refreshAction: string;
+    summaryAriaLabel: string;
+    metrics: {
+      categories: string;
+      subcategoriesSuffix: string;
+      tags: string;
+      coloredSuffix: string;
+      states: string;
+      latinNamesSuffix: string;
+      occupations: string;
+      describedSuffix: string;
+      popes: string;
+      linkedPersonsSuffix: string;
+    };
+    views: {
+      categories: string;
+      tags: string;
+      states: string;
+      occupations: string;
+      popes: string;
+    };
+    searchAriaLabel: string;
+    searchPlaceholder: string;
+    columns: {
+      category: string;
+      slug: string;
+      parent: string;
+      sortOrder: string;
+      updated: string;
+      tag: string;
+      color: string;
+      state: string;
+      latin: string;
+      description: string;
+      occupation: string;
+      pope: string;
+      pontificate: string;
+      number: string;
+      relation: string;
+    };
+    states: {
+      loadingCategories: string;
+      emptyCategories: string;
+      loadingTags: string;
+      emptyTags: string;
+      loadingStates: string;
+      emptyStates: string;
+      loadingOccupations: string;
+      emptyOccupations: string;
+      loadingPopes: string;
+      emptyPopes: string;
+      partialRefresh: string;
+    };
+    labels: {
+      layNameMissing: string;
+      present: string;
+      linkedPerson: string;
+      dictionaryOnly: string;
     };
   };
   geography: {
@@ -1083,6 +1260,8 @@ export type AdminDashboardDictionary = AdminDictionary["dashboard"];
 export type AdminDomainDictionary = AdminDictionary["domain"];
 export type AdminReviewDictionary = AdminDictionary["review"];
 export type AdminQualityDictionary = AdminDictionary["quality"];
+export type AdminOrdersDictionary = AdminDictionary["ordersWorkspace"];
+export type AdminDictionariesDictionary = AdminDictionary["dictionariesWorkspace"];
 export type AdminGeographyDictionary = AdminDictionary["geography"];
 export type AdminSourcesHubDictionary = AdminDictionary["sourcesHub"];
 export type AdminPersonsDictionary = AdminDictionary["persons"];

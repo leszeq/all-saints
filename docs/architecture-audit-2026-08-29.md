@@ -805,8 +805,11 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
   metadata, typowane słowniki funkcjonalne, współdzielone etykiety stabilnych typów
   kościołów, źródeł, dokumentów i licencji oraz formatowanie dat i liczb z jawnym
   locale. Stary, dublujący widok samych państw zachowuje URL, ale przekierowuje do
-  kompletnego panelu geografii. Routing językowy zostanie uruchomiony dopiero z
-  kompletnym drugim językiem.
+  kompletnego panelu geografii. Zakony i Słowniki również mają serwerowe granice tras,
+  metadata oraz kompletne, typowane teksty tabel, filtrów, stanów i formularza
+  wspólnoty. Typy wspólnot i charyzmaty są mapowane ze stabilnych kluczy jednego
+  słownika domenowego, więc usunięto ich zduplikowane polskie mapy z ogólnego helpera.
+  Routing językowy zostanie uruchomiony dopiero z kompletnym drugim językiem.
 - **Category:** Internationalization
 - **File:** oba frontendy i modele Person/Translation
 - **Lines:** setki hardcoded strings
