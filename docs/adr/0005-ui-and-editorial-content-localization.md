@@ -193,6 +193,12 @@ the existing public API.
     description and live metric detail from the UI dictionary. Presentation strings
     already returned by the API remain compatibility fallbacks for unknown future
     capabilities. Dates and counts receive the explicit interface locale.
+31. The administrative settings route loads localized metadata and typed copy at its
+    server boundary. Environment and feature-flag labels resolve from stable keys;
+    built-in account roles reuse the existing shared role labels while custom role
+    names remain untouched. Profile, appearance, password and read-only runtime
+    configuration states use feature copy, and dates and numbers receive the explicit
+    interface locale. The API continues to expose configuration state without secrets.
 
 ## Consequences
 
@@ -242,8 +248,9 @@ the existing public API.
    workspaces are also complete at the UI-copy boundary, including metadata, filters,
    metrics, tables, dialogs, domain labels and states. The AI centre and suggestion
    queue now have the same boundary for metadata, filters, operational states,
-   stable status/kind labels and localized capability descriptions. Remaining
-   administrative feature-page prose is incremental work.
+   stable status/kind labels and localized capability descriptions. Settings are also
+   complete for account, appearance, password and safe runtime-configuration copy.
+   Remaining administrative feature-page prose is incremental work.
 3. Add application-layer commands and protected endpoints for translation workflow.
 4. Backfill `pl` and `en` translation rows idempotently from legacy columns and
    report conflicts without overwriting reviewed translations. The maintenance

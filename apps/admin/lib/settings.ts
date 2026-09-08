@@ -47,17 +47,3 @@ export interface ApplicationSettings {
     docs_enabled: boolean;
   };
 }
-
-export const FEATURE_LABELS: Record<keyof ApplicationSettings["features"], string> = {
-  ai_search: "Wyszukiwanie AI",
-  maps: "Mapy",
-  timeline: "Oś czasu",
-  exports: "Eksporty",
-};
-
-export const ENVIRONMENT_LABELS: Record<string, string> = {
-  development: "Development",
-  staging: "Staging",
-  production: "Production",
-  testing: "Testing",
-};

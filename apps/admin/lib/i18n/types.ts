@@ -166,6 +166,8 @@ export type AdminAiSuggestionStatusKey =
   | "blocked";
 export type AdminAiFeatureStatusKey = "ready" | "disabled" | "needs_data" | "fallback";
 export type AdminAiFeatureKey = "embeddings" | "semantic_search" | "summaries" | "tagging";
+export type AdminApplicationFeatureKey = "ai_search" | "maps" | "timeline" | "exports";
+export type AdminEnvironmentKey = "development" | "staging" | "production" | "testing";
 
 export interface AdminDictionary {
   metadata: {
@@ -204,6 +206,8 @@ export interface AdminDictionary {
     aiSuggestionKindLabels: Record<AdminAiSuggestionKindKey, string>;
     aiSuggestionStatusLabels: Record<AdminAiSuggestionStatusKey, string>;
     aiFeatureStatusLabels: Record<AdminAiFeatureStatusKey, string>;
+    applicationFeatureLabels: Record<AdminApplicationFeatureKey, string>;
+    environmentLabels: Record<AdminEnvironmentKey, string>;
   };
   sidebar: {
     navigationAriaLabel: string;
@@ -550,6 +554,116 @@ export interface AdminDictionary {
         checkMedia: { label: string; hint: string };
         openSection: { label: string; hint: string };
       };
+    };
+  };
+  settings: {
+    metadataTitle: string;
+    metadataDescription: string;
+    loading: string;
+    loadError: {
+      title: string;
+      description: string;
+      refreshAction: string;
+    };
+    header: {
+      kicker: string;
+      title: string;
+      description: string;
+      refreshAction: string;
+    };
+    common: {
+      enabled: string;
+      disabled: string;
+      notAvailable: string;
+    };
+    application: {
+      title: string;
+      description: string;
+      name: string;
+      version: string;
+      environment: string;
+      apiDocumentation: string;
+      swagger: string;
+      openApi: string;
+      schemaJson: string;
+    };
+    features: {
+      title: string;
+      descriptionMiddle: string;
+      descriptionSuffix: string;
+      environmentNotice: string;
+    };
+    ai: {
+      title: string;
+      description: string;
+      provider: string;
+      openAiApi: string;
+      keyConfigured: string;
+      keyMissing: string;
+      embeddingModel: string;
+      completionModel: string;
+      ollama: string;
+      ollamaInactive: string;
+      embeddingDimensions: string;
+    };
+    storageAndSecurity: {
+      title: string;
+      description: string;
+      storageBackend: string;
+      imagesBucket: string;
+      documentsBucket: string;
+      exportsBucket: string;
+      publicEndpoint: string;
+      accessToken: string;
+      refreshToken: string;
+      minutesSuffix: string;
+      daysSuffix: string;
+      secureCookies: string;
+      cors: string;
+    };
+    profile: {
+      title: string;
+      description: string;
+      fullName: string;
+      fullNamePlaceholder: string;
+      preferredLanguage: string;
+      languages: {
+        pl: string;
+        en: string;
+        la: string;
+      };
+      email: string;
+      roles: string;
+      lastLogin: string;
+      profileSaved: string;
+      saveAction: string;
+    };
+    appearance: {
+      title: string;
+      description: string;
+      light: string;
+      lightDescription: string;
+      dark: string;
+      darkDescription: string;
+    };
+    password: {
+      title: string;
+      description: string;
+      current: string;
+      next: string;
+      confirm: string;
+      hideAriaLabel: string;
+      showAriaLabel: string;
+      changed: string;
+      tooShort: string;
+      mismatch: string;
+      changeAction: string;
+    };
+    environment: {
+      title: string;
+      description: string;
+      explanationTitle: string;
+      explanation: string;
     };
   };
   aiCenter: {
@@ -1386,6 +1500,7 @@ export type AdminDashboardDictionary = AdminDictionary["dashboard"];
 export type AdminDomainDictionary = AdminDictionary["domain"];
 export type AdminReviewDictionary = AdminDictionary["review"];
 export type AdminQualityDictionary = AdminDictionary["quality"];
+export type AdminSettingsDictionary = AdminDictionary["settings"];
 export type AdminAiCenterDictionary = AdminDictionary["aiCenter"];
 export type AdminAiSuggestionsDictionary = AdminDictionary["aiSuggestions"];
 export type AdminOrdersDictionary = AdminDictionary["ordersWorkspace"];

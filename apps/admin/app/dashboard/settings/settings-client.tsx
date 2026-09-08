@@ -26,20 +26,24 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { API_BASE_URL, authApi, getApiErrorMessage, settingsApi } from "@/lib/api";
+import { formatAdminDateTime } from "@/lib/i18n/format";
+import type {
+  AdminApplicationFeatureKey,
+  AdminDomainDictionary,
+  AdminEnvironmentKey,
+  AdminSettingsDictionary,
+  AdminSystemRoleKey,
+} from "@/lib/i18n/types";
 import { useAuthStore } from "@/lib/store/auth";
-import {
-  ENVIRONMENT_LABELS,
-  FEATURE_LABELS,
-  type ApplicationSettings,
-} from "@/lib/settings";
-import { cn, formatDateTime } from "@/lib/utils";
+import type { ApplicationSettings } from "@/lib/settings";
+import { cn } from "@/lib/utils";
 
 function StatusBadge({
   enabled,
-  label,
+  labels,
 }: {
   enabled: boolean;
-  label?: { on: string; off: string };
+  labels: { on: string; off: string };
 }) {
   return (
     <span
@@ -50,7 +54,7 @@ function StatusBadge({
           : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
       )}
     >
-      {enabled ? label?.on ?? "Włączone" : label?.off ?? "Wyłączone"}
+      {enabled ? labels.on : labels.off}
     </span>
   );
 }
@@ -102,7 +106,17 @@ function SettingRow({
   );
 }
 
-function SystemSummary({ settings }: { settings: ApplicationSettings }) {
+function SystemSummary({
+  settings,
+  copy,
+  domainCopy,
+  locale,
+}: {
+  settings: ApplicationSettings;
+  copy: AdminSettingsDictionary;
+  domainCopy: AdminDomainDictionary;
+  locale: string;
+}) {
   const docsHref = settings.docs_url ? `${API_BASE_URL}${settings.docs_url}` : "";
   const openApiHref = settings.openapi_url ? `${API_BASE_URL}${settings.openapi_url}` : "";
   const enabledFeatures = useMemo(
@@ -114,19 +128,19 @@ function SystemSummary({ settings }: { settings: ApplicationSettings }) {
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <SectionCard
-        title="Aplikacja"
-        description="Podstawowe informacje o środowisku i dokumentacji API."
+        title={copy.application.title}
+        description={copy.application.description}
         icon={ServerCog}
       >
         <div className="space-y-0">
-          <SettingRow label="Nazwa" value={settings.app_name} />
-          <SettingRow label="Wersja" value={settings.app_version} />
+          <SettingRow label={copy.application.name} value={settings.app_name} />
+          <SettingRow label={copy.application.version} value={settings.app_version} />
           <SettingRow
-            label="Środowisko"
-            value={ENVIRONMENT_LABELS[settings.environment] ?? settings.environment}
+            label={copy.application.environment}
+            value={domainCopy.environmentLabels[settings.environment as AdminEnvironmentKey] ?? settings.environment}
           />
           <SettingRow
-            label="Dokumentacja API"
+            label={copy.application.apiDocumentation}
             value={
               settings.security.docs_enabled ? (
                 <Link
@@ -135,15 +149,15 @@ function SystemSummary({ settings }: { settings: ApplicationSettings }) {
                   rel="noreferrer"
                   className="font-semibold text-primary hover:underline"
                 >
-                  Swagger
+                  {copy.application.swagger}
                 </Link>
               ) : (
-                "Wyłączona"
+                copy.common.disabled
               )
             }
           />
           <SettingRow
-            label="OpenAPI"
+            label={copy.application.openApi}
             value={
               openApiHref ? (
                 <Link
@@ -152,10 +166,10 @@ function SystemSummary({ settings }: { settings: ApplicationSettings }) {
                   rel="noreferrer"
                   className="font-semibold text-primary hover:underline"
                 >
-                  Schema JSON
+                  {copy.application.schemaJson}
                 </Link>
               ) : (
-                "—"
+                copy.common.notAvailable
               )
             }
           />
@@ -163,8 +177,8 @@ function SystemSummary({ settings }: { settings: ApplicationSettings }) {
       </SectionCard>
 
       <SectionCard
-        title="Funkcje"
-        description={`${enabledFeatures} z ${Object.keys(settings.features).length} modułów jest aktualnie włączonych.`}
+        title={copy.features.title}
+        description={`${new Intl.NumberFormat(locale).format(enabledFeatures)} ${copy.features.descriptionMiddle} ${new Intl.NumberFormat(locale).format(Object.keys(settings.features).length)} ${copy.features.descriptionSuffix}`}
         icon={FileCode2}
       >
         <div className="grid gap-2 sm:grid-cols-2">
@@ -172,11 +186,16 @@ function SystemSummary({ settings }: { settings: ApplicationSettings }) {
             ([key, enabled]) => (
               <div key={key} className="rounded-xl border border-border bg-muted/20 p-4">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-medium">{FEATURE_LABELS[key]}</span>
-                  <StatusBadge enabled={enabled} />
+                  <span className="text-sm font-medium">
+                    {domainCopy.applicationFeatureLabels[key as AdminApplicationFeatureKey]}
+                  </span>
+                  <StatusBadge
+                    enabled={enabled}
+                    labels={{ on: copy.common.enabled, off: copy.common.disabled }}
+                  />
                 </div>
                 <p className="mt-2 text-[11px] leading-4 text-muted-foreground">
-                  Zmieniane przez konfigurację środowiskową backendu.
+                  {copy.features.environmentNotice}
                 </p>
               </div>
             ),
@@ -185,60 +204,65 @@ function SystemSummary({ settings }: { settings: ApplicationSettings }) {
       </SectionCard>
 
       <SectionCard
-        title="AI"
-        description="Konfiguracja providera, modeli i wymiaru embeddingów."
+        title={copy.ai.title}
+        description={copy.ai.description}
         icon={Bot}
       >
         <div className="space-y-0">
-          <SettingRow label="Provider" value={settings.ai.provider} />
+          <SettingRow label={copy.ai.provider} value={settings.ai.provider} />
           <SettingRow
-            label="OpenAI API"
+            label={copy.ai.openAiApi}
             value={
               <StatusBadge
                 enabled={settings.ai.openai_configured}
-                label={{ on: "Klucz ustawiony", off: "Brak klucza" }}
+                labels={{ on: copy.ai.keyConfigured, off: copy.ai.keyMissing }}
               />
             }
           />
-          <SettingRow label="Model embeddingów" value={settings.ai.embedding_model} />
-          <SettingRow label="Model streszczeń" value={settings.ai.completion_model} />
+          <SettingRow label={copy.ai.embeddingModel} value={settings.ai.embedding_model} />
+          <SettingRow label={copy.ai.completionModel} value={settings.ai.completion_model} />
           <SettingRow
-            label="Ollama"
-            value={settings.ai.ollama_base_url ?? "Nieaktywna"}
+            label={copy.ai.ollama}
+            value={settings.ai.ollama_base_url ?? copy.ai.ollamaInactive}
           />
           <SettingRow
-            label="Wymiar embeddingów"
-            value={settings.ai.embedding_dimensions.toLocaleString("pl-PL")}
+            label={copy.ai.embeddingDimensions}
+            value={new Intl.NumberFormat(locale).format(settings.ai.embedding_dimensions)}
           />
         </div>
       </SectionCard>
 
       <SectionCard
-        title="Storage i bezpieczeństwo"
-        description="Podgląd sposobu przechowywania mediów oraz parametrów sesji."
+        title={copy.storageAndSecurity.title}
+        description={copy.storageAndSecurity.description}
         icon={ShieldCheck}
       >
         <div className="space-y-0">
-          <SettingRow label="Storage backend" value={settings.storage.backend} />
-          <SettingRow label="Bucket obrazów" value={settings.storage.images_bucket} />
-          <SettingRow label="Bucket dokumentów" value={settings.storage.documents_bucket} />
-          <SettingRow label="Bucket eksportów" value={settings.storage.exports_bucket} />
-          <SettingRow label="Endpoint publiczny" value={settings.storage.public_endpoint ?? "—"} />
+          <SettingRow label={copy.storageAndSecurity.storageBackend} value={settings.storage.backend} />
+          <SettingRow label={copy.storageAndSecurity.imagesBucket} value={settings.storage.images_bucket} />
+          <SettingRow label={copy.storageAndSecurity.documentsBucket} value={settings.storage.documents_bucket} />
+          <SettingRow label={copy.storageAndSecurity.exportsBucket} value={settings.storage.exports_bucket} />
+          <SettingRow label={copy.storageAndSecurity.publicEndpoint} value={settings.storage.public_endpoint ?? copy.common.notAvailable} />
           <SettingRow
-            label="Access token"
-            value={`${settings.security.access_token_minutes} min`}
+            label={copy.storageAndSecurity.accessToken}
+            value={`${new Intl.NumberFormat(locale).format(settings.security.access_token_minutes)} ${copy.storageAndSecurity.minutesSuffix}`}
           />
           <SettingRow
-            label="Refresh token"
-            value={`${settings.security.refresh_token_days} dni`}
+            label={copy.storageAndSecurity.refreshToken}
+            value={`${new Intl.NumberFormat(locale).format(settings.security.refresh_token_days)} ${copy.storageAndSecurity.daysSuffix}`}
           />
           <SettingRow
-            label="Secure cookies"
-            value={<StatusBadge enabled={settings.security.secure_cookies} />}
+            label={copy.storageAndSecurity.secureCookies}
+            value={
+              <StatusBadge
+                enabled={settings.security.secure_cookies}
+                labels={{ on: copy.common.enabled, off: copy.common.disabled }}
+              />
+            }
           />
           <SettingRow
-            label="CORS"
-            value={settings.security.cors_origins.join(", ") || "—"}
+            label={copy.storageAndSecurity.cors}
+            value={settings.security.cors_origins.join(", ") || copy.common.notAvailable}
           />
         </div>
       </SectionCard>
@@ -246,7 +270,19 @@ function SystemSummary({ settings }: { settings: ApplicationSettings }) {
   );
 }
 
-export function SettingsClient() {
+interface SettingsClientProps {
+  copy: AdminSettingsDictionary;
+  domainCopy: AdminDomainDictionary;
+  roleLabels: Record<AdminSystemRoleKey, string>;
+  locale: string;
+}
+
+export function SettingsClient({
+  copy,
+  domainCopy,
+  roleLabels,
+  locale,
+}: SettingsClientProps) {
   const queryClient = useQueryClient();
   const { resolvedTheme, setTheme } = useTheme();
   const { user, updateUser } = useAuthStore();
@@ -279,6 +315,10 @@ export function SettingsClient() {
     preferredLanguage ?? currentUser?.preferred_language ?? "pl";
   const settings = settingsQuery.data?.data;
   const loading = meQuery.isLoading || settingsQuery.isLoading;
+  const localizedRoles =
+    currentUser?.roles
+      .map((role) => roleLabels[role as AdminSystemRoleKey] ?? role)
+      .join(", ") || copy.common.notAvailable;
 
   const profileMutation = useMutation({
     mutationFn: () =>
@@ -291,7 +331,7 @@ export function SettingsClient() {
       setFullName(response.data.full_name);
       setPreferredLanguage(response.data.preferred_language);
       updateUser(response.data);
-      setProfileMessage("Profil został zapisany.");
+      setProfileMessage(copy.profile.profileSaved);
       await queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
     },
   });
@@ -304,7 +344,7 @@ export function SettingsClient() {
     },
     onSuccess: () => {
       setPasswords({ current: "", next: "", confirm: "" });
-      setPasswordMessage("Hasło zostało zmienione.");
+      setPasswordMessage(copy.password.changed);
     },
     onError: (error) => setPasswordError(getApiErrorMessage(error)),
   });
@@ -314,11 +354,11 @@ export function SettingsClient() {
   const submitPassword = () => {
     setPasswordError("");
     if (passwords.next.length < 8) {
-      setPasswordError("Nowe hasło musi mieć minimum 8 znaków.");
+      setPasswordError(copy.password.tooShort);
       return;
     }
     if (passwords.next !== passwords.confirm) {
-      setPasswordError("Powtórzone hasło nie jest takie samo.");
+      setPasswordError(copy.password.mismatch);
       return;
     }
     passwordMutation.mutate();
@@ -327,7 +367,7 @@ export function SettingsClient() {
   if (loading) {
     return (
       <div className="flex min-h-[420px] items-center justify-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" /> Ładowanie ustawień…
+        <Loader2 className="h-4 w-4 animate-spin" /> {copy.loading}
       </div>
     );
   }
@@ -336,15 +376,15 @@ export function SettingsClient() {
     return (
       <div className="admin-card mx-auto max-w-xl p-8 text-center">
         <AlertTriangle className="mx-auto h-8 w-8 text-amber-500" />
-        <h1 className="mt-3 text-lg font-semibold">Nie udało się pobrać ustawień</h1>
+        <h1 className="mt-3 text-lg font-semibold">{copy.loadError.title}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Sprawdź połączenie z API i spróbuj ponownie.
+          {copy.loadError.description}
         </p>
         <button
           onClick={() => settingsQuery.refetch()}
           className="mt-5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
         >
-          Odśwież dane
+          {copy.loadError.refreshAction}
         </button>
       </div>
     );
@@ -354,10 +394,10 @@ export function SettingsClient() {
     <div className="mx-auto max-w-[1500px] space-y-6">
       <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="admin-label">Administracja</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">Ustawienia</h1>
+          <p className="admin-label">{copy.header.kicker}</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight">{copy.header.title}</h1>
           <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-            Zarządzaj swoim kontem redakcyjnym i sprawdzaj bezpieczny podgląd konfiguracji systemu.
+            {copy.header.description}
           </p>
         </div>
         <button
@@ -373,54 +413,54 @@ export function SettingsClient() {
               (meQuery.isFetching || settingsQuery.isFetching) && "animate-spin",
             )}
           />
-          Odśwież
+          {copy.header.refreshAction}
         </button>
       </header>
 
       <section className="grid gap-5 xl:grid-cols-[.85fr_1.15fr]">
         <div className="space-y-5">
           <SectionCard
-            title="Konto redakcyjne"
-            description="Dane widoczne w panelu, historii zmian i kolejce redakcyjnej."
+            title={copy.profile.title}
+            description={copy.profile.description}
             icon={User}
           >
             <div className="space-y-4">
               <div>
                 <label className="mb-1 block text-sm font-medium text-foreground">
-                  Imię i nazwisko
+                  {copy.profile.fullName}
                 </label>
                 <input
                   value={fullNameValue}
                   onChange={(event) => setFullName(event.target.value)}
                   className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
-                  placeholder="Jan Redaktor"
+                  placeholder={copy.profile.fullNamePlaceholder}
                 />
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-foreground">
-                  Preferowany język
+                  {copy.profile.preferredLanguage}
                 </label>
                 <select
                   value={preferredLanguageValue}
                   onChange={(event) => setPreferredLanguage(event.target.value)}
                   className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
                 >
-                  <option value="pl">Polski</option>
-                  <option value="en">English</option>
-                  <option value="la">Łacina</option>
+                  <option value="pl">{copy.profile.languages.pl}</option>
+                  <option value="en">{copy.profile.languages.en}</option>
+                  <option value="la">{copy.profile.languages.la}</option>
                 </select>
               </div>
               <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs leading-5 text-muted-foreground">
                 <p>
-                  E-mail: <span className="font-medium text-foreground">{currentUser?.email ?? "—"}</span>
+                  {copy.profile.email} <span className="font-medium text-foreground">{currentUser?.email ?? copy.common.notAvailable}</span>
                 </p>
                 <p>
-                  Role: <span className="font-medium text-foreground">{currentUser?.roles.join(", ") || "—"}</span>
+                  {copy.profile.roles} <span className="font-medium text-foreground">{localizedRoles}</span>
                 </p>
                 <p>
-                  Ostatnie logowanie:{" "}
+                  {copy.profile.lastLogin}{" "}
                   <span className="font-medium text-foreground">
-                    {formatDateTime(currentLastLoginAt)}
+                    {formatAdminDateTime(currentLastLoginAt, locale)}
                   </span>
                 </p>
               </div>
@@ -444,14 +484,14 @@ export function SettingsClient() {
                 ) : (
                   <Save className="h-4 w-4" />
                 )}
-                Zapisz profil
+                {copy.profile.saveAction}
               </button>
             </div>
           </SectionCard>
 
           <SectionCard
-            title="Wygląd panelu"
-            description="Preferencje interfejsu zapisywane lokalnie w przeglądarce."
+            title={copy.appearance.title}
+            description={copy.appearance.description}
             icon={Globe2}
           >
             <div className="grid gap-2 sm:grid-cols-2">
@@ -463,8 +503,8 @@ export function SettingsClient() {
                 )}
               >
                 <Sun className="h-4 w-4 text-primary" />
-                <span className="mt-3 block text-sm font-semibold">Jasny</span>
-                <span className="mt-1 block text-xs text-muted-foreground">Klasyczny tryb redakcyjny.</span>
+                <span className="mt-3 block text-sm font-semibold">{copy.appearance.light}</span>
+                <span className="mt-1 block text-xs text-muted-foreground">{copy.appearance.lightDescription}</span>
               </button>
               <button
                 onClick={() => setTheme("dark")}
@@ -474,22 +514,22 @@ export function SettingsClient() {
                 )}
               >
                 <Moon className="h-4 w-4 text-primary" />
-                <span className="mt-3 block text-sm font-semibold">Ciemny</span>
-                <span className="mt-1 block text-xs text-muted-foreground">Wygodny przy dłuższej pracy wieczorem.</span>
+                <span className="mt-3 block text-sm font-semibold">{copy.appearance.dark}</span>
+                <span className="mt-1 block text-xs text-muted-foreground">{copy.appearance.darkDescription}</span>
               </button>
             </div>
           </SectionCard>
 
           <SectionCard
-            title="Zmiana hasła"
-            description="Hasło powinno być unikalne i zgodne z polityką bezpieczeństwa backendu."
+            title={copy.password.title}
+            description={copy.password.description}
             icon={LockKeyhole}
           >
             <div className="space-y-4">
               {[
-                { key: "current", label: "Obecne hasło", autoComplete: "current-password" },
-                { key: "next", label: "Nowe hasło", autoComplete: "new-password" },
-                { key: "confirm", label: "Powtórz nowe hasło", autoComplete: "new-password" },
+                { key: "current", label: copy.password.current, autoComplete: "current-password" },
+                { key: "next", label: copy.password.next, autoComplete: "new-password" },
+                { key: "confirm", label: copy.password.confirm, autoComplete: "new-password" },
               ].map((field) => (
                 <div key={field.key}>
                   <label className="mb-1 block text-sm font-medium text-foreground">
@@ -513,7 +553,7 @@ export function SettingsClient() {
                       type="button"
                       onClick={() => setShowPassword((visible) => !visible)}
                       className="absolute right-0 top-0 flex h-10 w-10 items-center justify-center text-muted-foreground hover:text-foreground"
-                      aria-label={showPassword ? "Ukryj hasła" : "Pokaż hasła"}
+                      aria-label={showPassword ? copy.password.hideAriaLabel : copy.password.showAriaLabel}
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -545,25 +585,28 @@ export function SettingsClient() {
                 ) : (
                   <ShieldCheck className="h-4 w-4" />
                 )}
-                Zmień hasło
+                {copy.password.changeAction}
               </button>
             </div>
           </SectionCard>
         </div>
 
         <div className="space-y-5">
-          <SystemSummary settings={settings} />
+          <SystemSummary
+            settings={settings}
+            copy={copy}
+            domainCopy={domainCopy}
+            locale={locale}
+          />
           <SectionCard
-            title="Konfiguracja przez środowisko"
-            description="Te wartości są odczytywane z backendu i powinny być zmieniane w `.env` albo konfiguracji deploymentu."
+            title={copy.environment.title}
+            description={copy.environment.description}
             icon={Database}
           >
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
-              <p className="font-semibold">Dlaczego read-only?</p>
+              <p className="font-semibold">{copy.environment.explanationTitle}</p>
               <p className="mt-1">
-                Ustawienia takie jak provider AI, storage, CORS i długość sesji wpływają
-                na bezpieczeństwo całego systemu. Panel pokazuje ich stan, ale ich zmiana
-                powinna przejść przez świadomy deploy.
+                {copy.environment.explanation}
               </p>
             </div>
           </SectionCard>

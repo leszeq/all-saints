@@ -814,6 +814,11 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
   stabilnych kluczy. Znane funkcje AI nie renderują już polskich opisów prezentacyjnych
   przesłanych przez API — tekst i dynamiczne metryki powstają z lokalnego słownika, a
   odpowiedź backendu pozostaje wyłącznie fallbackiem zgodności dla nowych kluczy.
+  Ustawienia mają taką samą granicę dla metadata, konta, wyglądu, zmiany hasła oraz
+  podglądu konfiguracji. Flagi funkcji i środowiska korzystają ze stabilnych kluczy,
+  role systemowe ze wspólnej mapy, a role niestandardowe zachowują nazwę z API. Test
+  kontraktowy chroni odpowiedź ustawień przed dodaniem pól haseł, sekretów i kluczy API;
+  frontend otrzymuje wyłącznie informację, czy klucz OpenAI jest skonfigurowany.
   Routing językowy zostanie uruchomiony dopiero z kompletnym drugim językiem.
 - **Category:** Internationalization
 - **File:** oba frontendy i modele Person/Translation
