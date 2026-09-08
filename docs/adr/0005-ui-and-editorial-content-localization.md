@@ -205,6 +205,11 @@ the existing public API.
     `resource:action` keys. Custom roles and unknown future permissions preserve their
     API-provided labels as compatibility fallbacks. Counts and login dates receive the
     explicit interface locale, while RBAC decisions remain server-enforced.
+33. Generic administrative API failures use dictionary copy supplied by the root
+    application context. The low-level HTTP formatter now requires explicit messages
+    for unexpected, validation, network and status failures, so future call sites
+    cannot silently fall back to Polish prose. Legacy locale-bound date helpers and
+    duplicated label maps were removed together with the unused `date-fns` dependency.
 
 ## Consequences
 
@@ -257,8 +262,10 @@ the existing public API.
    stable status/kind labels and localized capability descriptions. Settings are also
    complete for account, appearance, password and safe runtime-configuration copy.
    Users, roles and the permission matrix now have the same boundary for metadata,
-   account states, dialogs and stable permission/role labels.
-   Remaining administrative feature-page prose is incremental work.
+   account states, dialogs and stable permission/role labels. Every currently
+   implemented administrative route is complete at the UI-copy boundary; future
+   feature pages must enter through the same typed dictionary and shared API-error
+   context.
 3. Add application-layer commands and protected endpoints for translation workflow.
 4. Backfill `pl` and `en` translation rows idempotently from legacy columns and
    report conflicts without overwriting reviewed translations. The maintenance

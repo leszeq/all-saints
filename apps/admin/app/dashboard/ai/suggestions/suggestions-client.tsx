@@ -17,7 +17,8 @@ import {
   Sparkles,
   Tags,
 } from "lucide-react";
-import { aiApi, getApiErrorMessage } from "@/lib/api";
+import { useAdminSystemCopy } from "@/components/admin-system-copy-context";
+import { aiApi } from "@/lib/api";
 import {
   AI_SUGGESTION_STATUS_COLORS,
   type AiSuggestionItem,
@@ -25,6 +26,7 @@ import {
   type AiSuggestionStatus,
 } from "@/lib/ai";
 import { formatAdminDateTime } from "@/lib/i18n/format";
+import { formatAdminApiError } from "@/lib/i18n/api-errors";
 import type {
   AdminAiSuggestionsDictionary,
   AdminDomainDictionary,
@@ -188,6 +190,7 @@ interface AiSuggestionsClientProps {
 
 export function AiSuggestionsClient({ copy, domainCopy, locale }: AiSuggestionsClientProps) {
   const queryClient = useQueryClient();
+  const { apiErrors } = useAdminSystemCopy();
   const [kindFilter, setKindFilter] = useState<KindFilter>("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("");
   const [search, setSearch] = useState("");
@@ -234,7 +237,9 @@ export function AiSuggestionsClient({ copy, domainCopy, locale }: AiSuggestionsC
 
   const suggestions = suggestionsQuery.data?.data;
   const counts = countsQuery.data?.data;
-  const actionError = actionMutation.error ? getApiErrorMessage(actionMutation.error) : "";
+  const actionError = actionMutation.error
+    ? formatAdminApiError(actionMutation.error, apiErrors)
+    : "";
   const visibleItems = useMemo(() => {
     const term = search.trim().toLowerCase();
     const items = suggestions?.items ?? [];

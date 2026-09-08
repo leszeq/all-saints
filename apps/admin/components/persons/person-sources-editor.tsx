@@ -12,7 +12,9 @@ import {
   Star,
   Trash2,
 } from "lucide-react";
-import { getApiErrorMessage, sourcesApi } from "@/lib/api";
+import { useAdminSystemCopy } from "@/components/admin-system-copy-context";
+import { sourcesApi } from "@/lib/api";
+import { formatAdminApiError } from "@/lib/i18n/api-errors";
 import type { AdminPersonEditorDictionary } from "@/lib/i18n/types";
 
 type SourceKind = "bibliography" | "historical";
@@ -70,6 +72,7 @@ interface PersonSourcesEditorProps {
 
 export function PersonSourcesEditor({ copy, locale, personId }: PersonSourcesEditorProps) {
   const queryClient = useQueryClient();
+  const { apiErrors } = useAdminSystemCopy();
   const [sourceMode, setSourceMode] = useState<SourceMode>("web");
   const [sourceKind, setSourceKind] = useState<SourceKind>("bibliography");
   const [sourceId, setSourceId] = useState("");
@@ -326,7 +329,7 @@ export function PersonSourcesEditor({ copy, locale, personId }: PersonSourcesEdi
 
       {error && (
         <p role="alert" className="rounded-lg border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          {getApiErrorMessage(error)}
+          {formatAdminApiError(error, apiErrors)}
         </p>
       )}
 

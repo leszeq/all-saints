@@ -88,7 +88,8 @@ Kod udostępnia poprawne logi JSON, Prometheus i opcjonalny Sentry, ale odbiorni
 alerty są zadaniem platformowym. Backup PostgreSQL ma działający restore drill,
 lecz nadal wymaga harmonogramu, retencji, szyfrowania, kopii poza hostem i objęcia
 storage plikowego. Granice warstw backendu są egzekwowane bez wyjątków; w kodzie
-pozostają duże routery oraz brak docelowej warstwy i18n. Bieżąca gotowość wykonawcza to
+pozostają duże routery, a uruchomienie routingu kolejnego języka jest celowo odłożone
+do czasu dostarczenia kompletnego drugiego słownika. Bieżąca gotowość wykonawcza to
 **BETA**; przed publicznym wdrożeniem nadal trzeba zamknąć wymienione kroki
 operacyjne.
 
@@ -732,7 +733,7 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 ### I18N-001
 
 - **Severity:** P2
-- **Status po refaktoryzacji:** W realizacji od 2026-09-06. ADR 0005 rozdziela
+- **Status po refaktoryzacji:** Zamknięte 2026-09-08. ADR 0005 rozdziela
   lokalizację UI od wersji językowych treści, zabrania dokładania kolejnych kolumn
   `_xx` i wskazuje `PersonTranslation` jako docelowe źródło prawdy. Oba frontendy
   mają typowany rejestr obsługiwanych języków i ładowane po stronie serwera słowniki;
@@ -823,7 +824,11 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
   słownik stanów, formularzy i działań. Wbudowane role są mapowane po nazwie systemowej,
   a grupy i opisy uprawnień po stabilnym `resource:action`; nazwy ról niestandardowych
   i nieznane przyszłe klucze zachowują dane API jako fallback zgodności. Daty logowania
-  i liczniki otrzymują jawne locale, bez zmiany egzekwowania RBAC przez backend.
+  i liczniki otrzymują jawne locale, bez zmiany egzekwowania RBAC przez backend. Każda
+  istniejąca trasa panelu ma teraz granicę typowanego UI-copy, a wspólny formatter
+  błędów HTTP wymaga jawnego słownika i jest udostępniany przez kontekst aplikacji.
+  Usunięto martwe, polskojęzyczne mapy etykiet, formatery `date-fns` i samą nieużywaną
+  zależność. Nowe ekrany muszą korzystać z tej samej granicy.
   Routing językowy zostanie uruchomiony dopiero z kompletnym drugim językiem.
 - **Category:** Internationalization
 - **File:** oba frontendy i modele Person/Translation

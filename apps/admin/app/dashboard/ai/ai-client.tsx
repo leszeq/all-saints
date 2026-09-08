@@ -17,7 +17,8 @@ import {
   Tags,
   WandSparkles,
 } from "lucide-react";
-import { aiApi, getApiErrorMessage } from "@/lib/api";
+import { useAdminSystemCopy } from "@/components/admin-system-copy-context";
+import { aiApi } from "@/lib/api";
 import {
   AI_FEATURE_STATUS_COLORS,
   AI_SUGGESTION_STATUS_COLORS,
@@ -26,6 +27,7 @@ import {
   type AiSuggestionItem,
 } from "@/lib/ai";
 import { formatAdminDateTime } from "@/lib/i18n/format";
+import { formatAdminApiError } from "@/lib/i18n/api-errors";
 import type {
   AdminAiCenterDictionary,
   AdminAiFeatureKey,
@@ -172,6 +174,7 @@ interface AiCentreClientProps {
 
 export function AiCentreClient({ copy, domainCopy, locale }: AiCentreClientProps) {
   const queryClient = useQueryClient();
+  const { apiErrors } = useAdminSystemCopy();
   const dashboardQuery = useQuery({
     queryKey: ["ai", "dashboard"],
     queryFn: () => aiApi.dashboard(),
@@ -194,7 +197,7 @@ export function AiCentreClient({ copy, domainCopy, locale }: AiCentreClientProps
   const dashboard = dashboardQuery.data?.data;
   const actionError =
     batchEmbeddingMutation.error || batchTagMutation.error
-      ? getApiErrorMessage(batchEmbeddingMutation.error ?? batchTagMutation.error)
+      ? formatAdminApiError(batchEmbeddingMutation.error ?? batchTagMutation.error, apiErrors)
       : "";
   const coverage = Math.min(100, Math.max(0, dashboard?.coverage_percent ?? 0));
   const embeddingBatchDisabled = dashboard?.embedding_provider === "disabled";

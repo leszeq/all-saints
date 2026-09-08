@@ -25,7 +25,9 @@ import {
   User,
   type LucideIcon,
 } from "lucide-react";
-import { API_BASE_URL, authApi, getApiErrorMessage, settingsApi } from "@/lib/api";
+import { useAdminSystemCopy } from "@/components/admin-system-copy-context";
+import { API_BASE_URL, authApi, settingsApi } from "@/lib/api";
+import { formatAdminApiError } from "@/lib/i18n/api-errors";
 import { formatAdminDateTime } from "@/lib/i18n/format";
 import type {
   AdminApplicationFeatureKey,
@@ -284,6 +286,7 @@ export function SettingsClient({
   locale,
 }: SettingsClientProps) {
   const queryClient = useQueryClient();
+  const { apiErrors } = useAdminSystemCopy();
   const { resolvedTheme, setTheme } = useTheme();
   const { user, updateUser } = useAuthStore();
   const [fullName, setFullName] = useState<string | null>(null);
@@ -346,10 +349,12 @@ export function SettingsClient({
       setPasswords({ current: "", next: "", confirm: "" });
       setPasswordMessage(copy.password.changed);
     },
-    onError: (error) => setPasswordError(getApiErrorMessage(error)),
+    onError: (error) => setPasswordError(formatAdminApiError(error, apiErrors)),
   });
 
-  const profileError = profileMutation.error ? getApiErrorMessage(profileMutation.error) : "";
+  const profileError = profileMutation.error
+    ? formatAdminApiError(profileMutation.error, apiErrors)
+    : "";
 
   const submitPassword = () => {
     setPasswordError("");

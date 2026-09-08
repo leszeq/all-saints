@@ -329,6 +329,21 @@ export interface AdminDictionary {
       dashboard: string;
       sessionVerification: string;
     };
+    apiErrors: {
+      unauthorized: string;
+      forbidden: string;
+      notFound: string;
+      conflict: string;
+      validation: string;
+      rateLimited: string;
+      server: string;
+      unexpected: string;
+      invalidValue: string;
+      invalidData: string;
+      network: string;
+      requestFailedPrefix: string;
+      requestFailedSuffix: string;
+    };
   };
   login: {
     metadataTitle: string;
@@ -1669,6 +1684,7 @@ export interface AdminDictionary {
 export type AdminSidebarDictionary = Pick<AdminDictionary, "brand" | "sidebar">;
 export type AdminTopbarDictionary = AdminDictionary["topbar"];
 export type AdminSystemDictionary = AdminDictionary["system"];
+export type AdminApiErrorsDictionary = AdminSystemDictionary["apiErrors"];
 export type AdminLoginDictionary = Pick<AdminDictionary, "brand" | "login">;
 export type AdminDashboardDictionary = AdminDictionary["dashboard"];
 export type AdminDomainDictionary = AdminDictionary["domain"];

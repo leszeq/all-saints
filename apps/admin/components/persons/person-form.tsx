@@ -6,7 +6,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, BookOpenText, Loader2, Save, ShieldCheck } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { calendarApi, geographyApi, getApiErrorMessage, personsApi, sourcesApi, taxonomyApi } from "@/lib/api";
+import { useAdminSystemCopy } from "@/components/admin-system-copy-context";
+import { calendarApi, geographyApi, personsApi, sourcesApi, taxonomyApi } from "@/lib/api";
+import { formatAdminApiError } from "@/lib/i18n/api-errors";
 import type { AdminDomainDictionary, AdminPersonEditorDictionary } from "@/lib/i18n/types";
 import { cn } from "@/lib/utils";
 import { PersonAliasesSection } from "./person-aliases-section";
@@ -109,6 +111,7 @@ export function PersonForm({
 }: PersonFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { apiErrors } = useAdminSystemCopy();
   const [activeTab, setActiveTab] = useState<PersonFormTabId>("basic");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -433,7 +436,7 @@ export function PersonForm({
 
       {mutation.isError && (
         <p role="alert" className="rounded-lg border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          {getApiErrorMessage(mutation.error)}
+          {formatAdminApiError(mutation.error, apiErrors)}
         </p>
       )}
     </form>

@@ -53,11 +53,11 @@ let refreshPromise: Promise<string> | null = null;
 
 export interface ApiErrorMessageOptions {
   messagesByCode?: Readonly<Record<string, string>>;
-  unexpected?: string;
-  invalidValue?: string;
-  invalidData?: string;
-  network?: string;
-  httpError?: (status: number) => string;
+  unexpected: string;
+  invalidValue: string;
+  invalidData: string;
+  network: string;
+  httpError: (status: number) => string;
 }
 
 async function refreshAccessToken(): Promise<string> {
@@ -82,10 +82,10 @@ async function refreshAccessToken(): Promise<string> {
 
 export function getApiErrorMessage(
   error: unknown,
-  options: ApiErrorMessageOptions = {},
+  options: ApiErrorMessageOptions,
 ): string {
   if (!axios.isAxiosError<ApiErrorPayload>(error)) {
-    return options.unexpected ?? "Wystąpił nieoczekiwany błąd podczas zapisu.";
+    return options.unexpected;
   }
 
   const payload = error.response?.data;
@@ -99,7 +99,7 @@ export function getApiErrorMessage(
       .map(({ field, message }) => {
         const fieldName = field?.replace(/^body\./, "");
         return fieldName
-          ? `${fieldName}: ${message ?? options.invalidValue ?? "nieprawidłowa wartość"}`
+          ? `${fieldName}: ${message ?? options.invalidValue}`
           : message;
       })
       .filter(Boolean)
@@ -125,18 +125,13 @@ export function getApiErrorMessage(
     const detailErrors = payload.detail.errors;
     return (
       [detailMessage, ...(detailErrors ?? [])].filter(Boolean).join(" · ") ||
-      options.invalidData ||
-      "API zwróciło nieprawidłowe dane."
+      options.invalidData
     );
   }
   if (!error.response) {
-    return (
-      options.network ??
-      "Nie udało się połączyć z API. Sprawdź, czy backend działa na porcie 8000."
-    );
+    return options.network;
   }
-  return options.httpError?.(error.response.status) ??
-    `Zapis nie powiódł się (HTTP ${error.response.status}).`;
+  return options.httpError(error.response.status);
 }
 
 // Access token lives only in memory. The persistent session is the HttpOnly cookie.

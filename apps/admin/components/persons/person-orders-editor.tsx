@@ -3,7 +3,9 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Plus, ShieldCheck, Trash2 } from "lucide-react";
-import { getApiErrorMessage, ordersApi, personsApi } from "@/lib/api";
+import { useAdminSystemCopy } from "@/components/admin-system-copy-context";
+import { ordersApi, personsApi } from "@/lib/api";
+import { formatAdminApiError } from "@/lib/i18n/api-errors";
 import type {
   AdminCommunityTypeKey,
   AdminDomainDictionary,
@@ -29,6 +31,7 @@ export function PersonOrdersEditor({
   personId,
 }: PersonOrdersEditorProps) {
   const queryClient = useQueryClient();
+  const { apiErrors } = useAdminSystemCopy();
   const [orderId, setOrderId] = useState("");
   const [membershipType, setMembershipType] = useState<OrderMembershipType>("member");
   const [entryDate, setEntryDate] = useState("");
@@ -137,7 +140,7 @@ export function PersonOrdersEditor({
             {addMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} {copy.assignAction}
           </button>
         </div>
-        {addMutation.isError && <p role="alert" className="mt-3 text-xs text-rose-600">{getApiErrorMessage(addMutation.error)}</p>}
+        {addMutation.isError && <p role="alert" className="mt-3 text-xs text-rose-600">{formatAdminApiError(addMutation.error, apiErrors)}</p>}
       </div>
 
       <div className="space-y-2">
@@ -156,7 +159,7 @@ export function PersonOrdersEditor({
             }} className="inline-flex h-8 items-center gap-1 self-start rounded-md border border-rose-200 px-2.5 text-xs text-rose-700 hover:bg-rose-50 disabled:opacity-50 dark:border-rose-900/60 dark:text-rose-300 dark:hover:bg-rose-950/30"><Trash2 className="h-3.5 w-3.5" /> {copy.removeAction}</button>
           </article>
         ))}
-        {removeMutation.isError && <p role="alert" className="text-xs text-rose-600">{getApiErrorMessage(removeMutation.error)}</p>}
+        {removeMutation.isError && <p role="alert" className="text-xs text-rose-600">{formatAdminApiError(removeMutation.error, apiErrors)}</p>}
       </div>
     </div>
   );

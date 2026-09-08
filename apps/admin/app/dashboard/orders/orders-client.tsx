@@ -16,7 +16,9 @@ import {
   UsersRound,
 } from "lucide-react";
 import { OrderDialog } from "@/components/orders/order-dialog";
-import { getApiErrorMessage, ordersApi } from "@/lib/api";
+import { useAdminSystemCopy } from "@/components/admin-system-copy-context";
+import { ordersApi } from "@/lib/api";
+import { formatAdminApiError } from "@/lib/i18n/api-errors";
 import { formatAdminDateTime } from "@/lib/i18n/format";
 import type {
   AdminCommunityTypeKey,
@@ -84,6 +86,7 @@ interface OrdersClientProps {
 
 export function OrdersClient({ copy, domainCopy, locale }: OrdersClientProps) {
   const queryClient = useQueryClient();
+  const { apiErrors } = useAdminSystemCopy();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<OrderFilter>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -370,7 +373,7 @@ export function OrdersClient({ copy, domainCopy, locale }: OrdersClientProps) {
           open
           order={editedOrder}
           pending={saveMutation.isPending}
-          error={saveMutation.isError ? getApiErrorMessage(saveMutation.error) : null}
+          error={saveMutation.isError ? formatAdminApiError(saveMutation.error, apiErrors) : null}
           copy={copy.dialog}
           domainCopy={domainCopy}
           onOpenChange={(open) => {
