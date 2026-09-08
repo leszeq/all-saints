@@ -168,6 +168,62 @@ export type AdminAiFeatureStatusKey = "ready" | "disabled" | "needs_data" | "fal
 export type AdminAiFeatureKey = "embeddings" | "semantic_search" | "summaries" | "tagging";
 export type AdminApplicationFeatureKey = "ai_search" | "maps" | "timeline" | "exports";
 export type AdminEnvironmentKey = "development" | "staging" | "production" | "testing";
+export type AdminUserStatusKey = "active" | "inactive" | "banned" | "pending_verification";
+export type AdminPermissionGroupKey =
+  | "persons"
+  | "editorial_workflow"
+  | "sources_media"
+  | "geography"
+  | "orders"
+  | "calendar"
+  | "translations"
+  | "import_export"
+  | "administration";
+export type AdminPermissionKey =
+  | "persons:read"
+  | "persons:create"
+  | "persons:update"
+  | "persons:delete"
+  | "persons:submit"
+  | "persons:review"
+  | "persons:publish"
+  | "persons:restore"
+  | "sources:read"
+  | "sources:create"
+  | "sources:update"
+  | "sources:delete"
+  | "geography:read"
+  | "geography:create"
+  | "geography:update"
+  | "geography:delete"
+  | "orders:read"
+  | "orders:create"
+  | "orders:update"
+  | "orders:delete"
+  | "images:read"
+  | "images:create"
+  | "images:update"
+  | "images:delete"
+  | "calendar:read"
+  | "calendar:create"
+  | "calendar:update"
+  | "calendar:delete"
+  | "translations:read"
+  | "translations:create"
+  | "translations:update"
+  | "translations:delete"
+  | "export:read"
+  | "export:create"
+  | "import:create"
+  | "audit:read"
+  | "users:read"
+  | "users:create"
+  | "users:update"
+  | "users:delete"
+  | "roles:read"
+  | "roles:create"
+  | "roles:update"
+  | "roles:delete";
 
 export interface AdminDictionary {
   metadata: {
@@ -664,6 +720,124 @@ export interface AdminDictionary {
       description: string;
       explanationTitle: string;
       explanation: string;
+    };
+  };
+  accessControl: {
+    metadataTitle: string;
+    metadataDescription: string;
+    closeDialogAriaLabel: string;
+    sessionVerifying: string;
+    forbidden: {
+      title: string;
+      description: string;
+    };
+    header: {
+      kicker: string;
+      title: string;
+      description: string;
+      addUserAction: string;
+      addRoleAction: string;
+    };
+    summaryAriaLabel: string;
+    summary: {
+      accounts: string;
+      activeRoles: string;
+      permissions: string;
+    };
+    tabs: {
+      ariaLabel: string;
+      users: string;
+      matrix: string;
+    };
+    users: {
+      searchPlaceholder: string;
+      table: {
+        user: string;
+        role: string;
+        status: string;
+        lastLogin: string;
+        actions: string;
+      };
+      loading: string;
+      loadError: string;
+      empty: string;
+      noRole: string;
+      neverLoggedIn: string;
+      editAction: string;
+      editProtectedTitle: string;
+      editTitle: string;
+      deactivateAction: string;
+      deactivateTitle: string;
+      deactivateConfirmPrefix: string;
+    };
+    roles: {
+      loading: string;
+      loadError: string;
+      retryAction: string;
+      empty: string;
+      systemBadge: string;
+      customBadge: string;
+      noDescription: string;
+      usersSuffix: string;
+      permissionsSuffix: string;
+      editAction: string;
+      deleteTitle: string;
+      deleteBlockedTitle: string;
+      deleteConfirmPrefix: string;
+      matrixTitle: string;
+      matrixDescription: string;
+      operation: string;
+      allowedAriaLabel: string;
+      deniedAriaLabel: string;
+      systemDescriptions: Record<AdminSystemRoleKey, string>;
+    };
+    userDialog: {
+      createTitle: string;
+      editTitle: string;
+      createDescription: string;
+      editDescription: string;
+      fullName: string;
+      role: string;
+      chooseRole: string;
+      email: string;
+      temporaryPassword: string;
+      passwordHelp: string;
+      status: string;
+      cancelAction: string;
+      createAction: string;
+      saveAction: string;
+    };
+    roleDialog: {
+      createTitle: string;
+      editTitle: string;
+      description: string;
+      identifier: string;
+      identifierPlaceholder: string;
+      identifierHelp: string;
+      displayName: string;
+      responsibility: string;
+      permissionsLegend: string;
+      permissionsHelp: string;
+      cancelAction: string;
+      createAction: string;
+      saveAction: string;
+    };
+    userStatusLabels: Record<AdminUserStatusKey, string>;
+    permissionGroupLabels: Record<AdminPermissionGroupKey, string>;
+    permissionLabels: Record<AdminPermissionKey, string>;
+    errors: {
+      unauthorized: string;
+      forbidden: string;
+      notFound: string;
+      conflict: string;
+      validation: string;
+      server: string;
+      unexpected: string;
+      invalidValue: string;
+      invalidData: string;
+      network: string;
+      requestFailedPrefix: string;
+      requestFailedSuffix: string;
     };
   };
   aiCenter: {
@@ -1501,6 +1675,7 @@ export type AdminDomainDictionary = AdminDictionary["domain"];
 export type AdminReviewDictionary = AdminDictionary["review"];
 export type AdminQualityDictionary = AdminDictionary["quality"];
 export type AdminSettingsDictionary = AdminDictionary["settings"];
+export type AdminAccessControlDictionary = AdminDictionary["accessControl"];
 export type AdminAiCenterDictionary = AdminDictionary["aiCenter"];
 export type AdminAiSuggestionsDictionary = AdminDictionary["aiSuggestions"];
 export type AdminOrdersDictionary = AdminDictionary["ordersWorkspace"];

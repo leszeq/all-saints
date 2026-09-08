@@ -199,6 +199,12 @@ the existing public API.
     names remain untouched. Profile, appearance, password and read-only runtime
     configuration states use feature copy, and dates and numbers receive the explicit
     interface locale. The API continues to expose configuration state without secrets.
+32. The administrative access-control route loads localized metadata and typed copy
+    at its server boundary. Built-in role names and descriptions, account states,
+    permission groups and permission descriptions resolve from stable role names and
+    `resource:action` keys. Custom roles and unknown future permissions preserve their
+    API-provided labels as compatibility fallbacks. Counts and login dates receive the
+    explicit interface locale, while RBAC decisions remain server-enforced.
 
 ## Consequences
 
@@ -250,6 +256,8 @@ the existing public API.
    queue now have the same boundary for metadata, filters, operational states,
    stable status/kind labels and localized capability descriptions. Settings are also
    complete for account, appearance, password and safe runtime-configuration copy.
+   Users, roles and the permission matrix now have the same boundary for metadata,
+   account states, dialogs and stable permission/role labels.
    Remaining administrative feature-page prose is incremental work.
 3. Add application-layer commands and protected endpoints for translation workflow.
 4. Backfill `pl` and `en` translation rows idempotently from legacy columns and

@@ -80,23 +80,6 @@ export interface UpdateRolePayload {
   permissions?: string[];
 }
 
-export const ROLE_LABELS: Record<string, string> = {
-  super_admin: "Superadministrator",
-  admin: "Administrator",
-  editor: "Redaktor",
-  reviewer: "Recenzent",
-  translator: "Tłumacz",
-  reader: "Czytelnik wewnętrzny",
-  guest: "Gość",
-};
-
-export const USER_STATUS_LABELS: Record<UserStatus, string> = {
-  active: "Aktywny",
-  inactive: "Nieaktywny",
-  banned: "Zablokowany",
-  pending_verification: "Oczekuje na aktywację",
-};
-
 export const USER_STATUS_COLORS: Record<UserStatus, string> = {
   active: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300",
   inactive: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",

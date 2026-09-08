@@ -818,7 +818,12 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
   podglądu konfiguracji. Flagi funkcji i środowiska korzystają ze stabilnych kluczy,
   role systemowe ze wspólnej mapy, a role niestandardowe zachowują nazwę z API. Test
   kontraktowy chroni odpowiedź ustawień przed dodaniem pól haseł, sekretów i kluczy API;
-  frontend otrzymuje wyłącznie informację, czy klucz OpenAI jest skonfigurowany.
+  frontend otrzymuje wyłącznie informację, czy klucz OpenAI jest skonfigurowany. Panel
+  użytkowników, ról i macierzy uprawnień ma teraz serwerowe metadata oraz kompletny
+  słownik stanów, formularzy i działań. Wbudowane role są mapowane po nazwie systemowej,
+  a grupy i opisy uprawnień po stabilnym `resource:action`; nazwy ról niestandardowych
+  i nieznane przyszłe klucze zachowują dane API jako fallback zgodności. Daty logowania
+  i liczniki otrzymują jawne locale, bez zmiany egzekwowania RBAC przez backend.
   Routing językowy zostanie uruchomiony dopiero z kompletnym drugim językiem.
 - **Category:** Internationalization
 - **File:** oba frontendy i modele Person/Translation
