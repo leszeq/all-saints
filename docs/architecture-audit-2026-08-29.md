@@ -39,14 +39,14 @@ Stan na 2026-09-08 po kolejnych etapach refaktoryzacji:
 | Kontrola | Wynik po zmianach |
 | --- | --- |
 | Backend pytest | **242 passed**, 0 failures, 0 errors, 0 warnings |
-| Backend coverage | **82.36%**, wymagany próg 80% spełniony |
+| Backend coverage | **82.42%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0016_person_names`, jeden head |
 | Nowa pusta baza | upgrade 0001 → 0016 oraz downgrade/re-upgrade 0016: PASS |
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 120 plików źródłowych |
+| Ruff / strict mypy | PASS, mypy analizuje 123 pliki źródłowe |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -80,6 +80,14 @@ ogólnego routera źródeł do osobnych modułów pionowych; router agregujący 
 się z 728 do 215 linii. Adresy, zabezpieczenia, odpowiedzi OpenAPI, nazwa trasy
 używana do generowania URL-i obrazów, wersjonowanie oraz granica transakcji pozostały
 bez zmian i są chronione testami kontraktowymi oraz integracyjnymi.
+
+Router uwierzytelniania został następnie podzielony na sesje, profil bieżącego
+użytkownika, współdzielone zależności autoryzacyjne i schematy transportowe. Główny
+moduł zmniejszył się z 675 do 405 linii. Zachowano dotychczasowe re-eksporty
+`get_current_user`, `require_permission`, schematów i operacji konta, dlatego
+pozostałe routery oraz istniejące dependency overrides nie wymagają migracji.
+Testy nadal obejmują rate limiting, rotację refresh tokenów, unieważnienie sesji po
+zmianie hasła, transakcyjność audytu, `/me` i macierz uprawnień.
 
 Powstał automatyczny CI z lintem, strict mypy, testami/coverage, audytem zależności,
 kontrolą migracji, buildami frontendów oraz smoke testem całego stosu produkcyjnego.

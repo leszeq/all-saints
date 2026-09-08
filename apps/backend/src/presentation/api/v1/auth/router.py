@@ -13,39 +13,60 @@ from __future__ import annotations
 
 import hashlib
 import uuid
-from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from loguru import logger
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.application.services.audit_service import AuditContext, add_audit_log
 from src.application.services.auth_security_service import AuthenticationSecurityRecorder
 from src.core.config import settings
-from src.core.security import JWTService, is_strong_password, jwt_service, password_hasher
+from src.core.security import JWTService, jwt_service, password_hasher
 from src.domain.identity.models import (
     AuditAction,
     RefreshToken,
     Role,
-    RolePermission,
     User,
     UserRole,
     UserStatus,
 )
 from src.infrastructure.cache.redis_client import RateLimiter, RedisClient, get_redis
 from src.infrastructure.db.session import get_db_session, get_session_factory
+from src.presentation.api.v1.auth.account import (
+    change_password,
+    get_me,
+    update_me,
+)
+from src.presentation.api.v1.auth.account import (
+    router as account_router,
+)
+from src.presentation.api.v1.auth.dependencies import get_current_user, require_permission
+from src.presentation.api.v1.auth.schemas import (
+    ChangePasswordRequest,
+    LoginRequest,
+    TokenResponse,
+    UpdateProfileRequest,
+    UserProfileResponse,
+)
 
 router = APIRouter()
-bearer_scheme = HTTPBearer(
-    auto_error=False,
-    description="JWT otrzymany z endpointu POST /api/v1/auth/login",
-)
+
+__all__ = [
+    "ChangePasswordRequest",
+    "LoginRequest",
+    "TokenResponse",
+    "UpdateProfileRequest",
+    "UserProfileResponse",
+    "change_password",
+    "get_current_user",
+    "get_me",
+    "require_permission",
+    "update_me",
+]
 
 
 def _audit_context(
@@ -124,157 +145,6 @@ async def _enforce_login_rate_limit(
         return
 
     response.headers["X-RateLimit-Remaining"] = str(min(remaining))
-
-
-# ==============================================================================
-# SCHEMAS
-# ==============================================================================
-
-
-class LoginRequest(BaseModel):
-    """Login credentials."""
-
-    email: EmailStr = Field(..., description="Email address")
-    password: str = Field(..., min_length=1, description="Password")
-
-
-class TokenResponse(BaseModel):
-    """Successful authentication response."""
-
-    access_token: str
-    token_type: str = "bearer"
-    expires_in: int = Field(description="Access token TTL in seconds")
-
-
-class UserProfileResponse(BaseModel):
-    """Current user profile."""
-
-    model_config = ConfigDict(from_attributes=True)
-
-    id: str
-    email: str
-    full_name: str
-    status: str
-    roles: list[str]
-    permissions: list[str]
-    preferred_language: str
-    last_login_at: datetime | None
-
-
-class ChangePasswordRequest(BaseModel):
-    """Password change request."""
-
-    current_password: str = Field(..., min_length=1)
-    new_password: str = Field(..., min_length=8)
-
-
-class UpdateProfileRequest(BaseModel):
-    """Editable fields of the current user's profile."""
-
-    full_name: str | None = Field(None, min_length=2, max_length=300)
-    preferred_language: str | None = Field(None, min_length=2, max_length=10)
-
-
-# ==============================================================================
-# DEPENDENCIES
-# ==============================================================================
-
-
-async def get_current_user(
-    request: Request,
-    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
-    db: AsyncSession = Depends(get_db_session),
-) -> User:
-    """
-    FastAPI dependency: extract and validate the Bearer token,
-    then load the current user from the database.
-
-    Raises:
-        HTTPException 401: If token is missing, invalid, or expired.
-        HTTPException 403: If user is inactive or locked.
-    """
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Wymagane uwierzytelnienie",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-
-    # Extract token from Authorization header. HTTPBearer also exposes the
-    # authentication flow in Swagger UI.
-    if credentials is None or credentials.scheme.lower() != "bearer":
-        raise credentials_exception
-
-    token = credentials.credentials.strip()
-    if not token:
-        raise credentials_exception
-
-    # Verify token
-    from jwt import InvalidTokenError
-
-    try:
-        payload = jwt_service.verify_access_token(token)
-    except InvalidTokenError:
-        raise credentials_exception from None
-
-    # Load user
-    result = await db.execute(
-        select(User)
-        .options(
-            selectinload(User.roles)
-            .selectinload(UserRole.role)
-            .selectinload(Role.permissions)
-            .selectinload(RolePermission.permission)
-        )
-        .where(User.id == payload.user_id)
-        .where(User.deleted_at.is_(None))
-    )
-    user = result.scalar_one_or_none()
-
-    if user is None:
-        raise credentials_exception
-
-    if not payload.matches_password_version(user.password_changed_at):
-        raise credentials_exception
-
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Konto jest nieaktywne",
-        )
-
-    if user.is_locked:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Konto jest tymczasowo zablokowane",
-        )
-
-    request.state.user_id = str(user.id)
-    request.state.user_email = user.email
-    return user
-
-
-def require_permission(resource: str, action: str) -> Callable[..., Awaitable[User]]:
-    """
-    Factory for permission-checking dependencies.
-
-    Usage::
-
-        @router.post("/persons")
-        async def create_person(
-            user: User = Depends(require_permission("persons", "create")),
-        ):
-            ...
-    """
-
-    async def _check(user: User = Depends(get_current_user)) -> User:
-        if not user.has_permission(resource, action):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Brak uprawnień: {resource}:{action}",
-            )
-        return user
-
-    return _check
 
 
 # ==============================================================================
@@ -532,144 +402,4 @@ async def logout(
     response.delete_cookie(key="refresh_token", path="/api/v1/auth")
 
 
-@router.get(
-    "/me",
-    response_model=UserProfileResponse,
-    summary="Get current user",
-    description="Return the profile of the currently authenticated user.",
-)
-async def get_me(current_user: User = Depends(get_current_user)) -> UserProfileResponse:
-    """Return the current user's profile."""
-    return UserProfileResponse(
-        id=str(current_user.id),
-        email=current_user.email,
-        full_name=current_user.full_name,
-        status=current_user.status,
-        roles=[ur.role.name for ur in current_user.roles if ur.role],
-        permissions=sorted(current_user.get_permissions()),
-        preferred_language=current_user.preferred_language,
-        last_login_at=current_user.last_login_at,
-    )
-
-
-@router.patch(
-    "/me",
-    response_model=UserProfileResponse,
-    summary="Update current user profile",
-    description="Update editable profile fields for the currently authenticated user.",
-)
-async def update_me(
-    data: UpdateProfileRequest,
-    request: Request,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db_session),
-) -> UserProfileResponse:
-    """Update the current user's own profile."""
-    previous_profile = {
-        "full_name": current_user.full_name,
-        "preferred_language": current_user.preferred_language,
-    }
-    if data.full_name is not None:
-        current_user.full_name = data.full_name.strip()
-    if data.preferred_language is not None:
-        current_user.preferred_language = data.preferred_language.strip().lower()
-
-    current_user.updated_at = datetime.now(UTC)
-    add_audit_log(
-        db,
-        context=_audit_context(
-            request,
-            user_id=current_user.id,
-            user_email=current_user.email,
-        ),
-        action=AuditAction.UPDATE,
-        resource_type="users",
-        resource_id=current_user.id,
-        old_value=previous_profile,
-        new_value={
-            "full_name": current_user.full_name,
-            "preferred_language": current_user.preferred_language,
-        },
-        extra_metadata={"scope": "own_profile"},
-    )
-    await db.flush()
-    await db.refresh(current_user)
-
-    return UserProfileResponse(
-        id=str(current_user.id),
-        email=current_user.email,
-        full_name=current_user.full_name,
-        status=current_user.status,
-        roles=[ur.role.name for ur in current_user.roles if ur.role],
-        permissions=sorted(current_user.get_permissions()),
-        preferred_language=current_user.preferred_language,
-        last_login_at=current_user.last_login_at,
-    )
-
-
-@router.post(
-    "/change-password",
-    status_code=status.HTTP_204_NO_CONTENT,
-    response_class=Response,
-    response_model=None,
-    summary="Change password",
-    description="Change the current user's password.",
-)
-async def change_password(
-    data: ChangePasswordRequest,
-    request: Request,
-    response: Response,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db_session),
-) -> None:
-    """Change the password of the currently authenticated user."""
-    # Verify current password
-    if not password_hasher.verify(data.current_password, current_user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nieprawidłowe obecne hasło",
-        )
-
-    # Validate new password strength
-    is_strong, errors = is_strong_password(data.new_password)
-    if not is_strong:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"message": "Hasło jest zbyt słabe", "errors": errors},
-        )
-
-    # Update password
-    changed_at = datetime.now(UTC)
-    current_user.hashed_password = password_hasher.hash(data.new_password)
-    current_user.password_changed_at = changed_at
-    await db.execute(
-        update(RefreshToken)
-        .where(
-            RefreshToken.user_id == current_user.id,
-            RefreshToken.revoked_at.is_(None),
-        )
-        .values(revoked_at=changed_at)
-    )
-    add_audit_log(
-        db,
-        context=_audit_context(
-            request,
-            user_id=current_user.id,
-            user_email=current_user.email,
-        ),
-        action=AuditAction.UPDATE,
-        resource_type="users",
-        resource_id=current_user.id,
-        extra_metadata={"event": "password_changed", "sessions_revoked": True},
-    )
-    await db.flush()
-
-    response.delete_cookie(
-        key="refresh_token",
-        path="/api/v1/auth",
-        secure=settings.SECURE_COOKIES,
-        httponly=True,
-        samesite="lax",
-    )
-
-    logger.info(f"Password changed for user: {current_user.email}")
+router.include_router(account_router)
