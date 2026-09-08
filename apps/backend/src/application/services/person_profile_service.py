@@ -473,18 +473,18 @@ class PersonProfileService:
         for source in sources:
             if source.kind == "bibliography":
                 assert source.bibliography is not None
-                referenced = await self._find_or_create_bibliography(source.bibliography)
+                bibliography = await self._find_or_create_bibliography(source.bibliography)
                 link = PersonSource(
                     person_id=person_id,
-                    bibliography_id=referenced.id,
+                    bibliography_id=bibliography.id,
                     **source.link.model_dump(),
                 )
             else:
                 assert source.historical_source is not None
-                referenced = await self._find_or_create_historical(source.historical_source)
+                historical_source = await self._find_or_create_historical(source.historical_source)
                 link = PersonSource(
                     person_id=person_id,
-                    historical_source_id=referenced.id,
+                    historical_source_id=historical_source.id,
                     **source.link.model_dump(),
                 )
             self.db.add(link)

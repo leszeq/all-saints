@@ -9,12 +9,12 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
 
 from src.application.commands.persons import PersonCreateSchema
-from src.application.commands.religious_orders import AddReligiousOrderMembershipCommand
+from src.domain.geography.models import OrderMembershipType
 from src.domain.hagiography.models import LiturgicalColor
 from src.domain.liturgy.models import FeastRank
 from src.domain.sources.models import SourceType
 
-PERSON_PROFILE_SCHEMA_VERSION = 1
+PERSON_PROFILE_SCHEMA_VERSION: Literal[1] = 1
 
 
 class PortablePersonData(PersonCreateSchema):
@@ -23,11 +23,15 @@ class PortablePersonData(PersonCreateSchema):
     model_config = ConfigDict(extra="forbid")
 
 
-class PortableOrderMembership(AddReligiousOrderMembershipCommand):
+class PortableOrderMembership(BaseModel):
     """Order membership resolved by the community's stable slug during import."""
 
     order_slug: str = Field(..., min_length=2, max_length=500)
-    person_id: uuid.UUID | None = Field(default=None, exclude=True)
+    entry_date: str | None = Field(None, max_length=50)
+    exit_date: str | None = Field(None, max_length=50)
+    is_founder: bool = False
+    membership_type: OrderMembershipType = OrderMembershipType.MEMBER
+    notes: str | None = None
 
 
 class PortableFeastEntry(BaseModel):
@@ -128,7 +132,7 @@ class PortablePersonSource(BaseModel):
 class PersonProfileDocument(BaseModel):
     """Publicly documented JSON envelope supported by import and export."""
 
-    schema_version: Literal[PERSON_PROFILE_SCHEMA_VERSION] = PERSON_PROFILE_SCHEMA_VERSION
+    schema_version: Literal[1] = PERSON_PROFILE_SCHEMA_VERSION
     exported_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     source_person_id: uuid.UUID | None = None
     source_slug: str | None = None

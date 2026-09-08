@@ -38,15 +38,15 @@ Stan na 2026-09-08 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **218 passed**, 0 failures, 0 errors, 0 warnings |
-| Backend coverage | **82.82%**, wymagany próg 80% spełniony |
+| Backend pytest | **241 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend coverage | **82.33%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0016_person_names`, jeden head |
 | Nowa pusta baza | upgrade 0001 → 0016 oraz downgrade/re-upgrade 0016: PASS |
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 109 plików źródłowych |
+| Ruff / strict mypy | PASS, mypy analizuje 119 plików źródłowych |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -74,6 +74,13 @@ Moduł AI otrzymał dodatkowe testy providerów oraz integracje z pgvector. Przy
 naprawiono obsługę embeddingów zwracanych jako tablice NumPy i licznik rekordów z
 tagami AI, który wcześniej traktował JSON `null` jak faktyczną listę tagów.
 
+Rozpoczęto również przyrostowy podział dużych adapterów HTTP. Zarządzanie
+przypisaniami źródeł do postaci zostało wydzielone z ogólnego routera źródeł do
+osobnego modułu pionowego; router agregujący zmniejszył się z 728 do 453 linii.
+Adresy, zabezpieczenia, odpowiedzi OpenAPI, wersjonowanie oraz granica transakcji
+pozostały bez zmian i są chronione istniejącymi testami kontraktowymi oraz
+integracyjnymi.
+
 Powstał automatyczny CI z lintem, strict mypy, testami/coverage, audytem zależności,
 kontrolą migracji, buildami frontendów oraz smoke testem całego stosu produkcyjnego.
 Obrazy backendu i Next.js działają jako użytkownicy nie-root; DB i Redis są w
@@ -88,8 +95,9 @@ Kod udostępnia poprawne logi JSON, Prometheus i opcjonalny Sentry, ale odbiorni
 alerty są zadaniem platformowym. Backup PostgreSQL ma działający restore drill,
 lecz nadal wymaga harmonogramu, retencji, szyfrowania, kopii poza hostem i objęcia
 storage plikowego. Granice warstw backendu są egzekwowane bez wyjątków; w kodzie
-pozostają duże routery, a uruchomienie routingu kolejnego języka jest celowo odłożone
-do czasu dostarczenia kompletnego drugiego słownika. Bieżąca gotowość wykonawcza to
+pozostają dalsze duże routery do przyrostowego podziału, a uruchomienie routingu
+kolejnego języka jest celowo odłożone do czasu dostarczenia kompletnego drugiego
+słownika. Bieżąca gotowość wykonawcza to
 **BETA**; przed publicznym wdrożeniem nadal trzeba zamknąć wymienione kroki
 operacyjne.
 
