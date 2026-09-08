@@ -793,9 +793,12 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
   Szczegóły osoby mają osobną granicę serwer/klient, słownikowe metadata, akcje,
   stany puste i historię. Typ, status, era, płeć, ranga i kolor liturgiczny oraz typ
   patronatu są mapowane ze stabilnych kluczy przez wspólne etykiety domenowe, a daty
-  korzystają z jawnego locale. Pozostają teksty formularza osoby oraz innych ekranów
-  funkcjonalnych panelu; routing zostanie uruchomiony dopiero z kompletnym drugim
-  językiem.
+  korzystają z jawnego locale. Trasy tworzenia i edycji osoby ładują metadata oraz
+  tekst szkieletu edytora na serwerze. Uprawnienia, nagłówki, stabilne zakładki,
+  stany wymagające wcześniejszego zapisu, walidacja pliku avatara i akcje formularza
+  korzystają z typowanej sekcji `personEditor`. Pozostają teksty sekcji pól,
+  komunikaty walidacji schematu oraz innych ekranów funkcjonalnych panelu; routing
+  zostanie uruchomiony dopiero z kompletnym drugim językiem.
 - **Category:** Internationalization
 - **File:** oba frontendy i modele Person/Translation
 - **Lines:** setki hardcoded strings

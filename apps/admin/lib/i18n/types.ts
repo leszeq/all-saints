@@ -532,6 +532,54 @@ export interface AdminDictionary {
       importAction: string;
     };
   };
+  personEditor: {
+    metadata: {
+      newTitle: string;
+      newDescription: string;
+      editTitle: string;
+      editDescription: string;
+    };
+    permissions: {
+      createTitle: string;
+      createDescription: string;
+      readOnlyTitle: string;
+      readOnlyDescription: string;
+    };
+    notFound: string;
+    backToListAction: string;
+    header: {
+      newTitle: string;
+      newDescription: string;
+      editTitlePrefix: string;
+      editDescription: string;
+    };
+    tabs: {
+      basic: string;
+      aliases: string;
+      dates: string;
+      biography: string;
+      patronages: string;
+      devotion: string;
+      orders: string;
+      sources: string;
+      avatar: string;
+    };
+    prerequisites: {
+      ordersTitle: string;
+      ordersDescription: string;
+      sourcesTitle: string;
+      sourcesDescription: string;
+    };
+    avatarValidation: {
+      invalidType: string;
+      maxSize: string;
+    };
+    actions: {
+      cancel: string;
+      saveChanges: string;
+      createPerson: string;
+    };
+  };
   personDetail: {
     metadataTitle: string;
     metadataDescription: string;
@@ -599,4 +647,5 @@ export type AdminDomainDictionary = AdminDictionary["domain"];
 export type AdminReviewDictionary = AdminDictionary["review"];
 export type AdminQualityDictionary = AdminDictionary["quality"];
 export type AdminPersonsDictionary = AdminDictionary["persons"];
+export type AdminPersonEditorDictionary = AdminDictionary["personEditor"];
 export type AdminPersonDetailDictionary = AdminDictionary["personDetail"];

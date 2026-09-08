@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, BookOpenText, Loader2, Save, ShieldCheck } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { calendarApi, geographyApi, getApiErrorMessage, personsApi, sourcesApi, taxonomyApi } from "@/lib/api";
+import type { AdminPersonEditorDictionary } from "@/lib/i18n/types";
 import { cn } from "@/lib/utils";
 import { PersonAliasesSection } from "./person-aliases-section";
 import { PersonAvatarSection } from "./person-avatar-section";
@@ -26,19 +27,22 @@ import { PersonPatronagesSection } from "./person-patronages-section";
 import { PersonOrdersEditor } from "./person-orders-editor";
 import { PersonSourcesEditor } from "./person-sources-editor";
 
-const TABS = [
-  { id: "basic", label: "Dane podstawowe" },
-  { id: "aliases", label: "Nazwy i aliasy" },
-  { id: "dates", label: "Daty i miejsca" },
-  { id: "biography", label: "Biografia" },
-  { id: "patronages", label: "Patronaty" },
-  { id: "devotion", label: "Kult i ikonografia" },
-  { id: "orders", label: "Zakony" },
-  { id: "sources", label: "Źródła" },
-  { id: "avatar", label: "Avatar" },
+const TAB_IDS = [
+  "basic",
+  "aliases",
+  "dates",
+  "biography",
+  "patronages",
+  "devotion",
+  "orders",
+  "sources",
+  "avatar",
 ] as const;
 
+type PersonFormTabId = (typeof TAB_IDS)[number];
+
 interface PersonFormProps {
+  copy: AdminPersonEditorDictionary;
   personId?: string;
   defaultValues?: Partial<PersonFormData>;
   isEdit?: boolean;
@@ -92,10 +96,16 @@ async function syncPersonFeast(
   return null;
 }
 
-export function PersonForm({ personId, defaultValues, isEdit = false, expectedVersion }: PersonFormProps) {
+export function PersonForm({
+  copy,
+  personId,
+  defaultValues,
+  isEdit = false,
+  expectedVersion,
+}: PersonFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]["id"]>("basic");
+  const [activeTab, setActiveTab] = useState<PersonFormTabId>("basic");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFileError, setAvatarFileError] = useState<string | null>(null);
@@ -210,8 +220,8 @@ export function PersonForm({ personId, defaultValues, isEdit = false, expectedVe
   useEffect(() => {
     const syncTabFromHash = () => {
       const hash = window.location.hash.replace("#", "");
-      if (TABS.some((tab) => tab.id === hash)) {
-        setActiveTab(hash as (typeof TABS)[number]["id"]);
+      if (TAB_IDS.some((tabId) => tabId === hash)) {
+        setActiveTab(hash as PersonFormTabId);
       }
     };
 
@@ -250,11 +260,11 @@ export function PersonForm({ personId, defaultValues, isEdit = false, expectedVe
     setAvatarFileError(null);
     if (!file) return;
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      setAvatarFileError("Wybierz obraz JPG, PNG lub WebP.");
+      setAvatarFileError(copy.avatarValidation.invalidType);
       return;
     }
     if (file.size > 8 * 1024 * 1024) {
-      setAvatarFileError("Obraz może mieć maksymalnie 8 MB.");
+      setAvatarFileError(copy.avatarValidation.maxSize);
       return;
     }
     setAvatarFile(file);
@@ -267,7 +277,7 @@ export function PersonForm({ personId, defaultValues, isEdit = false, expectedVe
     setAvatarFileError(null);
   };
 
-  const selectTab = (tabId: (typeof TABS)[number]["id"]) => {
+  const selectTab = (tabId: PersonFormTabId) => {
     setActiveTab(tabId);
     window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${tabId}`);
   };
@@ -275,19 +285,19 @@ export function PersonForm({ personId, defaultValues, isEdit = false, expectedVe
   return (
     <form onSubmit={handleSubmit((data) => mutation.mutate(data))} className="space-y-6">
       <div className="flex w-fit max-w-full flex-wrap gap-1 rounded-lg border border-border bg-muted/40 p-1">
-        {TABS.map((tab) => (
+        {TAB_IDS.map((tabId) => (
           <button
-            key={tab.id}
+            key={tabId}
             type="button"
-            onClick={() => selectTab(tab.id)}
+            onClick={() => selectTab(tabId)}
             className={cn(
               "rounded-md px-4 py-1.5 text-sm font-medium transition-all",
-              activeTab === tab.id
+              activeTab === tabId
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
-            {tab.label}
+            {copy.tabs[tabId]}
           </button>
         ))}
       </div>
@@ -335,9 +345,9 @@ export function PersonForm({ personId, defaultValues, isEdit = false, expectedVe
         ) : (
           <div className="rounded-xl border border-dashed border-border bg-muted/20 p-8 text-center">
             <ShieldCheck className="mx-auto h-7 w-7 text-primary" />
-            <h3 className="mt-3 text-sm font-semibold text-foreground">Najpierw utwórz rekord osoby</h3>
+            <h3 className="mt-3 text-sm font-semibold text-foreground">{copy.prerequisites.ordersTitle}</h3>
             <p className="mx-auto mt-1 max-w-lg text-xs leading-5 text-muted-foreground">
-              Przynależność do wspólnot można przypisać po pierwszym zapisie, gdy postać otrzyma własny identyfikator.
+              {copy.prerequisites.ordersDescription}
             </p>
           </div>
         )
@@ -349,10 +359,9 @@ export function PersonForm({ personId, defaultValues, isEdit = false, expectedVe
         ) : (
           <div className="rounded-xl border border-dashed border-border bg-muted/20 p-8 text-center">
             <BookOpenText className="mx-auto h-7 w-7 text-primary" />
-            <h3 className="mt-3 text-sm font-semibold text-foreground">Najpierw utwórz rekord osoby</h3>
+            <h3 className="mt-3 text-sm font-semibold text-foreground">{copy.prerequisites.sourcesTitle}</h3>
             <p className="mx-auto mt-1 max-w-lg text-xs leading-5 text-muted-foreground">
-              Źródła można przypisać po pierwszym zapisie, gdy postać otrzyma własny identyfikator.
-              Po utworzeniu rekordu otwórz jego edycję i wróć do tej zakładki.
+              {copy.prerequisites.sourcesDescription}
             </p>
           </div>
         )
@@ -378,7 +387,7 @@ export function PersonForm({ personId, defaultValues, isEdit = false, expectedVe
           className="flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
-          Anuluj
+          {copy.actions.cancel}
         </button>
 
         <button
@@ -387,7 +396,7 @@ export function PersonForm({ personId, defaultValues, isEdit = false, expectedVe
           className="flex items-center gap-2 rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          {isEdit ? "Zapisz zmiany" : "Utwórz osobę"}
+          {isEdit ? copy.actions.saveChanges : copy.actions.createPerson}
         </button>
       </div>
 

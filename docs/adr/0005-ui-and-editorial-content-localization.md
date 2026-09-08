@@ -164,6 +164,12 @@ the existing public API.
     liturgical colour and patronage type resolve from shared stable domain keys, with
     unknown values preserved as compatibility fallbacks. Liturgical, recognition and
     version dates are formatted with the explicit interface locale.
+26. The administrative person-create and person-edit routes load metadata and editor
+    copy on the server before rendering their permission-aware client boundaries. The
+    shared form shell receives typed `personEditor` copy for navigation, prerequisite
+    states, avatar-file validation and save actions. Stable tab identifiers and form
+    field names remain independent of translated labels; field-section copy and schema
+    validation messages migrate incrementally without changing payload contracts.
 
 ## Consequences
 
@@ -205,7 +211,10 @@ the existing public API.
    profile-import flow, metadata, filters, states, labels and locale-aware formatting,
    is also complete at the UI-copy boundary. The person-detail route now has the same
    boundary for metadata, actions, domain labels, dates, empty states and history.
-   Remaining administrative editor and other feature-page prose is incremental work.
+   Person-create/edit routes and the shared editor shell now cover metadata,
+   permissions, headings, tab navigation, prerequisite states, avatar validation and
+   save actions. Remaining field-section, schema-validation and other administrative
+   feature-page prose is incremental work.
 3. Add application-layer commands and protected endpoints for translation workflow.
 4. Backfill `pl` and `en` translation rows idempotently from legacy columns and
    report conflicts without overwriting reviewed translations. The maintenance
