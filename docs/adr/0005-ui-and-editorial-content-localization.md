@@ -187,6 +187,12 @@ the existing public API.
     from shared stable domain keys in both the table and create/edit dialog; feature
     copy, metadata, dates and counts receive the explicit interface locale. The former
     Polish label constants have been removed from the generic utility module.
+30. The administrative AI centre and suggestion queue load metadata and typed copy at
+    their server route boundaries. Suggestion kinds, suggestion states and AI feature
+    states resolve from shared stable keys; known capabilities resolve their title,
+    description and live metric detail from the UI dictionary. Presentation strings
+    already returned by the API remain compatibility fallbacks for unknown future
+    capabilities. Dates and counts receive the explicit interface locale.
 
 ## Consequences
 
@@ -234,8 +240,10 @@ the existing public API.
    use the same typed boundary, including aliases, patronages, media, communities and
    sources. The geography, source/media, religious-community and controlled-dictionary
    workspaces are also complete at the UI-copy boundary, including metadata, filters,
-   metrics, tables, dialogs, domain labels and states. Remaining administrative
-   feature-page prose is incremental work.
+   metrics, tables, dialogs, domain labels and states. The AI centre and suggestion
+   queue now have the same boundary for metadata, filters, operational states,
+   stable status/kind labels and localized capability descriptions. Remaining
+   administrative feature-page prose is incremental work.
 3. Add application-layer commands and protected endpoints for translation workflow.
 4. Backfill `pl` and `en` translation rows idempotently from legacy columns and
    report conflicts without overwriting reviewed translations. The maintenance

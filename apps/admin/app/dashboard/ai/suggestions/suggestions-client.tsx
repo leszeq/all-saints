@@ -19,24 +19,22 @@ import {
 } from "lucide-react";
 import { aiApi, getApiErrorMessage } from "@/lib/api";
 import {
-  AI_SUGGESTION_KIND_LABELS,
   AI_SUGGESTION_STATUS_COLORS,
-  AI_SUGGESTION_STATUS_LABELS,
   type AiSuggestionItem,
   type AiSuggestionKind,
   type AiSuggestionStatus,
 } from "@/lib/ai";
-import { cn, formatDateTime } from "@/lib/utils";
+import { formatAdminDateTime } from "@/lib/i18n/format";
+import type {
+  AdminAiSuggestionsDictionary,
+  AdminDomainDictionary,
+} from "@/lib/i18n/types";
+import { cn } from "@/lib/utils";
 
 type KindFilter = "" | AiSuggestionKind;
 type StatusFilter = "" | AiSuggestionStatus;
 
-const kindOptions: Array<{ value: KindFilter; label: string }> = [
-  { value: "", label: "Wszystkie" },
-  { value: "embedding", label: "Embeddingi" },
-  { value: "summary", label: "Streszczenia" },
-  { value: "tags", label: "Tagi" },
-];
+const KIND_FILTERS: KindFilter[] = ["", "embedding", "summary", "tags"];
 
 function renderKindIcon(kind: AiSuggestionKind) {
   if (kind === "embedding") return <DatabaseZap className="h-4 w-4" />;
@@ -44,12 +42,12 @@ function renderKindIcon(kind: AiSuggestionKind) {
   return <Tags className="h-4 w-4" />;
 }
 
-function actionLabel(item: AiSuggestionItem) {
-  if (item.status === "blocked") return "Zablokowane";
-  if (item.action === "generate_embedding") return "Generuj embedding";
-  if (item.action === "generate_summary") return "Generuj streszczenie";
-  if (item.action === "generate_tags") return "Generuj tagi";
-  return "Otwórz do decyzji";
+function actionLabel(item: AiSuggestionItem, copy: AdminAiSuggestionsDictionary) {
+  if (item.status === "blocked") return copy.actions.blocked;
+  if (item.action === "generate_embedding") return copy.actions.generateEmbedding;
+  if (item.action === "generate_summary") return copy.actions.generateSummary;
+  if (item.action === "generate_tags") return copy.actions.generateTags;
+  return copy.actions.openDecision;
 }
 
 function confidenceTone(score: number) {
@@ -62,10 +60,16 @@ function confidenceTone(score: number) {
 function SuggestionCard({
   item,
   busy,
+  copy,
+  domainCopy,
+  locale,
   onAction,
 }: {
   item: AiSuggestionItem;
   busy: boolean;
+  copy: AdminAiSuggestionsDictionary;
+  domainCopy: AdminDomainDictionary;
+  locale: string;
   onAction: (item: AiSuggestionItem) => void;
 }) {
   const canRunAction = item.status !== "blocked" && item.action !== "review_person";
@@ -86,7 +90,7 @@ function SuggestionCard({
                 {item.person_name}
               </Link>
               <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
-                {AI_SUGGESTION_KIND_LABELS[item.kind]}
+                {domainCopy.aiSuggestionKindLabels[item.kind]}
               </span>
               <span
                 className={cn(
@@ -94,7 +98,7 @@ function SuggestionCard({
                   AI_SUGGESTION_STATUS_COLORS[item.status],
                 )}
               >
-                {AI_SUGGESTION_STATUS_LABELS[item.status]}
+                {domainCopy.aiSuggestionStatusLabels[item.status]}
               </span>
             </div>
             <h2 className="mt-2 text-base font-semibold">{item.title}</h2>
@@ -112,7 +116,7 @@ function SuggestionCard({
               className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:cursor-wait disabled:opacity-60"
             >
               {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-              {actionLabel(item)}
+              {actionLabel(item, copy)}
             </button>
           ) : (
             <Link
@@ -124,14 +128,14 @@ function SuggestionCard({
                   : "border border-border hover:bg-accent",
               )}
             >
-              {actionLabel(item)} <ArrowRight className="h-3.5 w-3.5" />
+              {actionLabel(item, copy)} <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           )}
           <Link
             href={item.action_href}
             className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-border px-3 text-xs font-semibold hover:bg-accent"
           >
-            Edytuj osobę <ArrowRight className="h-3.5 w-3.5" />
+            {copy.actions.editPerson} <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
       </div>
@@ -139,23 +143,23 @@ function SuggestionCard({
       <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_1fr_.45fr]">
         <div className="rounded-xl border border-border bg-muted/30 p-4">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Obecna wartość
+            {copy.card.currentValue}
           </p>
           <p className="mt-2 text-xs leading-5 text-foreground/80">
-            {item.current_value ?? "Brak wartości redakcyjnej lub nie dotyczy."}
+            {item.current_value ?? copy.card.currentValueEmpty}
           </p>
         </div>
         <div className="rounded-xl border border-primary/20 bg-primary/[0.03] p-4">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">
-            Sugestia / zadanie AI
+            {copy.card.suggestion}
           </p>
           <p className="mt-2 text-xs leading-5 text-foreground/80">
-            {item.suggested_value ?? "Brak zapisanej sugestii."}
+            {item.suggested_value ?? copy.card.suggestionEmpty}
           </p>
         </div>
         <div className="rounded-xl border border-border bg-background p-4">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Pewność
+            {copy.card.confidence}
           </p>
           <div className="mt-3 flex items-center gap-2">
             <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
@@ -168,7 +172,7 @@ function SuggestionCard({
           </div>
           <p className="mt-3 text-[11px] leading-4 text-muted-foreground">{item.reason}</p>
           <p className="mt-2 text-[10px] text-muted-foreground">
-            Aktualizacja: {formatDateTime(item.updated_at)}
+            {copy.card.updatedPrefix} {formatAdminDateTime(item.updated_at, locale)}
           </p>
         </div>
       </div>
@@ -176,7 +180,13 @@ function SuggestionCard({
   );
 }
 
-export function AiSuggestionsClient() {
+interface AiSuggestionsClientProps {
+  copy: AdminAiSuggestionsDictionary;
+  domainCopy: AdminDomainDictionary;
+  locale: string;
+}
+
+export function AiSuggestionsClient({ copy, domainCopy, locale }: AiSuggestionsClientProps) {
   const queryClient = useQueryClient();
   const [kindFilter, setKindFilter] = useState<KindFilter>("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("");
@@ -208,13 +218,13 @@ export function AiSuggestionsClient() {
       if (item.action === "generate_embedding") return aiApi.generateEmbedding(item.person_id);
       if (item.action === "generate_summary") return aiApi.generateSummary(item.person_id);
       if (item.action === "generate_tags") return aiApi.generateTags(item.person_id);
-      throw new Error("Ta sugestia wymaga ręcznej decyzji redaktora.");
+      throw new Error(copy.actions.manualRequired);
     },
     onMutate: () => {
       setSuccessMessage("");
     },
     onSuccess: async (_response, item) => {
-      setSuccessMessage(`Zadanie AI dla rekordu „${item.person_name}” zostało wykonane.`);
+      setSuccessMessage(`${copy.successPrefix}${item.person_name}${copy.successSuffix}`);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["ai"] }),
         queryClient.invalidateQueries({ queryKey: ["persons"] }),
@@ -246,20 +256,20 @@ export function AiSuggestionsClient() {
 
   const statusCards: Array<{ label: string; value: number; filter: StatusFilter }> = [
     {
-      label: "Wszystkie",
+      label: copy.statusCards.all,
       value:
         (counts?.pending_review ?? 0) +
         (counts?.ready_to_generate ?? 0) +
         (counts?.blocked ?? 0),
       filter: "",
     },
-    { label: "Do decyzji", value: counts?.pending_review ?? 0, filter: "pending_review" },
+    { label: copy.statusCards.pending, value: counts?.pending_review ?? 0, filter: "pending_review" },
     {
-      label: "Do wygenerowania",
+      label: copy.statusCards.ready,
       value: counts?.ready_to_generate ?? 0,
       filter: "ready_to_generate",
     },
-    { label: "Zablokowane", value: counts?.blocked ?? 0, filter: "blocked" },
+    { label: copy.statusCards.blocked, value: counts?.blocked ?? 0, filter: "blocked" },
   ];
 
   return (
@@ -270,13 +280,12 @@ export function AiSuggestionsClient() {
             href="/dashboard/ai"
             className="mb-3 inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-primary"
           >
-            <ArrowLeft className="h-3.5 w-3.5" /> Centrum AI
+            <ArrowLeft className="h-3.5 w-3.5" /> {copy.backAction}
           </Link>
-          <p className="admin-label">AI</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">Sugestie</h1>
+          <p className="admin-label">{copy.kicker}</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight">{copy.title}</h1>
           <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-            Przeglądaj robocze propozycje AI i uruchamiaj generowanie dla pojedynczych
-            rekordów bez nadpisywania treści zatwierdzonej przez redakcję.
+            {copy.description}
           </p>
         </div>
         <button
@@ -292,11 +301,11 @@ export function AiSuggestionsClient() {
               (suggestionsQuery.isFetching || countsQuery.isFetching) && "animate-spin",
             )}
           />
-          Odśwież
+          {copy.refreshAction}
         </button>
       </header>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Status sugestii">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label={copy.statusAriaLabel}>
         {statusCards.map((card) => (
           <button
             key={card.label}
@@ -308,7 +317,7 @@ export function AiSuggestionsClient() {
           >
             <span className="text-xs text-muted-foreground">{card.label}</span>
             <span className="mt-1 block text-2xl font-semibold">
-              {card.value.toLocaleString("pl-PL")}
+              {new Intl.NumberFormat(locale).format(card.value)}
             </span>
           </button>
         ))}
@@ -321,24 +330,27 @@ export function AiSuggestionsClient() {
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Szukaj po osobie, sugestii, uzasadnieniu…"
+              aria-label={copy.filters.searchAriaLabel}
+              placeholder={copy.filters.searchPlaceholder}
               className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
             />
           </div>
           <div className="flex flex-wrap gap-2">
-            {kindOptions.map((option) => (
+            {KIND_FILTERS.map((filterValue) => (
               <button
-                key={option.value || "all"}
+                key={filterValue || "all"}
                 onClick={() => {
-                  setKindFilter(option.value);
+                  setKindFilter(filterValue);
                   setStatusFilter("");
                 }}
                 className={cn(
                   "h-9 rounded-lg border border-border px-3 text-xs font-semibold transition-colors hover:bg-accent",
-                  kindFilter === option.value && "border-primary bg-primary text-primary-foreground hover:bg-primary",
+                  kindFilter === filterValue && "border-primary bg-primary text-primary-foreground hover:bg-primary",
                 )}
               >
-                {option.label}
+                {filterValue
+                  ? domainCopy.aiSuggestionKindLabels[filterValue]
+                  : copy.filters.allKinds}
               </button>
             ))}
           </div>
@@ -358,23 +370,22 @@ export function AiSuggestionsClient() {
 
       {suggestionsQuery.isLoading ? (
         <div className="flex min-h-[320px] items-center justify-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Ładowanie sugestii…
+          <Loader2 className="h-4 w-4 animate-spin" /> {copy.states.loading}
         </div>
       ) : suggestionsQuery.isError ? (
         <div className="admin-card p-8 text-center">
           <AlertTriangle className="mx-auto h-8 w-8 text-amber-500" />
-          <h2 className="mt-3 text-lg font-semibold">Nie udało się pobrać sugestii</h2>
+          <h2 className="mt-3 text-lg font-semibold">{copy.states.loadErrorTitle}</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Sprawdź połączenie z API i spróbuj ponownie.
+            {copy.states.loadErrorDescription}
           </p>
         </div>
       ) : visibleItems.length === 0 ? (
         <div className="admin-card p-10 text-center">
           <Bot className="mx-auto h-8 w-8 text-emerald-500" />
-          <h2 className="mt-3 text-sm font-semibold">Brak sugestii dla wybranych filtrów</h2>
+          <h2 className="mt-3 text-sm font-semibold">{copy.states.emptyTitle}</h2>
           <p className="mx-auto mt-2 max-w-xl text-xs leading-5 text-muted-foreground">
-            Zmień typ, status albo wyszukiwaną frazę. Jeśli kolejka jest zupełnie pusta,
-            oznacza to, że aktywne rekordy nie mają obecnie zadań AI.
+            {copy.states.emptyDescription}
           </p>
         </div>
       ) : (
@@ -384,6 +395,9 @@ export function AiSuggestionsClient() {
               key={item.id}
               item={item}
               busy={actionMutation.isPending && actionMutation.variables?.id === item.id}
+              copy={copy}
+              domainCopy={domainCopy}
+              locale={locale}
               onAction={(suggestion) => actionMutation.mutate(suggestion)}
             />
           ))}

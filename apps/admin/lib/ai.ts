@@ -55,29 +55,10 @@ export interface AiDashboard {
   recent_suggestions: AiSuggestionItem[];
 }
 
-export const AI_SUGGESTION_KIND_LABELS: Record<AiSuggestionKind, string> = {
-  embedding: "Embedding",
-  summary: "Streszczenie",
-  tags: "Tagi",
-};
-
-export const AI_SUGGESTION_STATUS_LABELS: Record<AiSuggestionStatus, string> = {
-  pending_review: "Do decyzji",
-  ready_to_generate: "Gotowe do wygenerowania",
-  blocked: "Zablokowane",
-};
-
 export const AI_SUGGESTION_STATUS_COLORS: Record<AiSuggestionStatus, string> = {
   pending_review: "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300",
   ready_to_generate: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300",
   blocked: "bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300",
-};
-
-export const AI_FEATURE_STATUS_LABELS: Record<string, string> = {
-  ready: "Gotowe",
-  disabled: "Wyłączone",
-  needs_data: "Wymaga danych",
-  fallback: "Tryb zapasowy",
 };
 
 export const AI_FEATURE_STATUS_COLORS: Record<string, string> = {

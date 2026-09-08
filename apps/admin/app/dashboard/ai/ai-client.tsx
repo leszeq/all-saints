@@ -20,13 +20,19 @@ import {
 import { aiApi, getApiErrorMessage } from "@/lib/api";
 import {
   AI_FEATURE_STATUS_COLORS,
-  AI_FEATURE_STATUS_LABELS,
-  AI_SUGGESTION_KIND_LABELS,
   AI_SUGGESTION_STATUS_COLORS,
-  AI_SUGGESTION_STATUS_LABELS,
+  type AiDashboard,
+  type AiFeatureStatus,
   type AiSuggestionItem,
 } from "@/lib/ai";
-import { cn, formatDateTime } from "@/lib/utils";
+import { formatAdminDateTime } from "@/lib/i18n/format";
+import type {
+  AdminAiCenterDictionary,
+  AdminAiFeatureKey,
+  AdminAiFeatureStatusKey,
+  AdminDomainDictionary,
+} from "@/lib/i18n/types";
+import { cn } from "@/lib/utils";
 
 const featureIcons: Record<string, ElementType> = {
   embeddings: DatabaseZap,
@@ -48,14 +54,16 @@ function MetricCard({
   detail,
   icon: Icon,
   tone,
+  locale,
 }: {
   label: string;
   value: number | string;
   detail: string;
   icon: ElementType;
   tone: string;
+  locale: string;
 }) {
-  const displayValue = typeof value === "number" ? value.toLocaleString("pl-PL") : value;
+  const displayValue = typeof value === "number" ? new Intl.NumberFormat(locale).format(value) : value;
 
   return (
     <article className="admin-card p-4">
@@ -73,7 +81,43 @@ function MetricCard({
   );
 }
 
-function SuggestionPreview({ item }: { item: AiSuggestionItem }) {
+function featureDetail(
+  feature: AiFeatureStatus,
+  dashboard: AiDashboard,
+  copy: AdminAiCenterDictionary,
+  locale: string,
+) {
+  const formatNumber = (value: number) => new Intl.NumberFormat(locale).format(value);
+  if (feature.key === "embeddings") {
+    return `${formatNumber(dashboard.total_embeddings)} ${copy.modules.details.embeddingsMiddle} ${formatNumber(dashboard.total_persons)} ${copy.modules.details.embeddingsSuffix}`;
+  }
+  if (feature.key === "semantic_search") {
+    return dashboard.total_embeddings > 0
+      ? copy.modules.details.semanticReady
+      : copy.modules.details.semanticNeedsData;
+  }
+  if (feature.key === "summaries") {
+    return dashboard.summary_provider === "extractive-fallback"
+      ? copy.modules.details.summariesFallback
+      : `${copy.modules.details.summariesPrefix} ${formatNumber(dashboard.ai_summaries)}`;
+  }
+  if (feature.key === "tagging") {
+    return dashboard.summary_provider === "extractive-fallback"
+      ? copy.modules.details.taggingDisabled
+      : `${copy.modules.details.taggingPrefix} ${formatNumber(dashboard.ai_tags)}`;
+  }
+  return feature.detail;
+}
+
+function SuggestionPreview({
+  item,
+  copy,
+  domainCopy,
+}: {
+  item: AiSuggestionItem;
+  copy: AdminAiCenterDictionary["recent"];
+  domainCopy: AdminDomainDictionary;
+}) {
   return (
     <li className="flex flex-col gap-3 py-4 sm:flex-row sm:items-start">
       <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -99,10 +143,10 @@ function SuggestionPreview({ item }: { item: AiSuggestionItem }) {
               AI_SUGGESTION_STATUS_COLORS[item.status],
             )}
           >
-            {AI_SUGGESTION_STATUS_LABELS[item.status]}
+            {domainCopy.aiSuggestionStatusLabels[item.status]}
           </span>
           <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
-            {AI_SUGGESTION_KIND_LABELS[item.kind]}
+            {domainCopy.aiSuggestionKindLabels[item.kind]}
           </span>
         </div>
         <p className="mt-1 text-xs font-medium">{item.title}</p>
@@ -114,13 +158,19 @@ function SuggestionPreview({ item }: { item: AiSuggestionItem }) {
         href="/dashboard/ai/suggestions"
         className="inline-flex h-8 shrink-0 items-center justify-center gap-1 rounded-md border border-border px-2.5 text-xs hover:bg-accent"
       >
-        Otwórz <ArrowRight className="h-3.5 w-3.5" />
+        {copy.openAction} <ArrowRight className="h-3.5 w-3.5" />
       </Link>
     </li>
   );
 }
 
-export function AiCentreClient() {
+interface AiCentreClientProps {
+  copy: AdminAiCenterDictionary;
+  domainCopy: AdminDomainDictionary;
+  locale: string;
+}
+
+export function AiCentreClient({ copy, domainCopy, locale }: AiCentreClientProps) {
   const queryClient = useQueryClient();
   const dashboardQuery = useQuery({
     queryKey: ["ai", "dashboard"],
@@ -153,7 +203,7 @@ export function AiCentreClient() {
   if (dashboardQuery.isLoading) {
     return (
       <div className="flex min-h-[420px] items-center justify-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" /> Ładowanie centrum AI…
+        <Loader2 className="h-4 w-4 animate-spin" /> {copy.loading}
       </div>
     );
   }
@@ -162,15 +212,15 @@ export function AiCentreClient() {
     return (
       <div className="admin-card mx-auto max-w-xl p-8 text-center">
         <AlertTriangle className="mx-auto h-8 w-8 text-amber-500" />
-        <h1 className="mt-3 text-lg font-semibold">Nie udało się pobrać centrum AI</h1>
+        <h1 className="mt-3 text-lg font-semibold">{copy.loadError.title}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Sprawdź połączenie z API i spróbuj ponownie.
+          {copy.loadError.description}
         </p>
         <button
           onClick={() => dashboardQuery.refetch()}
           className="mt-5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
         >
-          Odśwież dane
+          {copy.loadError.refreshAction}
         </button>
       </div>
     );
@@ -180,11 +230,10 @@ export function AiCentreClient() {
     <div className="mx-auto max-w-[1500px] space-y-6">
       <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="admin-label">AI</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">Centrum AI</h1>
+          <p className="admin-label">{copy.kicker}</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight">{copy.title}</h1>
           <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-            Monitoruj pokrycie embeddingami, stan dostawców oraz kolejkę sugestii,
-            które wymagają świadomej decyzji redaktora.
+            {copy.description}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -193,45 +242,49 @@ export function AiCentreClient() {
             className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border px-4 text-sm font-semibold hover:bg-accent"
           >
             <RefreshCw className={cn("h-4 w-4", dashboardQuery.isFetching && "animate-spin")} />
-            Odśwież
+            {copy.refreshAction}
           </button>
           <Link
             href="/dashboard/ai/suggestions"
             className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
           >
-            Sugestie ({dashboard.pending_suggestions}) <ArrowRight className="h-4 w-4" />
+            {copy.suggestionsAction} ({new Intl.NumberFormat(locale).format(dashboard.pending_suggestions)}) <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
       </header>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Metryki AI">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label={copy.metricsAriaLabel}>
         <MetricCard
-          label="Pokrycie embeddingami"
-          value={`${coverage.toFixed(0)}%`}
-          detail={`${dashboard.total_embeddings.toLocaleString("pl-PL")} z ${dashboard.total_persons.toLocaleString("pl-PL")} aktywnych profili`}
+          label={copy.metrics.coverage.label}
+          value={`${new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(coverage)}%`}
+          detail={`${new Intl.NumberFormat(locale).format(dashboard.total_embeddings)} ${copy.modules.details.embeddingsMiddle} ${new Intl.NumberFormat(locale).format(dashboard.total_persons)} ${copy.metrics.coverage.profilesSuffix}`}
           icon={BrainCircuit}
           tone={metricTones.embeddings}
+          locale={locale}
         />
         <MetricCard
-          label="Brakujące embeddingi"
+          label={copy.metrics.missing.label}
           value={dashboard.missing_embeddings}
-          detail="Nie trafią do wyszukiwania semantycznego ani podobnych postaci"
+          detail={copy.metrics.missing.detail}
           icon={DatabaseZap}
           tone={metricTones.missing}
+          locale={locale}
         />
         <MetricCard
-          label="Sugestie aktywne"
+          label={copy.metrics.suggestions.label}
           value={dashboard.pending_suggestions}
-          detail="Do decyzji redaktora lub gotowe do wygenerowania"
+          detail={copy.metrics.suggestions.detail}
           icon={Sparkles}
           tone={metricTones.suggestions}
+          locale={locale}
         />
         <MetricCard
-          label="Zablokowane"
+          label={copy.metrics.blocked.label}
           value={dashboard.blocked_suggestions}
-          detail="Wymagają skonfigurowania OpenAI/Ollama albo embeddingów"
+          detail={copy.metrics.blocked.detail}
           icon={AlertTriangle}
           tone={metricTones.blocked}
+          locale={locale}
         />
       </section>
 
@@ -245,20 +298,26 @@ export function AiCentreClient() {
         <article className="admin-card p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h2 className="text-sm font-semibold">Status modułów</h2>
+              <h2 className="text-sm font-semibold">{copy.modules.title}</h2>
               <p className="mt-1 text-xs text-muted-foreground">
-                Konfiguracja: embeddingi {dashboard.embedding_provider} · model{" "}
-                {dashboard.embedding_model} · streszczenia {dashboard.summary_provider}
+                {copy.modules.configuration.prefix} {copy.modules.configuration.embeddings}{" "}
+                {dashboard.embedding_provider} · {copy.modules.configuration.model}{" "}
+                {dashboard.embedding_model} · {copy.modules.configuration.summaries}{" "}
+                {dashboard.summary_provider}
               </p>
             </div>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-[11px] text-muted-foreground">
-              Ostatni embedding: {dashboard.last_generated_at ? formatDateTime(dashboard.last_generated_at) : "brak"}
+              {copy.modules.lastEmbeddingPrefix}{" "}
+              {dashboard.last_generated_at
+                ? formatAdminDateTime(dashboard.last_generated_at, locale)
+                : copy.modules.noEmbedding}
             </span>
           </div>
 
           <div className="mt-5 grid gap-3 md:grid-cols-2">
             {dashboard.feature_statuses.map((feature) => {
               const Icon = featureIcons[feature.key] ?? Bot;
+              const localizedFeature = copy.modules.features[feature.key as AdminAiFeatureKey];
               return (
                 <article key={feature.key} className="rounded-xl border border-border bg-background p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -271,15 +330,15 @@ export function AiCentreClient() {
                         AI_FEATURE_STATUS_COLORS[feature.status] ?? "bg-muted text-muted-foreground",
                       )}
                     >
-                      {AI_FEATURE_STATUS_LABELS[feature.status] ?? feature.status}
+                      {domainCopy.aiFeatureStatusLabels[feature.status as AdminAiFeatureStatusKey] ?? feature.status}
                     </span>
                   </div>
-                  <h3 className="mt-3 text-sm font-semibold">{feature.label}</h3>
+                  <h3 className="mt-3 text-sm font-semibold">{localizedFeature?.label ?? feature.label}</h3>
                   <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                    {feature.description}
+                    {localizedFeature?.description ?? feature.description}
                   </p>
                   <p className="mt-3 text-[11px] font-medium text-foreground/75">
-                    {feature.detail}
+                    {featureDetail(feature, dashboard, copy, locale)}
                   </p>
                 </article>
               );
@@ -288,8 +347,13 @@ export function AiCentreClient() {
 
           <div className="mt-5">
             <div className="mb-2 flex items-center justify-between text-xs">
-              <span className="font-medium">Postęp embeddingów</span>
-              <span className="text-muted-foreground">{coverage.toFixed(2)}%</span>
+              <span className="font-medium">{copy.modules.progress}</span>
+              <span className="text-muted-foreground">
+                {new Intl.NumberFormat(locale, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                }).format(coverage)}%
+              </span>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-muted">
               <div className="h-full rounded-full bg-primary" style={{ width: `${coverage}%` }} />
@@ -298,10 +362,9 @@ export function AiCentreClient() {
         </article>
 
         <article className="admin-card p-5">
-          <h2 className="text-sm font-semibold">Akcje operacyjne</h2>
+          <h2 className="text-sm font-semibold">{copy.operations.title}</h2>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Batchowe zadania trafiają do Celery. Pojedyncze akcje dla konkretnych
-            profili są dostępne w kolejce sugestii.
+            {copy.operations.description}
           </p>
           <div className="mt-5 space-y-3">
             <button
@@ -310,11 +373,11 @@ export function AiCentreClient() {
               className="flex w-full items-center justify-between gap-3 rounded-xl border border-border p-4 text-left transition-colors hover:border-primary/40 disabled:cursor-wait disabled:opacity-60"
             >
               <span>
-                <span className="block text-sm font-semibold">Wygeneruj brakujące embeddingi</span>
+                <span className="block text-sm font-semibold">{copy.operations.embeddingsAction}</span>
                 <span className="mt-1 block text-xs text-muted-foreground">
                   {embeddingBatchDisabled
-                    ? "Wymaga skonfigurowanego dostawcy embeddingów."
-                    : "Przetwarza aktywne profile bez wektora semantycznego."}
+                    ? copy.operations.embeddingsDisabled
+                    : copy.operations.embeddingsEnabled}
                 </span>
               </span>
               {batchEmbeddingMutation.isPending ? (
@@ -329,11 +392,11 @@ export function AiCentreClient() {
               className="flex w-full items-center justify-between gap-3 rounded-xl border border-border p-4 text-left transition-colors hover:border-primary/40 disabled:cursor-wait disabled:opacity-60"
             >
               <span>
-                <span className="block text-sm font-semibold">Auto-tagi dla nieotagowanych</span>
+                <span className="block text-sm font-semibold">{copy.operations.tagsAction}</span>
                 <span className="mt-1 block text-xs text-muted-foreground">
                   {tagBatchDisabled
-                    ? "Wymaga dostawcy OpenAI albo Ollama."
-                    : "Uruchamia tagowanie tylko tam, gdzie pole ai_tags jest puste."}
+                    ? copy.operations.tagsDisabled
+                    : copy.operations.tagsEnabled}
                 </span>
               </span>
               {batchTagMutation.isPending ? (
@@ -345,9 +408,7 @@ export function AiCentreClient() {
           </div>
           <div className="mt-5 rounded-lg bg-muted/50 p-4 text-xs leading-5 text-muted-foreground">
             <CheckCircle2 className="mb-2 h-4 w-4 text-emerald-500" />
-            AI zapisuje sugestie w polach roboczych. Publikowana treść nadal
-            wymaga decyzji redakcyjnej — to bezpieczniejszy model dla danych
-            hagiograficznych.
+            {copy.operations.safetyNotice}
           </div>
         </article>
       </section>
@@ -355,24 +416,29 @@ export function AiCentreClient() {
       <section className="admin-card p-5">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold">Najnowsze sugestie i zadania</h2>
+            <h2 className="text-sm font-semibold">{copy.recent.title}</h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              Pierwsze elementy z kolejki AI, posortowane według pilności.
+              {copy.recent.description}
             </p>
           </div>
           <Link href="/dashboard/ai/suggestions" className="text-xs font-semibold text-primary">
-            Zobacz wszystkie
+            {copy.recent.allAction}
           </Link>
         </div>
         {dashboard.recent_suggestions.length ? (
           <ul className="mt-4 divide-y divide-border">
             {dashboard.recent_suggestions.map((item) => (
-              <SuggestionPreview key={item.id} item={item} />
+              <SuggestionPreview
+                key={item.id}
+                item={item}
+                copy={copy.recent}
+                domainCopy={domainCopy}
+              />
             ))}
           </ul>
         ) : (
           <div className="mt-6 rounded-lg bg-emerald-50 p-5 text-center text-xs text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
-            Brak aktywnych sugestii AI dla aktualnych danych.
+            {copy.recent.empty}
           </div>
         )}
       </section>

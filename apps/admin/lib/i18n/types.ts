@@ -159,6 +159,13 @@ export type AdminEditorialIssueKey =
   | "unknown_image_license"
   | "missing_dates"
   | "missing_state_of_life";
+export type AdminAiSuggestionKindKey = "embedding" | "summary" | "tags";
+export type AdminAiSuggestionStatusKey =
+  | "pending_review"
+  | "ready_to_generate"
+  | "blocked";
+export type AdminAiFeatureStatusKey = "ready" | "disabled" | "needs_data" | "fallback";
+export type AdminAiFeatureKey = "embeddings" | "semantic_search" | "summaries" | "tagging";
 
 export interface AdminDictionary {
   metadata: {
@@ -194,6 +201,9 @@ export interface AdminDictionary {
     sourceVerificationTypeLabels: Record<AdminSourceVerificationTypeKey, string>;
     sourceVerificationIssueLabels: Record<AdminSourceVerificationIssueKey, string>;
     duplicateReasonLabels: Record<AdminDuplicateReasonKey, string>;
+    aiSuggestionKindLabels: Record<AdminAiSuggestionKindKey, string>;
+    aiSuggestionStatusLabels: Record<AdminAiSuggestionStatusKey, string>;
+    aiFeatureStatusLabels: Record<AdminAiFeatureStatusKey, string>;
   };
   sidebar: {
     navigationAriaLabel: string;
@@ -540,6 +550,122 @@ export interface AdminDictionary {
         checkMedia: { label: string; hint: string };
         openSection: { label: string; hint: string };
       };
+    };
+  };
+  aiCenter: {
+    metadataTitle: string;
+    metadataDescription: string;
+    loading: string;
+    loadError: {
+      title: string;
+      description: string;
+      refreshAction: string;
+    };
+    kicker: string;
+    title: string;
+    description: string;
+    refreshAction: string;
+    suggestionsAction: string;
+    metricsAriaLabel: string;
+    metrics: {
+      coverage: { label: string; profilesSuffix: string };
+      missing: { label: string; detail: string };
+      suggestions: { label: string; detail: string };
+      blocked: { label: string; detail: string };
+    };
+    modules: {
+      title: string;
+      configuration: {
+        prefix: string;
+        embeddings: string;
+        model: string;
+        summaries: string;
+      };
+      lastEmbeddingPrefix: string;
+      noEmbedding: string;
+      progress: string;
+      features: Record<
+        AdminAiFeatureKey,
+        {
+          label: string;
+          description: string;
+        }
+      >;
+      details: {
+        embeddingsMiddle: string;
+        embeddingsSuffix: string;
+        semanticReady: string;
+        semanticNeedsData: string;
+        summariesPrefix: string;
+        summariesFallback: string;
+        taggingPrefix: string;
+        taggingDisabled: string;
+      };
+    };
+    operations: {
+      title: string;
+      description: string;
+      embeddingsAction: string;
+      embeddingsDisabled: string;
+      embeddingsEnabled: string;
+      tagsAction: string;
+      tagsDisabled: string;
+      tagsEnabled: string;
+      safetyNotice: string;
+    };
+    recent: {
+      title: string;
+      description: string;
+      allAction: string;
+      openAction: string;
+      empty: string;
+    };
+  };
+  aiSuggestions: {
+    metadataTitle: string;
+    metadataDescription: string;
+    backAction: string;
+    kicker: string;
+    title: string;
+    description: string;
+    refreshAction: string;
+    statusAriaLabel: string;
+    statusCards: {
+      all: string;
+      pending: string;
+      ready: string;
+      blocked: string;
+    };
+    filters: {
+      searchAriaLabel: string;
+      searchPlaceholder: string;
+      allKinds: string;
+    };
+    actions: {
+      blocked: string;
+      generateEmbedding: string;
+      generateSummary: string;
+      generateTags: string;
+      openDecision: string;
+      editPerson: string;
+      manualRequired: string;
+    };
+    successPrefix: string;
+    successSuffix: string;
+    card: {
+      currentValue: string;
+      currentValueEmpty: string;
+      suggestion: string;
+      suggestionEmpty: string;
+      confidence: string;
+      updatedPrefix: string;
+    };
+    states: {
+      loading: string;
+      loadErrorTitle: string;
+      loadErrorDescription: string;
+      emptyTitle: string;
+      emptyDescription: string;
     };
   };
   ordersWorkspace: {
@@ -1260,6 +1386,8 @@ export type AdminDashboardDictionary = AdminDictionary["dashboard"];
 export type AdminDomainDictionary = AdminDictionary["domain"];
 export type AdminReviewDictionary = AdminDictionary["review"];
 export type AdminQualityDictionary = AdminDictionary["quality"];
+export type AdminAiCenterDictionary = AdminDictionary["aiCenter"];
+export type AdminAiSuggestionsDictionary = AdminDictionary["aiSuggestions"];
 export type AdminOrdersDictionary = AdminDictionary["ordersWorkspace"];
 export type AdminDictionariesDictionary = AdminDictionary["dictionariesWorkspace"];
 export type AdminGeographyDictionary = AdminDictionary["geography"];

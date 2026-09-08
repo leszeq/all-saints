@@ -809,6 +809,11 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
   metadata oraz kompletne, typowane teksty tabel, filtrów, stanów i formularza
   wspólnoty. Typy wspólnot i charyzmaty są mapowane ze stabilnych kluczy jednego
   słownika domenowego, więc usunięto ich zduplikowane polskie mapy z ogólnego helpera.
+  Centrum AI oraz kolejka Sugestii mają również serwerowe metadata i kompletne
+  słowniki funkcjonalne; typy i statusy sugestii oraz statusy modułów są mapowane ze
+  stabilnych kluczy. Znane funkcje AI nie renderują już polskich opisów prezentacyjnych
+  przesłanych przez API — tekst i dynamiczne metryki powstają z lokalnego słownika, a
+  odpowiedź backendu pozostaje wyłącznie fallbackiem zgodności dla nowych kluczy.
   Routing językowy zostanie uruchomiony dopiero z kompletnym drugim językiem.
 - **Category:** Internationalization
 - **File:** oba frontendy i modele Person/Translation
