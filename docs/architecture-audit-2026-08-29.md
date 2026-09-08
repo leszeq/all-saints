@@ -39,14 +39,14 @@ Stan na 2026-09-08 po kolejnych etapach refaktoryzacji:
 | Kontrola | Wynik po zmianach |
 | --- | --- |
 | Backend pytest | **243 passed**, 0 failures, 0 errors, 0 warnings |
-| Backend coverage | **82.46%**, wymagany próg 80% spełniony |
+| Backend coverage | **82.50%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0016_person_names`, jeden head |
 | Nowa pusta baza | upgrade 0001 → 0016 oraz downgrade/re-upgrade 0016: PASS |
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 126 plików źródłowych |
+| Ruff / strict mypy | PASS, mypy analizuje 127 plików źródłowych |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -94,6 +94,13 @@ AI razem ze wspólnymi schematami i dependency providera. Główny moduł zmniej
 się z 592 do 379 linii, zachowując stare re-eksporty modeli i funkcji. Osobny test
 OpenAPI chroni obecność `/ai/search` i `/ai/related/{person_id}`, ich parametry oraz
 publiczny charakter tych operacji.
+
+Pion przenośności profili został wydzielony z routera osób do osobnego adaptera
+importu, walidacji i eksportu wersjonowanego JSON. Router główny zmniejszył się z
+460 do 404 linii, zachowując kolejność tras i kompatybilne re-eksporty operacji.
+Kontrakt OpenAPI jawnie weryfikuje ochronę `export:read` i `import:create`, a test
+integracyjny nadal potwierdza pełny round-trip osoby wraz z zakonem, obchodem i
+źródłem bez omijania statusu szkicu.
 
 Powstał automatyczny CI z lintem, strict mypy, testami/coverage, audytem zależności,
 kontrolą migracji, buildami frontendów oraz smoke testem całego stosu produkcyjnego.

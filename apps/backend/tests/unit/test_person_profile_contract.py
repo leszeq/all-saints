@@ -69,7 +69,11 @@ def test_profile_document_rejects_unknown_version_and_invalid_source_shape() -> 
 def test_profile_portability_routes_are_exposed_in_openapi() -> None:
     paths = app.openapi()["paths"]
 
-    assert "get" in paths["/api/v1/persons/admin/{id_or_slug}/export"]
-    assert "post" in paths["/api/v1/persons/import/validate"]
-    assert "post" in paths["/api/v1/persons/import"]
+    export = paths["/api/v1/persons/admin/{id_or_slug}/export"]["get"]
+    validate = paths["/api/v1/persons/import/validate"]["post"]
+    import_profile = paths["/api/v1/persons/import"]["post"]
+
+    assert export["security"] == [{"HTTPBearer": []}]
+    assert validate["security"] == [{"HTTPBearer": []}]
+    assert import_profile["security"] == [{"HTTPBearer": []}]
     assert "get" in paths["/api/v1/orders/management"]
