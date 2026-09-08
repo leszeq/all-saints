@@ -4,14 +4,16 @@ import { useQuery } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import { PersonForm } from "@/components/persons/person-form";
 import { personsApi } from "@/lib/api";
-import type { AdminPersonEditorDictionary } from "@/lib/i18n/types";
+import type { AdminDomainDictionary, AdminPersonEditorDictionary } from "@/lib/i18n/types";
 import { useAuthStore } from "@/lib/store/auth";
 
 interface EditPersonClientProps {
   copy: AdminPersonEditorDictionary;
+  domainCopy: AdminDomainDictionary;
+  locale: string;
 }
 
-export function EditPersonClient({ copy }: EditPersonClientProps) {
+export function EditPersonClient({ copy, domainCopy, locale }: EditPersonClientProps) {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
@@ -74,6 +76,8 @@ export function EditPersonClient({ copy }: EditPersonClientProps) {
       <div className="rounded-xl border border-border bg-card p-6">
         <PersonForm
           copy={copy}
+          domainCopy={domainCopy}
+          locale={locale}
           personId={id}
           isEdit
           expectedVersion={person.version}

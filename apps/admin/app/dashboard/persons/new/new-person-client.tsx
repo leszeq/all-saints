@@ -1,14 +1,16 @@
 "use client";
 
 import { PersonForm } from "@/components/persons/person-form";
-import type { AdminPersonEditorDictionary } from "@/lib/i18n/types";
+import type { AdminDomainDictionary, AdminPersonEditorDictionary } from "@/lib/i18n/types";
 import { useAuthStore } from "@/lib/store/auth";
 
 interface NewPersonClientProps {
   copy: AdminPersonEditorDictionary;
+  domainCopy: AdminDomainDictionary;
+  locale: string;
 }
 
-export function NewPersonClient({ copy }: NewPersonClientProps) {
+export function NewPersonClient({ copy, domainCopy, locale }: NewPersonClientProps) {
   const canCreate = useAuthStore((state) => state.hasPermission("persons:create"));
 
   if (!canCreate) {
@@ -32,7 +34,7 @@ export function NewPersonClient({ copy }: NewPersonClientProps) {
       </div>
 
       <div className="rounded-xl border border-border bg-card p-6">
-        <PersonForm copy={copy} />
+        <PersonForm copy={copy} domainCopy={domainCopy} locale={locale} />
       </div>
     </div>
   );

@@ -15,5 +15,11 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function EditPersonPage() {
   const dictionary = await getAdminDictionary(DEFAULT_ADMIN_UI_LOCALE);
 
-  return <EditPersonClient copy={dictionary.personEditor} />;
+  return (
+    <EditPersonClient
+      copy={dictionary.personEditor}
+      domainCopy={dictionary.domain}
+      locale={DEFAULT_ADMIN_UI_LOCALE}
+    />
+  );
 }

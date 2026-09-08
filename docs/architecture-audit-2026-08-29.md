@@ -796,9 +796,13 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
   korzystają z jawnego locale. Trasy tworzenia i edycji osoby ładują metadata oraz
   tekst szkieletu edytora na serwerze. Uprawnienia, nagłówki, stabilne zakładki,
   stany wymagające wcześniejszego zapisu, walidacja pliku avatara i akcje formularza
-  korzystają z typowanej sekcji `personEditor`. Pozostają teksty sekcji pól,
-  komunikaty walidacji schematu oraz innych ekranów funkcjonalnych panelu; routing
-  zostanie uruchomiony dopiero z kompletnym drugim językiem.
+  korzystają z typowanej sekcji `personEditor`. Wszystkie sekcje pól — dane podstawowe,
+  aliasy, daty, biografia, patronaty, kult, media, zakony i źródła — korzystają z jej
+  wyspecjalizowanych podsekcji. Opcje domenowe nie są już polskimi stałymi komponentów,
+  miesiące i liczby otrzymują jawne locale, a fabryka schematu Zod przyjmuje słownikowe
+  komunikaty walidacji bez zmiany nazw pól ani payloadów API. Pozostają teksty innych
+  ekranów funkcjonalnych panelu; routing zostanie uruchomiony dopiero z kompletnym
+  drugim językiem.
 - **Category:** Internationalization
 - **File:** oba frontendy i modele Person/Translation
 - **Lines:** setki hardcoded strings

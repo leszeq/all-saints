@@ -1,4 +1,5 @@
 import type { UseFormRegister } from "react-hook-form";
+import type { AdminPersonEditorDictionary } from "@/lib/i18n/types";
 import type { PersonFormData } from "./person-form-model";
 import { PERSON_FORM_INPUT_CLASS, PERSON_FORM_LABEL_CLASS } from "./person-form-styles";
 
@@ -8,6 +9,7 @@ interface CountryOption {
 }
 
 interface PersonDatesSectionProps {
+  copy: AdminPersonEditorDictionary["dates"];
   register: UseFormRegister<PersonFormData>;
   countries: CountryOption[];
   countriesLoading: boolean;
@@ -18,6 +20,7 @@ interface PersonDatesSectionProps {
 const numberOrNull = (value: string) => value === "" ? null : Number(value);
 
 export function PersonDatesSection({
+  copy,
   register,
   countries,
   countriesLoading,
@@ -29,74 +32,78 @@ export function PersonDatesSection({
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <div>
-        <label className={PERSON_FORM_LABEL_CLASS}>Rok urodzenia</label>
+        <label className={PERSON_FORM_LABEL_CLASS}>{copy.birthYear}</label>
         <input
           type="number"
           {...register("birth_year", { setValueAs: numberOrNull })}
           className={PERSON_FORM_INPUT_CLASS}
-          placeholder="np. 1181"
+          placeholder={copy.birthYearPlaceholder}
         />
       </div>
 
       <div>
-        <label className={PERSON_FORM_LABEL_CLASS}>Rok śmierci</label>
+        <label className={PERSON_FORM_LABEL_CLASS}>{copy.deathYear}</label>
         <input
           type="number"
           {...register("death_year", { setValueAs: numberOrNull })}
           className={PERSON_FORM_INPUT_CLASS}
-          placeholder="np. 1226"
+          placeholder={copy.deathYearPlaceholder}
         />
       </div>
 
       <div>
-        <label className={PERSON_FORM_LABEL_CLASS}>Kraj urodzenia</label>
+        <label className={PERSON_FORM_LABEL_CLASS}>{copy.birthCountry}</label>
         <select
           {...register("birth_country_id")}
           className={PERSON_FORM_INPUT_CLASS}
           disabled={countriesUnavailable}
         >
-          <CountryOptions countries={countries} isLoading={countriesLoading} isError={countriesError} />
+          <CountryOptions copy={copy} countries={countries} isLoading={countriesLoading} isError={countriesError} />
         </select>
       </div>
 
       <div>
-        <label className={PERSON_FORM_LABEL_CLASS}>Kraj śmierci</label>
+        <label className={PERSON_FORM_LABEL_CLASS}>{copy.deathCountry}</label>
         <select
           {...register("death_country_id")}
           className={PERSON_FORM_INPUT_CLASS}
           disabled={countriesUnavailable}
         >
-          <CountryOptions countries={countries} isLoading={countriesLoading} isError={countriesError} />
+          <CountryOptions copy={copy} countries={countries} isLoading={countriesLoading} isError={countriesError} />
         </select>
       </div>
 
       {countriesError && (
         <div className="sm:col-span-2">
           <button type="button" onClick={retryCountries} className="text-xs text-primary hover:underline">
-            Spróbuj ponownie pobrać listę krajów
+            {copy.retryCountries}
           </button>
         </div>
       )}
 
       <div className="border-t border-border pt-5 sm:col-span-2">
-        <h3 className="text-sm font-semibold text-foreground">Droga do chwały ołtarzy</h3>
+        <h3 className="text-sm font-semibold text-foreground">{copy.recognitionTitle}</h3>
         <p className="mt-1 text-xs leading-5 text-muted-foreground">
-          Wpisz dokładną datę, gdy jest udokumentowana. Jeśli źródło podaje tylko rok, pozostaw datę pustą i uzupełnij pole roku.
+          {copy.recognitionDescription}
         </p>
       </div>
 
       <MilestoneFields
-        title="Beatyfikacja"
+        title={copy.beatification}
         dateField="beatification_date"
         yearField="beatification_year"
-        yearPlaceholder="np. 1993"
+        yearPlaceholder={copy.beatificationYearPlaceholder}
+        exactDateLabel={copy.exactDate}
+        yearOnlyLabel={copy.yearOnly}
         register={register}
       />
       <MilestoneFields
-        title="Kanonizacja"
+        title={copy.canonization}
         dateField="canonization_date"
         yearField="canonization_year"
-        yearPlaceholder="np. 2000"
+        yearPlaceholder={copy.canonizationYearPlaceholder}
+        exactDateLabel={copy.exactDate}
+        yearOnlyLabel={copy.yearOnly}
         register={register}
       />
     </div>
@@ -104,10 +111,12 @@ export function PersonDatesSection({
 }
 
 function CountryOptions({
+  copy,
   countries,
   isLoading,
   isError,
 }: {
+  copy: AdminPersonEditorDictionary["dates"];
   countries: CountryOption[];
   isLoading: boolean;
   isError: boolean;
@@ -115,9 +124,9 @@ function CountryOptions({
   return (
     <>
       <option value="">—</option>
-      {isLoading && <option>Ładowanie krajów…</option>}
-      {isError && <option>Nie udało się pobrać krajów</option>}
-      {!isLoading && !isError && countries.length === 0 && <option>Brak krajów w bazie</option>}
+      {isLoading && <option>{copy.loadingCountries}</option>}
+      {isError && <option>{copy.countriesLoadError}</option>}
+      {!isLoading && !isError && countries.length === 0 && <option>{copy.noCountries}</option>}
       {countries.map((country) => (
         <option key={country.id} value={country.id}>{country.name_pl}</option>
       ))}
@@ -130,19 +139,29 @@ interface MilestoneFieldsProps {
   dateField: "beatification_date" | "canonization_date";
   yearField: "beatification_year" | "canonization_year";
   yearPlaceholder: string;
+  exactDateLabel: string;
+  yearOnlyLabel: string;
   register: UseFormRegister<PersonFormData>;
 }
 
-function MilestoneFields({ title, dateField, yearField, yearPlaceholder, register }: MilestoneFieldsProps) {
+function MilestoneFields({
+  title,
+  dateField,
+  yearField,
+  yearPlaceholder,
+  exactDateLabel,
+  yearOnlyLabel,
+  register,
+}: MilestoneFieldsProps) {
   return (
     <section className="space-y-4 rounded-xl border border-border bg-muted/20 p-4">
       <h4 className="text-sm font-semibold text-foreground">{title}</h4>
       <div>
-        <label className={PERSON_FORM_LABEL_CLASS}>Dokładna data</label>
+        <label className={PERSON_FORM_LABEL_CLASS}>{exactDateLabel}</label>
         <input type="date" {...register(dateField)} className={PERSON_FORM_INPUT_CLASS} />
       </div>
       <div>
-        <label className={PERSON_FORM_LABEL_CLASS}>Rok (gdy brak dokładnej daty)</label>
+        <label className={PERSON_FORM_LABEL_CLASS}>{yearOnlyLabel}</label>
         <input
           type="number"
           {...register(yearField, { setValueAs: numberOrNull })}

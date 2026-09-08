@@ -1,56 +1,9 @@
 import { z } from "zod";
+import type { AdminPersonEditorDictionary } from "@/lib/i18n/types";
 
 export const FEAST_RANK_VALUES = ["solemnity", "feast", "memorial", "opt_memorial", "commemoration"] as const;
 export const LITURGICAL_COLOR_VALUES = ["white", "red", "green", "violet", "rose", "black", "gold"] as const;
 const LITURGICAL_COLOR_FORM_VALUES = ["", ...LITURGICAL_COLOR_VALUES] as const;
-
-export const PATRONAGE_TYPE_OPTIONS = [
-  { value: "illness", label: "Choroba / dolegliwość" },
-  { value: "healthcare", label: "Chorzy, lekarze i opiekunowie" },
-  { value: "family", label: "Rodzina, małżeństwo, dzieci" },
-  { value: "profession", label: "Zawód / profesja" },
-  { value: "work", label: "Praca i codzienne obowiązki" },
-  { value: "travel", label: "Podróżni i pielgrzymi" },
-  { value: "country", label: "Kraj" },
-  { value: "city", label: "Miasto" },
-  { value: "diocese", label: "Diecezja / wspólnota lokalna" },
-  { value: "group", label: "Grupa osób" },
-  { value: "cause", label: "Sprawa / intencja" },
-  { value: "other", label: "Inne" },
-] as const;
-
-export const PERSON_ALIAS_KIND_OPTIONS = [
-  { value: "birth_name", label: "Imię świeckie / rodowe" },
-  { value: "religious_name", label: "Imię zakonne" },
-  { value: "alias", label: "Inna nazwa / alias" },
-  { value: "abbreviation", label: "Skrót" },
-  { value: "transliteration", label: "Transliteracja" },
-] as const;
-
-export const MONTH_OPTIONS = [
-  [1, "Styczeń"],
-  [2, "Luty"],
-  [3, "Marzec"],
-  [4, "Kwiecień"],
-  [5, "Maj"],
-  [6, "Czerwiec"],
-  [7, "Lipiec"],
-  [8, "Sierpień"],
-  [9, "Wrzesień"],
-  [10, "Październik"],
-  [11, "Listopad"],
-  [12, "Grudzień"],
-] as const;
-
-const optionalMediaUrl = z.string().optional().refine(
-  (value) => !value || value.startsWith("/") || /^https?:\/\//i.test(value),
-  "Podaj adres HTTP(S) lub ścieżkę zaczynającą się od /",
-);
-
-const optionalHttpUrl = z.string().optional().refine(
-  (value) => !value || /^https?:\/\//i.test(value),
-  "Podaj pełny adres HTTP(S)",
-);
 
 export function optionalText(value?: string | null) {
   const normalized = value?.trim();
@@ -72,8 +25,18 @@ function normalizeAliasForComparison(value: string) {
     .trim();
 }
 
-export const personSchema = z.object({
-  canonical_name: z.string().min(2, "Minimum 2 znaki"),
+export function createPersonSchema(copy: AdminPersonEditorDictionary["validation"]) {
+  const optionalMediaUrl = z.string().optional().refine(
+    (value) => !value || value.startsWith("/") || /^https?:\/\//i.test(value),
+    copy.mediaUrl,
+  );
+  const optionalHttpUrl = z.string().optional().refine(
+    (value) => !value || /^https?:\/\//i.test(value),
+    copy.httpUrl,
+  );
+
+  return z.object({
+  canonical_name: z.string().min(2, copy.canonicalNameMin),
   canonical_name_en: z.string().optional(),
   latin_name: z.string().optional(),
   person_type: z.enum(["saint", "blessed", "venerable", "servant_of_god", "candidate"]),
@@ -119,17 +82,17 @@ export const personSchema = z.object({
   feast_source_url: optionalHttpUrl,
   feast_notes: z.string().optional(),
   aliases: z.array(z.object({
-    value: z.string().trim().min(2, "Podaj nazwę alternatywną")
-      .refine((value) => normalizeAliasForComparison(value).length > 0, "Nazwa musi zawierać litery lub cyfry"),
+    value: z.string().trim().min(2, copy.aliasRequired)
+      .refine((value) => normalizeAliasForComparison(value).length > 0, copy.aliasCharacters),
     language_code: z.string().trim()
-      .min(2, "Podaj kod języka")
-      .max(10, "Kod języka może mieć maksymalnie 10 znaków")
-      .regex(/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/, "Użyj kodu języka, np. pl, en lub zh-Hant"),
+      .min(2, copy.languageCodeRequired)
+      .max(10, copy.languageCodeMax)
+      .regex(/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/, copy.languageCodeFormat),
     kind: z.enum(["birth_name", "religious_name", "alias", "abbreviation", "transliteration"]),
   })),
   patronages: z.array(z.object({
-    patronage_type: z.string().min(2, "Wybierz typ patronatu"),
-    name_pl: z.string().min(2, "Podaj, komu lub czemu patronuje dana osoba"),
+    patronage_type: z.string().min(2, copy.patronageTypeRequired),
+    name_pl: z.string().min(2, copy.patronageNameRequired),
     name_en: z.string().optional(),
     description: z.string().optional(),
     is_official: z.boolean(),
@@ -140,7 +103,7 @@ export const personSchema = z.object({
   if (new Set(aliasKeys).size !== aliasKeys.length) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: "Nazwy alternatywne nie mogą się powtarzać.",
+      message: copy.duplicateAliases,
       path: ["aliases"],
     });
   }
@@ -151,7 +114,7 @@ export const personSchema = z.object({
   if (hasMonth !== hasDay) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: "Uzupełnij miesiąc i dzień wspomnienia albo pozostaw oba pola puste.",
+      message: copy.feastDateIncomplete,
       path: hasMonth ? ["feast_day"] : ["feast_month"],
     });
   }
@@ -159,7 +122,7 @@ export const personSchema = z.object({
   if (hasMonth && hasDay && !isRealRecurringDate(data.feast_month!, data.feast_day!)) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: "Podana data wspomnienia nie istnieje w kalendarzu.",
+      message: copy.feastDateInvalid,
       path: ["feast_day"],
     });
   }
@@ -167,13 +130,14 @@ export const personSchema = z.object({
   if ((hasMonth || hasDay) && !optionalText(data.feast_calendar_code)) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: "Wybierz kalendarz liturgiczny.",
+      message: copy.feastCalendarRequired,
       path: ["feast_calendar_code"],
     });
   }
-});
+  });
+}
 
-export type PersonFormData = z.infer<typeof personSchema>;
+export type PersonFormData = z.infer<ReturnType<typeof createPersonSchema>>;
 
 export interface FeastEntryResponse {
   id: string;

@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, BookOpenText, Loader2, Save, ShieldCheck } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { calendarApi, geographyApi, getApiErrorMessage, personsApi, sourcesApi, taxonomyApi } from "@/lib/api";
-import type { AdminPersonEditorDictionary } from "@/lib/i18n/types";
+import type { AdminDomainDictionary, AdminPersonEditorDictionary } from "@/lib/i18n/types";
 import { cn } from "@/lib/utils";
 import { PersonAliasesSection } from "./person-aliases-section";
 import { PersonAvatarSection } from "./person-avatar-section";
@@ -17,9 +17,9 @@ import { PersonDatesSection } from "./person-dates-section";
 import { PersonDevotionSection } from "./person-devotion-section";
 import {
   buildFeastPayload,
+  createPersonSchema,
   normalizePersonPayload,
   optionalText,
-  personSchema,
   type FeastEntryResponse,
   type PersonFormData,
 } from "./person-form-model";
@@ -43,6 +43,8 @@ type PersonFormTabId = (typeof TAB_IDS)[number];
 
 interface PersonFormProps {
   copy: AdminPersonEditorDictionary;
+  domainCopy: AdminDomainDictionary;
+  locale: string;
   personId?: string;
   defaultValues?: Partial<PersonFormData>;
   isEdit?: boolean;
@@ -98,6 +100,8 @@ async function syncPersonFeast(
 
 export function PersonForm({
   copy,
+  domainCopy,
+  locale,
   personId,
   defaultValues,
   isEdit = false,
@@ -110,6 +114,7 @@ export function PersonForm({
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFileError, setAvatarFileError] = useState<string | null>(null);
   const hydratedFeastPersonIdRef = useRef<string | null>(null);
+  const formSchema = useMemo(() => createPersonSchema(copy.validation), [copy.validation]);
 
   const countriesQuery = useQuery({
     queryKey: ["countries"],
@@ -155,7 +160,7 @@ export function PersonForm({
     setValue,
     formState: { errors, isDirty },
   } = useForm<PersonFormData>({
-    resolver: zodResolver(personSchema),
+    resolver: zodResolver(formSchema),
     defaultValues: {
       person_type: "saint",
       status: "draft",
@@ -304,6 +309,9 @@ export function PersonForm({
 
       {activeTab === "basic" && (
         <PersonBasicSection
+          copy={copy.basic}
+          domainCopy={domainCopy}
+          locale={locale}
           control={control}
           register={register}
           setValue={setValue}
@@ -324,6 +332,7 @@ export function PersonForm({
 
       {activeTab === "dates" && (
         <PersonDatesSection
+          copy={copy.dates}
           register={register}
           countries={countries}
           countriesLoading={countriesQuery.isLoading}
@@ -333,15 +342,34 @@ export function PersonForm({
       )}
 
       {activeTab === "aliases" && (
-        <PersonAliasesSection control={control} register={register} errors={errors} />
+        <PersonAliasesSection
+          copy={copy.aliases}
+          domainCopy={domainCopy}
+          control={control}
+          register={register}
+          errors={errors}
+        />
       )}
-      {activeTab === "biography" && <PersonBiographySection register={register} isEdit={isEdit} />}
-      {activeTab === "patronages" && <PersonPatronagesSection control={control} register={register} errors={errors} />}
-      {activeTab === "devotion" && <PersonDevotionSection register={register} />}
+      {activeTab === "biography" && <PersonBiographySection copy={copy.biography} register={register} isEdit={isEdit} />}
+      {activeTab === "patronages" && (
+        <PersonPatronagesSection
+          copy={copy.patronages}
+          domainCopy={domainCopy}
+          control={control}
+          register={register}
+          errors={errors}
+        />
+      )}
+      {activeTab === "devotion" && <PersonDevotionSection copy={copy.devotion} register={register} />}
 
       {activeTab === "orders" && (
         isEdit && personId ? (
-          <PersonOrdersEditor personId={personId} />
+          <PersonOrdersEditor
+            copy={copy.orders}
+            domainCopy={domainCopy}
+            locale={locale}
+            personId={personId}
+          />
         ) : (
           <div className="rounded-xl border border-dashed border-border bg-muted/20 p-8 text-center">
             <ShieldCheck className="mx-auto h-7 w-7 text-primary" />
@@ -355,7 +383,7 @@ export function PersonForm({
 
       {activeTab === "sources" && (
         isEdit && personId ? (
-          <PersonSourcesEditor personId={personId} />
+          <PersonSourcesEditor copy={copy.sources} locale={locale} personId={personId} />
         ) : (
           <div className="rounded-xl border border-dashed border-border bg-muted/20 p-8 text-center">
             <BookOpenText className="mx-auto h-7 w-7 text-primary" />
@@ -369,6 +397,9 @@ export function PersonForm({
 
       {activeTab === "avatar" && (
         <PersonAvatarSection
+          copy={copy.avatar}
+          domainCopy={domainCopy}
+          locale={locale}
           control={control}
           register={register}
           errors={errors}

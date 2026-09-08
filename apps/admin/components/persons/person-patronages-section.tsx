@@ -1,7 +1,12 @@
 import { useFieldArray, type Control, type FieldErrors, type UseFormRegister } from "react-hook-form";
 import { HeartHandshake, Plus, Trash2 } from "lucide-react";
+import type {
+  AdminDomainDictionary,
+  AdminPatronageTypeKey,
+  AdminPersonEditorDictionary,
+} from "@/lib/i18n/types";
 import { cn } from "@/lib/utils";
-import { PATRONAGE_TYPE_OPTIONS, type PersonFormData } from "./person-form-model";
+import type { PersonFormData } from "./person-form-model";
 import {
   PERSON_FORM_ERROR_CLASS,
   PERSON_FORM_INPUT_CLASS,
@@ -9,6 +14,8 @@ import {
 } from "./person-form-styles";
 
 interface PersonPatronagesSectionProps {
+  copy: AdminPersonEditorDictionary["patronages"];
+  domainCopy: AdminDomainDictionary;
   control: Control<PersonFormData>;
   register: UseFormRegister<PersonFormData>;
   errors: FieldErrors<PersonFormData>;
@@ -22,7 +29,13 @@ const EMPTY_PATRONAGE: PersonFormData["patronages"][number] = {
   is_official: false,
 };
 
-export function PersonPatronagesSection({ control, register, errors }: PersonPatronagesSectionProps) {
+export function PersonPatronagesSection({
+  copy,
+  domainCopy,
+  control,
+  register,
+  errors,
+}: PersonPatronagesSectionProps) {
   const { fields, append, remove } = useFieldArray({ control, name: "patronages" });
   const addPatronage = () => append({ ...EMPTY_PATRONAGE });
 
@@ -32,26 +45,23 @@ export function PersonPatronagesSection({ control, register, errors }: PersonPat
         <div>
           <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <HeartHandshake className="h-4 w-4 text-primary" />
-            Patronaty
+            {copy.title}
           </h3>
           <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">
-            Dodaj informacje, komu lub czemu dana osoba patronuje. Typ patronatu
-            pomaga później filtrować katalog publiczny, np. chorzy, rodzina,
-            praca albo podróżni.
+            {copy.description}
           </p>
         </div>
-        <AddPatronageButton onClick={addPatronage} primary />
+        <AddPatronageButton label={copy.addAction} onClick={addPatronage} primary />
       </div>
 
       {fields.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-muted/20 p-8 text-center">
           <HeartHandshake className="mx-auto h-7 w-7 text-primary" />
-          <h3 className="mt-3 text-sm font-semibold text-foreground">Brak patronatów</h3>
+          <h3 className="mt-3 text-sm font-semibold text-foreground">{copy.emptyTitle}</h3>
           <p className="mx-auto mt-1 max-w-lg text-xs leading-5 text-muted-foreground">
-            Dodaj pierwszy patronat, np. „chorych”, „spraw beznadziejnych”,
-            „podróżnych” albo konkretny kraj, miasto czy zawód.
+            {copy.emptyDescription}
           </p>
-          <AddPatronageButton onClick={addPatronage} />
+          <AddPatronageButton label={copy.addAction} onClick={addPatronage} />
         </div>
       ) : (
         <div className="space-y-4">
@@ -59,9 +69,9 @@ export function PersonPatronagesSection({ control, register, errors }: PersonPat
             <section key={field.id} className="rounded-xl border border-border bg-muted/15 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h4 className="text-sm font-semibold text-foreground">Patronat #{index + 1}</h4>
+                  <h4 className="text-sm font-semibold text-foreground">{copy.itemPrefix} #{index + 1}</h4>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Wpisz konkretną grupę, sprawę, miejsce lub zawód.
+                    {copy.itemHint}
                   </p>
                 </div>
                 <button
@@ -70,19 +80,19 @@ export function PersonPatronagesSection({ control, register, errors }: PersonPat
                   className="inline-flex h-8 items-center justify-center gap-1 rounded-md border border-border px-2.5 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                  Usuń
+                  {copy.removeAction}
                 </button>
               </div>
 
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className={PERSON_FORM_LABEL_CLASS}>Typ patronatu *</label>
+                  <label className={PERSON_FORM_LABEL_CLASS}>{copy.type}</label>
                   <select
                     {...register(`patronages.${index}.patronage_type` as const)}
                     className={PERSON_FORM_INPUT_CLASS}
                   >
-                    {PATRONAGE_TYPE_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
+                    {Object.entries(domainCopy.patronageTypeLabels).map(([value, label]) => (
+                      <option key={value} value={value as AdminPatronageTypeKey}>{label}</option>
                     ))}
                   </select>
                   {errors.patronages?.[index]?.patronage_type && (
@@ -91,11 +101,11 @@ export function PersonPatronagesSection({ control, register, errors }: PersonPat
                 </div>
 
                 <div>
-                  <label className={PERSON_FORM_LABEL_CLASS}>Patron / patronka od *</label>
+                  <label className={PERSON_FORM_LABEL_CLASS}>{copy.name}</label>
                   <input
                     {...register(`patronages.${index}.name_pl` as const)}
                     className={PERSON_FORM_INPUT_CLASS}
-                    placeholder="np. spraw beznadziejnych, chorych, podróżnych"
+                    placeholder={copy.namePlaceholder}
                   />
                   {errors.patronages?.[index]?.name_pl && (
                     <p className={PERSON_FORM_ERROR_CLASS}>{errors.patronages[index]?.name_pl?.message}</p>
@@ -103,11 +113,11 @@ export function PersonPatronagesSection({ control, register, errors }: PersonPat
                 </div>
 
                 <div>
-                  <label className={PERSON_FORM_LABEL_CLASS}>Nazwa EN</label>
+                  <label className={PERSON_FORM_LABEL_CLASS}>{copy.nameEn}</label>
                   <input
                     {...register(`patronages.${index}.name_en` as const)}
                     className={PERSON_FORM_INPUT_CLASS}
-                    placeholder="np. hopeless causes"
+                    placeholder={copy.nameEnPlaceholder}
                   />
                 </div>
 
@@ -119,17 +129,17 @@ export function PersonPatronagesSection({ control, register, errors }: PersonPat
                     className="h-4 w-4 rounded border-input accent-primary"
                   />
                   <label htmlFor={`patronage-official-${field.id}`} className="text-sm text-foreground">
-                    Patronat oficjalnie potwierdzony
+                    {copy.official}
                   </label>
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className={PERSON_FORM_LABEL_CLASS}>Opis / notatka redakcyjna</label>
+                  <label className={PERSON_FORM_LABEL_CLASS}>{copy.notes}</label>
                   <textarea
                     {...register(`patronages.${index}.description` as const)}
                     rows={3}
                     className={cn(PERSON_FORM_INPUT_CLASS, "resize-y")}
-                    placeholder="Np. zakres patronatu, lokalna tradycja, źródło informacji lub uwagi do weryfikacji…"
+                    placeholder={copy.notesPlaceholder}
                   />
                 </div>
               </div>
@@ -141,7 +151,15 @@ export function PersonPatronagesSection({ control, register, errors }: PersonPat
   );
 }
 
-function AddPatronageButton({ onClick, primary = false }: { onClick: () => void; primary?: boolean }) {
+function AddPatronageButton({
+  label,
+  onClick,
+  primary = false,
+}: {
+  label: string;
+  onClick: () => void;
+  primary?: boolean;
+}) {
   return (
     <button
       type="button"
@@ -154,7 +172,7 @@ function AddPatronageButton({ onClick, primary = false }: { onClick: () => void;
       )}
     >
       <Plus className="h-3.5 w-3.5" />
-      Dodaj patronat
+      {label}
     </button>
   );
 }

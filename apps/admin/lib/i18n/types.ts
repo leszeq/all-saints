@@ -36,6 +36,38 @@ export type AdminPatronageTypeKey =
   | "group"
   | "cause"
   | "other";
+export type AdminPersonAliasKindKey =
+  | "birth_name"
+  | "religious_name"
+  | "alias"
+  | "abbreviation"
+  | "transliteration";
+export type AdminAvatarLicenseKey =
+  | "public_domain"
+  | "cc_by"
+  | "cc_by_sa"
+  | "cc_by_nc"
+  | "cc_by_nc_sa"
+  | "all_rights_reserved"
+  | "fair_use"
+  | "unknown";
+export type AdminOrderMembershipTypeKey =
+  | "founder"
+  | "monk"
+  | "friar"
+  | "nun"
+  | "sister"
+  | "lay_member"
+  | "spiritual_patron"
+  | "member";
+export type AdminCommunityTypeKey =
+  | "religious_order"
+  | "congregation"
+  | "monastic_family"
+  | "society_apostolic_life"
+  | "secular_institute"
+  | "federation"
+  | "other";
 export type AdminEraKey =
   | "apostolic"
   | "early_church"
@@ -106,6 +138,10 @@ export interface AdminDictionary {
     feastRankLabels: Record<AdminFeastRankKey, string>;
     liturgicalColorLabels: Record<AdminLiturgicalColorKey, string>;
     patronageTypeLabels: Record<AdminPatronageTypeKey, string>;
+    personAliasKindLabels: Record<AdminPersonAliasKindKey, string>;
+    avatarLicenseLabels: Record<AdminAvatarLicenseKey, string>;
+    orderMembershipTypeLabels: Record<AdminOrderMembershipTypeKey, string>;
+    communityTypeLabels: Record<AdminCommunityTypeKey, string>;
     editorialPriorityLabels: Record<AdminEditorialPriorityKey, string>;
     completionLabels: Record<AdminCompletionKey, string>;
     completenessCriterionLabels: Record<AdminCompletenessCriterionKey, string>;
@@ -578,6 +614,217 @@ export interface AdminDictionary {
       cancel: string;
       saveChanges: string;
       createPerson: string;
+    };
+    basic: {
+      canonicalName: string;
+      canonicalNamePlaceholder: string;
+      canonicalNameEn: string;
+      canonicalNameEnPlaceholder: string;
+      latinName: string;
+      latinNamePlaceholder: string;
+      personType: string;
+      publicationStatus: string;
+      publicationStatusHint: string;
+      gender: string;
+      era: string;
+      stateOfLife: string;
+      loadingData: string;
+      dataLoadError: string;
+      noDictionaryData: string;
+      retryData: string;
+      featured: string;
+      feast: {
+        title: string;
+        description: string;
+        clearAction: string;
+        loading: string;
+        multipleEntriesPrefix: string;
+        multipleEntriesSuffix: string;
+        calendar: string;
+        fallbackCalendars: {
+          romanPl: string;
+          romanUniversal: string;
+          romanMartyrology: string;
+        };
+        retryCalendars: string;
+        month: string;
+        day: string;
+        dayPlaceholder: string;
+        rank: string;
+        color: string;
+        primary: string;
+        sourceTitle: string;
+        sourceTitlePlaceholder: string;
+        sourceUrl: string;
+        sourceUrlPlaceholder: string;
+        notes: string;
+        notesPlaceholder: string;
+      };
+    };
+    dates: {
+      birthYear: string;
+      birthYearPlaceholder: string;
+      deathYear: string;
+      deathYearPlaceholder: string;
+      birthCountry: string;
+      deathCountry: string;
+      loadingCountries: string;
+      countriesLoadError: string;
+      noCountries: string;
+      retryCountries: string;
+      recognitionTitle: string;
+      recognitionDescription: string;
+      beatification: string;
+      beatificationYearPlaceholder: string;
+      canonization: string;
+      canonizationYearPlaceholder: string;
+      exactDate: string;
+      yearOnly: string;
+    };
+    biography: {
+      summary: string;
+      summaryPlaceholder: string;
+      biography: string;
+      biographyPlaceholder: string;
+      changeSummary: string;
+      changeSummaryPlaceholder: string;
+    };
+    devotion: {
+      prayer: string;
+      prayerPlaceholder: string;
+      prayerHint: string;
+      iconography: string;
+      iconographyPlaceholder: string;
+      iconographyHint: string;
+    };
+    aliases: {
+      title: string;
+      description: string;
+      emptyTitle: string;
+      emptyDescription: string;
+      itemPrefix: string;
+      removeAction: string;
+      name: string;
+      namePlaceholder: string;
+      kind: string;
+      language: string;
+      languagePlaceholder: string;
+      addAction: string;
+    };
+    patronages: {
+      title: string;
+      description: string;
+      emptyTitle: string;
+      emptyDescription: string;
+      itemPrefix: string;
+      itemHint: string;
+      removeAction: string;
+      type: string;
+      name: string;
+      namePlaceholder: string;
+      nameEn: string;
+      nameEnPlaceholder: string;
+      official: string;
+      notes: string;
+      notesPlaceholder: string;
+      addAction: string;
+    };
+    avatar: {
+      newPersonFallback: string;
+      previewTitle: string;
+      previewDescription: string;
+      diskFile: string;
+      chooseFile: string;
+      fileHint: string;
+      removeFileAriaLabel: string;
+      orUseAddress: string;
+      imageUrl: string;
+      imageUrlPlaceholder: string;
+      fileOverridesUrl: string;
+      thumbnailUrl: string;
+      thumbnailUrlPlaceholder: string;
+      altText: string;
+      altTextPrefix: string;
+      license: string;
+      photographer: string;
+      photographerPlaceholder: string;
+      sourceUrl: string;
+      sourceUrlPlaceholder: string;
+      processingHint: string;
+    };
+    orders: {
+      title: string;
+      description: string;
+      community: string;
+      selectCommunity: string;
+      membershipType: string;
+      founder: string;
+      entry: string;
+      entryPlaceholder: string;
+      exit: string;
+      exitPlaceholder: string;
+      notes: string;
+      notesPlaceholder: string;
+      catalogueHint: string;
+      assignAction: string;
+      assignedPrefix: string;
+      empty: string;
+      fromPrefix: string;
+      toPrefix: string;
+      removeConfirmPrefix: string;
+      removeConfirmSuffix: string;
+      removeAction: string;
+      selectRequired: string;
+    };
+    sources: {
+      completenessPrefix: string;
+      completenessPoints: string;
+      completenessSuffix: string;
+      addLinkMode: string;
+      catalogueMode: string;
+      title: string;
+      titlePlaceholder: string;
+      url: string;
+      urlPlaceholder: string;
+      invalidUrl: string;
+      author: string;
+      authorPlaceholder: string;
+      kind: string;
+      bibliographyKind: string;
+      historicalKind: string;
+      position: string;
+      selectSource: string;
+      pageReference: string;
+      pageReferencePlaceholder: string;
+      notes: string;
+      notesPlaceholder: string;
+      primary: string;
+      addWebAction: string;
+      assignAction: string;
+      assignedTitle: string;
+      linksCountSuffix: string;
+      loading: string;
+      empty: string;
+      unknown: string;
+      primaryBadge: string;
+      referencePrefix: string;
+      removeAriaPrefix: string;
+    };
+    validation: {
+      canonicalNameMin: string;
+      mediaUrl: string;
+      httpUrl: string;
+      aliasRequired: string;
+      aliasCharacters: string;
+      languageCodeRequired: string;
+      languageCodeMax: string;
+      languageCodeFormat: string;
+      duplicateAliases: string;
+      patronageTypeRequired: string;
+      patronageNameRequired: string;
+      feastDateIncomplete: string;
+      feastDateInvalid: string;
+      feastCalendarRequired: string;
     };
   };
   personDetail: {

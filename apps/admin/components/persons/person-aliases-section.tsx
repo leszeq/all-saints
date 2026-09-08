@@ -1,7 +1,12 @@
 import { useFieldArray, type Control, type FieldErrors, type UseFormRegister } from "react-hook-form";
 import { Languages, Plus, Trash2 } from "lucide-react";
+import type {
+  AdminDomainDictionary,
+  AdminPersonAliasKindKey,
+  AdminPersonEditorDictionary,
+} from "@/lib/i18n/types";
 import { cn } from "@/lib/utils";
-import { PERSON_ALIAS_KIND_OPTIONS, type PersonFormData } from "./person-form-model";
+import type { PersonFormData } from "./person-form-model";
 import {
   PERSON_FORM_ERROR_CLASS,
   PERSON_FORM_INPUT_CLASS,
@@ -9,6 +14,8 @@ import {
 } from "./person-form-styles";
 
 interface PersonAliasesSectionProps {
+  copy: AdminPersonEditorDictionary["aliases"];
+  domainCopy: AdminDomainDictionary;
   control: Control<PersonFormData>;
   register: UseFormRegister<PersonFormData>;
   errors: FieldErrors<PersonFormData>;
@@ -20,7 +27,13 @@ const EMPTY_ALIAS: PersonFormData["aliases"][number] = {
   kind: "alias",
 };
 
-export function PersonAliasesSection({ control, register, errors }: PersonAliasesSectionProps) {
+export function PersonAliasesSection({
+  copy,
+  domainCopy,
+  control,
+  register,
+  errors,
+}: PersonAliasesSectionProps) {
   const { fields, append, remove } = useFieldArray({ control, name: "aliases" });
   const addAlias = () => append({ ...EMPTY_ALIAS });
 
@@ -30,50 +43,47 @@ export function PersonAliasesSection({ control, register, errors }: PersonAliase
         <div>
           <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <Languages className="h-4 w-4 text-primary" />
-            Nazwy alternatywne i aliasy
+            {copy.title}
           </h3>
           <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">
-            Dodaj nazwisko rodowe, imię zakonne, skrót albo transliterację. Każda
-            wartość uczestniczy w wyszukiwaniu publicznym niezależnie od znaków
-            diakrytycznych, np. „Karol Wojtyła”, „JPII” lub „Ioannes Paulus II”.
+            {copy.description}
           </p>
         </div>
-        <AliasButton onClick={addAlias} primary />
+        <AliasButton label={copy.addAction} onClick={addAlias} primary />
       </div>
 
       {fields.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-muted/20 p-8 text-center">
           <Languages className="mx-auto h-7 w-7 text-primary" />
-          <h3 className="mt-3 text-sm font-semibold text-foreground">Brak nazw alternatywnych</h3>
+          <h3 className="mt-3 text-sm font-semibold text-foreground">{copy.emptyTitle}</h3>
           <p className="mx-auto mt-1 max-w-lg text-xs leading-5 text-muted-foreground">
-            Imię kanoniczne, angielskie i łacińskie są już przeszukiwane. Tutaj
-            dodaj pozostałe formy, pod którymi czytelnik może znać tę osobę.
+            {copy.emptyDescription}
           </p>
-          <AliasButton onClick={addAlias} />
+          <AliasButton label={copy.addAction} onClick={addAlias} />
         </div>
       ) : (
         <div className="space-y-4">
           {fields.map((field, index) => (
             <section key={field.id} className="rounded-xl border border-border bg-muted/15 p-4">
               <div className="flex items-start justify-between gap-3">
-                <h4 className="text-sm font-semibold text-foreground">Nazwa #{index + 1}</h4>
+                <h4 className="text-sm font-semibold text-foreground">{copy.itemPrefix} #{index + 1}</h4>
                 <button
                   type="button"
                   onClick={() => remove(index)}
                   className="inline-flex h-8 items-center gap-1 rounded-md border border-border px-2.5 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                  Usuń
+                  {copy.removeAction}
                 </button>
               </div>
 
               <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_7rem]">
                 <div>
-                  <label className={PERSON_FORM_LABEL_CLASS}>Nazwa *</label>
+                  <label className={PERSON_FORM_LABEL_CLASS}>{copy.name}</label>
                   <input
                     {...register(`aliases.${index}.value` as const)}
                     className={PERSON_FORM_INPUT_CLASS}
-                    placeholder="np. Karol Wojtyła lub JPII"
+                    placeholder={copy.namePlaceholder}
                   />
                   {errors.aliases?.[index]?.value && (
                     <p className={PERSON_FORM_ERROR_CLASS}>{errors.aliases[index]?.value?.message}</p>
@@ -81,23 +91,23 @@ export function PersonAliasesSection({ control, register, errors }: PersonAliase
                 </div>
 
                 <div>
-                  <label className={PERSON_FORM_LABEL_CLASS}>Rodzaj *</label>
+                  <label className={PERSON_FORM_LABEL_CLASS}>{copy.kind}</label>
                   <select
                     {...register(`aliases.${index}.kind` as const)}
                     className={PERSON_FORM_INPUT_CLASS}
                   >
-                    {PERSON_ALIAS_KIND_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
+                    {Object.entries(domainCopy.personAliasKindLabels).map(([value, label]) => (
+                      <option key={value} value={value as AdminPersonAliasKindKey}>{label}</option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className={PERSON_FORM_LABEL_CLASS}>Język *</label>
+                  <label className={PERSON_FORM_LABEL_CLASS}>{copy.language}</label>
                   <input
                     {...register(`aliases.${index}.language_code` as const)}
                     className={PERSON_FORM_INPUT_CLASS}
-                    placeholder="pl"
+                    placeholder={copy.languagePlaceholder}
                   />
                   {errors.aliases?.[index]?.language_code && (
                     <p className={PERSON_FORM_ERROR_CLASS}>{errors.aliases[index]?.language_code?.message}</p>
@@ -115,7 +125,15 @@ export function PersonAliasesSection({ control, register, errors }: PersonAliase
   );
 }
 
-function AliasButton({ onClick, primary = false }: { onClick: () => void; primary?: boolean }) {
+function AliasButton({
+  label,
+  onClick,
+  primary = false,
+}: {
+  label: string;
+  onClick: () => void;
+  primary?: boolean;
+}) {
   return (
     <button
       type="button"
@@ -128,7 +146,7 @@ function AliasButton({ onClick, primary = false }: { onClick: () => void; primar
       )}
     >
       <Plus className="h-3.5 w-3.5" />
-      Dodaj nazwę
+      {label}
     </button>
   );
 }

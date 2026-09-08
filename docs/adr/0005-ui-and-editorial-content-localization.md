@@ -170,6 +170,12 @@ the existing public API.
     states, avatar-file validation and save actions. Stable tab identifiers and form
     field names remain independent of translated labels; field-section copy and schema
     validation messages migrate incrementally without changing payload contracts.
+27. Every person-editor section now consumes a typed subsection of `personEditor`.
+    Labels for person types, statuses, eras, genders, patronage types, aliases, image
+    licences, community types and membership types resolve from the shared domain
+    dictionary rather than component constants. Month and numeric formatting receive
+    the explicit interface locale. The Zod schema is created from localized validation
+    copy, while field names, enum values, normalization and API payloads remain stable.
 
 ## Consequences
 
@@ -213,8 +219,9 @@ the existing public API.
    boundary for metadata, actions, domain labels, dates, empty states and history.
    Person-create/edit routes and the shared editor shell now cover metadata,
    permissions, headings, tab navigation, prerequisite states, avatar validation and
-   save actions. Remaining field-section, schema-validation and other administrative
-   feature-page prose is incremental work.
+   save actions. All person-editor field sections and schema-validation messages now
+   use the same typed boundary, including aliases, patronages, media, communities and
+   sources. Remaining administrative feature-page prose is incremental work.
 3. Add application-layer commands and protected endpoints for translation workflow.
 4. Backfill `pl` and `en` translation rows idempotently from legacy columns and
    report conflicts without overwriting reviewed translations. The maintenance

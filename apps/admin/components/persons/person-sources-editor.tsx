@@ -13,6 +13,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { getApiErrorMessage, sourcesApi } from "@/lib/api";
+import type { AdminPersonEditorDictionary } from "@/lib/i18n/types";
 
 type SourceKind = "bibliography" | "historical";
 type SourceMode = "web" | "catalog";
@@ -48,8 +49,8 @@ interface PersonSourceLink {
 const inputClassName =
   "h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20";
 
-function sourceTitle(link: PersonSourceLink) {
-  return link.bibliography?.title ?? link.historical_source?.title ?? "Nieznane źródło";
+function sourceTitle(link: PersonSourceLink, unknownLabel: string) {
+  return link.bibliography?.title ?? link.historical_source?.title ?? unknownLabel;
 }
 
 function sourceMeta(link: PersonSourceLink) {
@@ -61,7 +62,13 @@ function sourceMeta(link: PersonSourceLink) {
     .join(" · ");
 }
 
-export function PersonSourcesEditor({ personId }: { personId: string }) {
+interface PersonSourcesEditorProps {
+  copy: AdminPersonEditorDictionary["sources"];
+  locale: string;
+  personId: string;
+}
+
+export function PersonSourcesEditor({ copy, locale, personId }: PersonSourcesEditorProps) {
   const queryClient = useQueryClient();
   const [sourceMode, setSourceMode] = useState<SourceMode>("web");
   const [sourceKind, setSourceKind] = useState<SourceKind>("bibliography");
@@ -100,6 +107,7 @@ export function PersonSourcesEditor({ personId }: { personId: string }) {
     sourceMode === "web"
       ? webTitle.trim().length >= 2 && isValidWebUrl
       : Boolean(sourceId);
+  const numberFormatter = new Intl.NumberFormat(locale);
 
   const addMutation = useMutation({
     mutationFn: () => {
@@ -156,10 +164,8 @@ export function PersonSourcesEditor({ personId }: { personId: string }) {
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-primary/15 bg-primary/5 p-4 text-sm leading-6 text-muted-foreground">
-        Przypisane tutaj pozycje są źródłami merytorycznymi postaci. Co najmniej jedno aktywne
-        powiązanie zwiększa kompletność rekordu o <strong className="text-foreground">15 punktów</strong>.
-        Źródło obrazu w zakładce „Avatar” służy wyłącznie do atrybucji grafiki i nie zastępuje
-        źródła biogramu.
+        {copy.completenessPrefix} <strong className="text-foreground">{copy.completenessPoints}</strong>.
+        {" "}{copy.completenessSuffix}
       </div>
 
       <section className="rounded-xl border border-border bg-muted/20 p-4">
@@ -176,7 +182,7 @@ export function PersonSourcesEditor({ personId }: { personId: string }) {
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Link2 className="h-4 w-4" /> Dodaj link
+            <Link2 className="h-4 w-4" /> {copy.addLinkMode}
           </button>
           <button
             type="button"
@@ -190,7 +196,7 @@ export function PersonSourcesEditor({ personId }: { personId: string }) {
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <BookOpenText className="h-4 w-4" /> Wybierz z katalogu
+            <BookOpenText className="h-4 w-4" /> {copy.catalogueMode}
           </button>
         </div>
 
@@ -198,44 +204,44 @@ export function PersonSourcesEditor({ personId }: { personId: string }) {
           {sourceMode === "web" ? (
             <>
               <div>
-                <label className="mb-1 block text-sm font-medium text-foreground">Tytuł źródła *</label>
+                <label className="mb-1 block text-sm font-medium text-foreground">{copy.title}</label>
                 <input
                   value={webTitle}
                   onChange={(event) => setWebTitle(event.target.value)}
                   className={inputClassName}
-                  placeholder="np. Oficjalny biogram na Vatican.va"
+                  placeholder={copy.titlePlaceholder}
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-foreground">Adres źródła *</label>
+                <label className="mb-1 block text-sm font-medium text-foreground">{copy.url}</label>
                 <input
                   type="url"
                   value={webUrl}
                   onChange={(event) => setWebUrl(event.target.value)}
                   className={inputClassName}
-                  placeholder="https://…"
+                  placeholder={copy.urlPlaceholder}
                   aria-invalid={Boolean(webUrl) && !isValidWebUrl}
                 />
                 {webUrl && !isValidWebUrl && (
                   <p className="mt-1 text-xs text-destructive">
-                    Podaj pełny adres rozpoczynający się od http:// lub https://.
+                    {copy.invalidUrl}
                   </p>
                 )}
               </div>
               <div className="md:col-span-2">
-                <label className="mb-1 block text-sm font-medium text-foreground">Autor / instytucja</label>
+                <label className="mb-1 block text-sm font-medium text-foreground">{copy.author}</label>
                 <input
                   value={webAuthors}
                   onChange={(event) => setWebAuthors(event.target.value)}
                   className={inputClassName}
-                  placeholder="np. Dykasteria Spraw Kanonizacyjnych"
+                  placeholder={copy.authorPlaceholder}
                 />
               </div>
             </>
           ) : (
             <>
               <div>
-                <label className="mb-1 block text-sm font-medium text-foreground">Rodzaj źródła</label>
+                <label className="mb-1 block text-sm font-medium text-foreground">{copy.kind}</label>
                 <select
                   value={sourceKind}
                   onChange={(event) => {
@@ -244,19 +250,19 @@ export function PersonSourcesEditor({ personId }: { personId: string }) {
                   }}
                   className={inputClassName}
                 >
-                  <option value="bibliography">Bibliografia / opracowanie</option>
-                  <option value="historical">Źródło historyczne</option>
+                  <option value="bibliography">{copy.bibliographyKind}</option>
+                  <option value="historical">{copy.historicalKind}</option>
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-foreground">Pozycja *</label>
+                <label className="mb-1 block text-sm font-medium text-foreground">{copy.position}</label>
                 <select
                   value={sourceId}
                   onChange={(event) => setSourceId(event.target.value)}
                   className={inputClassName}
                   disabled={bibliographyQuery.isLoading || historicalQuery.isLoading}
                 >
-                  <option value="">Wybierz źródło…</option>
+                  <option value="">{copy.selectSource}</option>
                   {selectableSources.map((source) => (
                     <option key={source.id} value={source.id}>
                       {source.title}
@@ -268,22 +274,22 @@ export function PersonSourcesEditor({ personId }: { personId: string }) {
           )}
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">Strony / fragment</label>
+            <label className="mb-1 block text-sm font-medium text-foreground">{copy.pageReference}</label>
             <input
               value={pageReference}
               onChange={(event) => setPageReference(event.target.value)}
               className={inputClassName}
-              placeholder="np. s. 124–130 albo rozdział 3"
+              placeholder={copy.pageReferencePlaceholder}
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">Notatka redakcyjna</label>
+            <label className="mb-1 block text-sm font-medium text-foreground">{copy.notes}</label>
             <input
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
               className={inputClassName}
-              placeholder="Zakres informacji potwierdzonych przez źródło"
+              placeholder={copy.notesPlaceholder}
             />
           </div>
 
@@ -296,7 +302,7 @@ export function PersonSourcesEditor({ personId }: { personId: string }) {
               className="h-4 w-4 rounded border-input accent-primary"
             />
             <label htmlFor="source-primary" className="text-sm text-foreground">
-              Oznacz jako główne źródło profilu
+              {copy.primary}
             </label>
           </div>
 
@@ -312,7 +318,7 @@ export function PersonSourcesEditor({ personId }: { personId: string }) {
               ) : (
                 <Plus className="h-4 w-4" />
               )}
-              {sourceMode === "web" ? "Dodaj i przypisz link" : "Przypisz źródło"}
+              {sourceMode === "web" ? copy.addWebAction : copy.assignAction}
             </button>
           </div>
         </div>
@@ -327,18 +333,18 @@ export function PersonSourcesEditor({ personId }: { personId: string }) {
       <section>
         <div className="mb-3 flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-foreground">Źródła przypisane do postaci</h3>
-            <p className="mt-1 text-xs text-muted-foreground">{links.length} aktywnych powiązań</p>
+            <h3 className="text-sm font-semibold text-foreground">{copy.assignedTitle}</h3>
+            <p className="mt-1 text-xs text-muted-foreground">{numberFormatter.format(links.length)} {copy.linksCountSuffix}</p>
           </div>
         </div>
 
         {linksQuery.isLoading ? (
           <div className="flex items-center gap-2 rounded-lg border border-border p-4 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Ładowanie źródeł…
+            <Loader2 className="h-4 w-4 animate-spin" /> {copy.loading}
           </div>
         ) : links.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-            Brak przypisanych źródeł merytorycznych.
+            {copy.empty}
           </div>
         ) : (
           <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
@@ -352,10 +358,10 @@ export function PersonSourcesEditor({ personId }: { personId: string }) {
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium text-foreground">{sourceTitle(link)}</p>
+                      <p className="font-medium text-foreground">{sourceTitle(link, copy.unknown)}</p>
                       {link.is_primary && (
                         <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                          <Star className="h-3 w-3" /> Główne
+                          <Star className="h-3 w-3" /> {copy.primaryBadge}
                         </span>
                       )}
                     </div>
@@ -372,7 +378,7 @@ export function PersonSourcesEditor({ personId }: { personId: string }) {
                       </a>
                     )}
                     {link.page_reference && (
-                      <p className="mt-1 text-xs text-foreground">Odwołanie: {link.page_reference}</p>
+                      <p className="mt-1 text-xs text-foreground">{copy.referencePrefix} {link.page_reference}</p>
                     )}
                     {link.notes && <p className="mt-1 text-xs text-muted-foreground">{link.notes}</p>}
                   </div>
@@ -381,7 +387,7 @@ export function PersonSourcesEditor({ personId }: { personId: string }) {
                     disabled={removeMutation.isPending}
                     onClick={() => removeMutation.mutate(link.id)}
                     className="rounded-md p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                    aria-label={`Usuń źródło ${sourceTitle(link)}`}
+                    aria-label={`${copy.removeAriaPrefix} ${sourceTitle(link, copy.unknown)}`}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
