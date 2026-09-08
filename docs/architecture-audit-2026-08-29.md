@@ -801,8 +801,12 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
   wyspecjalizowanych podsekcji. Opcje domenowe nie są już polskimi stałymi komponentów,
   miesiące i liczby otrzymują jawne locale, a fabryka schematu Zod przyjmuje słownikowe
   komunikaty walidacji bez zmiany nazw pól ani payloadów API. Pozostają teksty innych
-  ekranów funkcjonalnych panelu; routing zostanie uruchomiony dopiero z kompletnym
-  drugim językiem.
+  ekranów funkcjonalnych panelu. Geografia oraz Źródła i media mają już serwerowe
+  metadata, typowane słowniki funkcjonalne, współdzielone etykiety stabilnych typów
+  kościołów, źródeł, dokumentów i licencji oraz formatowanie dat i liczb z jawnym
+  locale. Stary, dublujący widok samych państw zachowuje URL, ale przekierowuje do
+  kompletnego panelu geografii. Routing językowy zostanie uruchomiony dopiero z
+  kompletnym drugim językiem.
 - **Category:** Internationalization
 - **File:** oba frontendy i modele Person/Translation
 - **Lines:** setki hardcoded strings

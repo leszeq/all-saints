@@ -16,12 +16,14 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import { sourcesApi } from "@/lib/api";
-import {
-  DOCUMENT_TYPE_LABELS,
-  formatDateTime,
-  IMAGE_LICENSE_LABELS,
-  SOURCE_TYPE_LABELS,
-} from "@/lib/utils";
+import { formatAdminDateTime } from "@/lib/i18n/format";
+import type {
+  AdminAvatarLicenseKey,
+  AdminDocumentTypeKey,
+  AdminDomainDictionary,
+  AdminSourcesHubDictionary,
+  AdminSourceTypeKey,
+} from "@/lib/i18n/types";
 
 type ApiRecord = Record<string, unknown>;
 export type SourcesInitialLicenseFilter = "" | "unknown";
@@ -31,8 +33,8 @@ function valueText(value: unknown, fallback = "—") {
   return String(value);
 }
 
-function scoreLabel(score: unknown) {
-  if (typeof score !== "number") return "brak oceny";
+function scoreLabel(score: unknown, noScoreLabel: string) {
+  if (typeof score !== "number") return noScoreLabel;
   return `${score}/5`;
 }
 
@@ -41,11 +43,13 @@ function MetricCard({
   value,
   detail,
   icon: Icon,
+  locale,
 }: {
   label: string;
   value: number;
   detail: string;
   icon: typeof BookOpenText;
+  locale: string;
 }) {
   return (
     <article className="admin-card p-4">
@@ -53,7 +57,7 @@ function MetricCard({
         <div>
           <p className="text-xs font-medium text-muted-foreground">{label}</p>
           <p className="mt-2 text-3xl font-semibold tracking-tight">
-            {value.toLocaleString("pl-PL")}
+            {new Intl.NumberFormat(locale).format(value)}
           </p>
         </div>
         <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -77,8 +81,14 @@ function EmptyRow({ colSpan, label }: { colSpan: number; label: string }) {
 
 export function SourcesClient({
   initialLicenseFilter,
+  copy,
+  domainCopy,
+  locale,
 }: {
   initialLicenseFilter: SourcesInitialLicenseFilter;
+  copy: AdminSourcesHubDictionary;
+  domainCopy: AdminDomainDictionary;
+  locale: string;
 }) {
   const [search, setSearch] = useState("");
   const licenseFilter = initialLicenseFilter;
@@ -139,6 +149,7 @@ export function SourcesClient({
   );
   const websiteCount = bibliography.filter((source) => source.source_type === "website").length;
   const digitizedCount = historicalSources.filter((source) => source.is_digitized).length;
+  const numberFormatter = new Intl.NumberFormat(locale);
 
   const refreshAll = () => {
     void Promise.all([
@@ -154,10 +165,10 @@ export function SourcesClient({
     <div className="mx-auto max-w-[1500px] space-y-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="admin-label">Źródła i dane</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">Źródła i media</h1>
+          <p className="admin-label">{copy.kicker}</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight">{copy.title}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Bibliografia, źródła historyczne, obrazy i dokumenty powiązane z rekordami.
+            {copy.description}
           </p>
         </div>
         <button
@@ -165,49 +176,54 @@ export function SourcesClient({
           onClick={refreshAll}
           className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border px-4 text-sm font-semibold hover:bg-accent"
         >
-          <RefreshCw className="h-4 w-4" /> Odśwież dane
+          <RefreshCw className="h-4 w-4" /> {copy.refreshAction}
         </button>
       </header>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Podsumowanie źródeł">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label={copy.summaryAriaLabel}>
         <MetricCard
-          label="Bibliografia"
+          label={copy.metrics.bibliography}
           value={bibliographyTotal}
-          detail={`${websiteCount.toLocaleString("pl-PL")} pozycji pochodzi z adresów URL`}
+          detail={`${numberFormatter.format(websiteCount)} ${copy.metrics.websiteSuffix}`}
           icon={BookOpenText}
+          locale={locale}
         />
         <MetricCard
-          label="Źródła historyczne"
+          label={copy.metrics.historical}
           value={historicalTotal}
-          detail={`${digitizedCount.toLocaleString("pl-PL")} pozycji ma digitalizację`}
+          detail={`${numberFormatter.format(digitizedCount)} ${copy.metrics.digitizedSuffix}`}
           icon={Archive}
+          locale={locale}
         />
         <MetricCard
-          label="Media"
+          label={copy.metrics.media}
           value={imagesTotal}
-          detail={`${unknownLicenseCount.toLocaleString("pl-PL")} obrazów wymaga licencji`}
+          detail={`${numberFormatter.format(unknownLicenseCount)} ${copy.metrics.unknownLicenseSuffix}`}
           icon={ImageIcon}
+          locale={locale}
         />
         <MetricCard
-          label="Dokumenty"
+          label={copy.metrics.documents}
           value={documentsTotal}
-          detail={`${documents.filter((doc) => doc.is_public).length.toLocaleString("pl-PL")} dokumentów publicznych`}
+          detail={`${numberFormatter.format(documents.filter((doc) => doc.is_public).length)} ${copy.metrics.publicDocumentsSuffix}`}
           icon={FileText}
+          locale={locale}
         />
       </section>
 
       <section className="admin-card p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-sm font-semibold">Wyszukiwanie źródeł tekstowych</h2>
-            <p className="mt-1 text-xs text-muted-foreground">Przeszukuje bibliografię i źródła historyczne.</p>
+            <h2 className="text-sm font-semibold">{copy.search.title}</h2>
+            <p className="mt-1 text-xs text-muted-foreground">{copy.search.description}</p>
           </div>
           <div className="relative w-full sm:max-w-md">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Szukaj po tytule, autorze lub repozytorium..."
+              aria-label={copy.search.ariaLabel}
+              placeholder={copy.search.placeholder}
               className="w-full rounded-lg border border-input bg-background py-2 pl-9 pr-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
@@ -218,15 +234,15 @@ export function SourcesClient({
         <div className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <ShieldAlert className="h-4 w-4" />
-            <span>{unknownLicenseCount} obrazów ma nieznaną licencję i wymaga weryfikacji przed publikacją profilu.</span>
+            <span>{copy.licenseAlert.prefix} {numberFormatter.format(unknownLicenseCount)}. {copy.licenseAlert.suffix}</span>
           </div>
           {licenseFilter === "unknown" ? (
             <Link href="/dashboard/sources#media" className="font-semibold text-amber-950 underline-offset-4 hover:underline dark:text-amber-100">
-              Pokaż wszystkie media
+              {copy.licenseAlert.showAll}
             </Link>
           ) : (
             <Link href="/dashboard/sources?license=unknown#media" className="font-semibold text-amber-950 underline-offset-4 hover:underline dark:text-amber-100">
-              Pokaż obrazy do sprawdzenia
+              {copy.licenseAlert.showReview}
             </Link>
           )}
         </div>
@@ -235,32 +251,32 @@ export function SourcesClient({
       <section className="grid gap-5 xl:grid-cols-2">
         <article id="bibliography" className="admin-card scroll-mt-6 overflow-hidden">
           <div className="border-b border-border px-5 py-4">
-            <h2 className="text-sm font-semibold">Bibliografia</h2>
-            <p className="mt-1 text-xs text-muted-foreground">Opracowania, artykuły, strony WWW i pozycje encyklopedyczne.</p>
+            <h2 className="text-sm font-semibold">{copy.bibliography.title}</h2>
+            <p className="mt-1 text-xs text-muted-foreground">{copy.bibliography.description}</p>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-[760px] w-full text-sm">
               <thead className="border-b border-border bg-muted/40 text-left text-xs font-semibold uppercase text-muted-foreground">
                 <tr>
-                  <th className="px-4 py-3">Tytuł</th>
-                  <th className="px-4 py-3">Typ</th>
-                  <th className="px-4 py-3">Rok</th>
-                  <th className="px-4 py-3">Ocena</th>
-                  <th className="px-4 py-3">Aktualizacja</th>
+                  <th className="px-4 py-3">{copy.bibliography.columns.title}</th>
+                  <th className="px-4 py-3">{copy.bibliography.columns.type}</th>
+                  <th className="px-4 py-3">{copy.bibliography.columns.year}</th>
+                  <th className="px-4 py-3">{copy.bibliography.columns.score}</th>
+                  <th className="px-4 py-3">{copy.bibliography.columns.updated}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {bibliographyQuery.isLoading ? (
-                  <EmptyRow colSpan={5} label="Ładowanie bibliografii..." />
+                  <EmptyRow colSpan={5} label={copy.bibliography.loading} />
                 ) : bibliography.length === 0 ? (
-                  <EmptyRow colSpan={5} label="Brak pozycji bibliograficznych" />
+                  <EmptyRow colSpan={5} label={copy.bibliography.empty} />
                 ) : (
                   bibliography.map((source) => (
                     <tr key={String(source.id)} className="hover:bg-muted/30">
                       <td className="px-4 py-3">
                         <p className="font-medium text-foreground">{valueText(source.title)}</p>
                         <p className="mt-1 truncate text-xs text-muted-foreground">
-                          {valueText(source.authors, "Autor nieuzupełniony")}
+                          {valueText(source.authors, copy.bibliography.authorMissing)}
                         </p>
                         {Boolean(source.url) && (
                           <a
@@ -275,16 +291,16 @@ export function SourcesClient({
                         )}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">
-                        {SOURCE_TYPE_LABELS[String(source.source_type)] ?? valueText(source.source_type)}
+                        {domainCopy.sourceTypeLabels[String(source.source_type) as AdminSourceTypeKey] ?? valueText(source.source_type)}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">{valueText(source.year)}</td>
                       <td className="px-4 py-3">
                         <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                          {scoreLabel(source.reliability_score)}
+                          {scoreLabel(source.reliability_score, copy.bibliography.noScore)}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">
-                        {formatDateTime(source.updated_at as string)}
+                        {formatAdminDateTime(source.updated_at as string, locale)}
                       </td>
                     </tr>
                   ))
@@ -296,32 +312,32 @@ export function SourcesClient({
 
         <article id="historical-sources" className="admin-card scroll-mt-6 overflow-hidden">
           <div className="border-b border-border px-5 py-4">
-            <h2 className="text-sm font-semibold">Źródła historyczne</h2>
-            <p className="mt-1 text-xs text-muted-foreground">Rękopisy, archiwa, repozytoria i pierwotne świadectwa.</p>
+            <h2 className="text-sm font-semibold">{copy.historical.title}</h2>
+            <p className="mt-1 text-xs text-muted-foreground">{copy.historical.description}</p>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-[760px] w-full text-sm">
               <thead className="border-b border-border bg-muted/40 text-left text-xs font-semibold uppercase text-muted-foreground">
                 <tr>
-                  <th className="px-4 py-3">Źródło</th>
-                  <th className="px-4 py-3">Repozytorium</th>
-                  <th className="px-4 py-3">Datowanie</th>
-                  <th className="px-4 py-3">Digitalizacja</th>
-                  <th className="px-4 py-3">Aktualizacja</th>
+                  <th className="px-4 py-3">{copy.historical.columns.source}</th>
+                  <th className="px-4 py-3">{copy.historical.columns.repository}</th>
+                  <th className="px-4 py-3">{copy.historical.columns.dating}</th>
+                  <th className="px-4 py-3">{copy.historical.columns.digitization}</th>
+                  <th className="px-4 py-3">{copy.historical.columns.updated}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {historicalQuery.isLoading ? (
-                  <EmptyRow colSpan={5} label="Ładowanie źródeł historycznych..." />
+                  <EmptyRow colSpan={5} label={copy.historical.loading} />
                 ) : historicalSources.length === 0 ? (
-                  <EmptyRow colSpan={5} label="Brak źródeł historycznych" />
+                  <EmptyRow colSpan={5} label={copy.historical.empty} />
                 ) : (
                   historicalSources.map((source) => (
                     <tr key={String(source.id)} className="hover:bg-muted/30">
                       <td className="px-4 py-3">
                         <p className="font-medium text-foreground">{valueText(source.title)}</p>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {SOURCE_TYPE_LABELS[String(source.source_type)] ?? valueText(source.source_type)}
+                          {domainCopy.sourceTypeLabels[String(source.source_type) as AdminSourceTypeKey] ?? valueText(source.source_type)}
                         </p>
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">
@@ -333,14 +349,14 @@ export function SourcesClient({
                       <td className="px-4 py-3">
                         {source.is_digitized ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
-                            <BadgeCheck className="h-3 w-3" /> Tak
+                            <BadgeCheck className="h-3 w-3" /> {copy.historical.yes}
                           </span>
                         ) : (
-                          <span className="text-xs text-muted-foreground">Nie</span>
+                          <span className="text-xs text-muted-foreground">{copy.historical.no}</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">
-                        {formatDateTime(source.updated_at as string)}
+                        {formatAdminDateTime(source.updated_at as string, locale)}
                       </td>
                     </tr>
                   ))
@@ -356,17 +372,17 @@ export function SourcesClient({
           <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-sm font-semibold">
-                {licenseFilter === "unknown" ? "Media bez zweryfikowanej licencji" : "Media"}
+                {licenseFilter === "unknown" ? copy.media.filteredTitle : copy.media.title}
               </h2>
               <p className="mt-1 text-xs text-muted-foreground">
                 {licenseFilter === "unknown"
-                  ? "Obrazy, które blokują publikację powiązanych profili do czasu weryfikacji licencji."
-                  : "Obrazy, avatary i ikonografia powiązana z osobami."}
+                  ? copy.media.filteredDescription
+                  : copy.media.description}
               </p>
             </div>
             {licenseFilter === "unknown" && (
               <Link href="/dashboard/sources#media" className="text-xs font-semibold text-primary">
-                Wyczyść filtr
+                {copy.media.clearFilter}
               </Link>
             )}
           </div>
@@ -374,19 +390,19 @@ export function SourcesClient({
             <table className="min-w-[720px] w-full text-sm">
               <thead className="border-b border-border bg-muted/40 text-left text-xs font-semibold uppercase text-muted-foreground">
                 <tr>
-                  <th className="px-4 py-3">Obraz</th>
-                  <th className="px-4 py-3">Licencja</th>
-                  <th className="px-4 py-3">Źródło</th>
-                  <th className="px-4 py-3">Rozmiar</th>
+                  <th className="px-4 py-3">{copy.media.columns.image}</th>
+                  <th className="px-4 py-3">{copy.media.columns.license}</th>
+                  <th className="px-4 py-3">{copy.media.columns.source}</th>
+                  <th className="px-4 py-3">{copy.media.columns.size}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {imagesQuery.isLoading ? (
-                  <EmptyRow colSpan={4} label="Ładowanie mediów..." />
+                  <EmptyRow colSpan={4} label={copy.media.loading} />
                 ) : mediaRows.length === 0 ? (
                   <EmptyRow
                     colSpan={4}
-                    label={licenseFilter === "unknown" ? "Brak obrazów z nieznaną licencją" : "Brak mediów"}
+                    label={licenseFilter === "unknown" ? copy.media.filteredEmpty : copy.media.empty}
                   />
                 ) : (
                   mediaRows.map((image) => (
@@ -406,14 +422,14 @@ export function SourcesClient({
                             )}
                           </span>
                           <div className="min-w-0">
-                            <p className="truncate font-medium text-foreground">{valueText(image.title, "Obraz bez tytułu")}</p>
-                            <p className="text-xs text-muted-foreground">{valueText(image.image_type, "image")}</p>
+                            <p className="truncate font-medium text-foreground">{valueText(image.title, copy.media.untitled)}</p>
+                            <p className="text-xs text-muted-foreground">{valueText(image.image_type, copy.media.imageTypeFallback)}</p>
                           </div>
                         </div>
                       </td>
                       <td className="px-4 py-3">
                         <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                          {IMAGE_LICENSE_LABELS[String(image.license)] ?? valueText(image.license)}
+                          {domainCopy.avatarLicenseLabels[String(image.license) as AdminAvatarLicenseKey] ?? valueText(image.license)}
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -444,24 +460,24 @@ export function SourcesClient({
 
         <article className="admin-card overflow-hidden">
           <div className="border-b border-border px-5 py-4">
-            <h2 className="text-sm font-semibold">Dokumenty</h2>
-            <p className="mt-1 text-xs text-muted-foreground">Dekrety, biografie, procesy i pliki pomocnicze.</p>
+            <h2 className="text-sm font-semibold">{copy.documents.title}</h2>
+            <p className="mt-1 text-xs text-muted-foreground">{copy.documents.description}</p>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-[680px] w-full text-sm">
               <thead className="border-b border-border bg-muted/40 text-left text-xs font-semibold uppercase text-muted-foreground">
                 <tr>
-                  <th className="px-4 py-3">Tytuł</th>
-                  <th className="px-4 py-3">Typ</th>
-                  <th className="px-4 py-3">Język</th>
-                  <th className="px-4 py-3">Widoczność</th>
+                  <th className="px-4 py-3">{copy.documents.columns.title}</th>
+                  <th className="px-4 py-3">{copy.documents.columns.type}</th>
+                  <th className="px-4 py-3">{copy.documents.columns.language}</th>
+                  <th className="px-4 py-3">{copy.documents.columns.visibility}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {documentsQuery.isLoading ? (
-                  <EmptyRow colSpan={4} label="Ładowanie dokumentów..." />
+                  <EmptyRow colSpan={4} label={copy.documents.loading} />
                 ) : documents.length === 0 ? (
-                  <EmptyRow colSpan={4} label="Brak dokumentów" />
+                  <EmptyRow colSpan={4} label={copy.documents.empty} />
                 ) : (
                   documents.map((document) => (
                     <tr key={String(document.id)} className="hover:bg-muted/30">
@@ -480,7 +496,7 @@ export function SourcesClient({
                         )}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">
-                        {DOCUMENT_TYPE_LABELS[String(document.document_type)] ?? valueText(document.document_type)}
+                        {domainCopy.documentTypeLabels[String(document.document_type) as AdminDocumentTypeKey] ?? valueText(document.document_type)}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">
                         {valueText(document.language_code)}
@@ -488,11 +504,11 @@ export function SourcesClient({
                       <td className="px-4 py-3">
                         {document.is_public ? (
                           <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
-                            Publiczny
+                            {copy.documents.public}
                           </span>
                         ) : (
                           <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                            Roboczy
+                            {copy.documents.draft}
                           </span>
                         )}
                       </td>
@@ -506,7 +522,7 @@ export function SourcesClient({
       </section>
 
       {isLoading && (
-        <p className="text-xs text-muted-foreground">Część danych może się jeszcze odświeżać z API.</p>
+        <p className="text-xs text-muted-foreground">{copy.partialRefresh}</p>
       )}
     </div>
   );

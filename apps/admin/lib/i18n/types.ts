@@ -68,6 +68,36 @@ export type AdminCommunityTypeKey =
   | "secular_institute"
   | "federation"
   | "other";
+export type AdminChurchTypeKey =
+  | "parish"
+  | "cathedral"
+  | "basilica"
+  | "chapel"
+  | "monastery"
+  | "sanctuary"
+  | "shrine"
+  | "pilgrimage_site"
+  | "other";
+export type AdminSourceTypeKey =
+  | "book"
+  | "article"
+  | "encyclopedia"
+  | "website"
+  | "manuscript"
+  | "archive"
+  | "document"
+  | "hagiography"
+  | "vita"
+  | "other";
+export type AdminDocumentTypeKey =
+  | "decree"
+  | "bull"
+  | "encyclical"
+  | "biography"
+  | "letter"
+  | "vita"
+  | "process"
+  | "other";
 export type AdminEraKey =
   | "apostolic"
   | "early_church"
@@ -142,6 +172,9 @@ export interface AdminDictionary {
     avatarLicenseLabels: Record<AdminAvatarLicenseKey, string>;
     orderMembershipTypeLabels: Record<AdminOrderMembershipTypeKey, string>;
     communityTypeLabels: Record<AdminCommunityTypeKey, string>;
+    churchTypeLabels: Record<AdminChurchTypeKey, string>;
+    sourceTypeLabels: Record<AdminSourceTypeKey, string>;
+    documentTypeLabels: Record<AdminDocumentTypeKey, string>;
     editorialPriorityLabels: Record<AdminEditorialPriorityKey, string>;
     completionLabels: Record<AdminCompletionKey, string>;
     completenessCriterionLabels: Record<AdminCompletenessCriterionKey, string>;
@@ -497,6 +530,163 @@ export interface AdminDictionary {
         openSection: { label: string; hint: string };
       };
     };
+  };
+  geography: {
+    metadataTitle: string;
+    metadataDescription: string;
+    kicker: string;
+    title: string;
+    description: string;
+    refreshAction: string;
+    summaryAriaLabel: string;
+    metrics: {
+      countries: string;
+      historicalSuffix: string;
+      places: string;
+      coordinatesSuffix: string;
+      dioceses: string;
+      archdiocesesSuffix: string;
+      churches: string;
+      pilgrimageSuffix: string;
+    };
+    views: {
+      countries: string;
+      places: string;
+      dioceses: string;
+      churches: string;
+    };
+    searchAriaLabel: string;
+    searchPlaceholder: string;
+    columns: {
+      country: string;
+      iso: string;
+      capital: string;
+      continent: string;
+      type: string;
+      updated: string;
+      place: string;
+      diocese: string;
+      coordinates: string;
+      years: string;
+      church: string;
+      cultStatus: string;
+    };
+    states: {
+      loadingCountries: string;
+      emptyCountries: string;
+      loadingPlaces: string;
+      emptyPlaces: string;
+      loadingDioceses: string;
+      emptyDioceses: string;
+      loadingChurches: string;
+      emptyChurches: string;
+      partialRefresh: string;
+    };
+    labels: {
+      historical: string;
+      current: string;
+      localNameMissing: string;
+      archdiocese: string;
+      diocese: string;
+      present: string;
+      nationalSanctuary: string;
+      pilgrimage: string;
+      local: string;
+    };
+  };
+  sourcesHub: {
+    metadataTitle: string;
+    metadataDescription: string;
+    kicker: string;
+    title: string;
+    description: string;
+    refreshAction: string;
+    summaryAriaLabel: string;
+    metrics: {
+      bibliography: string;
+      websiteSuffix: string;
+      historical: string;
+      digitizedSuffix: string;
+      media: string;
+      unknownLicenseSuffix: string;
+      documents: string;
+      publicDocumentsSuffix: string;
+    };
+    search: {
+      title: string;
+      description: string;
+      ariaLabel: string;
+      placeholder: string;
+    };
+    licenseAlert: {
+      prefix: string;
+      suffix: string;
+      showAll: string;
+      showReview: string;
+    };
+    bibliography: {
+      title: string;
+      description: string;
+      columns: {
+        title: string;
+        type: string;
+        year: string;
+        score: string;
+        updated: string;
+      };
+      loading: string;
+      empty: string;
+      authorMissing: string;
+      noScore: string;
+    };
+    historical: {
+      title: string;
+      description: string;
+      columns: {
+        source: string;
+        repository: string;
+        dating: string;
+        digitization: string;
+        updated: string;
+      };
+      loading: string;
+      empty: string;
+      yes: string;
+      no: string;
+    };
+    media: {
+      title: string;
+      filteredTitle: string;
+      description: string;
+      filteredDescription: string;
+      clearFilter: string;
+      columns: {
+        image: string;
+        license: string;
+        source: string;
+        size: string;
+      };
+      loading: string;
+      empty: string;
+      filteredEmpty: string;
+      untitled: string;
+      imageTypeFallback: string;
+    };
+    documents: {
+      title: string;
+      description: string;
+      columns: {
+        title: string;
+        type: string;
+        language: string;
+        visibility: string;
+      };
+      loading: string;
+      empty: string;
+      public: string;
+      draft: string;
+    };
+    partialRefresh: string;
   };
   persons: {
     metadataTitle: string;
@@ -893,6 +1083,8 @@ export type AdminDashboardDictionary = AdminDictionary["dashboard"];
 export type AdminDomainDictionary = AdminDictionary["domain"];
 export type AdminReviewDictionary = AdminDictionary["review"];
 export type AdminQualityDictionary = AdminDictionary["quality"];
+export type AdminGeographyDictionary = AdminDictionary["geography"];
+export type AdminSourcesHubDictionary = AdminDictionary["sourcesHub"];
 export type AdminPersonsDictionary = AdminDictionary["persons"];
 export type AdminPersonEditorDictionary = AdminDictionary["personEditor"];
 export type AdminPersonDetailDictionary = AdminDictionary["personDetail"];
