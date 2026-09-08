@@ -239,14 +239,18 @@ def test_august_26_dataset_separates_polish_solemnity_from_martyrology() -> None
     ]
 
     assert len(people) == 3
-    assert len(observances) == 1
     assert len(entries) == 4
     primary = next(entry for entry in entries if entry["is_primary"])
     assert primary["person_slug"] is None
     assert primary["observance_slug"] == "najswietsza-maryja-panna-czestochowska"
     assert primary["calendar_code"] == "roman_pl"
     assert primary["rank"] == "solemnity"
-    assert observances[0]["observance_type"] == "marian"
+    polish_observance = next(
+        observance
+        for observance in observances
+        if observance["slug"] == "najswietsza-maryja-panna-czestochowska"
+    )
+    assert polish_observance["observance_type"] == "marian"
     assert all(
         entry["calendar_code"] == "roman_martyrology"
         for entry in entries
@@ -264,3 +268,30 @@ def test_august_26_dataset_separates_polish_solemnity_from_martyrology() -> None
     assert teresa["canonization_date"] == "1974-01-27"
     assert maria["person_type"] == "blessed"
     assert maria["beatification_date"] == "2005-10-29"
+
+
+def test_september_8_dataset_models_nativity_of_mary_as_observance() -> None:
+    observances = read_observance_rows(DATA_DIRECTORY / "observances.csv")
+    entries = [
+        row
+        for row in read_rows(DATA_DIRECTORY / "feasts.csv")
+        if row["month"] == 9 and row["day"] == 8
+    ]
+
+    nativity = next(
+        observance
+        for observance in observances
+        if observance["slug"] == "narodzenie-najswietszej-maryi-panny"
+    )
+    assert nativity["observance_type"] == "marian"
+    assert nativity["title_pl"] == "Narodzenie Najświętszej Maryi Panny"
+    assert "Protoewangelia Jakuba" in nativity["description_pl"]
+
+    assert len(entries) == 1
+    entry = entries[0]
+    assert entry["person_slug"] is None
+    assert entry["observance_slug"] == nativity["slug"]
+    assert entry["calendar_code"] == "roman_universal"
+    assert entry["rank"] == "feast"
+    assert entry["liturgical_color"] == "white"
+    assert entry["is_primary"] is True

@@ -15,7 +15,7 @@ def test_versioned_dataset_contains_orders_people_and_memberships() -> None:
     people, orders, memberships = read_dataset(DATASET)
 
     assert len(people) == 2
-    assert len(orders) == 8
+    assert len(orders) == 9
     assert len(memberships) == 12
     assert sum(order["is_featured"] == "true" for order in orders) == 3
     assert {order["community_type"] for order in orders} >= {
@@ -24,6 +24,18 @@ def test_versioned_dataset_contains_orders_people_and_memberships() -> None:
         "monastic_family",
     }
     assert all(order["source_url"].startswith("https://") for order in orders)
+
+
+def test_dataset_contains_society_of_jesus_with_ignatian_identity() -> None:
+    _people, orders, _memberships = read_dataset(DATASET)
+
+    jesuits = next(order for order in orders if order["slug"] == "jezuici")
+    assert jesuits["name_la"] == "Societas Iesu"
+    assert jesuits["abbreviation"] == "SJ"
+    assert jesuits["spiritual_family"] == "ignacjanska"
+    assert jesuits["founded_year"] == "1540"
+    assert jesuits["founder_name"].startswith("św. Ignacy Loyola")
+    assert jesuits["source_url"] == "https://www.jesuits.global/about-us/our-history/"
 
 
 def test_dataset_distinguishes_spiritual_patron_from_membership() -> None:

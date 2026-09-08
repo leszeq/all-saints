@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "exported_at": "2026-09-08T00:00:00Z",
+  "source_person_id": null,
+  "source_slug": "sw-jan-testowy-z-przykladowa",
+  "source_status": "draft",
+  "profile": {
+    "person_type": "saint",
+    "canonical_name": "Św. Jan Testowy z Przykładowa",
+    "canonical_name_en": "St. John the Test of Example",
+    "latin_name": "Sanctus Ioannes Probator de Exemplo",
+    "original_name": "Jan Testowy",
+    "surnames": "Testowy",
+    "religious_name": "br. Jan od Danych Poprawnych",
+    "epithets": [
+      "z Przykładowa",
+      "Patron poprawnych importów"
+    ],
+    "gender": "male",
+    "era": "modern",
+    "century": 20,
+    "birth_date": "1 stycznia 1920",
+    "birth_year": 1920,
+    "death_date": "31 grudnia 2005",
+    "death_year": 2005,
+    "birth_place_id": null,
+    "death_place_id": null,
+    "birth_country_id": null,
+    "death_country_id": null,
+    "nationality_id": null,
+    "state_of_life_id": null,
+    "summary_pl": "Fikcyjna postać przeznaczona wyłącznie do testowania importu pełnego profilu w panelu administratora.",
+    "biography_pl": "Św. Jan Testowy z Przykładowa jest celowo fikcyjnym rekordem demonstracyjnym. Profil pozwala sprawdzić walidację danych podstawowych, nazw alternatywnych, patronatów, przynależności zakonnej, wspomnienia liturgicznego oraz źródeł. Rekordu nie należy publikować w publicznej Encyklopedii Świętych.",
+    "summary_en": "A fictional person intended solely for testing complete profile imports in the administration panel.",
+    "biography_en": "This intentionally fictional record exercises profile validation and related-data import. It must not be published in the public encyclopedia.",
+    "iconographic_attributes": "Zwój z napisem JSON, pióro redaktora, złoty znak kontrolny.",
+    "prayers": "To jest wyłącznie przykładowa treść pola modlitwy używana do testów interfejsu.",
+    "works": "Przykładowe opracowanie danych; podręcznik poprawnego importu.",
+    "liturgical_color": "white",
+    "is_featured": false,
+    "external_ids": {
+      "test_fixture": "person-profile-import-v1",
+      "environment": "local-development"
+    },
+    "avatar": null,
+    "aliases": [
+      {
+        "value": "Jan z Przykładowa",
+        "language_code": "pl",
+        "kind": "alias"
+      },
+      {
+        "value": "Ioannes de Exemplo",
+        "language_code": "la",
+        "kind": "transliteration"
+      }
+    ],
+    "patronages": [
+      {
+        "patronage_type": "technology",
+        "name_pl": "poprawnych importów danych",
+        "name_en": "valid data imports",
+        "description": "Fikcyjny patronat dodany wyłącznie w celu sprawdzenia prezentacji danych.",
+        "is_official": false
+      },
+      {
+        "patronage_type": "editors",
+        "name_pl": "redaktorów środowisk testowych",
+        "name_en": "test-environment editors",
+        "description": "Nieoficjalna wartość testowa.",
+        "is_official": false
+      }
+    ],
+    "beatification": {
+      "beatification_date": "1 maja 2011",
+      "beatification_year": 2011
+    },
+    "canonization": {
+      "canonization_date": "27 kwietnia 2014",
+      "canonization_year": 2014
+    },
+    "status": "draft"
+  },
+  "orders": [
+    {
+      "order_slug": "bracia-mniejsi",
+      "entry_date": "1 września 1940",
+      "exit_date": null,
+      "is_founder": false,
+      "membership_type": "friar",
+      "notes": "Powiązanie testowe z istniejącym zakonem; nie stanowi informacji historycznej."
+    }
+  ],
+  "feasts": [
+    {
+      "calendar_code": "roman_pl",
+      "month": 2,
+      "day": 3,
+      "rank": "opt_memorial",
+      "liturgical_color": "white",
+      "is_primary": false,
+      "is_suppressed": false,
+      "notes": "Fikcyjne wspomnienie przeznaczone wyłącznie do testu importu.",
+      "source_title": "Dokumentacja testowa importu profilu",
+      "source_url": "https://example.org/all-saints/test-profile"
+    }
+  ],
+  "sources": [
+    {
+      "kind": "bibliography",
+      "bibliography": {
+        "source_type": "website",
+        "title": "Dokumentacja testowa profilu osoby",
+        "subtitle": "Przykład kontraktu person-profile schema_version 1",
+        "authors": "Redakcja techniczna Encyklopedii Świętych",
+        "editor": null,
+        "publisher": "Projekt all-saints",
+        "place_of_publication": null,
+        "year": 2026,
+        "edition": "1",
+        "volume": null,
+        "pages": null,
+        "isbn": null,
+        "issn": null,
+        "doi": null,
+        "url": "https://example.org/all-saints/test-profile",
+        "language": "pl",
+        "abstract": "Fikcyjne źródło służące wyłącznie do przetestowania importu powiązań bibliograficznych.",
+        "reliability_score": 1,
+        "notes": "Nie jest to źródło merytoryczne i nie powinno zostać oznaczone jako zweryfikowane."
+      },
+      "historical_source": null,
+      "link": {
+        "page_reference": "cały dokument testowy",
+        "quote": null,
+        "relevance_score": 5,
+        "is_primary": true,
+        "notes": "Powiązanie utworzone wyłącznie na potrzeby testu."
+      }
+    }
+  ]
+}
