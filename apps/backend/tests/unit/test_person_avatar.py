@@ -149,3 +149,12 @@ def test_openapi_exposes_avatar_in_person_contract() -> None:
 
     assert "avatar" in properties
     assert "avatar" in create_properties
+
+
+def test_uploaded_image_route_name_survives_sources_router_composition() -> None:
+    path = app.url_path_for(
+        "get_uploaded_image",
+        object_key="avatars/2026/09/test.webp",
+    )
+
+    assert str(path) == "/api/v1/sources/images/files/avatars/2026/09/test.webp"
