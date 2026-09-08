@@ -8,6 +8,15 @@ export type AdminSystemRoleKey =
   | "guest";
 
 export type AdminPublicationStatusKey = "draft" | "review" | "published" | "archived";
+export type AdminEraKey =
+  | "apostolic"
+  | "early_church"
+  | "late_antiquity"
+  | "medieval"
+  | "early_modern"
+  | "modern"
+  | "contemporary"
+  | "unknown";
 export type AdminCompletionKey = "complete" | "partial" | "low" | "critical";
 export type AdminPersonTypeKey =
   | "saint"
@@ -64,6 +73,7 @@ export interface AdminDictionary {
   domain: {
     personStatusLabels: Record<AdminPublicationStatusKey, string>;
     personTypeLabels: Record<AdminPersonTypeKey, string>;
+    eraLabels: Record<AdminEraKey, string>;
     editorialPriorityLabels: Record<AdminEditorialPriorityKey, string>;
     completionLabels: Record<AdminCompletionKey, string>;
     completenessCriterionLabels: Record<AdminCompletenessCriterionKey, string>;
@@ -420,6 +430,76 @@ export interface AdminDictionary {
       };
     };
   };
+  persons: {
+    metadataTitle: string;
+    metadataDescription: string;
+    header: {
+      title: string;
+      description: string;
+      importAction: string;
+      addAction: string;
+    };
+    filters: {
+      searchPlaceholder: string;
+      searchAriaLabel: string;
+      typeAriaLabel: string;
+      allTypes: string;
+      statusAriaLabel: string;
+      allStatuses: string;
+      refreshAction: string;
+    };
+    resultsPrefix: string;
+    resultsSuffix: string;
+    table: {
+      ariaLabel: string;
+      name: string;
+      type: string;
+      status: string;
+      era: string;
+      lastModified: string;
+      modifiedBy: string;
+      createdAt: string;
+      actions: string;
+    };
+    states: {
+      loadError: string;
+      empty: string;
+    };
+    systemActor: string;
+    editAction: string;
+    pagination: {
+      pagePrefix: string;
+      pageSeparator: string;
+      previous: string;
+      next: string;
+    };
+    importDialog: {
+      title: string;
+      description: string;
+      closeAriaLabel: string;
+      chooseFile: string;
+      fileHint: string;
+      maxSizeError: string;
+      invalidRootError: string;
+      invalidJsonPrefix: string;
+      readError: string;
+      validating: string;
+      invalidFormat: string;
+      profileWithoutName: string;
+      typePrefix: string;
+      schemaVersionPrefix: string;
+      counts: {
+        orders: string;
+        feasts: string;
+        sources: string;
+      };
+      warningsTitle: string;
+      errorsTitle: string;
+      ready: string;
+      cancelAction: string;
+      importAction: string;
+    };
+  };
 }
 
 export type AdminSidebarDictionary = Pick<AdminDictionary, "brand" | "sidebar">;
@@ -430,3 +510,4 @@ export type AdminDashboardDictionary = AdminDictionary["dashboard"];
 export type AdminDomainDictionary = AdminDictionary["domain"];
 export type AdminReviewDictionary = AdminDictionary["review"];
 export type AdminQualityDictionary = AdminDictionary["quality"];
+export type AdminPersonsDictionary = AdminDictionary["persons"];

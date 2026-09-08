@@ -151,6 +151,13 @@ the existing public API.
     routes load localized metadata and pass typed `quality` and shared `domain` copy
     to the client. The three tabs, metrics, tables, empty/error states and repair
     targets use explicit locale formatting and dictionary-backed accessibility copy.
+24. The administrative person catalogue loads metadata and typed copy at its server
+    route boundary and passes only the `persons` and shared `domain` sections to
+    the interactive list. Filters, table states, pagination and profile-import dialog
+    no longer own Polish UI copy. Person status, type and era labels resolve from
+    stable API keys, while date and number formatting requires the explicit interface
+    locale. Search debounce is component-owned and cancelled on cleanup rather than
+    stored as mutable global browser state.
 
 ## Consequences
 
@@ -188,8 +195,10 @@ the existing public API.
    filters, tabular states, RBAC actions, pagination and return-to-editor dialog.
    The complete data-quality centre and all three tabs are dictionary-backed as well;
    stable duplicate/source-verification reason codes remove routing decisions based
-   on Polish backend prose. Remaining administrative feature-page prose is incremental
-   work.
+   on Polish backend prose. The administrative person catalogue, including its JSON
+   profile-import flow, metadata, filters, states, labels and locale-aware formatting,
+   is also complete at the UI-copy boundary. Remaining administrative person-detail,
+   editor and other feature-page prose is incremental work.
 3. Add application-layer commands and protected endpoints for translation workflow.
 4. Backfill `pl` and `en` translation rows idempotently from legacy columns and
    report conflicts without overwriting reviewed translations. The maintenance

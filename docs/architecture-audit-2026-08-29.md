@@ -34,7 +34,7 @@ Poniższy status jest aktualizacją wykonawczą do historycznego pomiaru bazoweg
 Nie zmienia pierwotnych findings ani ocen, dzięki czemu dokument zachowuje wartość
 porównawczą.
 
-Stan na 2026-09-06 po kolejnych etapach refaktoryzacji:
+Stan na 2026-09-08 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
@@ -786,9 +786,12 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
   słownikowe metadata, metryki, tabele, stany, dostępność i linki naprawcze. Raport API
   zwraca addytywne `reason_code` dla duplikatów oraz `issue_code` dla weryfikacji
   źródeł; frontend nie rozpoznaje już braku licencji przez polski fragment opisu, a
-  dotychczasowe teksty pozostają fallbackiem zgodności. Pozostają teksty innych
-  ekranów funkcjonalnych panelu oraz routing uruchamiany dopiero z kompletnym drugim
-  językiem.
+  dotychczasowe teksty pozostają fallbackiem zgodności. Katalog osób i dialog importu
+  profilu JSON mają słownikowe metadata, filtry, stany, tabelę, paginację,
+  etykiety typów/statusów/epok oraz formatowanie z jawnym locale. Debounce
+  wyszukiwarki jest lokalny dla komponentu i czyszczony przy jego demontażu.
+  Pozostają teksty szczegółów i formularza osoby oraz innych ekranów funkcjonalnych
+  panelu; routing zostanie uruchomiony dopiero z kompletnym drugim językiem.
 - **Category:** Internationalization
 - **File:** oba frontendy i modele Person/Translation
 - **Lines:** setki hardcoded strings
