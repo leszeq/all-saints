@@ -158,6 +158,21 @@ def test_ai_admin_endpoints_require_bearer_auth() -> None:
         assert schema["paths"][path]["get"]["security"] == [{"HTTPBearer": []}]
 
 
+def test_ai_semantic_discovery_endpoints_remain_public() -> None:
+    schema = app.openapi()
+
+    search = schema["paths"]["/api/v1/ai/search"]["get"]
+    related = schema["paths"]["/api/v1/ai/related/{person_id}"]["get"]
+
+    assert "security" not in search
+    assert "security" not in related
+    assert {parameter["name"] for parameter in search["parameters"]} >= {"q", "limit"}
+    assert {parameter["name"] for parameter in related["parameters"]} >= {
+        "person_id",
+        "limit",
+    }
+
+
 def test_search_result_accepts_negative_cosine_similarity() -> None:
     item = SearchResultItem(
         person_id="person-id",

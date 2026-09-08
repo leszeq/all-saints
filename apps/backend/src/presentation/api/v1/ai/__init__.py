@@ -17,171 +17,52 @@ Endpoints:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from loguru import logger
-from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.ai_models import AIDashboardResult, AISuggestionResult
 from src.application.ai_service import AIService
 from src.domain.identity.models import User
 from src.infrastructure.ai.embeddings import EmbeddingUnavailableError
 from src.infrastructure.ai.summarizer import TaggingUnavailableError
-from src.infrastructure.db.session import get_db_session as get_db
+from src.presentation.api.v1.ai.dependencies import get_ai_service
+from src.presentation.api.v1.ai.schemas import (
+    AIDashboardResponse,
+    AIFeatureStatusItem,
+    AIStatusResponse,
+    AISuggestionItem,
+    AISuggestionsResponse,
+    BatchTaskResponse,
+    EmbeddingResponse,
+    SearchResponse,
+    SearchResultItem,
+    SummaryResponse,
+    TaggingResponse,
+)
+from src.presentation.api.v1.ai.search import get_related, semantic_search
+from src.presentation.api.v1.ai.search import router as search_router
 from src.presentation.api.v1.auth.router import require_permission
 
 router = APIRouter()
 
-
-# ==============================================================================
-# PYDANTIC RESPONSE SCHEMAS
-# ==============================================================================
-
-
-class AIStatusResponse(BaseModel):
-    """AI module status response."""
-
-    embedding_provider: str = Field(description="Active embedding provider name")
-    embedding_model: str = Field(description="Embedding model name")
-    embedding_dimensions: int = Field(description="Vector dimensionality")
-    summary_provider: str = Field(description="Active summarization provider name")
-    total_embeddings: int = Field(description="Total person embeddings stored")
-    coverage_percent: float = Field(description="Percentage of persons with embeddings")
-    last_generated_at: str | None = Field(None, description="ISO timestamp of last embedding")
-
-
-class EmbeddingResponse(BaseModel):
-    """Embedding generation result."""
-
-    person_id: str
-    canonical_name: str
-    provider: str
-    model: str
-    dimensions: int
-    was_updated: bool
-    message: str
-
-
-class SearchResultItem(BaseModel):
-    """Single semantic search result."""
-
-    person_id: str
-    canonical_name: str
-    slug: str
-    person_type: str
-    era: str | None = None
-    summary_pl: str | None = None
-    similarity_score: float = Field(ge=-1.0, le=1.0, description="Cosine similarity (-1–1)")
-
-
-class SearchResponse(BaseModel):
-    """Semantic search response."""
-
-    query: str
-    results: list[SearchResultItem]
-    total: int
-    provider: str
-
-
-class SummaryResponse(BaseModel):
-    """Biography summary response."""
-
-    person_id: str
-    summary: str
-    word_count: int
-    provider: str
-
-
-class BatchTaskResponse(BaseModel):
-    """Background task dispatch response."""
-
-    task_id: str
-    message: str
-    status: str = "queued"
-
-
-class TaggingResponse(BaseModel):
-    """AI tag extraction result."""
-
-    person_id: str
-    tags: list[str]
-    total: int
-    provider: str
-
-
-class AISuggestionItem(BaseModel):
-    """One editorial AI suggestion or generation task."""
-
-    id: str
-    person_id: str
-    person_slug: str
-    person_name: str
-    kind: str = Field(description="embedding, summary or tags")
-    status: str = Field(description="pending_review, ready_to_generate or blocked")
-    title: str
-    description: str
-    current_value: str | None = None
-    suggested_value: str | None = None
-    confidence: int = Field(ge=0, le=100)
-    reason: str
-    action: str
-    action_href: str
-    updated_at: datetime
-
-
-class AISuggestionsResponse(BaseModel):
-    """Paginated-ish AI suggestions queue response."""
-
-    items: list[AISuggestionItem]
-    total: int
-    pending_review: int
-    ready_to_generate: int
-    blocked: int
-
-
-class AIFeatureStatusItem(BaseModel):
-    """Operational state of one AI capability."""
-
-    key: str
-    label: str
-    status: str
-    description: str
-    detail: str
-
-
-class AIDashboardResponse(BaseModel):
-    """Admin AI centre dashboard response."""
-
-    generated_at: datetime
-    embedding_provider: str
-    embedding_model: str
-    embedding_dimensions: int
-    summary_provider: str
-    total_persons: int
-    published_persons: int
-    total_embeddings: int
-    missing_embeddings: int
-    coverage_percent: float
-    ai_summaries: int
-    ai_tags: int
-    pending_suggestions: int
-    blocked_suggestions: int
-    last_generated_at: str | None = None
-    feature_statuses: list[AIFeatureStatusItem]
-    recent_suggestions: list[AISuggestionItem]
-
-
-# ==============================================================================
-# DEPENDENCY – AI Service
-# ==============================================================================
-
-
-async def get_ai_service(db: Annotated[AsyncSession, Depends(get_db)]) -> AIService:
-    """Provide an AIService instance with injected DB session."""
-    return AIService(db)
+__all__ = [
+    "AIDashboardResponse",
+    "AIFeatureStatusItem",
+    "AISuggestionItem",
+    "AISuggestionsResponse",
+    "AIStatusResponse",
+    "BatchTaskResponse",
+    "EmbeddingResponse",
+    "SearchResponse",
+    "SearchResultItem",
+    "SummaryResponse",
+    "TaggingResponse",
+    "get_ai_service",
+    "get_related",
+    "semantic_search",
+]
 
 
 def _map_suggestion(item: AISuggestionResult) -> AISuggestionItem:
@@ -353,101 +234,7 @@ async def generate_embedding(
     )
 
 
-@router.get(
-    "/search",
-    response_model=SearchResponse,
-    summary="Semantic Search",
-    description=(
-        "Search for saints/blessed using natural language queries. "
-        "Uses vector cosine similarity against pgvector embeddings. "
-        "Examples: 'patron zwierząt', 'misjonarz w Azji', 'święta od spraw beznadziejnych'"
-    ),
-)
-async def semantic_search(
-    q: Annotated[str, Query(min_length=2, max_length=500, description="Search query")],
-    ai_service: Annotated[AIService, Depends(get_ai_service)],
-    limit: Annotated[int, Query(ge=1, le=50)] = 10,
-    person_type: Annotated[str | None, Query(description="Filter by person type")] = None,
-    era: Annotated[str | None, Query(description="Filter by era")] = None,
-) -> SearchResponse:
-    """
-    Perform semantic similarity search over hagiographic persons.
-
-    Returns persons whose embedding is most similar to the query vector,
-    ranked by cosine similarity score.
-    """
-    try:
-        results = await ai_service.semantic_search(
-            query=q,
-            limit=limit,
-            person_type=person_type,
-            era=era,
-        )
-    except EmbeddingUnavailableError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
-        ) from exc
-
-    return SearchResponse(
-        query=q,
-        results=[
-            SearchResultItem(
-                person_id=str(r.person_id),
-                canonical_name=r.canonical_name,
-                slug=r.slug,
-                person_type=r.person_type,
-                era=r.era,
-                summary_pl=r.summary_pl,
-                similarity_score=r.similarity_score,
-            )
-            for r in results
-        ],
-        total=len(results),
-        provider=ai_service.embedding_provider,
-    )
-
-
-@router.get(
-    "/related/{person_id}",
-    response_model=SearchResponse,
-    summary="Related Saints",
-    description=(
-        "Find saints/blessed most similar to the given person based on their embedding vector. "
-        "Useful for 'You might also be interested in' sections."
-    ),
-)
-async def get_related(
-    person_id: uuid.UUID,
-    ai_service: Annotated[AIService, Depends(get_ai_service)],
-    limit: Annotated[int, Query(ge=1, le=20)] = 5,
-) -> SearchResponse:
-    """Find similar persons to the given person by embedding similarity."""
-    try:
-        results = await ai_service.find_related(person_id=person_id, limit=limit)
-    except EmbeddingUnavailableError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
-        ) from exc
-
-    return SearchResponse(
-        query=f"related:{person_id}",
-        results=[
-            SearchResultItem(
-                person_id=str(r.person_id),
-                canonical_name=r.canonical_name,
-                slug=r.slug,
-                person_type=r.person_type,
-                era=r.era,
-                summary_pl=r.summary_pl,
-                similarity_score=r.similarity_score,
-            )
-            for r in results
-        ],
-        total=len(results),
-        provider=ai_service.embedding_provider,
-    )
+router.include_router(search_router)
 
 
 @router.post(
