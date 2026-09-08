@@ -38,15 +38,15 @@ Stan na 2026-09-08 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **243 passed**, 0 failures, 0 errors, 0 warnings |
-| Backend coverage | **82.50%**, wymagany próg 80% spełniony |
+| Backend pytest | **244 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend coverage | **82.58%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0016_person_names`, jeden head |
 | Nowa pusta baza | upgrade 0001 → 0016 oraz downgrade/re-upgrade 0016: PASS |
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 127 plików źródłowych |
+| Ruff / strict mypy | PASS, mypy analizuje 129 plików źródłowych |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -101,6 +101,13 @@ importu, walidacji i eksportu wersjonowanego JSON. Router główny zmniejszył s
 Kontrakt OpenAPI jawnie weryfikuje ochronę `export:read` i `import:create`, a test
 integracyjny nadal potwierdza pełny round-trip osoby wraz z zakonem, obchodem i
 źródłem bez omijania statusu szkicu.
+
+Odczyty osób zostały następnie rozdzielone na publiczny, lokalizowany katalog oraz
+chronione projekcje panelu redakcyjnego. Główny router osób zmniejszył się z 404 do
+233 linii i odpowiada teraz za komendy CRUD, przywracanie oraz historię wersji.
+Publiczna trasa dynamiczna pozostaje rejestrowana po wszystkich trasach statycznych,
+a test regresji potwierdza, że `/persons/admin` nie może zostać przechwycone jako
+publiczny slug i bez tokenu zwraca `401`.
 
 Powstał automatyczny CI z lintem, strict mypy, testami/coverage, audytem zależności,
 kontrolą migracji, buildami frontendów oraz smoke testem całego stosu produkcyjnego.

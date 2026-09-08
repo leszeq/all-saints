@@ -14,30 +14,25 @@ Endpoints:
 from __future__ import annotations
 
 import uuid
-from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.application.services.person_localization import resolve_person_content
 from src.application.services.person_service import (
     PersonService,
     PersonStatusChangeError,
     PersonVersionConflictError,
 )
-from src.domain.hagiography.models import (
-    Era,
-    EraPeriod,
-    Gender,
-    PatronageGroup,
-    Person,
-    PersonSort,
-    PersonType,
-    PublicationStatus,
-)
 from src.domain.identity.models import User
 from src.infrastructure.db.session import get_db_session
 from src.presentation.api.v1.auth.router import require_permission
+from src.presentation.api.v1.persons.catalogue import get_person, list_persons
+from src.presentation.api.v1.persons.catalogue import router as catalogue_router
+from src.presentation.api.v1.persons.editorial_reads import (
+    get_person_for_admin,
+    list_persons_for_admin,
+)
+from src.presentation.api.v1.persons.editorial_reads import router as editorial_reads_router
 from src.presentation.api.v1.persons.profile_portability import (
     export_person_profile,
     import_person_profile,
@@ -47,13 +42,9 @@ from src.presentation.api.v1.persons.profile_portability import (
     router as profile_portability_router,
 )
 from src.presentation.api.v1.persons.schemas import (
-    PersonAdminListItemSchema,
-    PersonAdminListResponseSchema,
     PersonCreateSchema,
     PersonDetailSchema,
-    PersonListItemSchema,
     PersonListResponseSchema,
-    PersonLocalizedSummarySchema,
     PersonUpdateSchema,
     PersonVersionSchema,
 )
@@ -63,163 +54,25 @@ router = APIRouter()
 
 __all__ = [
     "export_person_profile",
+    "get_person",
+    "get_person_for_admin",
     "import_person_profile",
+    "list_persons",
+    "list_persons_for_admin",
     "validate_person_profile_import",
 ]
 
-LOCALE_QUERY = Query(
-    min_length=2,
-    max_length=35,
-    pattern=r"^[A-Za-z]{2,3}(?:[-_][A-Za-z0-9]{2,8})*$",
-    description="Requested BCP 47 content locale; falls back to the primary language and Polish",
-)
-
-
-def _localized_list_item(person: Person, locale: str) -> PersonListItemSchema:
-    payload = PersonListItemSchema.model_validate(person)
-    content = resolve_person_content(person, locale)
-    summary = PersonLocalizedSummarySchema.model_validate(content.model_dump())
-    return payload.model_copy(update={"localized_content": summary})
-
-
-def _localized_detail(person: Person, locale: str) -> PersonDetailSchema:
-    payload = PersonDetailSchema.model_validate(person)
-    return payload.model_copy(update={"localized_content": resolve_person_content(person, locale)})
-
-
-@router.get(
+# FastAPI cannot include an empty child path into an empty-prefix router, so the
+# collection endpoint is registered here while its implementation stays in catalogue.
+router.add_api_route(
     "",
+    list_persons,
+    methods=["GET"],
     response_model=PersonListResponseSchema,
     summary="List persons",
     description="Browse saints, blessed, and candidates with full-text search, multi-criteria filtering, and pagination.",
 )
-async def list_persons(
-    page: Annotated[int, Query(ge=1)] = 1,
-    per_page: Annotated[int, Query(ge=1, le=100)] = 20,
-    search: str | None = Query(None, max_length=200),
-    person_type: Annotated[
-        list[PersonType] | None, Query(description="One or more Church recognition types")
-    ] = None,
-    gender: Annotated[list[Gender] | None, Query(description="One or more genders")] = None,
-    era: Annotated[list[Era] | None, Query(description="One or more historical eras")] = None,
-    period: Annotated[
-        list[EraPeriod] | None, Query(description="One or more public timeline groups")
-    ] = None,
-    patronage: Annotated[
-        list[PatronageGroup] | None,
-        Query(description="One or more public patronage discovery groups"),
-    ] = None,
-    country_id: uuid.UUID | None = None,
-    is_featured: bool | None = None,
-    sort: PersonSort = PersonSort.NAME_ASC,
-    locale: Annotated[str, LOCALE_QUERY] = "pl",
-    db: AsyncSession = Depends(get_db_session),
-) -> PersonListResponseSchema:
-    """List persons with optional filters."""
-    service = PersonService(db)
-    items, total = await service.list_persons(
-        page=page,
-        per_page=per_page,
-        search=search,
-        person_type=person_type,
-        gender=gender,
-        era=era,
-        period=period,
-        patronage=patronage,
-        country_id=country_id,
-        is_featured=is_featured,
-        published_only=True,
-        sort=sort,
-        include_translations=True,
-    )
-
-    pages = -(-total // per_page) if total > 0 else 1
-
-    return PersonListResponseSchema(
-        items=[_localized_list_item(person, locale) for person in items],
-        total=total,
-        page=page,
-        per_page=per_page,
-        pages=pages,
-    )
-
-
-@router.get(
-    "/admin",
-    response_model=PersonAdminListResponseSchema,
-    summary="List persons for the editorial panel",
-    description="Protected person list enriched with the latest editor identity.",
-)
-async def list_persons_for_admin(
-    page: Annotated[int, Query(ge=1)] = 1,
-    per_page: Annotated[int, Query(ge=1, le=100)] = 20,
-    search: str | None = Query(None, max_length=200),
-    person_type: PersonType | None = None,
-    status_filter: PublicationStatus | None = Query(None, alias="status"),
-    gender: Gender | None = None,
-    era: Era | None = None,
-    country_id: uuid.UUID | None = None,
-    is_featured: bool | None = None,
-    db: AsyncSession = Depends(get_db_session),
-    _user: User = Depends(require_permission("persons", "read")),
-) -> PersonAdminListResponseSchema:
-    """Return persons with internal editorial audit data."""
-    service = PersonService(db)
-    items, total = await service.list_persons(
-        page=page,
-        per_page=per_page,
-        search=search,
-        person_type=person_type,
-        status=status_filter,
-        gender=gender,
-        era=era,
-        country_id=country_id,
-        is_featured=is_featured,
-    )
-    editors = await service.get_last_editors([person.id for person in items])
-    pages = -(-total // per_page) if total > 0 else 1
-
-    admin_items = []
-    for person in items:
-        editor = editors.get(person.id)
-        admin_items.append(
-            PersonAdminListItemSchema(
-                **PersonListItemSchema.model_validate(person).model_dump(),
-                last_modified_at=person.updated_at,
-                last_modified_by=editor,
-            )
-        )
-
-    return PersonAdminListResponseSchema(
-        items=admin_items,
-        total=total,
-        page=page,
-        per_page=per_page,
-        pages=pages,
-    )
-
-
-@router.get(
-    "/admin/{id_or_slug}",
-    response_model=PersonDetailSchema,
-    summary="Get person detail for the editorial panel",
-    description="Protected detail view that also exposes draft and review records.",
-)
-async def get_person_for_admin(
-    id_or_slug: str,
-    db: AsyncSession = Depends(get_db_session),
-    _user: User = Depends(require_permission("persons", "read")),
-) -> PersonDetailSchema:
-    """Fetch any active person for editorial work."""
-    person = await PersonService(db).get_by_id_or_slug(id_or_slug)
-    if person is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Osoba nie została znaleziona",
-        )
-    return PersonDetailSchema.model_validate(person)
-
-
+router.include_router(editorial_reads_router)
 router.include_router(profile_portability_router)
 
 
@@ -254,34 +107,6 @@ async def create_person(
     except PersonStatusChangeError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     return PersonDetailSchema.model_validate(person)
-
-
-@router.get(
-    "/{id_or_slug}",
-    response_model=PersonDetailSchema,
-    summary="Get person detail",
-    description="Fetch a single person by UUID or URL slug.",
-)
-async def get_person(
-    id_or_slug: str,
-    locale: Annotated[str, LOCALE_QUERY] = "pl",
-    db: AsyncSession = Depends(get_db_session),
-) -> PersonDetailSchema:
-    """Fetch person details."""
-    service = PersonService(db)
-    person = await service.get_by_id_or_slug(
-        id_or_slug,
-        published_only=True,
-        include_translations=True,
-    )
-
-    if not person:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Osoba nie została znaleziona",
-        )
-
-    return _localized_detail(person, locale)
 
 
 @router.patch(
@@ -402,3 +227,7 @@ async def get_person_versions(
     service = PersonService(db)
     versions = await service.get_person_versions(person_id)
     return [PersonVersionSchema.model_validate(v) for v in versions]
+
+
+# Keep the public catch-all slug route after all static editorial routes.
+router.include_router(catalogue_router)

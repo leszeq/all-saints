@@ -22,6 +22,13 @@ async def test_list_persons_empty(async_client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_admin_path_is_not_captured_by_public_slug_route(async_client: AsyncClient):
+    response = await async_client.get("/api/v1/persons/admin")
+
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
 async def test_get_nonexistent_person(async_client: AsyncClient):
     response = await async_client.get("/api/v1/persons/nonexistent-slug")
     assert response.status_code == 404
