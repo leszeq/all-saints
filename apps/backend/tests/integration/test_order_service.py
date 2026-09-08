@@ -138,6 +138,23 @@ async def test_order_crud_filters_and_slug_conflicts(db_session: AsyncSession) -
             UpdateReligiousOrderCommand(slug=benedictines.slug),
         )
 
+    await service.update_order(
+        benedictines.slug,
+        UpdateReligiousOrderCommand(is_suppressed=True),
+    )
+    with pytest.raises(OrderNotFoundError):
+        await service.get_order(benedictines.slug)
+    management_rows = await service.list_orders(
+        include_suppressed=True,
+        public_members_only=False,
+    )
+    assert {order.id for order, _ in management_rows} == {franciscans.id, benedictines.id}
+
+    restored_for_edit = await service.update_order(
+        benedictines.slug,
+        UpdateReligiousOrderCommand(is_suppressed=False),
+    )
+    assert restored_for_edit.is_suppressed is False
     await service.soft_delete_order(benedictines.slug)
     with pytest.raises(OrderNotFoundError):
         await service.get_order(benedictines.slug)
@@ -194,6 +211,8 @@ async def test_order_memberships_hide_drafts_and_reject_duplicates(
             order.slug,
             AddReligiousOrderMembershipCommand(person_id=published.id),
         )
+    with pytest.raises(OrderConflictError, match="powiązanej z osobami"):
+        await service.soft_delete_order(order.slug)
     with pytest.raises(OrderNotFoundError, match="Osoba"):
         await service.add_membership(
             order.slug,

@@ -387,7 +387,12 @@ class PersonService:
         ]
         if include_translations:
             load_options.append(selectinload(Person.translations))
-        stmt = select(Person).options(*load_options).where(Person.deleted_at.is_(None))
+        stmt = (
+            select(Person)
+            .options(*load_options)
+            .execution_options(populate_existing=True)
+            .where(Person.deleted_at.is_(None))
+        )
         if published_only:
             stmt = stmt.where(Person.status == PublicationStatus.PUBLISHED.value)
         try:

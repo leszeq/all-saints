@@ -47,23 +47,28 @@ class OrderService:
         spiritual_family: str | None = None,
         community_type: str | None = None,
         featured: bool | None = None,
+        include_suppressed: bool = False,
+        public_members_only: bool = True,
     ) -> list[tuple[ReligiousOrder, int]]:
-        """Return active communities with the count of public catalogue people."""
-        catalogue_person = and_(
+        """Return communities with a context-appropriate member count."""
+        member_person = and_(
             Person.id == PersonOrder.person_id,
             Person.deleted_at.is_(None),
-            Person.status == PublicationStatus.PUBLISHED.value,
         )
+        if public_members_only:
+            member_person = and_(
+                member_person,
+                Person.status == PublicationStatus.PUBLISHED.value,
+            )
         query = (
             select(ReligiousOrder, func.count(func.distinct(Person.id)).label("member_count"))
             .outerjoin(PersonOrder, PersonOrder.order_id == ReligiousOrder.id)
-            .outerjoin(Person, catalogue_person)
-            .where(
-                ReligiousOrder.deleted_at.is_(None),
-                ReligiousOrder.is_suppressed.is_(False),
-            )
+            .outerjoin(Person, member_person)
+            .where(ReligiousOrder.deleted_at.is_(None))
             .group_by(ReligiousOrder.id)
         )
+        if not include_suppressed:
+            query = query.where(ReligiousOrder.is_suppressed.is_(False))
         if search and search.strip():
             term = f"%{search.strip()}%"
             query = query.where(
@@ -93,13 +98,18 @@ class OrderService:
         return [(order, int(member_count)) for order, member_count in result.all()]
 
     async def get_order(
-        self, identifier: str, *, public_members_only: bool = True
+        self,
+        identifier: str,
+        *,
+        public_members_only: bool = True,
+        include_suppressed: bool = False,
     ) -> tuple[ReligiousOrder, list[PersonOrder]]:
         """Fetch one community and its linked people by UUID or slug."""
         query = select(ReligiousOrder).where(
             ReligiousOrder.deleted_at.is_(None),
-            ReligiousOrder.is_suppressed.is_(False),
         )
+        if not include_suppressed:
+            query = query.where(ReligiousOrder.is_suppressed.is_(False))
         try:
             query = query.where(ReligiousOrder.id == uuid.UUID(identifier))
         except ValueError:
@@ -153,7 +163,11 @@ class OrderService:
         self, identifier: str, data: UpdateReligiousOrderCommand
     ) -> ReligiousOrder:
         """Update editable community content."""
-        order, _memberships = await self.get_order(identifier, public_members_only=False)
+        order, _memberships = await self.get_order(
+            identifier,
+            public_members_only=False,
+            include_suppressed=True,
+        )
         changes = data.model_dump(exclude_unset=True, mode="json")
         if "slug" in changes and changes["slug"] != order.slug:
             await self._assert_slug_available(changes["slug"], exclude_id=order.id)
@@ -166,7 +180,18 @@ class OrderService:
 
     async def soft_delete_order(self, identifier: str) -> None:
         """Soft-delete a community without deleting linked people."""
-        order, _memberships = await self.get_order(identifier, public_members_only=False)
+        order, _memberships = await self.get_order(
+            identifier,
+            public_members_only=False,
+            include_suppressed=True,
+        )
+        membership_count = await self.db.scalar(
+            select(func.count()).select_from(PersonOrder).where(PersonOrder.order_id == order.id)
+        )
+        if membership_count:
+            raise OrderConflictError(
+                "Nie można usunąć wspólnoty powiązanej z osobami. Najpierw usuń powiązania."
+            )
         order.deleted_at = datetime.now(UTC)
         await self.db.flush()
 
@@ -179,7 +204,11 @@ class OrderService:
         audit_context: AuditContext | None = None,
     ) -> PersonOrder:
         """Attach a person to a community with a documented membership role."""
-        order, _memberships = await self.get_order(identifier, public_members_only=False)
+        order, _memberships = await self.get_order(
+            identifier,
+            public_members_only=False,
+            include_suppressed=True,
+        )
         person = await lock_person_for_snapshot(self.db, data.person_id)
         if person is None:
             raise OrderNotFoundError("Osoba nie istnieje")
@@ -236,7 +265,11 @@ class OrderService:
         audit_context: AuditContext | None = None,
     ) -> None:
         """Remove one person-to-community link."""
-        order, _memberships = await self.get_order(identifier, public_members_only=False)
+        order, _memberships = await self.get_order(
+            identifier,
+            public_members_only=False,
+            include_suppressed=True,
+        )
         person = await lock_person_for_snapshot(self.db, person_id)
         if person is None:
             raise OrderNotFoundError("Osoba nie istnieje")

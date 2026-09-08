@@ -9,10 +9,12 @@ import {
   Plus,
   RefreshCw,
   Search,
+  Upload,
 } from "lucide-react";
 import { personsApi } from "@/lib/api";
 import { useAuthStore } from "@/lib/store/auth";
 import { SaintAvatar, type SaintAvatarData } from "@/components/persons/saint-avatar";
+import { PersonProfileImportDialog } from "@/components/persons/person-profile-import-dialog";
 import { cn, ERA_LABELS, formatDateTime, PERSON_STATUS_COLORS, PERSON_STATUS_LABELS, PERSON_TYPE_COLORS, PERSON_TYPE_LABELS } from "@/lib/utils";
 
 const PER_PAGE = 20;
@@ -43,11 +45,13 @@ export default function PersonsPage() {
   const hasPermission = useAuthStore((state) => state.hasPermission);
   const canCreate = hasPermission("persons:create");
   const canEdit = hasPermission("persons:update");
+  const canImport = hasPermission("import:create");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
 
   // Debounce search
   const handleSearch = (val: string) => {
@@ -85,15 +89,18 @@ export default function PersonsPage() {
             Zarządzaj hagiograficzną bazą osób
           </p>
         </div>
-        {canCreate && (
-          <button
-            onClick={() => router.push("/dashboard/persons/new")}
-            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            Dodaj osobę
-          </button>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {canImport && <button onClick={() => setImportOpen(true)} className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-semibold hover:bg-accent"><Upload className="h-4 w-4" /> Importuj profil</button>}
+          {canCreate && (
+            <button
+              onClick={() => router.push("/dashboard/persons/new")}
+              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              Dodaj osobę
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filters */}
@@ -297,6 +304,7 @@ export default function PersonsPage() {
           </div>
         </div>
       )}
+      <PersonProfileImportDialog open={importOpen} onOpenChange={setImportOpen} />
     </div>
   );
 }

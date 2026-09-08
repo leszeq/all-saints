@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowLeft, BookOpenText, Loader2, Save } from "lucide-react";
+import { ArrowLeft, BookOpenText, Loader2, Save, ShieldCheck } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { calendarApi, geographyApi, getApiErrorMessage, personsApi, sourcesApi, taxonomyApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -23,6 +23,7 @@ import {
   type PersonFormData,
 } from "./person-form-model";
 import { PersonPatronagesSection } from "./person-patronages-section";
+import { PersonOrdersEditor } from "./person-orders-editor";
 import { PersonSourcesEditor } from "./person-sources-editor";
 
 const TABS = [
@@ -32,6 +33,7 @@ const TABS = [
   { id: "biography", label: "Biografia" },
   { id: "patronages", label: "Patronaty" },
   { id: "devotion", label: "Kult i ikonografia" },
+  { id: "orders", label: "Zakony" },
   { id: "sources", label: "Źródła" },
   { id: "avatar", label: "Avatar" },
 ] as const;
@@ -326,6 +328,20 @@ export function PersonForm({ personId, defaultValues, isEdit = false, expectedVe
       {activeTab === "biography" && <PersonBiographySection register={register} isEdit={isEdit} />}
       {activeTab === "patronages" && <PersonPatronagesSection control={control} register={register} errors={errors} />}
       {activeTab === "devotion" && <PersonDevotionSection register={register} />}
+
+      {activeTab === "orders" && (
+        isEdit && personId ? (
+          <PersonOrdersEditor personId={personId} />
+        ) : (
+          <div className="rounded-xl border border-dashed border-border bg-muted/20 p-8 text-center">
+            <ShieldCheck className="mx-auto h-7 w-7 text-primary" />
+            <h3 className="mt-3 text-sm font-semibold text-foreground">Najpierw utwórz rekord osoby</h3>
+            <p className="mx-auto mt-1 max-w-lg text-xs leading-5 text-muted-foreground">
+              Przynależność do wspólnot można przypisać po pierwszym zapisie, gdy postać otrzyma własny identyfikator.
+            </p>
+          </div>
+        )
+      )}
 
       {activeTab === "sources" && (
         isEdit && personId ? (

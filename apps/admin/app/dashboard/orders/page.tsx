@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ExternalLink,
   History,
@@ -10,9 +10,15 @@ import {
   ShieldCheck,
   Sparkles,
   Star,
+  Pencil,
+  Plus,
+  Trash2,
   UsersRound,
 } from "lucide-react";
-import { ordersApi } from "@/lib/api";
+import { OrderDialog } from "@/components/orders/order-dialog";
+import { getApiErrorMessage, ordersApi } from "@/lib/api";
+import type { ReligiousOrder, ReligiousOrderPayload } from "@/lib/orders";
+import { useAuthStore } from "@/lib/store/auth";
 import {
   COMMUNITY_TYPE_LABELS,
   formatDateTime,
@@ -20,7 +26,6 @@ import {
   cn,
 } from "@/lib/utils";
 
-type ApiRecord = Record<string, unknown>;
 type OrderFilter = "all" | "featured" | "active" | "suppressed" | "members";
 
 const filters: Array<{ key: OrderFilter; label: string }> = [
@@ -74,16 +79,22 @@ function EmptyRow({ colSpan, label }: { colSpan: number; label: string }) {
 }
 
 export default function OrdersPage() {
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<OrderFilter>("all");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editedOrder, setEditedOrder] = useState<ReligiousOrder | null>(null);
+  const canCreate = useAuthStore((state) => state.hasPermission("orders:create"));
+  const canUpdate = useAuthStore((state) => state.hasPermission("orders:update"));
+  const canDelete = useAuthStore((state) => state.hasPermission("orders:delete"));
 
   const ordersQuery = useQuery({
     queryKey: ["orders", search],
-    queryFn: () => ordersApi.list({ search: search || undefined }),
+    queryFn: () => ordersApi.management({ search: search || undefined }),
   });
 
   const orders = useMemo(
-    () => (ordersQuery.data?.data ?? []) as ApiRecord[],
+    () => ordersQuery.data?.data ?? [],
     [ordersQuery.data?.data],
   );
   const filteredOrders = useMemo(
@@ -102,6 +113,35 @@ export default function OrdersPage() {
   const memberCount = orders.reduce((sum, order) => sum + Number(order.member_count ?? 0), 0);
   const documentedCount = orders.filter((order) => order.history || order.mission || order.description).length;
 
+  const saveMutation = useMutation({
+    mutationFn: (payload: ReligiousOrderPayload) =>
+      editedOrder
+        ? ordersApi.update(editedOrder.id, payload)
+        : ordersApi.create(payload),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["orders"] });
+      setDialogOpen(false);
+      setEditedOrder(null);
+    },
+  });
+  const deleteMutation = useMutation({
+    mutationFn: (order: ReligiousOrder) => ordersApi.delete(order.id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["orders"] });
+    },
+  });
+
+  const openCreate = () => {
+    setEditedOrder(null);
+    saveMutation.reset();
+    setDialogOpen(true);
+  };
+  const openEdit = (order: ReligiousOrder) => {
+    setEditedOrder(order);
+    saveMutation.reset();
+    setDialogOpen(true);
+  };
+
   return (
     <div className="mx-auto max-w-[1500px] space-y-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -112,13 +152,20 @@ export default function OrdersPage() {
             Wspólnoty religijne, rodziny duchowe i powiązania ze świętymi.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => ordersQuery.refetch()}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border px-4 text-sm font-semibold hover:bg-accent"
-        >
-          <RefreshCw className="h-4 w-4" /> Odśwież dane
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => ordersQuery.refetch()}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border px-4 text-sm font-semibold hover:bg-accent"
+          >
+            <RefreshCw className="h-4 w-4" /> Odśwież dane
+          </button>
+          {canCreate && (
+            <button type="button" onClick={openCreate} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground">
+              <Plus className="h-4 w-4" /> Dodaj wspólnotę
+            </button>
+          )}
+        </div>
       </header>
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Podsumowanie zakonów">
@@ -190,13 +237,14 @@ export default function OrdersPage() {
                 <th className="px-4 py-3">Osoby</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Aktualizacja</th>
+                {(canUpdate || canDelete) && <th className="px-4 py-3 text-right">Akcje</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {ordersQuery.isLoading ? (
-                <EmptyRow colSpan={8} label="Ładowanie wspólnot..." />
+                <EmptyRow colSpan={canUpdate || canDelete ? 9 : 8} label="Ładowanie wspólnot..." />
               ) : filteredOrders.length === 0 ? (
-                <EmptyRow colSpan={8} label="Brak wspólnot dla tych kryteriów" />
+                <EmptyRow colSpan={canUpdate || canDelete ? 9 : 8} label="Brak wspólnot dla tych kryteriów" />
               ) : (
                 filteredOrders.map((order) => (
                   <tr key={String(order.id)} className="hover:bg-muted/30">
@@ -273,6 +321,33 @@ export default function OrdersPage() {
                     <td className="px-4 py-3 text-xs text-muted-foreground">
                       {formatDateTime(order.updated_at as string)}
                     </td>
+                    {(canUpdate || canDelete) && (
+                      <td className="px-4 py-3">
+                        <div className="flex justify-end gap-1.5">
+                          {canUpdate && (
+                            <button type="button" onClick={() => openEdit(order)} className="inline-flex h-8 items-center gap-1 rounded-md border border-border px-2.5 text-xs font-medium hover:bg-muted">
+                              <Pencil className="h-3.5 w-3.5" /> Edytuj
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              type="button"
+                              disabled={deleteMutation.isPending || order.member_count > 0}
+                              onClick={() => {
+                                if (window.confirm(`Usunąć wspólnotę „${order.name}”? Operacja jest odwracalna na poziomie bazy danych.`)) {
+                                  deleteMutation.mutate(order);
+                                }
+                              }}
+                              className="inline-flex h-8 items-center rounded-md border border-rose-200 px-2 text-rose-700 hover:bg-rose-50 disabled:opacity-50 dark:border-rose-900/60 dark:text-rose-300 dark:hover:bg-rose-950/30"
+                              aria-label={`Usuń ${order.name}`}
+                              title={order.member_count > 0 ? "Najpierw usuń powiązania z osobami" : "Usuń wspólnotę"}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
@@ -280,6 +355,20 @@ export default function OrdersPage() {
           </table>
         </div>
       </section>
+
+      {dialogOpen && (
+        <OrderDialog
+          open
+          order={editedOrder}
+          pending={saveMutation.isPending}
+          error={saveMutation.isError ? getApiErrorMessage(saveMutation.error) : null}
+          onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (!open) setEditedOrder(null);
+          }}
+          onSubmit={(payload) => saveMutation.mutate(payload)}
+        />
+      )}
     </div>
   );
 }

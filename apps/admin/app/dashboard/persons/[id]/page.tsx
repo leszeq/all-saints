@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, BookOpenText, CalendarDays, Edit, HeartHandshake, History } from "lucide-react";
+import { ArrowLeft, BookOpenText, CalendarDays, Download, Edit, HeartHandshake, History, Loader2 } from "lucide-react";
 import { calendarApi, personsApi, sourcesApi } from "@/lib/api";
 import { useAuthStore } from "@/lib/store/auth";
 import { SaintAvatar } from "@/components/persons/saint-avatar";
@@ -73,6 +74,9 @@ export default function PersonDetailPage() {
   const router = useRouter();
   const id = params.id as string;
   const canEdit = useAuthStore((state) => state.hasPermission("persons:update"));
+  const canExport = useAuthStore((state) => state.hasPermission("export:read"));
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const { data: personData, isLoading } = useQuery({
     queryKey: ["person", id],
@@ -103,6 +107,25 @@ export default function PersonDetailPage() {
     feastEntries.find((entry) => entry.is_primary) ??
     feastEntries[0] ??
     null;
+
+  const exportProfile = async () => {
+    setIsExporting(true);
+    setExportError(null);
+    try {
+      const response = await personsApi.exportProfile(id);
+      const blob = new Blob([JSON.stringify(response.data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${response.data.source_slug ?? person?.slug ?? "profil"}.json`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setExportError("Nie udało się wyeksportować profilu. Spróbuj ponownie.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -178,14 +201,18 @@ export default function PersonDetailPage() {
           </div>
         </div>
 
-        {canEdit && <button
-          onClick={() => router.push(`/dashboard/persons/${id}/edit`)}
-          className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors"
-        >
-          <Edit className="h-4 w-4" />
-          Edytuj
-        </button>}
+        <div className="flex flex-wrap gap-2">
+          {canExport && <button type="button" disabled={isExporting} onClick={() => { void exportProfile(); }} className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-semibold hover:bg-accent disabled:opacity-50">{isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} Eksportuj JSON</button>}
+          {canEdit && <button
+            onClick={() => router.push(`/dashboard/persons/${id}/edit`)}
+            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors"
+          >
+            <Edit className="h-4 w-4" />
+            Edytuj
+          </button>}
+        </div>
       </div>
+      {exportError && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">{exportError}</p>}
 
       {/* Main Grid */}
       <div className="grid gap-6 lg:grid-cols-3">

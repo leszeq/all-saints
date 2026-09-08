@@ -19,6 +19,11 @@ import type {
   PublicationStatus,
 } from "@/lib/editorial";
 import type { ApplicationSettings, UserProfile } from "@/lib/settings";
+import type {
+  CreateOrderMembershipPayload,
+  ReligiousOrder,
+  ReligiousOrderPayload,
+} from "@/lib/orders";
 import { useAuthStore } from "@/lib/store/auth";
 
 export const API_BASE_URL =
@@ -103,6 +108,18 @@ export function getApiErrorMessage(
 
   if (payload?.message) return payload.message;
   if (typeof payload?.detail === "string") return payload.detail;
+  if (Array.isArray(payload?.detail)) {
+    const validationMessages = payload.detail
+      .map((item) => {
+        if (!item || typeof item !== "object") return null;
+        const entry = item as { loc?: Array<string | number>; msg?: string };
+        if (!entry.msg) return null;
+        const field = entry.loc?.filter((part) => part !== "body").join(".");
+        return field ? `${field}: ${entry.msg}` : entry.msg;
+      })
+      .filter((item): item is string => Boolean(item));
+    if (validationMessages.length) return validationMessages.join(" · ");
+  }
   if (payload?.detail && !Array.isArray(payload.detail) && typeof payload.detail === "object") {
     const detailMessage = payload.detail.message;
     const detailErrors = payload.detail.errors;
@@ -190,6 +207,9 @@ export const personsApi = {
   delete: (id: string) => api.delete(`/persons/${id}`),
   restore: (id: string) => api.post(`/persons/${id}/restore`),
   versions: (id: string) => api.get(`/persons/${id}/versions`),
+  exportProfile: (id: string) => api.get(`/persons/admin/${id}/export`),
+  validateProfileImport: (data: unknown) => api.post("/persons/import/validate", data),
+  importProfile: (data: unknown) => api.post("/persons/import", data),
 };
 
 export const editorialApi = {
@@ -254,8 +274,18 @@ export const geographyApi = {
 };
 
 export const ordersApi = {
-  list: (params?: Record<string, unknown>) => api.get("/orders", { params }),
-  create: (data: unknown) => api.post("/orders", data),
+  list: (params?: Record<string, unknown>) =>
+    api.get<ReligiousOrder[]>("/orders", { params }),
+  management: (params?: Record<string, unknown>) =>
+    api.get<ReligiousOrder[]>("/orders/management", { params }),
+  create: (data: ReligiousOrderPayload) => api.post<ReligiousOrder>("/orders", data),
+  update: (idOrSlug: string, data: ReligiousOrderPayload) =>
+    api.patch<ReligiousOrder>(`/orders/${idOrSlug}`, data),
+  delete: (idOrSlug: string) => api.delete(`/orders/${idOrSlug}`),
+  addMember: (idOrSlug: string, data: CreateOrderMembershipPayload) =>
+    api.post(`/orders/${idOrSlug}/members`, data),
+  removeMember: (idOrSlug: string, personId: string) =>
+    api.delete(`/orders/${idOrSlug}/members/${personId}`),
 };
 
 export const popesApi = {

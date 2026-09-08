@@ -55,6 +55,33 @@ async def list_orders(
 
 
 @router.get(
+    "/management",
+    response_model=list[ReligiousOrderSchema],
+    summary="List religious communities for administration",
+)
+async def list_orders_for_management(
+    search: str | None = Query(None, max_length=100),
+    charism: OrderCharism | None = None,
+    spiritual_family: str | None = Query(None, max_length=80),
+    community_type: ReligiousCommunityType | None = None,
+    featured: bool | None = None,
+    db: AsyncSession = Depends(get_db_session),
+    _user: User = Depends(require_permission("orders", "read")),
+) -> list[ReligiousOrderSchema]:
+    """Return active and suppressed communities with all editorial members counted."""
+    rows = await OrderService(db).list_orders(
+        search=search,
+        charism=charism.value if charism else None,
+        spiritual_family=spiritual_family,
+        community_type=community_type.value if community_type else None,
+        featured=featured,
+        include_suppressed=True,
+        public_members_only=False,
+    )
+    return [_order_response(order, member_count) for order, member_count in rows]
+
+
+@router.get(
     "/{id_or_slug}",
     response_model=ReligiousOrderDetailSchema,
     summary="Get religious community detail",
@@ -129,6 +156,8 @@ async def delete_order(
         await OrderService(db).soft_delete_order(id_or_slug)
     except OrderNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except OrderConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -143,7 +172,7 @@ async def add_order_member(
     data: ReligiousOrderMembershipCreateSchema,
     request: Request,
     db: AsyncSession = Depends(get_db_session),
-    current_user: User = Depends(require_permission("orders", "update")),
+    current_user: User = Depends(require_permission("persons", "update")),
 ) -> ReligiousOrderMembershipSchema:
     try:
         membership = await OrderService(db).add_membership(
@@ -169,7 +198,7 @@ async def delete_order_member(
     person_id: uuid.UUID,
     request: Request,
     db: AsyncSession = Depends(get_db_session),
-    current_user: User = Depends(require_permission("orders", "update")),
+    current_user: User = Depends(require_permission("persons", "update")),
 ) -> Response:
     try:
         await OrderService(db).delete_membership(
