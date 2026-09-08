@@ -158,6 +158,12 @@ the existing public API.
     stable API keys, while date and number formatting requires the explicit interface
     locale. Search debounce is component-owned and cancelled on cleanup rather than
     stored as mutable global browser state.
+25. The administrative person-detail route follows the same server/client boundary.
+    Its metadata, actions, empty states, hagiographic labels and history copy come from
+    the typed `personDetail` section. Person status, type, era, gender, feast rank,
+    liturgical colour and patronage type resolve from shared stable domain keys, with
+    unknown values preserved as compatibility fallbacks. Liturgical, recognition and
+    version dates are formatted with the explicit interface locale.
 
 ## Consequences
 
@@ -197,8 +203,9 @@ the existing public API.
    stable duplicate/source-verification reason codes remove routing decisions based
    on Polish backend prose. The administrative person catalogue, including its JSON
    profile-import flow, metadata, filters, states, labels and locale-aware formatting,
-   is also complete at the UI-copy boundary. Remaining administrative person-detail,
-   editor and other feature-page prose is incremental work.
+   is also complete at the UI-copy boundary. The person-detail route now has the same
+   boundary for metadata, actions, domain labels, dates, empty states and history.
+   Remaining administrative editor and other feature-page prose is incremental work.
 3. Add application-layer commands and protected endpoints for translation workflow.
 4. Backfill `pl` and `en` translation rows idempotently from legacy columns and
    report conflicts without overwriting reviewed translations. The maintenance

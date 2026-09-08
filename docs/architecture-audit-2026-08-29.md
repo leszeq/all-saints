@@ -790,8 +790,12 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
   profilu JSON mają słownikowe metadata, filtry, stany, tabelę, paginację,
   etykiety typów/statusów/epok oraz formatowanie z jawnym locale. Debounce
   wyszukiwarki jest lokalny dla komponentu i czyszczony przy jego demontażu.
-  Pozostają teksty szczegółów i formularza osoby oraz innych ekranów funkcjonalnych
-  panelu; routing zostanie uruchomiony dopiero z kompletnym drugim językiem.
+  Szczegóły osoby mają osobną granicę serwer/klient, słownikowe metadata, akcje,
+  stany puste i historię. Typ, status, era, płeć, ranga i kolor liturgiczny oraz typ
+  patronatu są mapowane ze stabilnych kluczy przez wspólne etykiety domenowe, a daty
+  korzystają z jawnego locale. Pozostają teksty formularza osoby oraz innych ekranów
+  funkcjonalnych panelu; routing zostanie uruchomiony dopiero z kompletnym drugim
+  językiem.
 - **Category:** Internationalization
 - **File:** oba frontendy i modele Person/Translation
 - **Lines:** setki hardcoded strings

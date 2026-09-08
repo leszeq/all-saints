@@ -8,6 +8,34 @@ export type AdminSystemRoleKey =
   | "guest";
 
 export type AdminPublicationStatusKey = "draft" | "review" | "published" | "archived";
+export type AdminGenderKey = "male" | "female" | "unknown";
+export type AdminFeastRankKey =
+  | "solemnity"
+  | "feast"
+  | "memorial"
+  | "opt_memorial"
+  | "commemoration";
+export type AdminLiturgicalColorKey =
+  | "white"
+  | "red"
+  | "green"
+  | "violet"
+  | "rose"
+  | "black"
+  | "gold";
+export type AdminPatronageTypeKey =
+  | "illness"
+  | "healthcare"
+  | "family"
+  | "profession"
+  | "work"
+  | "travel"
+  | "country"
+  | "city"
+  | "diocese"
+  | "group"
+  | "cause"
+  | "other";
 export type AdminEraKey =
   | "apostolic"
   | "early_church"
@@ -74,6 +102,10 @@ export interface AdminDictionary {
     personStatusLabels: Record<AdminPublicationStatusKey, string>;
     personTypeLabels: Record<AdminPersonTypeKey, string>;
     eraLabels: Record<AdminEraKey, string>;
+    genderLabels: Record<AdminGenderKey, string>;
+    feastRankLabels: Record<AdminFeastRankKey, string>;
+    liturgicalColorLabels: Record<AdminLiturgicalColorKey, string>;
+    patronageTypeLabels: Record<AdminPatronageTypeKey, string>;
     editorialPriorityLabels: Record<AdminEditorialPriorityKey, string>;
     completionLabels: Record<AdminCompletionKey, string>;
     completenessCriterionLabels: Record<AdminCompletenessCriterionKey, string>;
@@ -500,6 +532,62 @@ export interface AdminDictionary {
       importAction: string;
     };
   };
+  personDetail: {
+    metadataTitle: string;
+    metadataDescription: string;
+    backAriaLabel: string;
+    exportAction: string;
+    editAction: string;
+    exportFileFallback: string;
+    exportError: string;
+    notFound: string;
+    backToListAction: string;
+    biography: {
+      title: string;
+      noSummary: string;
+      noBiography: string;
+    };
+    prayer: {
+      title: string;
+      empty: string;
+    };
+    iconography: {
+      title: string;
+      empty: string;
+    };
+    patronages: {
+      title: string;
+      description: string;
+      manageAction: string;
+      official: string;
+      empty: string;
+    };
+    sources: {
+      title: string;
+      description: string;
+      manageAction: string;
+      unknown: string;
+      referencePrefix: string;
+      empty: string;
+    };
+    hagiographicMetadata: {
+      title: string;
+      feast: string;
+      noFeast: string;
+      gender: string;
+      era: string;
+      stateOfLife: string;
+      birthYear: string;
+      deathYear: string;
+      beatification: string;
+      canonization: string;
+    };
+    history: {
+      titlePrefix: string;
+      empty: string;
+      defaultChange: string;
+    };
+  };
 }
 
 export type AdminSidebarDictionary = Pick<AdminDictionary, "brand" | "sidebar">;
@@ -511,3 +599,4 @@ export type AdminDomainDictionary = AdminDictionary["domain"];
 export type AdminReviewDictionary = AdminDictionary["review"];
 export type AdminQualityDictionary = AdminDictionary["quality"];
 export type AdminPersonsDictionary = AdminDictionary["persons"];
+export type AdminPersonDetailDictionary = AdminDictionary["personDetail"];
