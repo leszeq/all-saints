@@ -14,6 +14,7 @@ from starlette.requests import Request
 
 from src.core.security import jwt_service, password_hasher
 from src.domain.identity.models import AuditAction, AuditLog, RefreshToken
+from src.main import app
 from src.presentation.api.v1.auth.router import (
     ChangePasswordRequest,
     change_password,
@@ -34,6 +35,24 @@ def make_request() -> Request:
             "client": ("127.0.0.1", 12345),
         }
     )
+
+
+def test_auth_openapi_preserves_session_and_account_security_boundaries() -> None:
+    paths = app.openapi()["paths"]
+
+    session_operations = [
+        paths["/api/v1/auth/login"]["post"],
+        paths["/api/v1/auth/refresh"]["post"],
+        paths["/api/v1/auth/logout"]["post"],
+    ]
+    account_operations = [
+        paths["/api/v1/auth/me"]["get"],
+        paths["/api/v1/auth/me"]["patch"],
+        paths["/api/v1/auth/change-password"]["post"],
+    ]
+
+    assert all("security" not in operation for operation in session_operations)
+    assert all(operation["security"] == [{"HTTPBearer": []}] for operation in account_operations)
 
 
 def test_access_token_carries_password_version() -> None:
