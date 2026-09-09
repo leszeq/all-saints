@@ -13,7 +13,7 @@ from pydantic import ValidationError
 
 from alembic.config import Config
 from alembic.script import ScriptDirectory
-from src.application.services.person_service import PersonService
+from src.application.services.person_relation_synchronizer import PersonRelationSynchronizer
 from src.domain.hagiography.models import Person
 from src.domain.sources.models import Image
 from src.main import app
@@ -116,7 +116,7 @@ async def test_avatar_sync_creates_primary_portrait() -> None:
     result = MagicMock()
     result.scalars.return_value.all.return_value = []
     db.execute = AsyncMock(return_value=result)
-    service = PersonService(db)
+    synchronizer = PersonRelationSynchronizer(db)
     person = SimpleNamespace(id=uuid.uuid4(), canonical_name="Św. Testowa Postać")
     avatar = PersonAvatarInputSchema(
         url="https://example.org/avatar.jpg",
@@ -128,7 +128,7 @@ async def test_avatar_sync_creates_primary_portrait() -> None:
         mime_type="image/webp",
     )
 
-    await service._sync_avatar(person, avatar)
+    await synchronizer.sync_avatar(person, avatar)
 
     image = db.add.call_args.args[0]
     assert isinstance(image, Image)

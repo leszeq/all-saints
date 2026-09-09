@@ -38,15 +38,15 @@ Stan na 2026-09-09 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **255 passed**, 0 failures, 0 errors, 0 warnings |
-| Backend coverage | **83.46%**, wymagany próg 80% spełniony |
+| Backend pytest | **256 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend coverage | **83.90%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0016_person_names`, jeden head |
 | Nowa pusta baza | upgrade 0001 → 0016 oraz downgrade/re-upgrade 0016: PASS |
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 144 pliki źródłowe |
+| Ruff / strict mypy | PASS, mypy analizuje 145 plików źródłowych |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -120,10 +120,16 @@ zabezpieczenia wszystkich mutacji oraz historii.
 Odczyt osób został wydzielony do `PersonQueryService`: obejmuje publiczny i
 redakcyjny katalog, szczegół profilu, wyszukiwanie FTS/trigram, mapowanie ostatnich
 redaktorów i historię wersji. Adaptery tylko do odczytu zależą już bezpośrednio od
-tej węższej granicy. Mutacyjny `PersonService` zmniejszył się z 870 do 576 linii i
-tymczasowo dziedziczy interfejs odczytu wyłącznie dla zgodności istniejących
-przypadków użycia. Dotychczasowe stałe filtrów epok i patronatów pozostają
-kompatybilnie re-eksportowane.
+tej węższej granicy. Mutacyjny `PersonService` tymczasowo dziedziczy interfejs
+odczytu wyłącznie dla zgodności istniejących przypadków użycia. Dotychczasowe stałe
+filtrów epok i patronatów pozostają kompatybilnie re-eksportowane.
+
+Synchronizacja edytowalnych relacji profilu została następnie przeniesiona do
+`PersonRelationSynchronizer`. Komponent jawnie obsługuje avatar, aliasy, patronaty
+oraz dane beatyfikacji i kanonizacji, nie przejmując granicy transakcji od przypadku
+użycia. Relacje jeden-do-jednego są pobierane asynchronicznie, bez ukrytego lazy
+loadingu ORM. Test integracyjny chroni ich tworzenie, zastępowanie i czyszczenie,
+a `PersonService` zmniejszył się łącznie z 870 do 433 linii.
 
 Router uwierzytelniania został następnie podzielony na sesje, profil bieżącego
 użytkownika, współdzielone zależności autoryzacyjne i schematy transportowe. Główny
