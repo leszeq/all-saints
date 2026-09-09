@@ -39,14 +39,14 @@ Stan na 2026-09-09 po kolejnych etapach refaktoryzacji:
 | Kontrola | Wynik po zmianach |
 | --- | --- |
 | Backend pytest | **246 passed**, 0 failures, 0 errors, 0 warnings |
-| Backend coverage | **82.65%**, wymagany próg 80% spełniony |
+| Backend coverage | **82.68%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0016_person_names`, jeden head |
 | Nowa pusta baza | upgrade 0001 → 0016 oraz downgrade/re-upgrade 0016: PASS |
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 132 pliki źródłowe |
+| Ruff / strict mypy | PASS, mypy analizuje 133 pliki źródłowe |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -101,6 +101,13 @@ AI razem ze wspólnymi schematami i dependency providera. Główny moduł zmniej
 się z 592 do 379 linii, zachowując stare re-eksporty modeli i funkcji. Osobny test
 OpenAPI chroni obecność `/ai/search` i `/ai/related/{person_id}`, ich parametry oraz
 publiczny charakter tych operacji.
+
+Chronione generowanie embeddingów, streszczeń i propozycji tagów oraz dispatch
+zadań batch zostały następnie wydzielone do osobnego adaptera. Główny moduł API AI
+zmniejszył się z 379 do 204 linii, zachowując wszystkie ścieżki, statusy odpowiedzi,
+walidację parametrów i re-eksporty operacji. Istniejący kontrakt OpenAPI nadal
+potwierdza zabezpieczenie pięciu endpointów generujących, a testy providerów,
+serwisu i workerów chronią ich zachowanie bez wywołań zewnętrznych usług.
 
 Pion przenośności profili został wydzielony z routera osób do osobnego adaptera
 importu, walidacji i eksportu wersjonowanego JSON. Router główny zmniejszył się z
