@@ -34,6 +34,7 @@ from src.application.editorial_models import (
 from src.application.services.audit_service import AuditContext
 from src.application.services.editorial_quality import EditorialQualityPolicy
 from src.application.services.editorial_source_quality import EditorialSourceQualityReader
+from src.application.services.person_query_service import PersonQueryService
 from src.application.services.person_service import PersonService
 from src.domain.geography.models import Country, ReligiousOrder
 from src.domain.hagiography.models import Person, PublicationStatus
@@ -175,7 +176,9 @@ class EditorialService:
         )
         rows = list(result.unique().all())
         persons = [row[0] for row in rows]
-        editors = await PersonService(self.db).get_last_editors([person.id for person in persons])
+        editors = await PersonQueryService(self.db).get_last_editors(
+            [person.id for person in persons]
+        )
         return EditorialQueueResponseSchema(
             items=[self._queue_item(row, editors.get(row[0].id)) for row in rows],
             counts=await self._queue_counts(),
@@ -348,7 +351,7 @@ class EditorialService:
             .limit(limit)
         )
         rows = list((await self.db.execute(query)).unique().all())
-        editors = await PersonService(self.db).get_last_editors([row[0].id for row in rows])
+        editors = await PersonQueryService(self.db).get_last_editors([row[0].id for row in rows])
         return [self._queue_item(row, editors.get(row[0].id)) for row in rows]
 
     async def _completion_distribution(self) -> list[EditorialCompletionBucketSchema]:

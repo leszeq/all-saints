@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.services.person_localization import resolve_person_content
-from src.application.services.person_service import PersonService
+from src.application.services.person_query_service import PersonQueryService
 from src.domain.hagiography.models import (
     Era,
     EraPeriod,
@@ -72,7 +72,7 @@ async def list_persons(
     db: AsyncSession = Depends(get_db_session),
 ) -> PersonListResponseSchema:
     """List published persons with optional filters."""
-    items, total = await PersonService(db).list_persons(
+    items, total = await PersonQueryService(db).list_persons(
         page=page,
         per_page=per_page,
         search=search,
@@ -110,7 +110,7 @@ async def get_person(
     db: AsyncSession = Depends(get_db_session),
 ) -> PersonDetailSchema:
     """Fetch a published person with localized content."""
-    person = await PersonService(db).get_by_id_or_slug(
+    person = await PersonQueryService(db).get_by_id_or_slug(
         id_or_slug,
         published_only=True,
         include_translations=True,

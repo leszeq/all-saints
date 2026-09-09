@@ -7,7 +7,7 @@ import uuid
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.application.services.person_service import PersonService
+from src.application.services.person_query_service import PersonQueryService
 from src.domain.identity.models import User
 from src.infrastructure.db.session import get_db_session
 from src.presentation.api.v1.auth.router import require_permission
@@ -27,5 +27,5 @@ async def get_person_versions(
     _user: User = Depends(require_permission("persons", "read")),
 ) -> list[PersonVersionSchema]:
     """Get version history snapshots for a person."""
-    versions = await PersonService(db).get_person_versions(person_id)
+    versions = await PersonQueryService(db).get_person_versions(person_id)
     return [PersonVersionSchema.model_validate(version) for version in versions]

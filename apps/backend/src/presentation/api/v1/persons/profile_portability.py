@@ -13,7 +13,7 @@ from src.application.services.person_profile_service import (
     PersonProfileImportError,
     PersonProfileService,
 )
-from src.application.services.person_service import PersonService
+from src.application.services.person_query_service import PersonQueryService
 from src.domain.identity.models import User
 from src.infrastructure.db.session import get_db_session
 from src.presentation.api.v1.auth.router import require_permission
@@ -34,7 +34,7 @@ async def export_person_profile(
     _user: User = Depends(require_permission("export", "read")),
 ) -> PersonProfileDocument:
     """Export editorial fields and portable order, calendar, and source relations."""
-    person = await PersonService(db).get_by_id_or_slug(id_or_slug)
+    person = await PersonQueryService(db).get_by_id_or_slug(id_or_slug)
     if person is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

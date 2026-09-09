@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from src.application.services.person_query_service import PersonQueryService
 from src.application.services.person_service import PersonService
 from src.domain.hagiography.models import PersonVersion
 from src.domain.identity.models import AuditAction, AuditLog
@@ -59,7 +60,7 @@ async def test_get_last_editors_maps_latest_users() -> None:
     db = MagicMock()
     db.execute = AsyncMock(return_value=result)
 
-    editors = await PersonService(db).get_last_editors([person_id])
+    editors = await PersonQueryService(db).get_last_editors([person_id])
 
     assert editors[person_id] is editor
 

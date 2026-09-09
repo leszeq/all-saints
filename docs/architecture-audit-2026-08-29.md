@@ -39,14 +39,14 @@ Stan na 2026-09-09 po kolejnych etapach refaktoryzacji:
 | Kontrola | Wynik po zmianach |
 | --- | --- |
 | Backend pytest | **255 passed**, 0 failures, 0 errors, 0 warnings |
-| Backend coverage | **83.44%**, wymagany próg 80% spełniony |
+| Backend coverage | **83.46%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0016_person_names`, jeden head |
 | Nowa pusta baza | upgrade 0001 → 0016 oraz downgrade/re-upgrade 0016: PASS |
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 143 pliki źródłowe |
+| Ruff / strict mypy | PASS, mypy analizuje 144 pliki źródłowe |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -116,6 +116,14 @@ się z 233 do 88 linii i odpowiada teraz za jawne uporządkowanie tras, w szczeg
 umieszczenie statycznych ścieżek redakcyjnych przed publicznym catch-all slugiem.
 Re-eksporty funkcji pozostają zgodne, a testy kontraktowe weryfikują nazwy URL-i i
 zabezpieczenia wszystkich mutacji oraz historii.
+
+Odczyt osób został wydzielony do `PersonQueryService`: obejmuje publiczny i
+redakcyjny katalog, szczegół profilu, wyszukiwanie FTS/trigram, mapowanie ostatnich
+redaktorów i historię wersji. Adaptery tylko do odczytu zależą już bezpośrednio od
+tej węższej granicy. Mutacyjny `PersonService` zmniejszył się z 870 do 576 linii i
+tymczasowo dziedziczy interfejs odczytu wyłącznie dla zgodności istniejących
+przypadków użycia. Dotychczasowe stałe filtrów epok i patronatów pozostają
+kompatybilnie re-eksportowane.
 
 Router uwierzytelniania został następnie podzielony na sesje, profil bieżącego
 użytkownika, współdzielone zależności autoryzacyjne i schematy transportowe. Główny

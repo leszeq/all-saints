@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from src.application.services.order_service import OrderService
-from src.application.services.person_service import PersonService
+from src.application.services.person_query_service import PersonQueryService
 from src.domain.hagiography.models import PersonSort
 from src.main import app
 
@@ -19,7 +19,7 @@ async def test_public_person_list_query_forces_published_status() -> None:
     db = MagicMock()
     db.execute = AsyncMock(side_effect=[count_result, rows_result])
 
-    await PersonService(db).list_persons(published_only=True)
+    await PersonQueryService(db).list_persons(published_only=True)
 
     for call in db.execute.await_args_list:
         assert "published" in call.args[0].compile().params.values()
@@ -34,7 +34,7 @@ async def test_public_person_list_can_order_by_latest_update() -> None:
     db = MagicMock()
     db.execute = AsyncMock(side_effect=[count_result, rows_result])
 
-    await PersonService(db).list_persons(
+    await PersonQueryService(db).list_persons(
         published_only=True,
         sort=PersonSort.UPDATED_DESC,
     )
@@ -50,7 +50,7 @@ async def test_public_person_detail_query_forces_published_status() -> None:
     db = MagicMock()
     db.execute = AsyncMock(return_value=result)
 
-    person = await PersonService(db).get_by_id_or_slug(
+    person = await PersonQueryService(db).get_by_id_or_slug(
         "nieopublikowany-szkic",
         published_only=True,
     )

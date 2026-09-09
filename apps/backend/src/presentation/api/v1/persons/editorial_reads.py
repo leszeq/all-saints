@@ -8,7 +8,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.application.services.person_service import PersonService
+from src.application.services.person_query_service import PersonQueryService
 from src.domain.hagiography.models import Era, Gender, PersonType, PublicationStatus
 from src.domain.identity.models import User
 from src.infrastructure.db.session import get_db_session
@@ -43,7 +43,7 @@ async def list_persons_for_admin(
     _user: User = Depends(require_permission("persons", "read")),
 ) -> PersonAdminListResponseSchema:
     """Return persons with internal editorial audit data."""
-    service = PersonService(db)
+    service = PersonQueryService(db)
     items, total = await service.list_persons(
         page=page,
         per_page=per_page,
@@ -89,7 +89,7 @@ async def get_person_for_admin(
     _user: User = Depends(require_permission("persons", "read")),
 ) -> PersonDetailSchema:
     """Fetch any active person for editorial work."""
-    person = await PersonService(db).get_by_id_or_slug(id_or_slug)
+    person = await PersonQueryService(db).get_by_id_or_slug(id_or_slug)
     if person is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
