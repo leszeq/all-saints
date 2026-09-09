@@ -15,7 +15,11 @@ from src.application.commands.religious_orders import (
 from src.application.services.audit_service import AuditContext
 from src.application.services.calendar_service import CalendarService
 from src.application.services.order_service import OrderService
+from src.application.services.person_profile_export_service import (
+    PersonProfileExportService,
+)
 from src.application.services.person_profile_service import PersonProfileService
+from src.application.services.person_query_service import PersonQueryService
 from src.application.services.person_service import PersonService
 from src.domain.hagiography.models import PersonOrder, PublicationStatus
 from src.domain.liturgy.models import CalendarScope, Feast, LiturgicalCalendar
@@ -90,9 +94,9 @@ async def test_profile_export_validation_and_import_round_trip(
     )
     await db_session.flush()
 
-    loaded = await PersonService(db_session).get_by_id_or_slug(str(person.id))
+    loaded = await PersonQueryService(db_session).get_by_id_or_slug(str(person.id))
     assert loaded is not None
-    document = await PersonProfileService(db_session).export_profile(loaded)
+    document = await PersonProfileExportService(db_session).export_profile(loaded)
 
     assert document.schema_version == 1
     assert document.profile.status == PublicationStatus.DRAFT

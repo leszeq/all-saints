@@ -9,6 +9,9 @@ from src.application.person_profile_models import (
     PersonProfileDocument,
     PersonProfileValidationResult,
 )
+from src.application.services.person_profile_export_service import (
+    PersonProfileExportService,
+)
 from src.application.services.person_profile_service import (
     PersonProfileImportError,
     PersonProfileService,
@@ -40,7 +43,7 @@ async def export_person_profile(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Osoba nie została znaleziona",
         )
-    return await PersonProfileService(db).export_profile(person)
+    return await PersonProfileExportService(db).export_profile(person)
 
 
 @router.post(
