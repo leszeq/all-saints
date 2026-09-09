@@ -14,12 +14,38 @@ from src.domain.liturgy.models import Feast, LiturgicalCalendar, LiturgicalObser
 from src.infrastructure.db.import_catalogue_persons import read_person_rows
 from src.infrastructure.db.import_liturgical_calendar import read_rows
 from src.infrastructure.db.import_liturgical_observances import read_observance_rows
+from src.main import app
 from src.presentation.api.v1.calendar.schemas import (
     FeastEntryCreateSchema,
     FeastEntryUpdateSchema,
 )
 
 DATA_DIRECTORY = Path(__file__).parents[2] / "data" / "liturgical-calendar"
+
+
+def test_calendar_openapi_preserves_public_and_editorial_security_boundaries() -> None:
+    paths = app.openapi()["paths"]
+
+    public_operations = [
+        paths["/api/v1/calendar/calendars"]["get"],
+        paths["/api/v1/calendar/observances"]["get"],
+        paths["/api/v1/calendar/observances/by-slug/{slug}"]["get"],
+        paths["/api/v1/calendar/today"]["get"],
+        paths["/api/v1/calendar/day/{value}"]["get"],
+        paths["/api/v1/calendar/month/{year}/{month}"]["get"],
+    ]
+    editorial_operations = [
+        paths["/api/v1/calendar/persons/{person_id}/entries"]["get"],
+        paths["/api/v1/calendar/observances"]["post"],
+        paths["/api/v1/calendar/observances/{observance_id}"]["patch"],
+        paths["/api/v1/calendar/observances/{observance_id}"]["delete"],
+        paths["/api/v1/calendar/entries"]["post"],
+        paths["/api/v1/calendar/entries/{entry_id}"]["patch"],
+        paths["/api/v1/calendar/entries/{entry_id}"]["delete"],
+    ]
+
+    assert all("security" not in operation for operation in public_operations)
+    assert all(operation["security"] == [{"HTTPBearer": []}] for operation in editorial_operations)
 
 
 def _person(name: str, *, featured: bool = False) -> Person:

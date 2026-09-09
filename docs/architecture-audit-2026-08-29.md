@@ -34,19 +34,19 @@ Poniższy status jest aktualizacją wykonawczą do historycznego pomiaru bazoweg
 Nie zmienia pierwotnych findings ani ocen, dzięki czemu dokument zachowuje wartość
 porównawczą.
 
-Stan na 2026-09-08 po kolejnych etapach refaktoryzacji:
+Stan na 2026-09-09 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **244 passed**, 0 failures, 0 errors, 0 warnings |
-| Backend coverage | **82.58%**, wymagany próg 80% spełniony |
+| Backend pytest | **245 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend coverage | **82.61%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0016_person_names`, jeden head |
 | Nowa pusta baza | upgrade 0001 → 0016 oraz downgrade/re-upgrade 0016: PASS |
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 129 plików źródłowych |
+| Ruff / strict mypy | PASS, mypy analizuje 131 plików źródłowych |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -108,6 +108,13 @@ chronione projekcje panelu redakcyjnego. Główny router osób zmniejszył się 
 Publiczna trasa dynamiczna pozostaje rejestrowana po wszystkich trasach statycznych,
 a test regresji potwierdza, że `/persons/admin` nie może zostać przechwycone jako
 publiczny slug i bez tokenu zwraca `401`.
+
+Router kalendarza liturgicznego został podzielony na publiczne odczyty kalendarzy,
+dni, miesięcy i obchodów oraz chronione operacje redakcyjne na obchodach i
+przypisaniach. Moduł agregujący zmniejszył się z 365 do 43 linii, zachowując
+dotychczasowe URL-e i re-eksporty operacji. Kontrakt OpenAPI sprawdza wszystkie
+13 operacji i gwarantuje brak autoryzacji dla sześciu odczytów publicznych oraz
+obecność zabezpieczenia Bearer dla siedmiu operacji redakcyjnych.
 
 Powstał automatyczny CI z lintem, strict mypy, testami/coverage, audytem zależności,
 kontrolą migracji, buildami frontendów oraz smoke testem całego stosu produkcyjnego.
