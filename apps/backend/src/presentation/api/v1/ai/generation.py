@@ -9,10 +9,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from loguru import logger
 
 from src.application.ai_service import AIService
+from src.application.services.ai_vector_service import AIVectorService
 from src.domain.identity.models import User
 from src.infrastructure.ai.embeddings import EmbeddingUnavailableError
 from src.infrastructure.ai.summarizer import TaggingUnavailableError
-from src.presentation.api.v1.ai.dependencies import get_ai_service
+from src.presentation.api.v1.ai.dependencies import get_ai_service, get_ai_vector_service
 from src.presentation.api.v1.ai.schemas import (
     BatchTaskResponse,
     EmbeddingResponse,
@@ -33,7 +34,7 @@ router = APIRouter()
 )
 async def generate_embedding(
     person_id: uuid.UUID,
-    ai_service: Annotated[AIService, Depends(get_ai_service)],
+    ai_service: Annotated[AIVectorService, Depends(get_ai_vector_service)],
     _user: Annotated[User, Depends(require_permission("persons", "update"))],
 ) -> EmbeddingResponse:
     """Generate or refresh embedding for a single person."""
@@ -137,7 +138,7 @@ async def generate_tags(
 )
 async def batch_generate_embeddings(
     _user: Annotated[User, Depends(require_permission("persons", "publish"))],
-    ai_service: Annotated[AIService, Depends(get_ai_service)],
+    ai_service: Annotated[AIVectorService, Depends(get_ai_vector_service)],
     overwrite_existing: Annotated[
         bool, Query(description="Regenerate existing embeddings")
     ] = False,

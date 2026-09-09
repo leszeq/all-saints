@@ -8,9 +8,9 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from src.application.ai_models import SemanticSearchResult
-from src.application.ai_service import AIService
+from src.application.services.ai_vector_service import AIVectorService
 from src.infrastructure.ai.embeddings import EmbeddingUnavailableError
-from src.presentation.api.v1.ai.dependencies import get_ai_service
+from src.presentation.api.v1.ai.dependencies import get_ai_vector_service
 from src.presentation.api.v1.ai.schemas import SearchResponse, SearchResultItem
 
 router = APIRouter()
@@ -53,7 +53,7 @@ def _search_response(
 )
 async def semantic_search(
     q: Annotated[str, Query(min_length=2, max_length=500, description="Search query")],
-    ai_service: Annotated[AIService, Depends(get_ai_service)],
+    ai_service: Annotated[AIVectorService, Depends(get_ai_vector_service)],
     limit: Annotated[int, Query(ge=1, le=50)] = 10,
     person_type: Annotated[str | None, Query(description="Filter by person type")] = None,
     era: Annotated[str | None, Query(description="Filter by era")] = None,
@@ -90,7 +90,7 @@ async def semantic_search(
 )
 async def get_related(
     person_id: uuid.UUID,
-    ai_service: Annotated[AIService, Depends(get_ai_service)],
+    ai_service: Annotated[AIVectorService, Depends(get_ai_vector_service)],
     limit: Annotated[int, Query(ge=1, le=20)] = 5,
 ) -> SearchResponse:
     """Find similar persons to the given person by embedding similarity."""

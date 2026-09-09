@@ -23,7 +23,7 @@ from fastapi import APIRouter, Depends, Query
 from src.application.ai_models import AIDashboardResult, AISuggestionResult
 from src.application.ai_service import AIService
 from src.domain.identity.models import User
-from src.presentation.api.v1.ai.dependencies import get_ai_service
+from src.presentation.api.v1.ai.dependencies import get_ai_service, get_ai_vector_service
 from src.presentation.api.v1.ai.generation import (
     batch_auto_tag,
     batch_generate_embeddings,
@@ -69,6 +69,7 @@ __all__ = [
     "generate_summary",
     "generate_tags",
     "get_ai_service",
+    "get_ai_vector_service",
     "get_related",
     "semantic_search",
 ]

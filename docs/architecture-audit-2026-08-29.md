@@ -39,14 +39,14 @@ Stan na 2026-09-10 po kolejnych etapach refaktoryzacji:
 | Kontrola | Wynik po zmianach |
 | --- | --- |
 | Backend pytest | **257 passed**, 0 failures, 0 errors, 0 warnings |
-| Backend coverage | **84.02%**, wymagany próg 80% spełniony |
+| Backend coverage | **84.04%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0016_person_names`, jeden head |
 | Nowa pusta baza | upgrade 0001 → 0016 oraz downgrade/re-upgrade 0016: PASS |
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 150 plików źródłowych |
+| Ruff / strict mypy | PASS, mypy analizuje 151 plików źródłowych |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -165,6 +165,15 @@ wersjonowanej mutacji w `PersonService` i pozostaje jedynym właścicielem macie
 przejść, kontroli uprawnień, wymogu komentarza oraz warunków publikacji. Endpoint
 POST zależy bezpośrednio od tej granicy, natomiast raportujący `EditorialService`
 zachowuje metodę przez zgodność dziedziczenia i zmniejszył się do 470 linii.
+
+Operacje wektorowe AI zostały wydzielone do `AIVectorService`: generowanie i
+aktualizacja embeddingów, wyszukiwanie semantyczne, dobór podobnych postaci oraz
+raport pokrycia mają teraz jednego właściciela. `AIService` zachowuje zgodny
+interfejs przez dziedziczenie, ale zmniejszył się z 591 do 279 linii i skupia się
+na streszczeniach, tagowaniu, sugestiach oraz pulpicie administratora. Zapytania
+wektorowe i generowanie pojedynczych embeddingów zależą bezpośrednio od nowej
+granicy, bez inicjalizowania dostawcy streszczeń. Nadal wykonują się na realnym
+PostgreSQL z `pgvector` w testach integracyjnych.
 
 Router uwierzytelniania został następnie podzielony na sesje, profil bieżącego
 użytkownika, współdzielone zależności autoryzacyjne i schematy transportowe. Główny
@@ -591,17 +600,18 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
 ### ARCH-001
 
 - **Severity:** P2
-- **Status po refaktoryzacji:** Zamknięte 2026-09-04. Zamknięto część frontendową
+- **Status po refaktoryzacji:** Zamknięte 2026-09-10. Zamknięto część frontendową
   oraz wydzielono
   z `EditorialService` stabilną politykę kompletności, priorytetów, problemów jakości
-  i wykrywania duplikatów, a także osobny reader statystyk i weryfikacji źródeł.
-  Serwis redakcyjny zmniejszył się z ok. 1154 do 552 linii, zachowując dotychczasowe
-  sygnatury i kontrakty. Z `AIService` wydzielono modele wynikowe i deterministyczny
-  mapper kolejki sugestii; serwis zmniejszył się z 881 do 592 linii. Nie wprowadzono
-  ogólnego `BaseService` ani zmian publicznego kontraktu API.
+  i wykrywania duplikatów, osobny reader statystyk i weryfikacji źródeł oraz serwis
+  przejść workflow. Serwis redakcyjny zmniejszył się z ok. 1154 do 470 linii,
+  zachowując dotychczasowe sygnatury i kontrakty. Z `AIService` wydzielono modele
+  wynikowe, deterministyczny mapper kolejki sugestii oraz pion operacji wektorowych;
+  serwis zmniejszył się z 881 do 279 linii. Nie wprowadzono ogólnego `BaseService`
+  ani zmian publicznego kontraktu API.
 - **Category:** Maintainability / SRP
 - **File:** `editorial_service.py`, `ai_service.py`, `person-form.tsx`
-- **Lines:** odpowiednio 552, 592 i 379 linii po podziale
+- **Lines:** odpowiednio 470, 279 i 444 linie po podziale
 - **Problem:** Moduły agregują wiele niezależnych odpowiedzialności i reguł.
 - **Why it matters:** Zmiany mają duży blast radius i utrudniają testy.
 - **Suggested fix:** Wydzielać tylko stabilne pionowe fragmenty: quality queries,

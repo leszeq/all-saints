@@ -6,6 +6,7 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.ai_service import AIService
+from src.application.services.ai_vector_service import AIVectorService
 from src.infrastructure.db.session import get_db_session
 
 
@@ -14,3 +15,10 @@ async def get_ai_service(
 ) -> AIService:
     """Provide an AIService instance with an injected database session."""
     return AIService(db)
+
+
+async def get_ai_vector_service(
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> AIVectorService:
+    """Provide the focused vector-search service without summary dependencies."""
+    return AIVectorService(db)
