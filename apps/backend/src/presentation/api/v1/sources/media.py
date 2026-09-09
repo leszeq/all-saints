@@ -14,16 +14,14 @@ from fastapi import (
     Response,
     status,
 )
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.application.services.audit_service import add_audit_log
-from src.application.services.person_snapshot import (
-    append_relation_version,
-    lock_person_for_snapshot,
-    serialize_person_snapshot,
+from src.application.services.media_service import (
+    MediaPersonNotFoundError,
+    MediaService,
 )
-from src.domain.identity.models import AuditAction, User
+from src.domain.identity.models import User
 from src.domain.sources.models import Document, Image, ImageLicense
 from src.infrastructure.db.session import get_db_session
 from src.presentation.api.pagination import (
@@ -99,47 +97,15 @@ async def create_image(
     db: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(require_permission("images", "create")),
 ) -> ImageSchema:
-    person = None
-    previous_snapshot = None
-    if data.person_id is not None:
-        person = await lock_person_for_snapshot(db, data.person_id)
-        if person is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Osoba nie istnieje")
-        previous_snapshot = await serialize_person_snapshot(db, person)
-        if data.is_primary:
-            await db.execute(
-                update(Image)
-                .where(
-                    Image.person_id == data.person_id,
-                    Image.deleted_at.is_(None),
-                    Image.is_primary.is_(True),
-                )
-                .values(is_primary=False)
-            )
-    img = Image(**data.model_dump())
-    db.add(img)
-    if person is not None and previous_snapshot is not None:
-        await db.flush()
-        previous_snapshot, current_snapshot = await append_relation_version(
-            db,
-            person,
-            previous_snapshot=previous_snapshot,
-            changed_by_id=current_user.id,
-            change_summary="Dodanie obrazu",
+    try:
+        image = await MediaService(db).create_image(
+            data,
+            user_id=current_user.id,
+            audit_context=audit_context_from_request(request, current_user),
         )
-        add_audit_log(
-            db,
-            context=audit_context_from_request(request, current_user),
-            action=AuditAction.UPDATE,
-            resource_type="persons",
-            resource_id=person.id,
-            old_value=previous_snapshot,
-            new_value=current_snapshot,
-            extra_metadata={"relation": "images", "operation": "add"},
-        )
-    await db.flush()
-    await db.refresh(img)
-    return ImageSchema.model_validate(img)
+    except MediaPersonNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return ImageSchema.model_validate(image)
 
 
 @router.get(
@@ -176,8 +142,5 @@ async def create_document(
     db: AsyncSession = Depends(get_db_session),
     _user: User = Depends(require_permission("sources", "create")),
 ) -> DocumentSchema:
-    doc = Document(**data.model_dump())
-    db.add(doc)
-    await db.flush()
-    await db.refresh(doc)
-    return DocumentSchema.model_validate(doc)
+    document = await MediaService(db).create_document(data)
+    return DocumentSchema.model_validate(document)

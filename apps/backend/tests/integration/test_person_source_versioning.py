@@ -32,7 +32,7 @@ from src.domain.identity.models import (
     UserRole,
     UserStatus,
 )
-from src.domain.sources.models import Bibliography, PersonSource
+from src.domain.sources.models import Bibliography, Document, PersonSource
 from src.infrastructure.db.session import get_db_session
 from src.main import app
 
@@ -298,6 +298,61 @@ async def test_adding_and_removing_source_creates_person_versions(
         "remove",
         "add",
     ]
+
+
+@pytest.mark.asyncio
+async def test_image_metadata_rejects_missing_person(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    _user, headers = await _source_editor(
+        db_session,
+        role_name="missing-image-person-editor",
+        email="missing-image-person@example.com",
+    )
+
+    response = await async_client.post(
+        "/api/v1/sources/images",
+        headers=headers,
+        json={
+            "person_id": str(uuid.uuid4()),
+            "url": "https://example.test/missing-person.jpg",
+            "is_primary": True,
+        },
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Osoba nie istnieje"
+
+
+@pytest.mark.asyncio
+async def test_document_metadata_is_created_through_application_service(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    _user, headers = await _source_editor(
+        db_session,
+        role_name="document-metadata-editor",
+        email="document-metadata@example.com",
+    )
+
+    response = await async_client.post(
+        "/api/v1/sources/documents",
+        headers=headers,
+        json={
+            "title": "Dekret o heroiczności cnót",
+            "document_type": "decree",
+            "language_code": "la",
+            "file_url": "https://example.test/decree.pdf",
+        },
+    )
+
+    assert response.status_code == 201
+    payload = response.json()
+    document = await db_session.get(Document, uuid.UUID(payload["id"]))
+    assert document is not None
+    assert document.title == "Dekret o heroiczności cnót"
+    assert document.document_type == "decree"
 
 
 @pytest.mark.asyncio

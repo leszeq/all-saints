@@ -38,15 +38,15 @@ Stan na 2026-09-09 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **248 passed**, 0 failures, 0 errors, 0 warnings |
-| Backend coverage | **82.99%**, wymagany próg 80% spełniony |
+| Backend pytest | **250 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend coverage | **83.04%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0016_person_names`, jeden head |
 | Nowa pusta baza | upgrade 0001 → 0016 oraz downgrade/re-upgrade 0016: PASS |
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 136 plików źródłowych |
+| Ruff / strict mypy | PASS, mypy analizuje 138 plików źródłowych |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -94,6 +94,13 @@ do osobnego adaptera HTTP. Moduł `media.py` zmniejszył się z 250 do 183 linii
 zachowując zgodne adresy i nazwę trasy wykorzystywaną do generowania URL-i.
 Test kontraktu OpenAPI potwierdza, że upload nadal wymaga uprawnienia
 `images:create`, natomiast odczyt opublikowanego pliku pozostaje publiczny.
+
+Tworzenie metadanych obrazów i dokumentów również zostało przeniesione do
+`MediaService`, a schematy transportowe dziedziczą teraz po niezależnych komendach
+aplikacyjnych. Adapter `media.py` zmniejszył się dalej ze 183 do 146 linii i nie
+zarządza już snapshotami, zmianą obrazu głównego ani wpisami audytowymi. Testy
+integracyjne chronią wersjonowanie relacji obrazu, błąd nieistniejącej osoby oraz
+zapis dokumentu przez nową granicę aplikacyjną.
 
 Router uwierzytelniania został następnie podzielony na sesje, profil bieżącego
 użytkownika, współdzielone zależności autoryzacyjne i schematy transportowe. Główny

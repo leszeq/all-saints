@@ -9,6 +9,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from src.application.commands.media import CreateDocumentCommand, CreateImageCommand
 from src.application.commands.person_sources import (
     CreatePersonSourceCommand,
     CreatePersonWebSourceCommand,
@@ -142,24 +143,8 @@ class PersonSourceSchema(PersonSourceCreateSchema):
 # ==============================================================================
 
 
-class ImageCreateSchema(BaseModel):
-    person_id: uuid.UUID | None = None
-    url: str = Field(..., min_length=5, max_length=2000)
-    thumbnail_url: str | None = Field(None, max_length=2000)
-    storage_key: str | None = Field(None, max_length=500)
-    title: str | None = Field(None, max_length=500)
-    description: str | None = None
-    image_type: str | None = Field(None, max_length=50)
-    license: ImageLicense = Field(default=ImageLicense.UNKNOWN)
-    photographer: str | None = Field(None, max_length=300)
-    source_url: str | None = Field(None, max_length=2000)
-    year_created: int | None = None
-    is_primary: bool = False
-    sort_order: int = 0
-    width_px: int | None = None
-    height_px: int | None = None
-    file_size_bytes: int | None = None
-    mime_type: str | None = Field(None, max_length=100)
+class ImageCreateSchema(CreateImageCommand):
+    """HTTP input for image metadata creation."""
 
 
 class ImageUpdateSchema(BaseModel):
@@ -210,17 +195,8 @@ class SourceStatsSchema(BaseModel):
 # ==============================================================================
 
 
-class DocumentCreateSchema(BaseModel):
-    person_id: uuid.UUID | None = None
-    title: str = Field(..., min_length=2, max_length=500)
-    document_type: DocumentType = Field(default=DocumentType.OTHER)
-    language_code: str | None = Field(None, max_length=10)
-    description: str | None = None
-    file_url: str | None = Field(None, max_length=2000)
-    storage_key: str | None = Field(None, max_length=500)
-    file_size_bytes: int | None = None
-    mime_type: str | None = Field(None, max_length=100)
-    is_public: bool = True
+class DocumentCreateSchema(CreateDocumentCommand):
+    """HTTP input for document metadata creation."""
 
 
 class DocumentUpdateSchema(BaseModel):
