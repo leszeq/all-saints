@@ -2,19 +2,16 @@
 
 from __future__ import annotations
 
-import asyncio
 import uuid
 from typing import Annotated
 
 from fastapi import (
     APIRouter,
     Depends,
-    File,
     HTTPException,
     Query,
     Request,
     Response,
-    UploadFile,
     status,
 )
 from sqlalchemy import select, update
@@ -29,13 +26,6 @@ from src.application.services.person_snapshot import (
 from src.domain.identity.models import AuditAction, User
 from src.domain.sources.models import Document, Image, ImageLicense
 from src.infrastructure.db.session import get_db_session
-from src.infrastructure.storage.avatar_storage import (
-    MAX_AVATAR_BYTES,
-    AvatarStorage,
-    InvalidAvatarError,
-    get_avatar_storage,
-    prepare_avatar,
-)
 from src.presentation.api.pagination import (
     PAGINATION_RESPONSE_DOCS,
     PageNumber,
@@ -44,81 +34,24 @@ from src.presentation.api.pagination import (
     execute_page,
 )
 from src.presentation.api.v1.auth.router import require_permission
+from src.presentation.api.v1.sources.image_files import (
+    get_uploaded_image,
+    upload_avatar_image,
+)
+from src.presentation.api.v1.sources.image_files import router as image_files_router
 from src.presentation.api.v1.sources.schemas import (
     DocumentCreateSchema,
     DocumentSchema,
     ImageCreateSchema,
     ImageSchema,
-    ImageUploadSchema,
 )
 from src.presentation.audit import audit_context_from_request
 
 router = APIRouter()
 
+__all__ = ["get_uploaded_image", "upload_avatar_image"]
 
-@router.post(
-    "/images/upload",
-    response_model=ImageUploadSchema,
-    status_code=status.HTTP_201_CREATED,
-    summary="Upload an avatar image",
-    description="Validate, normalize and store a JPG, PNG or WebP file with a generated thumbnail.",
-)
-async def upload_avatar_image(
-    request: Request,
-    file: UploadFile = File(...),
-    _user: User = Depends(require_permission("images", "create")),
-    storage: AvatarStorage = Depends(get_avatar_storage),
-) -> ImageUploadSchema:
-    """Store an uploaded avatar and return URLs ready for a person payload."""
-    content = await file.read(MAX_AVATAR_BYTES + 1)
-    await file.close()
-    try:
-        prepared = await asyncio.to_thread(prepare_avatar, content, file.content_type)
-        stored = await storage.store(prepared)
-    except InvalidAvatarError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
-        ) from exc
-
-    url = str(request.url_for("get_uploaded_image", object_key=stored.storage_key))
-    thumbnail_url = str(
-        request.url_for(
-            "get_uploaded_image",
-            object_key=stored.thumbnail_storage_key,
-        )
-    )
-    return ImageUploadSchema(
-        url=url,
-        thumbnail_url=thumbnail_url,
-        storage_key=stored.storage_key,
-        width_px=stored.width,
-        height_px=stored.height,
-        file_size_bytes=stored.file_size_bytes,
-    )
-
-
-@router.get(
-    "/images/files/{object_key:path}",
-    name="get_uploaded_image",
-    response_class=Response,
-    summary="Read an uploaded avatar image",
-)
-async def get_uploaded_image(
-    object_key: str,
-    storage: AvatarStorage = Depends(get_avatar_storage),
-) -> Response:
-    """Proxy a generated image from object storage with immutable caching."""
-    try:
-        content = await storage.read(object_key)
-    except FileNotFoundError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Obraz nie istnieje"
-        ) from exc
-    return Response(
-        content=content,
-        media_type="image/webp",
-        headers={"Cache-Control": "public, max-age=31536000, immutable"},
-    )
+router.include_router(image_files_router)
 
 
 @router.get(

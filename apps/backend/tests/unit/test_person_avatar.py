@@ -158,3 +158,13 @@ def test_uploaded_image_route_name_survives_sources_router_composition() -> None
     )
 
     assert str(path) == "/api/v1/sources/images/files/avatars/2026/09/test.webp"
+
+
+def test_image_file_openapi_preserves_security_boundary() -> None:
+    paths = app.openapi()["paths"]
+
+    upload = paths["/api/v1/sources/images/upload"]["post"]
+    read = paths["/api/v1/sources/images/files/{object_key}"]["get"]
+
+    assert upload["security"] == [{"HTTPBearer": []}]
+    assert "security" not in read

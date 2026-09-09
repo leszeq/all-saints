@@ -38,15 +38,15 @@ Stan na 2026-09-09 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **247 passed**, 0 failures, 0 errors, 0 warnings |
-| Backend coverage | **82.97%**, wymagany próg 80% spełniony |
+| Backend pytest | **248 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend coverage | **82.99%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0016_person_names`, jeden head |
 | Nowa pusta baza | upgrade 0001 → 0016 oraz downgrade/re-upgrade 0016: PASS |
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 135 plików źródłowych |
+| Ruff / strict mypy | PASS, mypy analizuje 136 plików źródłowych |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -88,6 +88,12 @@ linii i odpowiada wyłącznie za RBAC, mapowanie błędów na HTTP oraz serializ
 Serwis centralizuje wykrywanie duplikatów, ponowne użycie źródła URL, soft delete,
 snapshot wersji i audyt. Test integracyjny dodatkowo potwierdza współdzielenie tego
 samego rekordu bibliografii między profilami i odrzucenie ponownego przypisania.
+
+Obsługa binarnych plików obrazów została wydzielona z katalogu metadanych mediów
+do osobnego adaptera HTTP. Moduł `media.py` zmniejszył się z 250 do 183 linii,
+zachowując zgodne adresy i nazwę trasy wykorzystywaną do generowania URL-i.
+Test kontraktu OpenAPI potwierdza, że upload nadal wymaga uprawnienia
+`images:create`, natomiast odczyt opublikowanego pliku pozostaje publiczny.
 
 Router uwierzytelniania został następnie podzielony na sesje, profil bieżącego
 użytkownika, współdzielone zależności autoryzacyjne i schematy transportowe. Główny
