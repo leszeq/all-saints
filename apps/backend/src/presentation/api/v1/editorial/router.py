@@ -8,11 +8,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.application.services.editorial_service import (
+from src.application.services.editorial_service import EditorialService
+from src.application.services.editorial_workflow_service import (
     EditorialAuthorizationError,
     EditorialNotFoundError,
-    EditorialService,
     EditorialTransitionError,
+    EditorialWorkflowService,
 )
 from src.application.services.person_service import PersonVersionConflictError
 from src.domain.hagiography.models import PublicationStatus
@@ -99,7 +100,7 @@ async def transition_editorial_record(
     current_user: User = Depends(get_current_user),
 ) -> EditorialTransitionResponseSchema:
     try:
-        return await EditorialService(db).transition(
+        return await EditorialWorkflowService(db).transition(
             person_id,
             data.target_status,
             user_id=current_user.id,

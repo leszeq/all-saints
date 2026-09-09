@@ -8,11 +8,11 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.application.services.editorial_service import (
+from src.application.services.editorial_service import EditorialPriority, EditorialService
+from src.application.services.editorial_workflow_service import (
     EditorialNotFoundError,
-    EditorialPriority,
-    EditorialService,
     EditorialTransitionError,
+    EditorialWorkflowService,
 )
 from src.domain.geography.models import Country, ReligiousOrder
 from src.domain.hagiography.models import (
@@ -243,7 +243,7 @@ async def test_editorial_transition_validates_content_and_persists_version(
     db_session: AsyncSession,
 ) -> None:
     seeded = await _seed_editorial_data(db_session)
-    service = EditorialService(db_session)
+    service = EditorialWorkflowService(db_session)
     incomplete = seeded["incomplete"]
     ready = seeded["ready"]
     editor = seeded["editor"]

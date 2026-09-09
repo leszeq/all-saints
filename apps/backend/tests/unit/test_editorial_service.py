@@ -6,12 +6,12 @@ from uuid import uuid4
 
 import pytest
 
-from src.application.services import editorial_service as editorial_module
+from src.application.services import editorial_workflow_service as workflow_module
 from src.application.services.editorial_quality import EditorialQualityPolicy
-from src.application.services.editorial_service import (
+from src.application.services.editorial_workflow_service import (
     EditorialAuthorizationError,
-    EditorialService,
     EditorialTransitionError,
+    EditorialWorkflowService,
 )
 from src.domain.hagiography.models import PublicationStatus
 
@@ -30,6 +30,11 @@ def make_person(**overrides):
     }
     values.update(overrides)
     return SimpleNamespace(**values)
+
+
+def patch_person_services(monkeypatch, service):
+    monkeypatch.setattr(workflow_module, "PersonQueryService", lambda _db: service)
+    monkeypatch.setattr(workflow_module, "PersonService", lambda _db: service)
 
 
 def test_quality_issues_describe_concrete_missing_data():
@@ -93,10 +98,10 @@ async def test_transition_moves_draft_to_review_and_records_editor(monkeypatch):
         get_by_id_or_slug=AsyncMock(return_value=person),
         update_person=AsyncMock(return_value=updated),
     )
-    monkeypatch.setattr(editorial_module, "PersonService", lambda _db: person_service)
+    patch_person_services(monkeypatch, person_service)
     editor_id = uuid4()
 
-    result = await EditorialService(SimpleNamespace()).transition(
+    result = await EditorialWorkflowService(SimpleNamespace()).transition(
         person.id,
         PublicationStatus.REVIEW,
         user_id=editor_id,
@@ -116,10 +121,10 @@ async def test_transition_moves_draft_to_review_and_records_editor(monkeypatch):
 async def test_transition_rejects_skipping_review(monkeypatch):
     person = make_person()
     person_service = SimpleNamespace(get_by_id_or_slug=AsyncMock(return_value=person))
-    monkeypatch.setattr(editorial_module, "PersonService", lambda _db: person_service)
+    patch_person_services(monkeypatch, person_service)
 
     with pytest.raises(EditorialTransitionError, match="nie jest dozwolone"):
-        await EditorialService(SimpleNamespace()).transition(
+        await EditorialWorkflowService(SimpleNamespace()).transition(
             person.id,
             PublicationStatus.PUBLISHED,
             user_id=uuid4(),
@@ -131,10 +136,10 @@ async def test_transition_rejects_skipping_review(monkeypatch):
 async def test_review_acceptance_requires_dedicated_review_permission(monkeypatch):
     person = make_person(status=PublicationStatus.REVIEW.value)
     person_service = SimpleNamespace(get_by_id_or_slug=AsyncMock(return_value=person))
-    monkeypatch.setattr(editorial_module, "PersonService", lambda _db: person_service)
+    patch_person_services(monkeypatch, person_service)
 
     with pytest.raises(EditorialAuthorizationError, match="persons:review"):
-        await EditorialService(SimpleNamespace()).transition(
+        await EditorialWorkflowService(SimpleNamespace()).transition(
             person.id,
             PublicationStatus.PUBLISHED,
             user_id=uuid4(),
@@ -154,9 +159,9 @@ async def test_reviewer_can_accept_complete_record_without_generic_update_permis
         get_by_id_or_slug=AsyncMock(return_value=person),
         update_person=AsyncMock(return_value=updated),
     )
-    monkeypatch.setattr(editorial_module, "PersonService", lambda _db: person_service)
+    patch_person_services(monkeypatch, person_service)
 
-    result = await EditorialService(SimpleNamespace()).transition(
+    result = await EditorialWorkflowService(SimpleNamespace()).transition(
         person.id,
         PublicationStatus.PUBLISHED,
         user_id=uuid4(),
@@ -170,10 +175,10 @@ async def test_reviewer_can_accept_complete_record_without_generic_update_permis
 async def test_return_to_editor_requires_a_comment(monkeypatch):
     person = make_person(status=PublicationStatus.REVIEW.value)
     person_service = SimpleNamespace(get_by_id_or_slug=AsyncMock(return_value=person))
-    monkeypatch.setattr(editorial_module, "PersonService", lambda _db: person_service)
+    patch_person_services(monkeypatch, person_service)
 
     with pytest.raises(EditorialTransitionError, match="komentarza"):
-        await EditorialService(SimpleNamespace()).transition(
+        await EditorialWorkflowService(SimpleNamespace()).transition(
             person.id,
             PublicationStatus.DRAFT,
             user_id=uuid4(),
@@ -186,10 +191,10 @@ async def test_return_to_editor_requires_a_comment(monkeypatch):
 async def test_unpublish_transition_requires_dedicated_permission(monkeypatch):
     person = make_person(status=PublicationStatus.PUBLISHED.value)
     person_service = SimpleNamespace(get_by_id_or_slug=AsyncMock(return_value=person))
-    monkeypatch.setattr(editorial_module, "PersonService", lambda _db: person_service)
+    patch_person_services(monkeypatch, person_service)
 
     with pytest.raises(EditorialAuthorizationError, match="persons:publish"):
-        await EditorialService(SimpleNamespace()).transition(
+        await EditorialWorkflowService(SimpleNamespace()).transition(
             person.id,
             PublicationStatus.REVIEW,
             user_id=uuid4(),

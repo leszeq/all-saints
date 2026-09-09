@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import uuid
 from collections import Counter
 from datetime import UTC, datetime
 
@@ -10,7 +9,6 @@ from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.engine import Row
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.application.commands.persons import PersonUpdateSchema
 from src.application.editorial_models import (
     EditorialCompletionBucketSchema,
     EditorialDashboardSchema,
@@ -29,13 +27,18 @@ from src.application.editorial_models import (
     EditorialSourceVerificationItemSchema,
     EditorialSourceVerificationStatsSchema,
     EditorialStatusCountSchema,
-    EditorialTransitionResponseSchema,
 )
-from src.application.services.audit_service import AuditContext
 from src.application.services.editorial_quality import EditorialQualityPolicy
 from src.application.services.editorial_source_quality import EditorialSourceQualityReader
+from src.application.services.editorial_workflow_service import (
+    ALLOWED_TRANSITIONS,
+    TRANSITION_PERMISSIONS,
+    EditorialAuthorizationError,
+    EditorialNotFoundError,
+    EditorialTransitionError,
+    EditorialWorkflowService,
+)
 from src.application.services.person_query_service import PersonQueryService
-from src.application.services.person_service import PersonService
 from src.domain.geography.models import Country, ReligiousOrder
 from src.domain.hagiography.models import Person, PublicationStatus
 from src.domain.identity.models import User
@@ -45,47 +48,21 @@ from src.domain.sources.models import (
     ImageLicense,
 )
 
-
-class EditorialNotFoundError(ValueError):
-    """Raised when a workflow target cannot be found."""
-
-
-class EditorialTransitionError(ValueError):
-    """Raised when a publication transition is not allowed."""
-
-
-class EditorialAuthorizationError(ValueError):
-    """Raised when a workflow transition requires publication permission."""
+__all__ = [
+    "ALLOWED_TRANSITIONS",
+    "TRANSITION_PERMISSIONS",
+    "EditorialAuthorizationError",
+    "EditorialNotFoundError",
+    "EditorialService",
+    "EditorialTransitionError",
+]
 
 
-ALLOWED_TRANSITIONS: dict[str, set[str]] = {
-    PublicationStatus.DRAFT.value: {PublicationStatus.REVIEW.value},
-    PublicationStatus.REVIEW.value: {
-        PublicationStatus.DRAFT.value,
-        PublicationStatus.PUBLISHED.value,
-    },
-    PublicationStatus.PUBLISHED.value: {
-        PublicationStatus.REVIEW.value,
-        PublicationStatus.ARCHIVED.value,
-    },
-    PublicationStatus.ARCHIVED.value: {PublicationStatus.DRAFT.value},
-}
-
-TRANSITION_PERMISSIONS: dict[tuple[str, str], str] = {
-    (PublicationStatus.DRAFT.value, PublicationStatus.REVIEW.value): "persons:submit",
-    (PublicationStatus.REVIEW.value, PublicationStatus.DRAFT.value): "persons:review",
-    (PublicationStatus.REVIEW.value, PublicationStatus.PUBLISHED.value): "persons:review",
-    (PublicationStatus.PUBLISHED.value, PublicationStatus.REVIEW.value): "persons:publish",
-    (PublicationStatus.PUBLISHED.value, PublicationStatus.ARCHIVED.value): "persons:publish",
-    (PublicationStatus.ARCHIVED.value, PublicationStatus.DRAFT.value): "persons:publish",
-}
-
-
-class EditorialService:
-    """Read operational metrics and manage publication-state transitions."""
+class EditorialService(EditorialWorkflowService):
+    """Read operational metrics with a legacy-compatible workflow interface."""
 
     def __init__(self, db: AsyncSession) -> None:
-        self.db = db
+        super().__init__(db)
         self._source_quality = EditorialSourceQualityReader(db)
 
     # Compatibility aliases keep existing internal callers stable while the
@@ -489,73 +466,4 @@ class EditorialService:
             queue_preview=queue.items,
             queue_counts=queue.counts,
             resources=resources,
-        )
-
-    async def transition(
-        self,
-        person_id: uuid.UUID,
-        target_status: PublicationStatus,
-        *,
-        user_id: uuid.UUID,
-        note: str | None = None,
-        granted_permissions: set[str] | None = None,
-        expected_version: int | None = None,
-        audit_context: AuditContext | None = None,
-    ) -> EditorialTransitionResponseSchema:
-        """Apply one allowed workflow transition and write a version snapshot."""
-        person_service = PersonService(self.db)
-        person = await person_service.get_by_id_or_slug(str(person_id))
-        if person is None:
-            raise EditorialNotFoundError("Rekord nie istnieje")
-        previous = str(person.status)
-        if target_status.value not in ALLOWED_TRANSITIONS.get(previous, set()):
-            raise EditorialTransitionError(
-                f"Przejście {previous} → {target_status.value} nie jest dozwolone"
-            )
-        required_permission = TRANSITION_PERMISSIONS[(previous, target_status.value)]
-        if required_permission not in (granted_permissions or set()):
-            raise EditorialAuthorizationError(
-                f"Ta operacja wymaga uprawnienia {required_permission}"
-            )
-        normalized_note = note.strip() if note else None
-        if (
-            previous == PublicationStatus.REVIEW.value
-            and target_status == PublicationStatus.DRAFT
-            and not normalized_note
-        ):
-            raise EditorialTransitionError(
-                "Zwrócenie rekordu do redaktora wymaga komentarza z uzasadnieniem"
-            )
-        if target_status == PublicationStatus.PUBLISHED:
-            missing = []
-            if not person.summary_pl or not person.summary_pl.strip():
-                missing.append("streszczenie")
-            if not person.biography_pl or not person.biography_pl.strip():
-                missing.append("biogram")
-            if any(
-                image.deleted_at is None and image.license == ImageLicense.UNKNOWN.value
-                for image in person.images
-            ):
-                missing.append("licencja obrazu")
-            if missing:
-                raise EditorialTransitionError(
-                    "Publikacja wymaga uzupełnienia: " + ", ".join(missing)
-                )
-        summary = normalized_note or f"Workflow redakcyjny: {previous} → {target_status.value}"
-        person = await person_service.update_person(
-            person,
-            PersonUpdateSchema(
-                status=target_status,
-                change_summary=summary,
-                expected_version=expected_version,
-            ),
-            user_id=user_id,
-            allow_status_change=True,
-            audit_context=audit_context,
-        )
-        return EditorialTransitionResponseSchema(
-            person_id=person.id,
-            previous_status=previous,
-            status=person.status,
-            updated_at=person.updated_at,
         )

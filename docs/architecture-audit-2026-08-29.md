@@ -39,14 +39,14 @@ Stan na 2026-09-10 po kolejnych etapach refaktoryzacji:
 | Kontrola | Wynik po zmianach |
 | --- | --- |
 | Backend pytest | **257 passed**, 0 failures, 0 errors, 0 warnings |
-| Backend coverage | **83.99%**, wymagany próg 80% spełniony |
+| Backend coverage | **84.02%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0016_person_names`, jeden head |
 | Nowa pusta baza | upgrade 0001 → 0016 oraz downgrade/re-upgrade 0016: PASS |
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 149 plików źródłowych |
+| Ruff / strict mypy | PASS, mypy analizuje 150 plików źródłowych |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -158,6 +158,13 @@ Walidację dokumentu przeniesiono dalej do bezmutacyjnego
 od walidatora, a importer używa tej samej implementacji przez kompozycję zgodnego
 interfejsu. `PersonProfileService` zmniejszył się dalej z 341 do 221 linii i skupia
 się na atomowym utworzeniu osoby, kalendarzy, zakonów oraz źródeł.
+
+Zmiany statusu publikacji zostały wydzielone do `EditorialWorkflowService`.
+Serwis jawnie rozdziela pobranie rekordu przez `PersonQueryService` od
+wersjonowanej mutacji w `PersonService` i pozostaje jedynym właścicielem macierzy
+przejść, kontroli uprawnień, wymogu komentarza oraz warunków publikacji. Endpoint
+POST zależy bezpośrednio od tej granicy, natomiast raportujący `EditorialService`
+zachowuje metodę przez zgodność dziedziczenia i zmniejszył się do 470 linii.
 
 Router uwierzytelniania został następnie podzielony na sesje, profil bieżącego
 użytkownika, współdzielone zależności autoryzacyjne i schematy transportowe. Główny
