@@ -67,14 +67,14 @@ def generate_person_embedding(self: Task, person_id: str) -> dict[str, Any]:
     logger.info(f"Generating embedding for person {person_id}")
 
     async def _run() -> dict[str, Any]:
-        from src.application.ai_service import AIService
+        from src.application.services.ai_vector_service import AIVectorService
         from src.infrastructure.db.session import get_session_factory
 
         pid = uuid.UUID(person_id)
         session_factory = get_session_factory()
 
         async with session_factory() as db:
-            service = AIService(db)
+            service = AIVectorService(db)
             result = await service.generate_person_embedding(pid)
 
             if result is None:
@@ -134,7 +134,7 @@ def batch_generate_embeddings(
     )
 
     async def _run() -> dict[str, Any]:
-        from src.application.ai_service import AIService
+        from src.application.services.ai_vector_service import AIVectorService
         from src.domain.hagiography.embedding_model import PersonEmbedding
         from src.domain.hagiography.models import Person
         from src.infrastructure.db.session import get_session_factory
@@ -144,7 +144,7 @@ def batch_generate_embeddings(
         skipped = 0
 
         async with get_session_factory()() as db:
-            service = AIService(db)
+            service = AIVectorService(db)
 
             # Build a stable base query and fetch IDs in bounded keyset pages.
             if overwrite_existing:
@@ -251,13 +251,13 @@ def generate_person_summary(
     logger.info(f"Generating summary for person {person_id}")
 
     async def _run() -> dict[str, Any]:
-        from src.application.ai_service import AIService
+        from src.application.services.ai_summary_service import AISummaryService
         from src.infrastructure.db.session import get_session_factory
 
         pid = uuid.UUID(person_id)
 
         async with get_session_factory()() as db:
-            service = AIService(db)
+            service = AISummaryService(db)
             summary = await service.generate_summary(pid, max_words=max_words)
 
             if summary is None:
@@ -302,13 +302,13 @@ def auto_tag_person(self: Task, person_id: str) -> dict[str, Any]:
     logger.info(f"Auto-tagging person {person_id}")
 
     async def _run() -> dict[str, Any]:
-        from src.application.ai_service import AIService
+        from src.application.services.ai_summary_service import AISummaryService
         from src.infrastructure.db.session import get_session_factory
 
         pid = uuid.UUID(person_id)
 
         async with get_session_factory()() as db:
-            service = AIService(db)
+            service = AISummaryService(db)
             tags = await service.extract_person_tags(pid)
             await db.commit()
 
@@ -350,7 +350,7 @@ def batch_auto_tag(self: Task, only_untagged: bool = True) -> dict[str, Any]:
     logger.info(f"Starting batch auto-tag (only_untagged={only_untagged})")
 
     async def _run() -> dict[str, Any]:
-        from src.application.ai_service import AIService
+        from src.application.services.ai_summary_service import AISummaryService
         from src.domain.hagiography.models import Person
         from src.infrastructure.db.session import get_session_factory
 
@@ -358,7 +358,7 @@ def batch_auto_tag(self: Task, only_untagged: bool = True) -> dict[str, Any]:
         failed = 0
 
         async with get_session_factory()() as db:
-            service = AIService(db)
+            service = AISummaryService(db)
             if service.summary_provider == "extractive-fallback":
                 raise RuntimeError("Automatyczne tagowanie AI jest wyłączone")
 

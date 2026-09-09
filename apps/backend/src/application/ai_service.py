@@ -30,11 +30,12 @@ from src.application.ai_suggestions import (
     preview,
     tag_list,
 )
+from src.application.services.ai_summary_service import AISummaryService
 from src.application.services.ai_vector_service import AIVectorService
 from src.domain.hagiography.embedding_model import PersonEmbedding
 from src.domain.hagiography.models import Person, PublicationStatus
 from src.infrastructure.ai.embeddings import EmbeddingService
-from src.infrastructure.ai.summarizer import SummaryService, get_summary_service
+from src.infrastructure.ai.summarizer import SummaryService
 
 # ==============================================================================
 # AI SERVICE
@@ -56,70 +57,22 @@ class AIService(AIVectorService):
         summary_service: SummaryService | None = None,
     ) -> None:
         super().__init__(db, embedding_service)
-        self._summaries = summary_service or get_summary_service()
+        self._summary_generation = AISummaryService(db, summary_service)
 
     @property
     def summary_provider(self) -> str:
         """Return the configured summary provider identifier."""
-        return self._summaries.provider_name
+        return self._summary_generation.summary_provider
 
     # ── Summarization ───────────────────────────────────────────────────────────
 
     async def generate_summary(self, person_id: uuid.UUID, max_words: int = 100) -> str | None:
-        """
-        Generate and persist an AI summary for a person's biography.
-
-        Args:
-            person_id: UUID of the person.
-            max_words: Target length of the summary in words.
-
-        Returns:
-            Generated summary string, or None if person not found.
-        """
-        stmt = select(Person).where(Person.id == person_id, Person.deleted_at.is_(None))
-        result = await self._db.execute(stmt)
-        person = result.scalar_one_or_none()
-
-        if person is None:
-            return None
-
-        biography = person.biography_pl or person.summary_pl or ""
-        if not biography.strip():
-            return ""
-
-        summary = await self._summaries.summarize(biography, max_words=max_words)
-
-        # Persist AI summary back to the person record
-        person.ai_summary = summary
-        await self._db.flush()
-
-        return summary
+        """Generate a working summary through the focused use case."""
+        return await self._summary_generation.generate_summary(person_id, max_words)
 
     async def extract_person_tags(self, person_id: uuid.UUID) -> list[str]:
-        """
-        Extract tags from a person's biography using AI.
-
-        Args:
-            person_id: UUID of the person.
-
-        Returns:
-            List of tag strings.
-        """
-        stmt = select(Person).where(Person.id == person_id, Person.deleted_at.is_(None))
-        result = await self._db.execute(stmt)
-        person = result.scalar_one_or_none()
-
-        if person is None:
-            return []
-
-        biography = person.biography_pl or ""
-        tags = await self._summaries.extract_tags(biography, person.canonical_name)
-
-        # Persist AI tags
-        person.ai_tags = tags
-        await self._db.flush()
-
-        return tags
+        """Generate tag suggestions through the focused use case."""
+        return await self._summary_generation.extract_person_tags(person_id)
 
     # ── Admin AI Centre ────────────────────────────────────────────────────────
 

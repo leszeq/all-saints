@@ -8,12 +8,15 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from loguru import logger
 
-from src.application.ai_service import AIService
+from src.application.services.ai_summary_service import AISummaryService
 from src.application.services.ai_vector_service import AIVectorService
 from src.domain.identity.models import User
 from src.infrastructure.ai.embeddings import EmbeddingUnavailableError
 from src.infrastructure.ai.summarizer import TaggingUnavailableError
-from src.presentation.api.v1.ai.dependencies import get_ai_service, get_ai_vector_service
+from src.presentation.api.v1.ai.dependencies import (
+    get_ai_summary_service,
+    get_ai_vector_service,
+)
 from src.presentation.api.v1.ai.schemas import (
     BatchTaskResponse,
     EmbeddingResponse,
@@ -74,7 +77,7 @@ async def generate_embedding(
 )
 async def generate_summary(
     person_id: uuid.UUID,
-    ai_service: Annotated[AIService, Depends(get_ai_service)],
+    ai_service: Annotated[AISummaryService, Depends(get_ai_summary_service)],
     _user: Annotated[User, Depends(require_permission("persons", "update"))],
     max_words: Annotated[int, Query(ge=20, le=500)] = 100,
 ) -> SummaryResponse:
@@ -106,7 +109,7 @@ async def generate_summary(
 )
 async def generate_tags(
     person_id: uuid.UUID,
-    ai_service: Annotated[AIService, Depends(get_ai_service)],
+    ai_service: Annotated[AISummaryService, Depends(get_ai_summary_service)],
     _user: Annotated[User, Depends(require_permission("persons", "update"))],
 ) -> TaggingResponse:
     """Generate or regenerate AI tag suggestions for a single person."""
@@ -179,7 +182,7 @@ async def batch_generate_embeddings(
 )
 async def batch_auto_tag(
     _user: Annotated[User, Depends(require_permission("persons", "publish"))],
-    ai_service: Annotated[AIService, Depends(get_ai_service)],
+    ai_service: Annotated[AISummaryService, Depends(get_ai_summary_service)],
     only_untagged: Annotated[bool, Query(description="Only process persons without tags")] = True,
 ) -> BatchTaskResponse:
     """Trigger bulk auto-tagging as a background Celery task."""

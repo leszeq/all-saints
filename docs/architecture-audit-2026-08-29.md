@@ -39,14 +39,14 @@ Stan na 2026-09-10 po kolejnych etapach refaktoryzacji:
 | Kontrola | Wynik po zmianach |
 | --- | --- |
 | Backend pytest | **257 passed**, 0 failures, 0 errors, 0 warnings |
-| Backend coverage | **84.04%**, wymagany próg 80% spełniony |
+| Backend coverage | **84.06%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0016_person_names`, jeden head |
 | Nowa pusta baza | upgrade 0001 → 0016 oraz downgrade/re-upgrade 0016: PASS |
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 151 plików źródłowych |
+| Ruff / strict mypy | PASS, mypy analizuje 152 pliki źródłowe |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -174,6 +174,12 @@ na streszczeniach, tagowaniu, sugestiach oraz pulpicie administratora. Zapytania
 wektorowe i generowanie pojedynczych embeddingów zależą bezpośrednio od nowej
 granicy, bez inicjalizowania dostawcy streszczeń. Nadal wykonują się na realnym
 PostgreSQL z `pgvector` w testach integracyjnych.
+
+Generowanie roboczych streszczeń i tagów zostało następnie przeniesione do
+`AISummaryService`. Endpointy i workery Celery zależą bezpośrednio od odpowiednio
+wąskich serwisów generacyjnych, natomiast zgodna fasada deleguje stare metody przez
+kompozycję. `AIService` zmniejszył się dalej do 232 linii i odpowiada obecnie za
+agregację centrum AI, kolejkę sugestii oraz kompatybilny status dostawców.
 
 Router uwierzytelniania został następnie podzielony na sesje, profil bieżącego
 użytkownika, współdzielone zależności autoryzacyjne i schematy transportowe. Główny
@@ -606,12 +612,12 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
   i wykrywania duplikatów, osobny reader statystyk i weryfikacji źródeł oraz serwis
   przejść workflow. Serwis redakcyjny zmniejszył się z ok. 1154 do 470 linii,
   zachowując dotychczasowe sygnatury i kontrakty. Z `AIService` wydzielono modele
-  wynikowe, deterministyczny mapper kolejki sugestii oraz pion operacji wektorowych;
-  serwis zmniejszył się z 881 do 279 linii. Nie wprowadzono ogólnego `BaseService`
-  ani zmian publicznego kontraktu API.
+  wynikowe, deterministyczny mapper kolejki sugestii, pion operacji wektorowych oraz
+  generowanie streszczeń i tagów; serwis zmniejszył się z 881 do 232 linii. Nie
+  wprowadzono ogólnego `BaseService` ani zmian publicznego kontraktu API.
 - **Category:** Maintainability / SRP
 - **File:** `editorial_service.py`, `ai_service.py`, `person-form.tsx`
-- **Lines:** odpowiednio 470, 279 i 444 linie po podziale
+- **Lines:** odpowiednio 470, 232 i 444 linie po podziale
 - **Problem:** Moduły agregują wiele niezależnych odpowiedzialności i reguł.
 - **Why it matters:** Zmiany mają duży blast radius i utrudniają testy.
 - **Suggested fix:** Wydzielać tylko stabilne pionowe fragmenty: quality queries,

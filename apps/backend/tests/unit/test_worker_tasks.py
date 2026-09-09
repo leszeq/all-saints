@@ -6,7 +6,8 @@ import uuid
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-from src.application import ai_service as ai_service_module
+from src.application.services import ai_summary_service as ai_summary_module
+from src.application.services import ai_vector_service as ai_vector_module
 from src.infrastructure.db import session as session_module
 from src.workers.celery_app import create_celery_app
 from src.workers.tasks.ai import (
@@ -114,7 +115,8 @@ def test_single_person_ai_tasks(monkeypatch) -> None:
 
     session = StubSession()
     _install_session(monkeypatch, session)
-    monkeypatch.setattr(ai_service_module, "AIService", StubAIService)
+    monkeypatch.setattr(ai_vector_module, "AIVectorService", StubAIService)
+    monkeypatch.setattr(ai_summary_module, "AISummaryService", StubAIService)
 
     embedding_result = generate_person_embedding.run(str(person_id))
     assert embedding_result == {
@@ -170,7 +172,7 @@ def test_batch_embedding_tracks_processed_skipped_and_failed(monkeypatch) -> Non
             return SimpleNamespace(person_id=person_id)
 
     _install_session(monkeypatch, session)
-    monkeypatch.setattr(ai_service_module, "AIService", StubAIService)
+    monkeypatch.setattr(ai_vector_module, "AIVectorService", StubAIService)
     update_state = MagicMock()
     monkeypatch.setattr(batch_generate_embeddings, "update_state", update_state)
 
@@ -201,7 +203,7 @@ def test_batch_auto_tag_reports_progress_and_failures(monkeypatch) -> None:
             return ["tag"]
 
     _install_session(monkeypatch, session)
-    monkeypatch.setattr(ai_service_module, "AIService", StubAIService)
+    monkeypatch.setattr(ai_summary_module, "AISummaryService", StubAIService)
     update_state = MagicMock()
     monkeypatch.setattr(batch_auto_tag, "update_state", update_state)
 
