@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import uuid
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from pydantic import ValidationError
 
+from src.application.services.calendar_query_service import CalendarQueryService
 from src.application.services.calendar_service import CalendarService
 from src.domain.hagiography.models import Person
 from src.domain.liturgy.models import Feast, LiturgicalCalendar, LiturgicalObservance
@@ -46,6 +48,23 @@ def test_calendar_openapi_preserves_public_and_editorial_security_boundaries() -
 
     assert all("security" not in operation for operation in public_operations)
     assert all(operation["security"] == [{"HTTPBearer": []}] for operation in editorial_operations)
+
+
+@pytest.mark.asyncio
+async def test_fixed_entry_query_executes_once() -> None:
+    db = MagicMock()
+    result = MagicMock()
+    result.scalars.return_value.unique.return_value.all.return_value = []
+    db.execute = AsyncMock(return_value=result)
+
+    entries = await CalendarQueryService(db)._query_fixed_entries(
+        calendar_codes=["roman_pl"],
+        month=9,
+        day=9,
+    )
+
+    assert entries == []
+    db.execute.assert_awaited_once()
 
 
 def _person(name: str, *, featured: bool = False) -> Person:

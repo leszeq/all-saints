@@ -10,9 +10,9 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.application.services.calendar_service import (
+from src.application.services.calendar_query_service import (
     CalendarNotFoundError,
-    CalendarService,
+    CalendarQueryService,
     ObservanceNotFoundError,
 )
 from src.domain.liturgy.models import Feast, LiturgicalCalendar
@@ -57,7 +57,7 @@ def _day_response(
 async def list_calendars(
     db: AsyncSession = Depends(get_db_session),
 ) -> list[LiturgicalCalendarSchema]:
-    service = CalendarService(db)
+    service = CalendarQueryService(db)
     return [
         LiturgicalCalendarSchema.model_validate(calendar)
         for calendar in await service.list_calendars()
@@ -72,7 +72,7 @@ async def list_calendars(
 async def list_observances(
     db: AsyncSession = Depends(get_db_session),
 ) -> list[LiturgicalObservanceSchema]:
-    service = CalendarService(db)
+    service = CalendarQueryService(db)
     return [
         LiturgicalObservanceSchema.model_validate(observance)
         for observance in await service.list_observances()
@@ -88,7 +88,7 @@ async def get_observance(
     slug: str,
     db: AsyncSession = Depends(get_db_session),
 ) -> LiturgicalObservanceSchema:
-    service = CalendarService(db)
+    service = CalendarQueryService(db)
     try:
         observance = await service.get_observance(slug)
     except ObservanceNotFoundError as exc:
@@ -147,7 +147,7 @@ async def _get_day_response(
     include_martyrology: bool,
     db: AsyncSession,
 ) -> CalendarDaySchema:
-    service = CalendarService(db)
+    service = CalendarQueryService(db)
     try:
         calendar, entries = await service.get_day(
             value,
@@ -183,7 +183,7 @@ async def get_month(
     include_martyrology: bool = True,
     db: AsyncSession = Depends(get_db_session),
 ) -> CalendarMonthSchema:
-    service = CalendarService(db)
+    service = CalendarQueryService(db)
     try:
         selected, grouped = await service.get_month(
             year=year,

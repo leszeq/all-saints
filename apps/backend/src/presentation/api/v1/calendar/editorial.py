@@ -7,6 +7,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.application.services.calendar_query_service import CalendarQueryService
 from src.application.services.calendar_service import (
     CalendarNotFoundError,
     CalendarService,
@@ -41,7 +42,7 @@ async def list_person_entries(
     db: AsyncSession = Depends(get_db_session),
     _user: User = Depends(require_permission("calendar", "read")),
 ) -> list[FeastEntrySchema]:
-    service = CalendarService(db)
+    service = CalendarQueryService(db)
     try:
         entries = await service.list_person_entries(person_id)
     except FeastNotFoundError as exc:

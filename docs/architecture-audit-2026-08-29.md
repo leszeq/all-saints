@@ -38,15 +38,15 @@ Stan na 2026-09-09 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **256 passed**, 0 failures, 0 errors, 0 warnings |
-| Backend coverage | **83.90%**, wymagany próg 80% spełniony |
+| Backend pytest | **257 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend coverage | **83.92%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0016_person_names`, jeden head |
 | Nowa pusta baza | upgrade 0001 → 0016 oraz downgrade/re-upgrade 0016: PASS |
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 145 plików źródłowych |
+| Ruff / strict mypy | PASS, mypy analizuje 146 plików źródłowych |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -130,6 +130,13 @@ oraz dane beatyfikacji i kanonizacji, nie przejmując granicy transakcji od przy
 użycia. Relacje jeden-do-jednego są pobierane asynchronicznie, bez ukrytego lazy
 loadingu ORM. Test integracyjny chroni ich tworzenie, zastępowanie i czyszczenie,
 a `PersonService` zmniejszył się łącznie z 870 do 433 linii.
+
+Odczyty kalendarza liturgicznego zostały wydzielone do `CalendarQueryService`.
+Publiczny adapter oraz redakcyjna lista przypisań osoby zależą teraz od granicy
+tylko do odczytu, podczas gdy kompatybilny `CalendarService` zachowuje mutacje i
+dziedziczony interfejs dla starszych przypadków użycia. Serwis mutacyjny zmniejszył
+się z 495 do 229 linii. Przy podziale usunięto również podwójne wykonanie zapytania
+o wpisy stałe; osobny test regresyjny pilnuje pojedynczego wywołania bazy.
 
 Router uwierzytelniania został następnie podzielony na sesje, profil bieżącego
 użytkownika, współdzielone zależności autoryzacyjne i schematy transportowe. Główny
