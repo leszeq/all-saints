@@ -38,15 +38,15 @@ Stan na 2026-09-09 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **253 passed**, 0 failures, 0 errors, 0 warnings |
-| Backend coverage | **83.38%**, wymagany próg 80% spełniony |
+| Backend pytest | **255 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend coverage | **83.44%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0016_person_names`, jeden head |
 | Nowa pusta baza | upgrade 0001 → 0016 oraz downgrade/re-upgrade 0016: PASS |
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 141 plików źródłowych |
+| Ruff / strict mypy | PASS, mypy analizuje 143 pliki źródłowe |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -109,6 +109,13 @@ komend aplikacyjnych i niezależnego modelu wynikowego statystyk. Główny route
 źródeł zmniejszył się z 215 do 124 linii. Integracje potwierdzają filtrowanie obu
 katalogów i wykluczanie relacji szkiców ze statystyk publicznych, a kontrakt OpenAPI
 chroni publiczne odczyty oraz autoryzowane operacje zapisu.
+
+Kompozycja API osób została rozdzielona na publiczny katalog, odczyty redakcyjne,
+przenośność profilu, chronione mutacje i historię wersji. Główny router zmniejszył
+się z 233 do 88 linii i odpowiada teraz za jawne uporządkowanie tras, w szczególności
+umieszczenie statycznych ścieżek redakcyjnych przed publicznym catch-all slugiem.
+Re-eksporty funkcji pozostają zgodne, a testy kontraktowe weryfikują nazwy URL-i i
+zabezpieczenia wszystkich mutacji oraz historii.
 
 Router uwierzytelniania został następnie podzielony na sesje, profil bieżącego
 użytkownika, współdzielone zależności autoryzacyjne i schematy transportowe. Główny
