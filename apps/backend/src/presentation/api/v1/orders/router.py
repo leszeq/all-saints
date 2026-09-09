@@ -7,6 +7,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.application.services.order_query_service import OrderQueryService
 from src.application.services.order_service import (
     OrderConflictError,
     OrderNotFoundError,
@@ -44,7 +45,7 @@ async def list_orders(
     db: AsyncSession = Depends(get_db_session),
 ) -> list[ReligiousOrderSchema]:
     """Browse orders and congregations with public member counts."""
-    rows = await OrderService(db).list_orders(
+    rows = await OrderQueryService(db).list_orders(
         search=search,
         charism=charism.value if charism else None,
         spiritual_family=spiritual_family,
@@ -69,7 +70,7 @@ async def list_orders_for_management(
     _user: User = Depends(require_permission("orders", "read")),
 ) -> list[ReligiousOrderSchema]:
     """Return active and suppressed communities with all editorial members counted."""
-    rows = await OrderService(db).list_orders(
+    rows = await OrderQueryService(db).list_orders(
         search=search,
         charism=charism.value if charism else None,
         spiritual_family=spiritual_family,
@@ -92,7 +93,7 @@ async def get_order(
 ) -> ReligiousOrderDetailSchema:
     """Return history, mission, provenance, and linked catalogue people."""
     try:
-        order, memberships = await OrderService(db).get_order(id_or_slug)
+        order, memberships = await OrderQueryService(db).get_order(id_or_slug)
     except OrderNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     base = _order_response(order, len(memberships))

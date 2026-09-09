@@ -39,14 +39,14 @@ Stan na 2026-09-09 po kolejnych etapach refaktoryzacji:
 | Kontrola | Wynik po zmianach |
 | --- | --- |
 | Backend pytest | **257 passed**, 0 failures, 0 errors, 0 warnings |
-| Backend coverage | **83.92%**, wymagany próg 80% spełniony |
+| Backend coverage | **83.95%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0016_person_names`, jeden head |
 | Nowa pusta baza | upgrade 0001 → 0016 oraz downgrade/re-upgrade 0016: PASS |
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 146 plików źródłowych |
+| Ruff / strict mypy | PASS, mypy analizuje 147 plików źródłowych |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -137,6 +137,13 @@ tylko do odczytu, podczas gdy kompatybilny `CalendarService` zachowuje mutacje i
 dziedziczony interfejs dla starszych przypadków użycia. Serwis mutacyjny zmniejszył
 się z 495 do 229 linii. Przy podziale usunięto również podwójne wykonanie zapytania
 o wpisy stałe; osobny test regresyjny pilnuje pojedynczego wywołania bazy.
+
+Katalog zakonów i zgromadzeń korzysta teraz z `OrderQueryService`, który odpowiada
+za filtrowanie, publiczne liczniki opublikowanych członków oraz szczegół wspólnoty.
+Publiczne i administracyjne operacje GET zależą bezpośrednio od tej granicy,
+natomiast kompatybilny `OrderService` zachowuje CRUD i wersjonowane zmiany
+przynależności osób. Serwis mutacyjny zmniejszył się z 302 do 199 linii, bez zmian
+w kontrakcie HTTP ani zasadach widoczności rekordów.
 
 Router uwierzytelniania został następnie podzielony na sesje, profil bieżącego
 użytkownika, współdzielone zależności autoryzacyjne i schematy transportowe. Główny

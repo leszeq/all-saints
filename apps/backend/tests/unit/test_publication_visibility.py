@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from src.application.services.order_service import OrderService
+from src.application.services.order_query_service import OrderQueryService
 from src.application.services.person_query_service import PersonQueryService
 from src.domain.hagiography.models import PersonSort
 from src.main import app
@@ -66,7 +66,7 @@ async def test_public_order_counts_include_only_published_members() -> None:
     db = MagicMock()
     db.execute = AsyncMock(return_value=result)
 
-    await OrderService(db).list_orders()
+    await OrderQueryService(db).list_orders()
 
     statement = db.execute.await_args.args[0]
     assert "published" in statement.compile().params.values()

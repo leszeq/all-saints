@@ -5,8 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import and_, func, or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from src.application.commands.religious_orders import (
@@ -15,130 +14,28 @@ from src.application.commands.religious_orders import (
     UpdateReligiousOrderCommand,
 )
 from src.application.services.audit_service import AuditContext, add_audit_log
+from src.application.services.order_query_service import (
+    OrderNotFoundError,
+    OrderQueryService,
+)
 from src.application.services.person_snapshot import (
     append_relation_version,
     lock_person_for_snapshot,
     serialize_person_snapshot,
 )
 from src.domain.geography.models import ReligiousOrder
-from src.domain.hagiography.models import Person, PersonOrder, PublicationStatus
+from src.domain.hagiography.models import Person, PersonOrder
 from src.domain.identity.models import AuditAction
 
-
-class OrderNotFoundError(ValueError):
-    """Raised when an active religious community cannot be found."""
+__all__ = ["OrderConflictError", "OrderNotFoundError", "OrderService"]
 
 
 class OrderConflictError(ValueError):
     """Raised when a slug or membership already exists."""
 
 
-class OrderService:
-    """Read and mutate communities inside a caller-owned transaction."""
-
-    def __init__(self, db: AsyncSession) -> None:
-        self.db = db
-
-    async def list_orders(
-        self,
-        *,
-        search: str | None = None,
-        charism: str | None = None,
-        spiritual_family: str | None = None,
-        community_type: str | None = None,
-        featured: bool | None = None,
-        include_suppressed: bool = False,
-        public_members_only: bool = True,
-    ) -> list[tuple[ReligiousOrder, int]]:
-        """Return communities with a context-appropriate member count."""
-        member_person = and_(
-            Person.id == PersonOrder.person_id,
-            Person.deleted_at.is_(None),
-        )
-        if public_members_only:
-            member_person = and_(
-                member_person,
-                Person.status == PublicationStatus.PUBLISHED.value,
-            )
-        query = (
-            select(ReligiousOrder, func.count(func.distinct(Person.id)).label("member_count"))
-            .outerjoin(PersonOrder, PersonOrder.order_id == ReligiousOrder.id)
-            .outerjoin(Person, member_person)
-            .where(ReligiousOrder.deleted_at.is_(None))
-            .group_by(ReligiousOrder.id)
-        )
-        if not include_suppressed:
-            query = query.where(ReligiousOrder.is_suppressed.is_(False))
-        if search and search.strip():
-            term = f"%{search.strip()}%"
-            query = query.where(
-                or_(
-                    ReligiousOrder.name.ilike(term),
-                    ReligiousOrder.name_la.ilike(term),
-                    ReligiousOrder.abbreviation.ilike(term),
-                    ReligiousOrder.description.ilike(term),
-                    ReligiousOrder.mission.ilike(term),
-                )
-            )
-        if charism:
-            query = query.where(ReligiousOrder.charism == charism)
-        if spiritual_family:
-            query = query.where(ReligiousOrder.spiritual_family == spiritual_family)
-        if community_type:
-            query = query.where(ReligiousOrder.community_type == community_type)
-        if featured is not None:
-            query = query.where(ReligiousOrder.is_featured == featured)
-
-        query = query.order_by(
-            ReligiousOrder.sort_order.asc(),
-            ReligiousOrder.founded_year.asc().nullslast(),
-            ReligiousOrder.name.asc(),
-        )
-        result = await self.db.execute(query)
-        return [(order, int(member_count)) for order, member_count in result.all()]
-
-    async def get_order(
-        self,
-        identifier: str,
-        *,
-        public_members_only: bool = True,
-        include_suppressed: bool = False,
-    ) -> tuple[ReligiousOrder, list[PersonOrder]]:
-        """Fetch one community and its linked people by UUID or slug."""
-        query = select(ReligiousOrder).where(
-            ReligiousOrder.deleted_at.is_(None),
-        )
-        if not include_suppressed:
-            query = query.where(ReligiousOrder.is_suppressed.is_(False))
-        try:
-            query = query.where(ReligiousOrder.id == uuid.UUID(identifier))
-        except ValueError:
-            query = query.where(ReligiousOrder.slug == identifier)
-
-        order = (await self.db.execute(query)).scalar_one_or_none()
-        if order is None:
-            raise OrderNotFoundError("Wspólnota nie istnieje")
-
-        memberships_query = (
-            select(PersonOrder)
-            .join(PersonOrder.person)
-            .where(
-                PersonOrder.order_id == order.id,
-                Person.deleted_at.is_(None),
-            )
-            .options(selectinload(PersonOrder.person).selectinload(Person.images))
-            .order_by(
-                PersonOrder.is_founder.desc(),
-                Person.birth_year.asc().nullslast(),
-                Person.canonical_name.asc(),
-            )
-        )
-        if public_members_only:
-            memberships_query = memberships_query.where(
-                Person.status == PublicationStatus.PUBLISHED.value
-            )
-        memberships = list((await self.db.execute(memberships_query)).scalars().unique().all())
-        return order, memberships
+class OrderService(OrderQueryService):
+    """Mutate communities with a legacy-compatible read interface."""
 
     async def _assert_slug_available(
         self, slug: str, *, exclude_id: uuid.UUID | None = None
