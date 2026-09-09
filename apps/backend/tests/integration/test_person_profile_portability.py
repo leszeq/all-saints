@@ -18,6 +18,9 @@ from src.application.services.order_service import OrderService
 from src.application.services.person_profile_export_service import (
     PersonProfileExportService,
 )
+from src.application.services.person_profile_import_validator import (
+    PersonProfileImportValidator,
+)
 from src.application.services.person_profile_service import PersonProfileService
 from src.application.services.person_query_service import PersonQueryService
 from src.application.services.person_service import PersonService
@@ -108,7 +111,7 @@ async def test_profile_export_validation_and_import_round_trip(
 
     document.profile.canonical_name = "Św. Zaimportowany Test"
     document.profile.status = PublicationStatus.PUBLISHED
-    validation = await PersonProfileService(db_session).validate_import(document)
+    validation = await PersonProfileImportValidator(db_session).validate_import(document)
     assert validation.can_import is True
     assert validation.normalized_document.profile.status == PublicationStatus.DRAFT
     assert validation.normalized_document.feasts[0].is_primary is False
@@ -147,7 +150,7 @@ async def test_profile_export_validation_and_import_round_trip(
         == 1
     )
 
-    duplicate_validation = await PersonProfileService(db_session).validate_import(
+    duplicate_validation = await PersonProfileImportValidator(db_session).validate_import(
         validation.normalized_document
     )
     assert duplicate_validation.can_import is False

@@ -12,6 +12,9 @@ from src.application.person_profile_models import (
 from src.application.services.person_profile_export_service import (
     PersonProfileExportService,
 )
+from src.application.services.person_profile_import_validator import (
+    PersonProfileImportValidator,
+)
 from src.application.services.person_profile_service import (
     PersonProfileImportError,
     PersonProfileService,
@@ -57,7 +60,7 @@ async def validate_person_profile_import(
     _user: User = Depends(require_permission("import", "create")),
 ) -> PersonProfileValidationResult:
     """Validate schema, duplicates, and database references without writing data."""
-    return await PersonProfileService(db).validate_import(document)
+    return await PersonProfileImportValidator(db).validate_import(document)
 
 
 @router.post(

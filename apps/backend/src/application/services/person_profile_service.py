@@ -1,11 +1,10 @@
-"""Validate and atomically import versioned person profile documents."""
+"""Atomically import validated, versioned person profile documents."""
 
 from __future__ import annotations
 
 import uuid
-from datetime import date
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import or_, select
 
 from src.application.commands.liturgical_calendar import CreateFeastEntryCommand
 from src.application.commands.persons import PersonCreateSchema
@@ -23,16 +22,18 @@ from src.application.services.calendar_service import CalendarService
 from src.application.services.person_profile_export_service import (
     PersonProfileExportService,
 )
+from src.application.services.person_profile_import_validator import (
+    PersonProfileImportValidator,
+)
 from src.application.services.person_query_service import PersonQueryService
 from src.application.services.person_service import PersonService
 from src.application.services.person_snapshot import (
     append_relation_version,
     serialize_person_snapshot,
 )
-from src.domain.geography.models import Country, Place, ReligiousOrder
-from src.domain.hagiography.models import Person, PersonOrder, PublicationStatus, StateOfLife
+from src.domain.geography.models import ReligiousOrder
+from src.domain.hagiography.models import Person, PersonOrder, PublicationStatus
 from src.domain.identity.models import AuditAction
-from src.domain.liturgy.models import Feast, LiturgicalCalendar
 from src.domain.sources.models import Bibliography, HistoricalSource, PersonSource
 
 __all__ = ["PersonProfileImportError", "PersonProfileService"]
@@ -46,125 +47,8 @@ class PersonProfileImportError(ValueError):
         super().__init__("Profil nie przeszedł walidacji importu")
 
 
-class PersonProfileService(PersonProfileExportService):
-    """Import profiles while retaining the legacy-compatible export interface."""
-
-    async def validate_import(
-        self, document: PersonProfileDocument
-    ) -> PersonProfileValidationResult:
-        """Check duplicates and every database reference without mutating data."""
-        normalized = document.model_copy(deep=True)
-        warnings: list[str] = []
-        errors: list[str] = []
-        if normalized.profile.status != PublicationStatus.DRAFT:
-            warnings.append(
-                "Status z pliku zostanie zmieniony na szkic; import nie omija procesu redakcyjnego."
-            )
-            normalized.profile.status = PublicationStatus.DRAFT
-
-        duplicate = (
-            await self.db.execute(
-                select(Person.id)
-                .where(
-                    Person.deleted_at.is_(None),
-                    func.lower(Person.canonical_name)
-                    == normalized.profile.canonical_name.strip().lower(),
-                )
-                .limit(1)
-            )
-        ).scalar_one_or_none()
-        if duplicate is not None:
-            errors.append("Aktywny profil o tej samej nazwie kanonicznej już istnieje.")
-
-        reference_checks = (
-            ("birth_country_id", Country, "Kraj urodzenia"),
-            ("death_country_id", Country, "Kraj śmierci"),
-            ("nationality_id", Country, "Narodowość"),
-            ("birth_place_id", Place, "Miejsce urodzenia"),
-            ("death_place_id", Place, "Miejsce śmierci"),
-            ("state_of_life_id", StateOfLife, "Stan życia"),
-        )
-        for field, model, label in reference_checks:
-            identifier = getattr(normalized.profile, field)
-            if identifier is not None:
-                reference = await self.db.get(model, identifier)
-                if reference is None or getattr(reference, "deleted_at", None) is not None:
-                    errors.append(f"{label}: wskazany identyfikator nie istnieje w tej bazie.")
-
-        order_slugs = [membership.order_slug for membership in normalized.orders]
-        if len(order_slugs) != len(set(order_slugs)):
-            errors.append("Ten sam zakon nie może być przypisany do profilu więcej niż raz.")
-        if order_slugs:
-            existing_orders = set(
-                (
-                    await self.db.execute(
-                        select(ReligiousOrder.slug).where(
-                            ReligiousOrder.slug.in_(order_slugs),
-                            ReligiousOrder.deleted_at.is_(None),
-                        )
-                    )
-                ).scalars()
-            )
-            for missing_slug in sorted(set(order_slugs) - existing_orders):
-                errors.append(f"Nie znaleziono wspólnoty o slugu: {missing_slug}.")
-
-        calendar_codes = [entry.calendar_code for entry in normalized.feasts]
-        if calendar_codes:
-            existing_calendars = set(
-                (
-                    await self.db.execute(
-                        select(LiturgicalCalendar.code).where(
-                            LiturgicalCalendar.code.in_(calendar_codes),
-                            LiturgicalCalendar.deleted_at.is_(None),
-                            LiturgicalCalendar.is_active.is_(True),
-                        )
-                    )
-                ).scalars()
-            )
-            for missing_code in sorted(set(calendar_codes) - existing_calendars):
-                errors.append(f"Nie znaleziono aktywnego kalendarza: {missing_code}.")
-
-        for entry in normalized.feasts:
-            try:
-                date(2000, entry.month, entry.day)
-            except ValueError:
-                errors.append(f"Nieprawidłowa data wspomnienia: {entry.month:02d}-{entry.day:02d}.")
-
-        feast_keys = [(entry.calendar_code, entry.month, entry.day) for entry in normalized.feasts]
-        if len(feast_keys) != len(set(feast_keys)):
-            errors.append("Profil zawiera powtórzone wspomnienie w tym samym kalendarzu i dniu.")
-
-        for entry in normalized.feasts:
-            if not entry.is_primary:
-                continue
-            existing_primary = (
-                await self.db.execute(
-                    select(Feast.id)
-                    .join(Feast.calendar)
-                    .where(
-                        LiturgicalCalendar.code == entry.calendar_code,
-                        Feast.month == entry.month,
-                        Feast.day == entry.day,
-                        Feast.is_primary.is_(True),
-                        Feast.deleted_at.is_(None),
-                    )
-                    .limit(1)
-                )
-            ).scalar_one_or_none()
-            if existing_primary is not None:
-                entry.is_primary = False
-                warnings.append(
-                    f"W dniu {entry.day:02d}.{entry.month:02d} kalendarz "
-                    f"{entry.calendar_code} ma już główny wpis; importowane wspomnienie "
-                    "zostanie dodane jako dodatkowe."
-                )
-
-        return PersonProfileValidationResult(
-            can_import=not errors,
-            errors=errors,
-            warnings=warnings,
-            normalized_document=normalized,
-        )
+class PersonProfileService(PersonProfileImportValidator, PersonProfileExportService):
+    """Import profiles while retaining compatible validation and export methods."""
 
     async def import_profile(
         self,
