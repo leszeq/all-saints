@@ -38,15 +38,15 @@ Stan na 2026-09-09 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **250 passed**, 0 failures, 0 errors, 0 warnings |
-| Backend coverage | **83.04%**, wymagany próg 80% spełniony |
+| Backend pytest | **253 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend coverage | **83.38%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0016_person_names`, jeden head |
 | Nowa pusta baza | upgrade 0001 → 0016 oraz downgrade/re-upgrade 0016: PASS |
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 138 plików źródłowych |
+| Ruff / strict mypy | PASS, mypy analizuje 141 plików źródłowych |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -101,6 +101,14 @@ aplikacyjnych. Adapter `media.py` zmniejszył się dalej ze 183 do 146 linii i n
 zarządza już snapshotami, zmianą obrazu głównego ani wpisami audytowymi. Testy
 integracyjne chronią wersjonowanie relacji obrazu, błąd nieistniejącej osoby oraz
 zapis dokumentu przez nową granicę aplikacyjną.
+
+Katalog bibliografii i źródeł historycznych oraz publiczne statystyki źródeł
+obsługuje teraz `SourceCatalogueService`. Zapytania filtrujące, liczenie stron i
+tworzenie rekordów nie znajdują się już w adapterze HTTP, a wejścia korzystają z
+komend aplikacyjnych i niezależnego modelu wynikowego statystyk. Główny router
+źródeł zmniejszył się z 215 do 124 linii. Integracje potwierdzają filtrowanie obu
+katalogów i wykluczanie relacji szkiców ze statystyk publicznych, a kontrakt OpenAPI
+chroni publiczne odczyty oraz autoryzowane operacje zapisu.
 
 Router uwierzytelniania został następnie podzielony na sesje, profil bieżącego
 użytkownika, współdzielone zależności autoryzacyjne i schematy transportowe. Główny
