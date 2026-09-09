@@ -10,6 +10,11 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from src.application.commands.person_sources import CreatePersonWebSourceCommand
+from src.application.services.person_source_service import (
+    PersonSourceConflictError,
+    PersonSourceService,
+)
 from src.core.security import jwt_service
 from src.domain.hagiography.models import (
     Gender,
@@ -293,3 +298,49 @@ async def test_adding_and_removing_source_creates_person_versions(
         "remove",
         "add",
     ]
+
+
+@pytest.mark.asyncio
+async def test_web_source_is_reused_and_duplicate_assignment_is_rejected(
+    db_session: AsyncSession,
+) -> None:
+    first_person = Person(
+        slug="sw-pierwsze-zrodlo-internetowe",
+        canonical_name="Św. Pierwsze Źródło Internetowe",
+        person_type=PersonType.SAINT.value,
+        status=PublicationStatus.DRAFT.value,
+        gender=Gender.UNKNOWN.value,
+        version=1,
+    )
+    second_person = Person(
+        slug="sw-drugie-zrodlo-internetowe",
+        canonical_name="Św. Drugie Źródło Internetowe",
+        person_type=PersonType.SAINT.value,
+        status=PublicationStatus.DRAFT.value,
+        gender=Gender.UNKNOWN.value,
+        version=1,
+    )
+    db_session.add_all([first_person, second_person])
+    await db_session.flush()
+
+    service = PersonSourceService(db_session)
+    source = CreatePersonWebSourceCommand(
+        title="Wspólny oficjalny biogram",
+        url="https://example.test/shared-biography",
+        is_primary=True,
+    )
+
+    first_link = await service.create_web_source(first_person.id, source)
+    second_link = await service.create_web_source(second_person.id, source)
+
+    assert first_link.bibliography_id == second_link.bibliography_id
+    assert [link.id for link in await service.list_sources(first_person.id)] == [first_link.id]
+    bibliography = (
+        await db_session.execute(
+            select(Bibliography).where(Bibliography.url == "https://example.test/shared-biography")
+        )
+    ).scalar_one()
+    assert bibliography.title == "Wspólny oficjalny biogram"
+
+    with pytest.raises(PersonSourceConflictError, match="już przypisany"):
+        await service.create_web_source(first_person.id, source)

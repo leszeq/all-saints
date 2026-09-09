@@ -38,15 +38,15 @@ Stan na 2026-09-09 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **246 passed**, 0 failures, 0 errors, 0 warnings |
-| Backend coverage | **82.68%**, wymagany próg 80% spełniony |
+| Backend pytest | **247 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend coverage | **82.97%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0016_person_names`, jeden head |
 | Nowa pusta baza | upgrade 0001 → 0016 oraz downgrade/re-upgrade 0016: PASS |
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 133 pliki źródłowe |
+| Ruff / strict mypy | PASS, mypy analizuje 135 plików źródłowych |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -80,6 +80,14 @@ ogólnego routera źródeł do osobnych modułów pionowych; router agregujący 
 się z 728 do 215 linii. Adresy, zabezpieczenia, odpowiedzi OpenAPI, nazwa trasy
 używana do generowania URL-i obrazów, wersjonowanie oraz granica transakcji pozostały
 bez zmian i są chronione testami kontraktowymi oraz integracyjnymi.
+
+Logika przypisywania źródeł do postaci została przeniesiona z adaptera HTTP do
+`PersonSourceService`, który przyjmuje walidowane komendy aplikacyjne i działa w
+transakcji należącej do wywołującego. Router powiązań zmniejszył się z 303 do 122
+linii i odpowiada wyłącznie za RBAC, mapowanie błędów na HTTP oraz serializację.
+Serwis centralizuje wykrywanie duplikatów, ponowne użycie źródła URL, soft delete,
+snapshot wersji i audyt. Test integracyjny dodatkowo potwierdza współdzielenie tego
+samego rekordu bibliografii między profilami i odrzucenie ponownego przypisania.
 
 Router uwierzytelniania został następnie podzielony na sesje, profil bieżącego
 użytkownika, współdzielone zależności autoryzacyjne i schematy transportowe. Główny
