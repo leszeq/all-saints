@@ -38,15 +38,15 @@ Stan na 2026-09-10 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **264 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend pytest | **266 passed**, 0 failures, 0 errors, 0 warnings |
 | Backend coverage | **84.06%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
-| `alembic current` / heads | `0016_person_names`, jeden head |
-| Nowa pusta baza | upgrade 0001 → 0016 oraz downgrade/re-upgrade 0016: PASS |
+| `alembic current` / heads | `0018_person_translation_search`, jeden head |
+| Nowa pusta baza | upgrade 0001 → 0018 oraz downgrade/re-upgrade 0018: PASS |
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 169 plików źródłowych |
+| Ruff / strict mypy | PASS, mypy analizuje 172 pliki źródłowe |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -275,6 +275,14 @@ się ze 159 do 40 linii i nie zawiera już SQL. Kontrakt OpenAPI gwarantuje publ
 dostęp do czterech słowników oraz Bearer dla tworzenia kategorii i tagów; istniejące
 integracje nadal chronią paginację i atomowość requestu.
 
+Adapter tłumaczeń profili został rozdzielony na chroniony odczyt, mutacje oraz
+wspólne mapowanie błędów i odpowiedzi. Router kompozycyjny zmniejszył się ze 199 do
+35 linii, zachowując funkcje i prywatne aliasy dotychczasowego modułu. Kontrakt
+OpenAPI sprawdza Bearer dla wszystkich czterech operacji i wzorzec języka BCP 47,
+a integracje nadal obejmują wersjonowanie osoby i tłumaczenia, optimistic locking,
+audyt, soft delete oraz przywrócenie. Przy okazji ponownie zweryfikowano na pustej
+bazie pełny upgrade 0001 → 0018, brak driftu oraz downgrade/re-upgrade headu.
+
 Powstał automatyczny CI z lintem, strict mypy, testami/coverage, audytem zależności,
 kontrolą migracji, buildami frontendów oraz smoke testem całego stosu produkcyjnego.
 Obrazy backendu i Next.js działają jako użytkownicy nie-root; DB i Redis są w
@@ -301,7 +309,7 @@ operacyjne.
 all-saints/
 ├── apps/
 │   ├── backend/
-│   │   ├── alembic/              # migracje 0001–0009
+│   │   ├── alembic/              # migracje 0001–0018
 │   │   ├── src/
 │   │   │   ├── application/      # serwisy przypadków użycia i AI
 │   │   │   ├── core/             # konfiguracja, JWT, middleware
