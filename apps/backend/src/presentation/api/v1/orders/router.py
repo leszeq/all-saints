@@ -1,22 +1,19 @@
-"""Religious orders and congregations REST API."""
+"""Religious orders API composition and backwards-compatible exports."""
 
-from __future__ import annotations
+from fastapi import APIRouter, status
 
-import uuid
-
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from src.application.services.order_query_service import OrderQueryService
-from src.application.services.order_service import (
-    OrderConflictError,
-    OrderNotFoundError,
-    OrderService,
+from src.presentation.api.v1.orders.editorial import (
+    add_order_member,
+    create_order,
+    delete_order,
+    delete_order_member,
+    list_orders_for_management,
+    update_order,
 )
-from src.domain.geography.models import OrderCharism, ReligiousCommunityType
-from src.domain.identity.models import User
-from src.infrastructure.db.session import get_db_session
-from src.presentation.api.v1.auth.router import require_permission
+from src.presentation.api.v1.orders.editorial import router as editorial_router
+from src.presentation.api.v1.orders.public import get_order, list_orders
+from src.presentation.api.v1.orders.public import router as public_router
+from src.presentation.api.v1.orders.responses import order_response
 from src.presentation.api.v1.orders.schemas import (
     ReligiousOrderCreateSchema,
     ReligiousOrderDetailSchema,
@@ -25,189 +22,44 @@ from src.presentation.api.v1.orders.schemas import (
     ReligiousOrderSchema,
     ReligiousOrderUpdateSchema,
 )
-from src.presentation.audit import audit_context_from_request
 
 router = APIRouter()
 
+_order_response = order_response
 
-def _order_response(order: object, member_count: int = 0) -> ReligiousOrderSchema:
-    response = ReligiousOrderSchema.model_validate(order)
-    return response.model_copy(update={"member_count": member_count})
+__all__ = [
+    "ReligiousOrderCreateSchema",
+    "ReligiousOrderDetailSchema",
+    "ReligiousOrderMembershipCreateSchema",
+    "ReligiousOrderMembershipSchema",
+    "ReligiousOrderSchema",
+    "ReligiousOrderUpdateSchema",
+    "add_order_member",
+    "create_order",
+    "delete_order",
+    "delete_order_member",
+    "get_order",
+    "list_orders",
+    "list_orders_for_management",
+    "order_response",
+    "update_order",
+]
 
-
-@router.get("", response_model=list[ReligiousOrderSchema], summary="List religious communities")
-async def list_orders(
-    search: str | None = Query(None, max_length=100),
-    charism: OrderCharism | None = None,
-    spiritual_family: str | None = Query(None, max_length=80),
-    community_type: ReligiousCommunityType | None = None,
-    featured: bool | None = None,
-    db: AsyncSession = Depends(get_db_session),
-) -> list[ReligiousOrderSchema]:
-    """Browse orders and congregations with public member counts."""
-    rows = await OrderQueryService(db).list_orders(
-        search=search,
-        charism=charism.value if charism else None,
-        spiritual_family=spiritual_family,
-        community_type=community_type.value if community_type else None,
-        featured=featured,
-    )
-    return [_order_response(order, member_count) for order, member_count in rows]
-
-
-@router.get(
-    "/management",
-    response_model=list[ReligiousOrderSchema],
-    summary="List religious communities for administration",
-)
-async def list_orders_for_management(
-    search: str | None = Query(None, max_length=100),
-    charism: OrderCharism | None = None,
-    spiritual_family: str | None = Query(None, max_length=80),
-    community_type: ReligiousCommunityType | None = None,
-    featured: bool | None = None,
-    db: AsyncSession = Depends(get_db_session),
-    _user: User = Depends(require_permission("orders", "read")),
-) -> list[ReligiousOrderSchema]:
-    """Return active and suppressed communities with all editorial members counted."""
-    rows = await OrderQueryService(db).list_orders(
-        search=search,
-        charism=charism.value if charism else None,
-        spiritual_family=spiritual_family,
-        community_type=community_type.value if community_type else None,
-        featured=featured,
-        include_suppressed=True,
-        public_members_only=False,
-    )
-    return [_order_response(order, member_count) for order, member_count in rows]
-
-
-@router.get(
-    "/{id_or_slug}",
-    response_model=ReligiousOrderDetailSchema,
-    summary="Get religious community detail",
-)
-async def get_order(
-    id_or_slug: str,
-    db: AsyncSession = Depends(get_db_session),
-) -> ReligiousOrderDetailSchema:
-    """Return history, mission, provenance, and linked catalogue people."""
-    try:
-        order, memberships = await OrderQueryService(db).get_order(id_or_slug)
-    except OrderNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    base = _order_response(order, len(memberships))
-    return ReligiousOrderDetailSchema(
-        **base.model_dump(),
-        members=[
-            ReligiousOrderMembershipSchema.model_validate(membership) for membership in memberships
-        ],
-    )
-
-
-@router.post(
+# Register static editorial paths before the public slug catch-all.
+router.add_api_route(
     "",
+    list_orders,
+    methods=["GET"],
+    response_model=list[ReligiousOrderSchema],
+    summary="List religious communities",
+)
+router.add_api_route(
+    "",
+    create_order,
+    methods=["POST"],
     response_model=ReligiousOrderSchema,
     status_code=status.HTTP_201_CREATED,
     summary="Create religious community",
 )
-async def create_order(
-    data: ReligiousOrderCreateSchema,
-    db: AsyncSession = Depends(get_db_session),
-    _user: User = Depends(require_permission("orders", "create")),
-) -> ReligiousOrderSchema:
-    try:
-        order = await OrderService(db).create_order(data)
-    except OrderConflictError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
-    return _order_response(order)
-
-
-@router.patch(
-    "/{id_or_slug}",
-    response_model=ReligiousOrderSchema,
-    summary="Update religious community",
-)
-async def update_order(
-    id_or_slug: str,
-    data: ReligiousOrderUpdateSchema,
-    db: AsyncSession = Depends(get_db_session),
-    _user: User = Depends(require_permission("orders", "update")),
-) -> ReligiousOrderSchema:
-    try:
-        order = await OrderService(db).update_order(id_or_slug, data)
-    except OrderNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    except OrderConflictError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
-    return _order_response(order)
-
-
-@router.delete(
-    "/{id_or_slug}",
-    status_code=status.HTTP_204_NO_CONTENT,
-    summary="Delete religious community",
-)
-async def delete_order(
-    id_or_slug: str,
-    db: AsyncSession = Depends(get_db_session),
-    _user: User = Depends(require_permission("orders", "delete")),
-) -> Response:
-    try:
-        await OrderService(db).soft_delete_order(id_or_slug)
-    except OrderNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    except OrderConflictError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
-@router.post(
-    "/{id_or_slug}/members",
-    response_model=ReligiousOrderMembershipSchema,
-    status_code=status.HTTP_201_CREATED,
-    summary="Link a person to a religious community",
-)
-async def add_order_member(
-    id_or_slug: str,
-    data: ReligiousOrderMembershipCreateSchema,
-    request: Request,
-    db: AsyncSession = Depends(get_db_session),
-    current_user: User = Depends(require_permission("persons", "update")),
-) -> ReligiousOrderMembershipSchema:
-    try:
-        membership = await OrderService(db).add_membership(
-            id_or_slug,
-            data,
-            user_id=current_user.id,
-            audit_context=audit_context_from_request(request, current_user),
-        )
-    except OrderNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    except OrderConflictError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
-    return ReligiousOrderMembershipSchema.model_validate(membership)
-
-
-@router.delete(
-    "/{id_or_slug}/members/{person_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-    summary="Unlink a person from a religious community",
-)
-async def delete_order_member(
-    id_or_slug: str,
-    person_id: uuid.UUID,
-    request: Request,
-    db: AsyncSession = Depends(get_db_session),
-    current_user: User = Depends(require_permission("persons", "update")),
-) -> Response:
-    try:
-        await OrderService(db).delete_membership(
-            id_or_slug,
-            person_id,
-            user_id=current_user.id,
-            audit_context=audit_context_from_request(request, current_user),
-        )
-    except OrderNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+router.include_router(editorial_router)
+router.include_router(public_router)
