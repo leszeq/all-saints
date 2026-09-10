@@ -1003,6 +1003,9 @@ export interface AdminDictionary {
     description: string;
     refreshAction: string;
     addAction: string;
+    importAction: string;
+    importSuccessPrefix: string;
+    importSuccessSuffix: string;
     summaryAriaLabel: string;
     metrics: {
       communities: string;
@@ -1093,6 +1096,29 @@ export interface AdminDictionary {
       cancelAction: string;
       saveAction: string;
       createAction: string;
+    };
+    importDialog: {
+      title: string;
+      description: string;
+      closeAriaLabel: string;
+      chooseFile: string;
+      fileHint: string;
+      downloadTemplate: string;
+      maxSizeError: string;
+      invalidRootError: string;
+      invalidJsonPrefix: string;
+      readError: string;
+      invalidFormat: string;
+      validating: string;
+      batchTitle: string;
+      schemaVersionPrefix: string;
+      communitiesCount: string;
+      warningsTitle: string;
+      errorsTitle: string;
+      ready: string;
+      cancelAction: string;
+      importAction: string;
+      importingAction: string;
     };
   };
   dictionariesWorkspace: {

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ExternalLink,
+  FileUp,
   History,
   RefreshCw,
   Search,
@@ -15,6 +16,7 @@ import {
   Trash2,
   UsersRound,
 } from "lucide-react";
+import { OrderImportDialog } from "@/components/orders/order-import-dialog";
 import { OrderDialog } from "@/components/orders/order-dialog";
 import { useAdminSystemCopy } from "@/components/admin-system-copy-context";
 import { ordersApi } from "@/lib/api";
@@ -90,6 +92,8 @@ export function OrdersClient({ copy, domainCopy, locale }: OrdersClientProps) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<OrderFilter>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importedCount, setImportedCount] = useState<number | null>(null);
   const [editedOrder, setEditedOrder] = useState<ReligiousOrder | null>(null);
   const canCreate = useAuthStore((state) => state.hasPermission("orders:create"));
   const canUpdate = useAuthStore((state) => state.hasPermission("orders:update"));
@@ -168,12 +172,32 @@ export function OrdersClient({ copy, domainCopy, locale }: OrdersClientProps) {
             <RefreshCw className="h-4 w-4" /> {copy.refreshAction}
           </button>
           {canCreate && (
+            <button
+              type="button"
+              onClick={() => {
+                setImportedCount(null);
+                setImportOpen(true);
+              }}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border px-4 text-sm font-semibold hover:bg-accent"
+            >
+              <FileUp className="h-4 w-4" /> {copy.importAction}
+            </button>
+          )}
+          {canCreate && (
             <button type="button" onClick={openCreate} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground">
               <Plus className="h-4 w-4" /> {copy.addAction}
             </button>
           )}
         </div>
       </header>
+
+      {importedCount !== null && (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200">
+          {copy.importSuccessPrefix}
+          <strong>{new Intl.NumberFormat(locale).format(importedCount)}</strong>
+          {copy.importSuccessSuffix}
+        </div>
+      )}
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label={copy.summaryAriaLabel}>
         <MetricCard
@@ -381,6 +405,14 @@ export function OrdersClient({ copy, domainCopy, locale }: OrdersClientProps) {
             if (!open) setEditedOrder(null);
           }}
           onSubmit={(payload) => saveMutation.mutate(payload)}
+        />
+      )}
+      {importOpen && (
+        <OrderImportDialog
+          open
+          copy={copy.importDialog}
+          onOpenChange={setImportOpen}
+          onImported={setImportedCount}
         />
       )}
     </div>

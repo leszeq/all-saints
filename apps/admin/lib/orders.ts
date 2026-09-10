@@ -86,6 +86,21 @@ export interface ReligiousOrderPayload {
   sort_order: number;
 }
 
+export type ReligiousOrderImportItem = Partial<ReligiousOrderPayload> &
+  Pick<ReligiousOrderPayload, "slug" | "name">;
+
+export interface ReligiousOrderImportDocument {
+  schema_version: 1;
+  orders: ReligiousOrderImportItem[];
+}
+
+export interface ReligiousOrderImportValidationResult {
+  can_import: boolean;
+  errors: string[];
+  warnings: string[];
+  normalized_document: ReligiousOrderImportDocument;
+}
+
 export interface PersonOrderMembership {
   entry_date: string | null;
   exit_date: string | null;
@@ -106,4 +121,3 @@ export interface CreateOrderMembershipPayload {
   membership_type: OrderMembershipType;
   notes?: string | null;
 }
-

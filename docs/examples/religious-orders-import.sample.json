@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "orders": [
+    {
+      "slug": "wspolnota-testowa-import-json",
+      "name": "Wspólnota testowa importu JSON",
+      "name_la": "Communitas Probatoria Importationis JSON",
+      "name_local": null,
+      "abbreviation": "TEST",
+      "community_type": "other",
+      "spiritual_family": "testowa",
+      "founded_year": 2026,
+      "founded_place_id": null,
+      "founder_id": null,
+      "founder_name": "Redakcja techniczna Encyklopedii Świętych",
+      "suppressed_year": 2026,
+      "charism": "other",
+      "description": "Fikcyjny rekord przeznaczony wyłącznie do sprawdzenia importu.",
+      "description_en": null,
+      "history": "Wspólnota nie istnieje i nie powinna być publikowana jako dane merytoryczne.",
+      "mission": "Weryfikacja wersjonowanego kontraktu importu zakonów.",
+      "motto": "Validare ante importare",
+      "website_url": null,
+      "source_title": "Dokumentacja testowa projektu all-saints",
+      "source_url": "https://example.org/all-saints/orders-import-test",
+      "papal_approval_year": null,
+      "is_suppressed": true,
+      "is_featured": false,
+      "sort_order": 0
+    }
+  ]
+}

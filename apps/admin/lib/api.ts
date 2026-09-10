@@ -27,6 +27,8 @@ import type { ApplicationSettings, UserProfile } from "@/lib/settings";
 import type {
   CreateOrderMembershipPayload,
   ReligiousOrder,
+  ReligiousOrderImportDocument,
+  ReligiousOrderImportValidationResult,
   ReligiousOrderPayload,
 } from "@/lib/orders";
 import { useAuthStore } from "@/lib/store/auth";
@@ -288,6 +290,10 @@ export const ordersApi = {
   management: (params?: Record<string, unknown>) =>
     api.get<ReligiousOrder[]>("/orders/management", { params }),
   create: (data: ReligiousOrderPayload) => api.post<ReligiousOrder>("/orders", data),
+  validateImport: (data: ReligiousOrderImportDocument) =>
+    api.post<ReligiousOrderImportValidationResult>("/orders/import/validate", data),
+  importBatch: (data: ReligiousOrderImportDocument) =>
+    api.post<ReligiousOrder[]>("/orders/import", data),
   update: (idOrSlug: string, data: ReligiousOrderPayload) =>
     api.patch<ReligiousOrder>(`/orders/${idOrSlug}`, data),
   delete: (idOrSlug: string) => api.delete(`/orders/${idOrSlug}`),

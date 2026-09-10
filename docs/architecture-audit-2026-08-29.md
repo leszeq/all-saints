@@ -34,11 +34,11 @@ Poniższy status jest aktualizacją wykonawczą do historycznego pomiaru bazoweg
 Nie zmienia pierwotnych findings ani ocen, dzięki czemu dokument zachowuje wartość
 porównawczą.
 
-Stan na 2026-09-10 po kolejnych etapach refaktoryzacji:
+Stan na 2026-09-11 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **271 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend pytest | **275 passed**, 0 failures, 0 errors, 0 warnings |
 | Backend coverage | **84.06%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0018_person_translation_search`, jeden head |
@@ -46,7 +46,7 @@ Stan na 2026-09-10 po kolejnych etapach refaktoryzacji:
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 187 plików źródłowych |
+| Ruff / strict mypy | PASS, mypy analizuje 190 plików źródłowych |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -253,11 +253,21 @@ obecność zabezpieczenia Bearer dla siedmiu operacji redakcyjnych.
 
 Router zakonów i zgromadzeń został rozdzielony na publiczny katalog i szczegóły,
 chronione operacje redakcyjne oraz współdzielone mapowanie odpowiedzi. Moduł
-kompozycyjny zmniejszył się z 213 do 65 linii i zachowuje kompatybilne re-eksporty.
+kompozycyjny ma 70 linii wobec początkowych 213 i zachowuje kompatybilne re-eksporty.
 Kolekcje GET/POST są jawnie rejestrowane w kompozytorze z powodu ograniczenia
 FastAPI dla pustych ścieżek potomnych, a statyczne `/orders/management` pozostaje
 przed publicznym catch-all `/{id_or_slug}`. Testy kontraktowe weryfikują granice
 Bearer wszystkich operacji oraz rzeczywiste `401` dla panelu bez tokenu.
+
+Panel zakonów obsługuje teraz także wersjonowany, paczkowy import JSON od 1 do 100
+wspólnot. Oddzielny pion importu najpierw wykonuje walidację bez zapisu: wykrywa
+duplikaty w pliku i bazie, sprawdza identyfikatory miejsc i założycieli, chronologię
+oraz kompletność opisu i źródeł. Zapis całej paczki korzysta z transakcji requestu,
+więc błąd dowolnego rekordu wycofuje całość, a każda zaimportowana wspólnota otrzymuje
+wpis audytowy. Endpointy wymagają `orders:create`; panel udostępnia wybór pliku,
+podgląd wyniku walidacji, ostrzeżenia, pobranie bezpiecznego wzoru oraz automatyczne
+odświeżenie tabeli. Kontrakt jest dostępny w Swaggerze, a gotowy przykład znajduje
+się w `docs/examples/religious-orders-import.sample.json`.
 
 Geografia ma teraz niezależne komendy aplikacyjne oraz `GeographyService`, który
 jest właścicielem zapytań i zapisów krajów, diecezji, miejsc i kościołów bez

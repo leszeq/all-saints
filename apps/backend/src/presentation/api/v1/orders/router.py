@@ -11,6 +11,8 @@ from src.presentation.api.v1.orders.editorial import (
     update_order,
 )
 from src.presentation.api.v1.orders.editorial import router as editorial_router
+from src.presentation.api.v1.orders.imports import import_orders, validate_order_import
+from src.presentation.api.v1.orders.imports import router as imports_router
 from src.presentation.api.v1.orders.public import get_order, list_orders
 from src.presentation.api.v1.orders.public import router as public_router
 from src.presentation.api.v1.orders.responses import order_response
@@ -39,10 +41,12 @@ __all__ = [
     "delete_order",
     "delete_order_member",
     "get_order",
+    "import_orders",
     "list_orders",
     "list_orders_for_management",
     "order_response",
     "update_order",
+    "validate_order_import",
 ]
 
 # Register static editorial paths before the public slug catch-all.
@@ -62,4 +66,5 @@ router.add_api_route(
     summary="Create religious community",
 )
 router.include_router(editorial_router)
+router.include_router(imports_router)
 router.include_router(public_router)
