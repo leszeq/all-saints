@@ -46,7 +46,7 @@ Stan na 2026-09-10 po kolejnych etapach refaktoryzacji:
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 156 plików źródłowych |
+| Ruff / strict mypy | PASS, mypy analizuje 158 plików źródłowych |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -223,6 +223,12 @@ zmniejszył się z 379 do 204 linii, zachowując wszystkie ścieżki, statusy od
 walidację parametrów i re-eksporty operacji. Istniejący kontrakt OpenAPI nadal
 potwierdza zabezpieczenie pięciu endpointów generujących, a testy providerów,
 serwisu i workerów chronią ich zachowanie bez wywołań zewnętrznych usług.
+
+Odczyty panelu AI i publiczny status dostawców mają teraz osobne adaptery.
+Rozbudowany po dodaniu decyzji redakcyjnych moduł kompozycyjny zmniejszył się z 221
+do 107 linii i zachowuje dotychczasowe modele, funkcje oraz prywatne aliasy mapperów.
+Test OpenAPI potwierdza, że dashboard i kolejka pozostają chronione Bearer/RBAC,
+podczas gdy `/ai/status` nadal jest publiczny.
 
 Pion przenośności profili został wydzielony z routera osób do osobnego adaptera
 importu, walidacji i eksportu wersjonowanego JSON. Router główny zmniejszył się z

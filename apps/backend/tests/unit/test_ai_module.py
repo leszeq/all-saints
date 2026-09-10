@@ -158,6 +158,8 @@ def test_ai_admin_endpoints_require_bearer_auth() -> None:
     for path in paths:
         assert schema["paths"][path]["get"]["security"] == [{"HTTPBearer": []}]
 
+    assert "security" not in schema["paths"]["/api/v1/ai/status"]["get"]
+
 
 def test_ai_semantic_discovery_endpoints_remain_public() -> None:
     schema = app.openapi()
