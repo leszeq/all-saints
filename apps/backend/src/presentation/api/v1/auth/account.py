@@ -6,13 +6,13 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from loguru import logger
-from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.services.audit_service import add_audit_log
+from src.application.services.auth_session_service import AuthenticationSessionService
 from src.core.config import settings
 from src.core.security import is_strong_password, password_hasher
-from src.domain.identity.models import AuditAction, RefreshToken, User
+from src.domain.identity.models import AuditAction, User
 from src.infrastructure.db.session import get_db_session
 from src.presentation.api.v1.auth.dependencies import get_current_user
 from src.presentation.api.v1.auth.schemas import (
@@ -123,13 +123,9 @@ async def change_password(
     changed_at = datetime.now(UTC)
     current_user.hashed_password = password_hasher.hash(data.new_password)
     current_user.password_changed_at = changed_at
-    await db.execute(
-        update(RefreshToken)
-        .where(
-            RefreshToken.user_id == current_user.id,
-            RefreshToken.revoked_at.is_(None),
-        )
-        .values(revoked_at=changed_at)
+    await AuthenticationSessionService(db).revoke_all_for_user(
+        current_user.id,
+        revoked_at=changed_at,
     )
     add_audit_log(
         db,

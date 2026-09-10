@@ -38,7 +38,7 @@ Stan na 2026-09-11 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **275 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend pytest | **279 passed**, 0 failures, 0 errors, 0 warnings |
 | Backend coverage | **84.06%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0018_person_translation_search`, jeden head |
@@ -46,7 +46,7 @@ Stan na 2026-09-11 po kolejnych etapach refaktoryzacji:
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 190 plików źródłowych |
+| Ruff / strict mypy | PASS, mypy analizuje 191 plików źródłowych |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -210,6 +210,14 @@ teraz 49 linii i pełni wyłącznie rolę kompozycyjną dla logowania, sesji i k
 zachowując dotychczasowe re-eksporty. Testy transakcyjne podmieniają zależności w
 module będącym właścicielem endpointu, a kontrakt adresów i zabezpieczeń pozostał
 bez zmian.
+
+Stan refresh tokenów został następnie przeniesiony z adapterów HTTP do
+`AuthenticationSessionService`. Serwis jest jednym właścicielem blokowanej rotacji,
+kontroli aktywności konta, wylogowania z audytem oraz unieważnienia wszystkich sesji
+po zmianie hasła, ale nadal nie wykonuje `commit` poza granicą requestu. Endpointy
+sesji odpowiadają już tylko za cookie i mapowanie stabilnych błędów aplikacyjnych na
+dotychczasowe statusy HTTP. Integracje potwierdzają rotację rekordu, zachowanie tokenu
+nieaktywnego konta, audyt logoutu oraz brak nadpisania wcześniejszej daty unieważnienia.
 
 Publiczne wyszukiwanie semantyczne i rekomendacje zostały wydzielone z modułu API
 AI razem ze wspólnymi schematami i dependency providera. Główny moduł zmniejszył
