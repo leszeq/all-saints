@@ -17,6 +17,15 @@ from src.application.commands.religious_orders import (
 from src.domain.geography.models import OrderMembershipType
 from src.domain.hagiography.models import PersonType
 from src.presentation.api.v1.persons.schemas import PersonAvatarSchema
+from src.presentation.api.v1.popes.schemas import (
+    PopeCreateSchema as PopeCreateSchema,
+)
+from src.presentation.api.v1.popes.schemas import (
+    PopeSchema as PopeSchema,
+)
+from src.presentation.api.v1.popes.schemas import (
+    PopeUpdateSchema as PopeUpdateSchema,
+)
 
 # ==============================================================================
 # RELIGIOUS ORDER SCHEMAS
@@ -76,42 +85,3 @@ class ReligiousOrderDetailSchema(ReligiousOrderSchema):
 
 class ReligiousOrderMembershipCreateSchema(AddReligiousOrderMembershipCommand):
     """Attach one person to an order or congregation."""
-
-
-# ==============================================================================
-# POPE SCHEMAS
-# ==============================================================================
-
-
-class PopeCreateSchema(BaseModel):
-    papal_name: str = Field(..., min_length=2, max_length=300)
-    person_id: uuid.UUID | None = None
-    pontificate_start: str | None = Field(None, max_length=50)
-    pontificate_end: str | None = Field(None, max_length=50)
-    pontificate_start_year: int | None = None
-    pontificate_end_year: int | None = None
-    regnal_number: int | None = None
-    birth_name: str | None = Field(None, max_length=300)
-    nationality_id: uuid.UUID | None = None
-    description: str | None = None
-
-
-class PopeUpdateSchema(BaseModel):
-    papal_name: str | None = Field(None, min_length=2, max_length=300)
-    person_id: uuid.UUID | None = None
-    pontificate_start: str | None = None
-    pontificate_end: str | None = None
-    pontificate_start_year: int | None = None
-    pontificate_end_year: int | None = None
-    regnal_number: int | None = None
-    birth_name: str | None = None
-    nationality_id: uuid.UUID | None = None
-    description: str | None = None
-
-
-class PopeSchema(PopeCreateSchema):
-    id: uuid.UUID
-    created_at: datetime
-    updated_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)

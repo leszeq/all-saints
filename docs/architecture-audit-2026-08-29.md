@@ -38,7 +38,7 @@ Stan na 2026-09-10 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **267 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend pytest | **269 passed**, 0 failures, 0 errors, 0 warnings |
 | Backend coverage | **84.06%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0018_person_translation_search`, jeden head |
@@ -46,7 +46,7 @@ Stan na 2026-09-10 po kolejnych etapach refaktoryzacji:
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 183 pliki źródłowe |
+| Ruff / strict mypy | PASS, mypy analizuje 186 plików źródłowych |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -298,6 +298,15 @@ router ról ze 144 do 56 linii; oba zachowują prywatne aliasy i publiczne re-ek
 Kolekcje GET/POST są jawnie składane z powodu ograniczenia FastAPI dla pustych
 ścieżek potomnych. Test kontraktowy potwierdza Bearer dla wszystkich ośmiu operacji,
 a pełne integracje macierzy uprawnień pozostają zielone.
+
+Katalog papieży korzysta teraz z niezależnej komendy `CreatePopeCommand` oraz
+`PopeService`, który przejął filtrowanie, kolejność wyników i tworzenie rekordu w
+transakcji wywołującego. Schematy transportowe przeniesiono z obszaru zakonów do
+właściwego pionu papieży, zachowując kompatybilne re-eksporty dla dotychczasowych
+importów. Router zmniejszył się z 47 do 37 linii i nie zawiera już SQL. Test
+kontraktowy potwierdza publiczny odczyt katalogu, Bearer dla tworzenia oraz tożsamość
+starszego importu schematu; istniejące integracje nadal chronią zapis bez częściowego
+commitu.
 
 Powstał automatyczny CI z lintem, strict mypy, testami/coverage, audytem zależności,
 kontrolą migracji, buildami frontendów oraz smoke testem całego stosu produkcyjnego.
