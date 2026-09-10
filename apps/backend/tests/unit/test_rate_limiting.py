@@ -9,7 +9,8 @@ from fastapi import HTTPException, Response
 from starlette.requests import Request
 
 from src.infrastructure.cache.redis_client import RateLimiter
-from src.presentation.api.v1.auth.router import LoginRequest, _enforce_login_rate_limit
+from src.presentation.api.v1.auth.login import _enforce_login_rate_limit
+from src.presentation.api.v1.auth.schemas import LoginRequest
 
 
 def make_request() -> Request:

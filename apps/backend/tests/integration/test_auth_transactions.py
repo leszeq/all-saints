@@ -15,7 +15,7 @@ from src.domain.identity.models import AuditAction, AuditLog, RefreshToken, User
 from src.infrastructure.cache.redis_client import get_redis
 from src.infrastructure.db.session import get_db_session
 from src.main import app
-from src.presentation.api.v1.auth import router as auth_router
+from src.presentation.api.v1.auth import login as auth_login
 from src.presentation.api.v1.auth.router import get_authentication_security_recorder
 
 
@@ -45,7 +45,7 @@ async def test_successful_login_waits_for_request_unit_of_work(
         expire_on_commit=False,
         autoflush=False,
     )
-    monkeypatch.setattr(auth_router, "_enforce_login_rate_limit", AsyncMock())
+    monkeypatch.setattr(auth_login, "_enforce_login_rate_limit", AsyncMock())
 
     async with session_factory() as writer_session, session_factory() as observer_session:
 
@@ -124,7 +124,7 @@ async def test_failed_login_counter_and_audit_survive_request_rollback(
     user = _active_user("auth-failure-transaction@example.com", failed_attempts=9)
     db_session.add(user)
     await db_session.commit()
-    monkeypatch.setattr(auth_router, "_enforce_login_rate_limit", AsyncMock())
+    monkeypatch.setattr(auth_login, "_enforce_login_rate_limit", AsyncMock())
 
     response = await async_client.post(
         "/api/v1/auth/login",

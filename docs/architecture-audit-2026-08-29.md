@@ -46,7 +46,7 @@ Stan na 2026-09-10 po kolejnych etapach refaktoryzacji:
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 155 plików źródłowych |
+| Ruff / strict mypy | PASS, mypy analizuje 156 plików źródłowych |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -203,6 +203,13 @@ uwierzytelniania zmniejszył się z 405 do 267 linii, zachowując logowanie i je
 punkty podmiany używane przez testy transakcyjne. Re-eksporty `refresh_token` i
 `logout` pozostają kompatybilne, a kontrakt OpenAPI chroni publiczny charakter
 trzech operacji sesji i zabezpieczenie Bearer trzech operacji konta użytkownika.
+
+Logowanie zostało następnie wydzielone do własnego pionu HTTP obejmującego rate
+limiting, weryfikację konta i hasła, wydanie tokenów oraz audyt. Router główny ma
+teraz 49 linii i pełni wyłącznie rolę kompozycyjną dla logowania, sesji i konta,
+zachowując dotychczasowe re-eksporty. Testy transakcyjne podmieniają zależności w
+module będącym właścicielem endpointu, a kontrakt adresów i zabezpieczeń pozostał
+bez zmian.
 
 Publiczne wyszukiwanie semantyczne i rekomendacje zostały wydzielone z modułu API
 AI razem ze wspólnymi schematami i dependency providera. Główny moduł zmniejszył
