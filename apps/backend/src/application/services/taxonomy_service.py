@@ -3,16 +3,14 @@
 from __future__ import annotations
 
 import uuid
-from typing import TypeVar
 
 from slugify import slugify
-from sqlalchemy import Select, func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.commands.taxonomy import CreateCategoryCommand, CreateTagCommand
+from src.application.services.pagination import execute_page
 from src.domain.hagiography.models import Category, Occupation, StateOfLife, Tag
-
-T = TypeVar("T")
 
 
 class TaxonomyService:
@@ -56,7 +54,8 @@ class TaxonomyService:
             statement = statement.where(
                 Tag.name_pl.ilike(f"%{search}%") | Tag.name_en.ilike(f"%{search}%")
             )
-        return await self._execute_page(
+        return await execute_page(
+            self.db,
             statement.order_by(Tag.name_pl.asc()),
             page=page,
             per_page=per_page,
@@ -92,16 +91,4 @@ class TaxonomyService:
             .where(Occupation.deleted_at.is_(None))
             .order_by(Occupation.name_pl.asc())
         )
-        return await self._execute_page(statement, page=page, per_page=per_page)
-
-    async def _execute_page(
-        self,
-        statement: Select[tuple[T]],
-        *,
-        page: int,
-        per_page: int,
-    ) -> tuple[list[T], int]:
-        count_statement = select(func.count()).select_from(statement.order_by(None).subquery())
-        total = int((await self.db.execute(count_statement)).scalar_one())
-        result = await self.db.execute(statement.offset((page - 1) * per_page).limit(per_page))
-        return list(result.scalars().all()), total
+        return await execute_page(self.db, statement, page=page, per_page=per_page)

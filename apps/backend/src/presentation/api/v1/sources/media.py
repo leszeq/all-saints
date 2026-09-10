@@ -14,7 +14,6 @@ from fastapi import (
     Response,
     status,
 )
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.services.media_service import (
@@ -22,14 +21,13 @@ from src.application.services.media_service import (
     MediaService,
 )
 from src.domain.identity.models import User
-from src.domain.sources.models import Document, Image, ImageLicense
+from src.domain.sources.models import ImageLicense
 from src.infrastructure.db.session import get_db_session
 from src.presentation.api.pagination import (
     PAGINATION_RESPONSE_DOCS,
     PageNumber,
     PageSize,
     add_pagination_headers,
-    execute_page,
 )
 from src.presentation.api.v1.auth.router import require_permission
 from src.presentation.api.v1.sources.image_files import (
@@ -68,14 +66,13 @@ async def list_images(
     db: AsyncSession = Depends(get_db_session),
     _user: User = Depends(require_permission("images", "read")),
 ) -> list[ImageSchema]:
-    query = select(Image).where(Image.deleted_at.is_(None))
-    if person_id:
-        query = query.where(Image.person_id == person_id)
-    if license is not None:
-        query = query.where(Image.license == license.value)
-    query = query.order_by(Image.is_primary.desc(), Image.sort_order.asc())
     effective_per_page = limit if limit is not None else per_page
-    items, total = await execute_page(db, query, page=page, per_page=effective_per_page)
+    items, total = await MediaService(db).list_images(
+        person_id=person_id,
+        license=license,
+        page=page,
+        per_page=effective_per_page,
+    )
     add_pagination_headers(
         response,
         total=total,
@@ -122,11 +119,11 @@ async def list_documents(
     db: AsyncSession = Depends(get_db_session),
     _user: User = Depends(require_permission("sources", "read")),
 ) -> list[DocumentSchema]:
-    query = select(Document).where(Document.deleted_at.is_(None))
-    if person_id:
-        query = query.where(Document.person_id == person_id)
-    query = query.order_by(Document.created_at.desc())
-    items, total = await execute_page(db, query, page=page, per_page=per_page)
+    items, total = await MediaService(db).list_documents(
+        person_id=person_id,
+        page=page,
+        per_page=per_page,
+    )
     add_pagination_headers(response, total=total, page=page, per_page=per_page)
     return [DocumentSchema.model_validate(item) for item in items]
 

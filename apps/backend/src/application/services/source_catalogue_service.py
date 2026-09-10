@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-from typing import TypeVar
-
-from sqlalchemy import Select, and_, func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.commands.source_catalogue import (
     CreateBibliographyCommand,
     CreateHistoricalSourceCommand,
 )
+from src.application.services.pagination import execute_page
 from src.application.source_models import SourceStatsResult
 from src.domain.hagiography.models import Person, PublicationStatus
 from src.domain.sources.models import (
@@ -20,8 +19,6 @@ from src.domain.sources.models import (
     ImageLicense,
     PersonSource,
 )
-
-T = TypeVar("T")
 
 
 class SourceCatalogueService:
@@ -108,7 +105,7 @@ class SourceCatalogueService:
                 Bibliography.title.ilike(f"%{search}%") | Bibliography.authors.ilike(f"%{search}%")
             )
         query = query.order_by(Bibliography.year.desc().nullslast(), Bibliography.title.asc())
-        return await self._execute_page(query, page=page, per_page=per_page)
+        return await execute_page(self.db, query, page=page, per_page=per_page)
 
     async def create_bibliography(
         self,
@@ -136,7 +133,7 @@ class SourceCatalogueService:
                 | HistoricalSource.repository.ilike(f"%{search}%")
             )
         query = query.order_by(HistoricalSource.title.asc())
-        return await self._execute_page(query, page=page, per_page=per_page)
+        return await execute_page(self.db, query, page=page, per_page=per_page)
 
     async def create_historical_source(
         self,
@@ -148,15 +145,3 @@ class SourceCatalogueService:
         await self.db.flush()
         await self.db.refresh(historical_source)
         return historical_source
-
-    async def _execute_page(
-        self,
-        statement: Select[tuple[T]],
-        *,
-        page: int,
-        per_page: int,
-    ) -> tuple[list[T], int]:
-        count_statement = select(func.count()).select_from(statement.order_by(None).subquery())
-        total = int((await self.db.execute(count_statement)).scalar_one())
-        result = await self.db.execute(statement.offset((page - 1) * per_page).limit(per_page))
-        return list(result.scalars().all()), total

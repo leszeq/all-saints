@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from fastapi import Response
 
+from src.application.services.pagination import execute_page as application_execute_page
 from src.main import app
 from src.presentation.api.pagination import add_pagination_headers
+from src.presentation.api.pagination import execute_page as legacy_execute_page
 
 PAGINATED_PATHS = (
     "/api/v1/geography/dioceses",
@@ -18,6 +20,10 @@ PAGINATED_PATHS = (
     "/api/v1/taxonomy/tags",
     "/api/v1/taxonomy/occupations",
 )
+
+
+def test_legacy_presentation_import_reexports_application_page_executor() -> None:
+    assert legacy_execute_page is application_execute_page
 
 
 def test_pagination_headers_include_an_empty_total() -> None:

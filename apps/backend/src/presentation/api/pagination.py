@@ -7,13 +7,11 @@ navigate every page explicitly.
 
 from __future__ import annotations
 
-from typing import Annotated, Any, TypeVar
+from typing import Annotated, Any
 
 from fastapi import Query, Response
-from sqlalchemy import Select, func, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
-T = TypeVar("T")
+from src.application.services.pagination import execute_page as execute_page
 
 PageNumber = Annotated[int, Query(ge=1, description="Numer strony, liczony od 1")]
 PageSize = Annotated[
@@ -43,20 +41,6 @@ PAGINATION_RESPONSE_DOCS: dict[int | str, dict[str, Any]] = {
         }
     }
 }
-
-
-async def execute_page(
-    db: AsyncSession,
-    statement: Select[tuple[T]],
-    *,
-    page: int,
-    per_page: int,
-) -> tuple[list[T], int]:
-    """Execute one deterministic page and its matching count query."""
-    count_statement = select(func.count()).select_from(statement.order_by(None).subquery())
-    total = int((await db.execute(count_statement)).scalar_one())
-    result = await db.execute(statement.offset((page - 1) * per_page).limit(per_page))
-    return list(result.scalars().all()), total
 
 
 def add_pagination_headers(

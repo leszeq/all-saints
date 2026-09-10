@@ -38,7 +38,7 @@ Stan na 2026-09-10 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **269 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend pytest | **271 passed**, 0 failures, 0 errors, 0 warnings |
 | Backend coverage | **84.06%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0018_person_translation_search`, jeden head |
@@ -46,7 +46,7 @@ Stan na 2026-09-10 po kolejnych etapach refaktoryzacji:
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 186 plików źródłowych |
+| Ruff / strict mypy | PASS, mypy analizuje 187 plików źródłowych |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -307,6 +307,16 @@ importów. Router zmniejszył się z 47 do 37 linii i nie zawiera już SQL. Test
 kontraktowy potwierdza publiczny odczyt katalogu, Bearer dla tworzenia oraz tożsamość
 starszego importu schematu; istniejące integracje nadal chronią zapis bez częściowego
 commitu.
+
+Katalog obrazów i dokumentów korzysta teraz w całości z `MediaService`; filtrowanie,
+sortowanie, pomijanie rekordów usuniętych miękko i wykonanie stron nie są już
+realizowane w adapterze HTTP. Wspólny `execute_page` został przeniesiony do warstwy
+aplikacyjnej i zastąpił trzy powielone implementacje w serwisach geografii,
+taksonomii i źródeł, przy zachowaniu kompatybilnego re-eksportu dotychczasowego
+helpera. Router mediów nie importuje już SQLAlchemy poza typem sesji, a jego test
+integracyjny sprawdza filtry osoby i licencji, kolejność obrazów i dokumentów,
+paginację oraz soft delete. Serwisy geografii, taksonomii i źródeł zmniejszyły się
+łącznie o 39 linii bez zmiany publicznego kontraktu nagłówków paginacji.
 
 Powstał automatyczny CI z lintem, strict mypy, testami/coverage, audytem zależności,
 kontrolą migracji, buildami frontendów oraz smoke testem całego stosu produkcyjnego.

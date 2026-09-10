@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import uuid
-from typing import TypeVar
 
-from sqlalchemy import Select, func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.commands.geography import (
@@ -14,9 +13,8 @@ from src.application.commands.geography import (
     CreateDioceseCommand,
     CreatePlaceCommand,
 )
+from src.application.services.pagination import execute_page
 from src.domain.geography.models import Church, Country, Diocese, Place
-
-T = TypeVar("T")
 
 
 class GeographyService:
@@ -54,7 +52,8 @@ class GeographyService:
         statement = select(Diocese).where(Diocese.deleted_at.is_(None))
         if country_id:
             statement = statement.where(Diocese.country_id == country_id)
-        return await self._execute_page(
+        return await execute_page(
+            self.db,
             statement.order_by(Diocese.name.asc()),
             page=page,
             per_page=per_page,
@@ -82,7 +81,8 @@ class GeographyService:
             statement = statement.where(Place.country_id == country_id)
         if search:
             statement = statement.where(Place.name.ilike(f"%{search}%"))
-        return await self._execute_page(
+        return await execute_page(
+            self.db,
             statement.order_by(Place.name.asc()),
             page=page,
             per_page=per_page,
@@ -110,7 +110,8 @@ class GeographyService:
             statement = statement.where(Church.place_id == place_id)
         if is_sanctuary is not None:
             statement = statement.where(Church.is_national_sanctuary == is_sanctuary)
-        return await self._execute_page(
+        return await execute_page(
+            self.db,
             statement.order_by(Church.name.asc()),
             page=page,
             per_page=per_page,
@@ -123,15 +124,3 @@ class GeographyService:
         await self.db.flush()
         await self.db.refresh(church)
         return church
-
-    async def _execute_page(
-        self,
-        statement: Select[tuple[T]],
-        *,
-        page: int,
-        per_page: int,
-    ) -> tuple[list[T], int]:
-        count_statement = select(func.count()).select_from(statement.order_by(None).subquery())
-        total = int((await self.db.execute(count_statement)).scalar_one())
-        result = await self.db.execute(statement.offset((page - 1) * per_page).limit(per_page))
-        return list(result.scalars().all()), total

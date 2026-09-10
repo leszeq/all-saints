@@ -4,18 +4,19 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import update
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.commands.media import CreateDocumentCommand, CreateImageCommand
 from src.application.services.audit_service import AuditContext, add_audit_log
+from src.application.services.pagination import execute_page
 from src.application.services.person_snapshot import (
     append_relation_version,
     lock_person_for_snapshot,
     serialize_person_snapshot,
 )
 from src.domain.identity.models import AuditAction
-from src.domain.sources.models import Document, Image
+from src.domain.sources.models import Document, Image, ImageLicense
 
 
 class MediaPersonNotFoundError(ValueError):
@@ -23,10 +24,27 @@ class MediaPersonNotFoundError(ValueError):
 
 
 class MediaService:
-    """Create media metadata inside a transaction owned by the caller."""
+    """Read and create media metadata inside a caller-owned transaction."""
 
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
+
+    async def list_images(
+        self,
+        *,
+        person_id: uuid.UUID | None = None,
+        license: ImageLicense | None = None,
+        page: int = 1,
+        per_page: int = 100,
+    ) -> tuple[list[Image], int]:
+        """Return one filtered page of active image metadata."""
+        statement = select(Image).where(Image.deleted_at.is_(None))
+        if person_id is not None:
+            statement = statement.where(Image.person_id == person_id)
+        if license is not None:
+            statement = statement.where(Image.license == license.value)
+        statement = statement.order_by(Image.is_primary.desc(), Image.sort_order.asc())
+        return await execute_page(self.db, statement, page=page, per_page=per_page)
 
     async def create_image(
         self,
@@ -88,3 +106,17 @@ class MediaService:
         await self.db.flush()
         await self.db.refresh(document)
         return document
+
+    async def list_documents(
+        self,
+        *,
+        person_id: uuid.UUID | None = None,
+        page: int = 1,
+        per_page: int = 100,
+    ) -> tuple[list[Document], int]:
+        """Return one filtered page of active document metadata."""
+        statement = select(Document).where(Document.deleted_at.is_(None))
+        if person_id is not None:
+            statement = statement.where(Document.person_id == person_id)
+        statement = statement.order_by(Document.created_at.desc())
+        return await execute_page(self.db, statement, page=page, per_page=per_page)
