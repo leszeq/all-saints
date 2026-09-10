@@ -38,7 +38,7 @@ Stan na 2026-09-10 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **266 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend pytest | **267 passed**, 0 failures, 0 errors, 0 warnings |
 | Backend coverage | **84.06%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0018_person_translation_search`, jeden head |
@@ -46,7 +46,7 @@ Stan na 2026-09-10 po kolejnych etapach refaktoryzacji:
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 176 plików źródłowych |
+| Ruff / strict mypy | PASS, mypy analizuje 183 pliki źródłowe |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -290,6 +290,14 @@ fasadą, dlatego starsze przypadki użycia nie wymagają migracji. Router użytk
 zależy wyłącznie od pionu kont, a router ról wyłącznie od pionu macierzy uprawnień.
 Testy integracyjne nadal chronią pojedynczego superadministratora, ograniczenia ról
 niestandardowych, pełne CRUD obu zasobów oraz granicę unit-of-work.
+
+Adaptery HTTP kontroli dostępu zostały następnie podzielone na zapytania, mutacje
+i mapowanie odpowiedzi, a zduplikowane tłumaczenie błędów aplikacyjnych ma jednego
+wspólnego właściciela. Router użytkowników zmniejszył się ze 162 do 56 linii, a
+router ról ze 144 do 56 linii; oba zachowują prywatne aliasy i publiczne re-eksporty.
+Kolekcje GET/POST są jawnie składane z powodu ograniczenia FastAPI dla pustych
+ścieżek potomnych. Test kontraktowy potwierdza Bearer dla wszystkich ośmiu operacji,
+a pełne integracje macierzy uprawnień pozostają zielone.
 
 Powstał automatyczny CI z lintem, strict mypy, testami/coverage, audytem zależności,
 kontrolą migracji, buildami frontendów oraz smoke testem całego stosu produkcyjnego.
