@@ -19,6 +19,9 @@ from src.application.commands.persons import (
     PersonUpdateSchema,
 )
 from src.application.services.audit_service import AuditContext, add_audit_log
+from src.application.services.person_primary_translation_sync import (
+    PersonPrimaryTranslationSynchronizer,
+)
 from src.application.services.person_query_service import (
     ERA_PERIOD_ERAS,
     PATRONAGE_GROUP_TYPES,
@@ -265,6 +268,12 @@ class PersonService(PersonQueryService):
             await relations.sync_beatification(person, data.beatification)
         if canonization_was_set:
             await relations.sync_canonization(person, data.canonization)
+
+        await PersonPrimaryTranslationSynchronizer(self.db).sync_existing(
+            person,
+            changed_fields=set(update_dict),
+            user_id=user_id,
+        )
 
         person.version += 1
         person.updated_at = datetime.now(UTC)

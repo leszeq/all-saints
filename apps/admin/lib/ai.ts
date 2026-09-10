@@ -6,6 +6,7 @@ export interface AiSuggestionItem {
   person_id: string;
   person_slug: string;
   person_name: string;
+  person_version: number;
   kind: AiSuggestionKind;
   status: AiSuggestionStatus;
   title: string;
@@ -17,6 +18,24 @@ export interface AiSuggestionItem {
   action: "generate_embedding" | "generate_summary" | "generate_tags" | "review_person" | string;
   action_href: string;
   updated_at: string;
+}
+
+export interface AiSuggestionDecisionPayload {
+  action: "accept" | "reject";
+  expected_version: number;
+  value?: string;
+  selected_tags?: string[];
+  note?: string;
+}
+
+export interface AiSuggestionDecisionResponse {
+  person_id: string;
+  kind: "summary" | "tags";
+  action: "accept" | "reject";
+  applied_value?: string | null;
+  accepted_tags: string[];
+  version: number;
+  decided_at: string;
 }
 
 export interface AiSuggestionsResponse {

@@ -38,7 +38,7 @@ Stan na 2026-09-10 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **257 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend pytest | **260 passed**, 0 failures, 0 errors, 0 warnings |
 | Backend coverage | **84.06%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0016_person_names`, jeden head |
@@ -46,7 +46,7 @@ Stan na 2026-09-10 po kolejnych etapach refaktoryzacji:
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 152 pliki źródłowe |
+| Ruff / strict mypy | PASS, mypy analizuje 155 plików źródłowych |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -180,6 +180,14 @@ Generowanie roboczych streszczeń i tagów zostało następnie przeniesione do
 wąskich serwisów generacyjnych, natomiast zgodna fasada deleguje stare metody przez
 kompozycję. `AIService` zmniejszył się dalej do 232 linii i odpowiada obecnie za
 agregację centrum AI, kolejkę sugestii oraz kompatybilny status dostawców.
+
+Kolejka sugestii AI obsługuje teraz właściwą decyzję redakcyjną bez opuszczania
+widoku: porównanie wartości bieżącej i propozycji, korektę streszczenia, wybór
+zaakceptowanych tagów oraz odrzucenie z obowiązkowym uzasadnieniem. Decyzja wymaga
+aktualnej wersji osoby, tworzy snapshot i wpis audytowy, łączy zatwierdzone tagi z
+taksonomią i nigdy samodzielnie nie publikuje profilu. Zatwierdzone polskie
+streszczenie synchronizuje również aktywne tłumaczenie `pl`, z którego korzysta
+portal publiczny.
 
 Router uwierzytelniania został następnie podzielony na sesje, profil bieżącego
 użytkownika, współdzielone zależności autoryzacyjne i schematy transportowe. Główny
@@ -911,7 +919,10 @@ Wyniki są zapisane przed refactoringiem. Nie obejmują wymyślonych metryk.
   tłumaczenia są wykluczone. Katalog i profil publiczny pobierają jawny język treści,
   renderują spójną projekcję `localized_content`, a ich teksty UI są częścią typowanego
   słownika; lekka projekcja katalogowa zawiera także lokalizowane atrybuty
-  ikonograficzne, bez pełnego biogramu i modlitw. Wspólne etykiety typów osób, epok,
+  ikonograficzne, bez pełnego biogramu i modlitw. Przejściowe pola PL/EN formularza
+  synchronizują istniejące główne tłumaczenia
+  w tej samej transakcji, dlatego zwykła edycja i akceptacja sugestii AI nie mogą już
+  pozostawić innej treści w panelu i portalu publicznym. Wspólne etykiety typów osób, epok,
   okresów, patronatów i wspólnot są oddzielone od stabilnych kluczy API i pobierane
   z typowanego słownika przez stronę główną, katalog, profil, kalendarz oraz zakony;
   stare polskie wartości zapytań pozostają wyłącznie izolowaną warstwą zgodności.

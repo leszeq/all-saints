@@ -1,6 +1,11 @@
 // Centralny klient HTTP dla wszystkich wywołań API
 import axios from "axios";
-import type { AiDashboard, AiSuggestionsResponse } from "@/lib/ai";
+import type {
+  AiDashboard,
+  AiSuggestionDecisionPayload,
+  AiSuggestionDecisionResponse,
+  AiSuggestionsResponse,
+} from "@/lib/ai";
 import type {
   CreateRolePayload,
   CreateUserPayload,
@@ -237,6 +242,15 @@ export const aiApi = {
   generateSummary: (personId: string, maxWords = 100) =>
     api.post(`/ai/summarize/${personId}`, null, { params: { max_words: maxWords } }),
   generateTags: (personId: string) => api.post(`/ai/tag/${personId}`),
+  decideSuggestion: (
+    kind: "summary" | "tags",
+    personId: string,
+    data: AiSuggestionDecisionPayload,
+  ) =>
+    api.post<AiSuggestionDecisionResponse>(
+      `/ai/suggestions/${kind}/${personId}/decision`,
+      data,
+    ),
   batchEmbeddings: (params?: { overwrite_existing?: boolean; batch_size?: number }) =>
     api.post("/ai/batch/embed", null, { params }),
   batchTags: (params?: { only_untagged?: boolean }) =>

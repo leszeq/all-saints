@@ -6,6 +6,9 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.ai_service import AIService
+from src.application.services.ai_suggestion_decision_service import (
+    AISuggestionDecisionService,
+)
 from src.application.services.ai_summary_service import AISummaryService
 from src.application.services.ai_vector_service import AIVectorService
 from src.infrastructure.db.session import get_db_session
@@ -30,3 +33,10 @@ async def get_ai_summary_service(
 ) -> AISummaryService:
     """Provide the focused summary and tagging generation service."""
     return AISummaryService(db)
+
+
+async def get_ai_suggestion_decision_service(
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> AISuggestionDecisionService:
+    """Provide the audited human-decision use case for AI proposals."""
+    return AISuggestionDecisionService(db)

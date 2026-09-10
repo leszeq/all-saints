@@ -6,7 +6,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.application.commands.persons import PersonCreateSchema
+from src.application.commands.persons import PersonCreateSchema, PersonUpdateSchema
 from src.application.services.person_service import PersonService
 from src.domain.hagiography.models import PersonTranslation, PublicationStatus
 
@@ -89,6 +89,53 @@ async def test_public_person_endpoints_expose_explicit_localization_projection(
     assert list_content["canonical_name"] == "San Giovanni di Test"
     assert list_content["iconographic_attributes"] == "Giglio; libro"
     assert "biography" not in list_content
+
+
+@pytest.mark.asyncio
+async def test_legacy_admin_edit_keeps_primary_translation_current(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    service = PersonService(db_session)
+    person = await service.create_person(
+        PersonCreateSchema(
+            canonical_name="Św. Aktualizowany",
+            summary_pl="Pierwsze streszczenie",
+            biography_pl="Pierwszy biogram",
+            person_type="saint",
+            gender="male",
+        )
+    )
+    person.status = PublicationStatus.PUBLISHED.value
+    translation = PersonTranslation(
+        person_id=person.id,
+        language_code="pl",
+        canonical_name=person.canonical_name,
+        summary=person.summary_pl,
+        biography=person.biography_pl,
+    )
+    db_session.add(translation)
+    await db_session.commit()
+    await db_session.refresh(person)
+
+    await service.update_person(
+        person,
+        PersonUpdateSchema(
+            summary_pl="Streszczenie po edycji administratora",
+            expected_version=person.version,
+        ),
+    )
+    await db_session.commit()
+
+    response = await async_client.get(f"/api/v1/persons/{person.slug}")
+
+    assert response.status_code == 200
+    assert response.json()["localized_content"]["summary"] == (
+        "Streszczenie po edycji administratora"
+    )
+    await db_session.refresh(translation)
+    assert translation.summary == "Streszczenie po edycji administratora"
+    assert translation.version == 2
 
 
 @pytest.mark.asyncio

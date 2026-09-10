@@ -81,7 +81,7 @@ async def test_restore_records_the_responsible_editor() -> None:
     result.scalar_one_or_none.return_value = person
     db = MagicMock()
     db.execute = AsyncMock(
-        side_effect=[result, *[_empty_snapshot_query_result() for _ in range(16)]]
+        side_effect=[result, *[_empty_snapshot_query_result() for _ in range(18)]]
     )
     db.flush = AsyncMock()
     db.commit = AsyncMock()

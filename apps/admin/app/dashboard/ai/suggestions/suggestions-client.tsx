@@ -33,6 +33,8 @@ import type {
 } from "@/lib/i18n/types";
 import { cn } from "@/lib/utils";
 
+import { AiSuggestionDecisionDialog } from "./decision-dialog";
+
 type KindFilter = "" | AiSuggestionKind;
 type StatusFilter = "" | AiSuggestionStatus;
 
@@ -66,6 +68,7 @@ function SuggestionCard({
   domainCopy,
   locale,
   onAction,
+  onDecision,
 }: {
   item: AiSuggestionItem;
   busy: boolean;
@@ -73,8 +76,13 @@ function SuggestionCard({
   domainCopy: AdminDomainDictionary;
   locale: string;
   onAction: (item: AiSuggestionItem) => void;
+  onDecision: (item: AiSuggestionItem) => void;
 }) {
   const canRunAction = item.status !== "blocked" && item.action !== "review_person";
+  const canDecide =
+    item.status === "pending_review" &&
+    item.action === "review_person" &&
+    (item.kind === "summary" || item.kind === "tags");
 
   return (
     <article className="admin-card p-5 transition-colors hover:border-primary/40">
@@ -119,6 +127,14 @@ function SuggestionCard({
             >
               {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
               {actionLabel(item, copy)}
+            </button>
+          ) : canDecide ? (
+            <button
+              type="button"
+              onClick={() => onDecision(item)}
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" /> {actionLabel(item, copy)}
             </button>
           ) : (
             <Link
@@ -195,6 +211,7 @@ export function AiSuggestionsClient({ copy, domainCopy, locale }: AiSuggestionsC
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("");
   const [search, setSearch] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [decisionItem, setDecisionItem] = useState<AiSuggestionItem | null>(null);
 
   const suggestionsQuery = useQuery({
     queryKey: ["ai", "suggestions", kindFilter, statusFilter],
@@ -404,9 +421,22 @@ export function AiSuggestionsClient({ copy, domainCopy, locale }: AiSuggestionsC
               domainCopy={domainCopy}
               locale={locale}
               onAction={(suggestion) => actionMutation.mutate(suggestion)}
+              onDecision={setDecisionItem}
             />
           ))}
         </div>
+      )}
+
+      {decisionItem && (
+        <AiSuggestionDecisionDialog
+          key={decisionItem.id}
+          item={decisionItem}
+          copy={copy.decisionDialog}
+          onOpenChange={(open) => {
+            if (!open) setDecisionItem(null);
+          }}
+          onComplete={setSuccessMessage}
+        />
       )}
     </div>
   );

@@ -23,8 +23,11 @@ from fastapi import APIRouter, Depends, Query
 from src.application.ai_models import AIDashboardResult, AISuggestionResult
 from src.application.ai_service import AIService
 from src.domain.identity.models import User
+from src.presentation.api.v1.ai.decisions import decide_ai_suggestion
+from src.presentation.api.v1.ai.decisions import router as decisions_router
 from src.presentation.api.v1.ai.dependencies import (
     get_ai_service,
+    get_ai_suggestion_decision_service,
     get_ai_summary_service,
     get_ai_vector_service,
 )
@@ -40,6 +43,8 @@ from src.presentation.api.v1.ai.schemas import (
     AIDashboardResponse,
     AIFeatureStatusItem,
     AIStatusResponse,
+    AISuggestionDecisionRequest,
+    AISuggestionDecisionResponse,
     AISuggestionItem,
     AISuggestionsResponse,
     BatchTaskResponse,
@@ -59,6 +64,8 @@ __all__ = [
     "AIDashboardResponse",
     "AIFeatureStatusItem",
     "AISuggestionItem",
+    "AISuggestionDecisionRequest",
+    "AISuggestionDecisionResponse",
     "AISuggestionsResponse",
     "AIStatusResponse",
     "BatchTaskResponse",
@@ -72,8 +79,10 @@ __all__ = [
     "generate_embedding",
     "generate_summary",
     "generate_tags",
+    "decide_ai_suggestion",
     "get_ai_service",
     "get_ai_summary_service",
+    "get_ai_suggestion_decision_service",
     "get_ai_vector_service",
     "get_related",
     "semantic_search",
@@ -87,6 +96,7 @@ def _map_suggestion(item: AISuggestionResult) -> AISuggestionItem:
         person_id=str(item.person_id),
         person_slug=item.person_slug,
         person_name=item.person_name,
+        person_version=item.person_version,
         kind=item.kind,
         status=item.status,
         title=item.title,
@@ -208,3 +218,4 @@ async def get_ai_status(
 
 router.include_router(generation_router)
 router.include_router(search_router)
+router.include_router(decisions_router)

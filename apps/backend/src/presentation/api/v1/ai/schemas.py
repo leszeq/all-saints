@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -85,6 +86,7 @@ class AISuggestionItem(BaseModel):
     person_id: str
     person_slug: str
     person_name: str
+    person_version: int = Field(ge=1)
     kind: str = Field(description="embedding, summary or tags")
     status: str = Field(description="pending_review, ready_to_generate or blocked")
     title: str
@@ -96,6 +98,28 @@ class AISuggestionItem(BaseModel):
     action: str
     action_href: str
     updated_at: datetime
+
+
+class AISuggestionDecisionRequest(BaseModel):
+    """Explicit human decision about a pending AI proposal."""
+
+    action: Literal["accept", "reject"]
+    expected_version: int = Field(ge=1)
+    value: str | None = Field(None, max_length=2000)
+    selected_tags: list[str] = Field(default_factory=list, max_length=20)
+    note: str | None = Field(None, max_length=1000)
+
+
+class AISuggestionDecisionResponse(BaseModel):
+    """Persisted result of an AI suggestion decision."""
+
+    person_id: str
+    kind: Literal["summary", "tags"]
+    action: Literal["accept", "reject"]
+    applied_value: str | None = None
+    accepted_tags: list[str] = Field(default_factory=list)
+    version: int
+    decided_at: datetime
 
 
 class AISuggestionsResponse(BaseModel):

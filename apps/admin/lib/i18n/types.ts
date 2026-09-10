@@ -963,6 +963,30 @@ export interface AdminDictionary {
       confidence: string;
       updatedPrefix: string;
     };
+    decisionDialog: {
+      summaryTitle: string;
+      tagsTitle: string;
+      description: string;
+      currentLabel: string;
+      currentEmpty: string;
+      summaryLabel: string;
+      summaryHelp: string;
+      tagsLabel: string;
+      tagsHelp: string;
+      rejectionLabel: string;
+      rejectionPlaceholder: string;
+      rejectionHelp: string;
+      cancelAction: string;
+      rejectAction: string;
+      acceptAction: string;
+      savingAction: string;
+      closeAriaLabel: string;
+      summaryRequired: string;
+      tagsRequired: string;
+      rejectionRequired: string;
+      acceptedMessage: string;
+      rejectedMessage: string;
+    };
     states: {
       loading: string;
       loadErrorTitle: string;

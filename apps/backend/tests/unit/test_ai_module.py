@@ -141,6 +141,7 @@ def test_ai_mutation_endpoints_require_bearer_auth() -> None:
         "/api/v1/ai/tag/{person_id}",
         "/api/v1/ai/batch/embed",
         "/api/v1/ai/batch/tag",
+        "/api/v1/ai/suggestions/{kind}/{person_id}/decision",
     )
 
     for path in paths:

@@ -71,6 +71,7 @@ class AISuggestionBuilder:
                     person_id=person.id,
                     person_slug=person.slug,
                     person_name=person.canonical_name,
+                    person_version=person.version,
                     kind="embedding",
                     status=status,
                     title="Brak embeddingu semantycznego",
@@ -99,6 +100,7 @@ class AISuggestionBuilder:
                     person_id=person.id,
                     person_slug=person.slug,
                     person_name=person.canonical_name,
+                    person_version=person.version,
                     kind="summary",
                     status="pending_review",
                     title="Streszczenie AI czeka na decyzję",
@@ -123,6 +125,7 @@ class AISuggestionBuilder:
                     person_id=person.id,
                     person_slug=person.slug,
                     person_name=person.canonical_name,
+                    person_version=person.version,
                     kind="summary",
                     status="ready_to_generate",
                     title="Można przygotować streszczenie AI",
@@ -141,6 +144,14 @@ class AISuggestionBuilder:
             )
 
         ai_tags = tag_list(person.ai_tags)
+        editorial_tags = sorted(
+            {
+                membership.tag.name_pl
+                for membership in person.tags
+                if membership.tag.deleted_at is None
+            },
+            key=str.casefold,
+        )
         if ai_tags:
             suggestions.append(
                 AISuggestionResult(
@@ -148,6 +159,7 @@ class AISuggestionBuilder:
                     person_id=person.id,
                     person_slug=person.slug,
                     person_name=person.canonical_name,
+                    person_version=person.version,
                     kind="tags",
                     status="pending_review",
                     title="Tagi AI czekają na mapowanie",
@@ -155,7 +167,7 @@ class AISuggestionBuilder:
                         "AI zaproponowało tagi tematyczne. Redaktor może użyć ich "
                         "jako podpowiedzi przy pracy ze słownikiem tagów i patronatów."
                     ),
-                    current_value=None,
+                    current_value=", ".join(editorial_tags) or None,
                     suggested_value=", ".join(ai_tags),
                     confidence=78,
                     reason="Tagi AI nie nadpisują słownika redakcyjnego automatycznie.",
@@ -172,6 +184,7 @@ class AISuggestionBuilder:
                     person_id=person.id,
                     person_slug=person.slug,
                     person_name=person.canonical_name,
+                    person_version=person.version,
                     kind="tags",
                     status=status,
                     title="Można przygotować tagi AI",

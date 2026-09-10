@@ -17,8 +17,10 @@ from src.domain.hagiography.models import (
     Person,
     PersonName,
     PersonOrder,
+    PersonTag,
     PersonTranslation,
     PersonVersion,
+    Tag,
 )
 from src.domain.sources.models import Image, PersonSource
 
@@ -106,6 +108,13 @@ TRANSLATION_FIELDS = (
     "iconographic_attributes",
     "translated_by_id",
     "version",
+)
+TAG_FIELDS = (
+    "id",
+    "name_pl",
+    "name_en",
+    "slug",
+    "color",
 )
 
 
@@ -204,6 +213,21 @@ async def serialize_person_snapshot(
         .scalars()
         .all()
     )
+    tags = list(
+        (
+            await db.execute(
+                select(Tag)
+                .join(PersonTag, PersonTag.tag_id == Tag.id)
+                .where(
+                    PersonTag.person_id == person_id,
+                    Tag.deleted_at.is_(None),
+                )
+                .order_by(Tag.name_pl.asc(), Tag.id.asc())
+            )
+        )
+        .scalars()
+        .all()
+    )
     beatification = (
         await db.execute(select(Beatification).where(Beatification.person_id == person_id))
     ).scalar_one_or_none()
@@ -220,6 +244,7 @@ async def serialize_person_snapshot(
         "sources": [_fields(item, SOURCE_FIELDS) for item in sources],
         "aliases": [_fields(item, ALIAS_FIELDS) for item in aliases],
         "translations": [_fields(item, TRANSLATION_FIELDS) for item in translations],
+        "tags": [_fields(item, TAG_FIELDS) for item in tags],
         "beatification": (
             _fields(beatification, BEATIFICATION_FIELDS) if beatification is not None else None
         ),

@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Literal
 
 
 @dataclass
@@ -53,6 +54,7 @@ class AISuggestionResult:
     person_id: uuid.UUID
     person_slug: str
     person_name: str
+    person_version: int
     kind: str
     status: str
     title: str
@@ -64,6 +66,19 @@ class AISuggestionResult:
     action: str
     action_href: str
     updated_at: datetime
+
+
+@dataclass
+class AISuggestionDecisionResult:
+    """Result of one audited editorial decision about an AI proposal."""
+
+    person_id: uuid.UUID
+    kind: Literal["summary", "tags"]
+    action: Literal["accept", "reject"]
+    applied_value: str | None
+    accepted_tags: list[str]
+    version: int
+    decided_at: datetime
 
 
 @dataclass

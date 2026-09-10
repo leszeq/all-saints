@@ -33,7 +33,7 @@ from src.application.ai_suggestions import (
 from src.application.services.ai_summary_service import AISummaryService
 from src.application.services.ai_vector_service import AIVectorService
 from src.domain.hagiography.embedding_model import PersonEmbedding
-from src.domain.hagiography.models import Person, PublicationStatus
+from src.domain.hagiography.models import Person, PersonTag, PublicationStatus
 from src.infrastructure.ai.embeddings import EmbeddingService
 from src.infrastructure.ai.summarizer import SummaryService
 
@@ -95,7 +95,10 @@ class AIService(AIVectorService):
         result = await self._db.execute(
             select(Person)
             .where(active_person_filter())
-            .options(selectinload(Person.embedding))
+            .options(
+                selectinload(Person.embedding),
+                selectinload(Person.tags).selectinload(PersonTag.tag),
+            )
             .order_by(Person.updated_at.desc(), Person.canonical_name.asc())
         )
         persons = result.scalars().unique().all()
