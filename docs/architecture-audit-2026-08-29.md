@@ -46,7 +46,7 @@ Stan na 2026-09-10 po kolejnych etapach refaktoryzacji:
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 172 pliki źródłowe |
+| Ruff / strict mypy | PASS, mypy analizuje 176 plików źródłowych |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -282,6 +282,14 @@ OpenAPI sprawdza Bearer dla wszystkich czterech operacji i wzorzec języka BCP 4
 a integracje nadal obejmują wersjonowanie osoby i tłumaczenia, optimistic locking,
 audyt, soft delete oraz przywrócenie. Przy okazji ponownie zweryfikowano na pustej
 bazie pełny upgrade 0001 → 0018, brak driftu oraz downgrade/re-upgrade headu.
+
+Kontrola dostępu została rozdzielona na `UserAccessControlService` oraz
+`RoleAccessControlService`, ze wspólną bazą zapytań ról i stabilnymi typami błędów.
+Dotychczasowy 357-liniowy `AccessControlService` jest teraz 23-liniową kompatybilną
+fasadą, dlatego starsze przypadki użycia nie wymagają migracji. Router użytkowników
+zależy wyłącznie od pionu kont, a router ról wyłącznie od pionu macierzy uprawnień.
+Testy integracyjne nadal chronią pojedynczego superadministratora, ograniczenia ról
+niestandardowych, pełne CRUD obu zasobów oraz granicę unit-of-work.
 
 Powstał automatyczny CI z lintem, strict mypy, testami/coverage, audytem zależności,
 kontrolą migracji, buildami frontendów oraz smoke testem całego stosu produkcyjnego.

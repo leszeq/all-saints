@@ -8,12 +8,12 @@ from typing import Annotated, NoReturn
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.application.services.access_control_service import (
+from src.application.services.access_control_errors import (
     AccessControlConflictError,
     AccessControlNotFoundError,
-    AccessControlService,
     AccessControlValidationError,
 )
+from src.application.services.user_access_control_service import UserAccessControlService
 from src.domain.identity.models import User, UserStatus
 from src.infrastructure.db.session import get_db_session
 from src.presentation.api.v1.auth.router import require_permission
@@ -75,7 +75,7 @@ async def list_users(
     db: AsyncSession = Depends(get_db_session),
     _super_admin: User = Depends(require_permission("users", "read")),
 ) -> UserListResponseSchema:
-    users, total = await AccessControlService(db).list_users(
+    users, total = await UserAccessControlService(db).list_users(
         page=page,
         per_page=per_page,
         search=search,
@@ -102,7 +102,7 @@ async def create_user(
     current_user: User = Depends(require_permission("users", "create")),
 ) -> UserListItemSchema:
     try:
-        user = await AccessControlService(db).create_user(
+        user = await UserAccessControlService(db).create_user(
             email=str(data.email),
             password=data.password,
             full_name=data.full_name,
@@ -127,7 +127,7 @@ async def update_user(
     current_user: User = Depends(require_permission("users", "update")),
 ) -> UserListItemSchema:
     try:
-        user = await AccessControlService(db).update_user(
+        user = await UserAccessControlService(db).update_user(
             user_id,
             actor_id=current_user.id,
             full_name=data.full_name,
@@ -154,6 +154,9 @@ async def delete_user(
     current_user: User = Depends(require_permission("users", "delete")),
 ) -> None:
     try:
-        await AccessControlService(db).delete_user(user_id, actor_id=current_user.id)
+        await UserAccessControlService(db).delete_user(
+            user_id,
+            actor_id=current_user.id,
+        )
     except (AccessControlNotFoundError, AccessControlConflictError) as exc:
         _raise_access_error(exc)

@@ -8,12 +8,12 @@ from typing import NoReturn
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.application.services.access_control_service import (
+from src.application.services.access_control_errors import (
     AccessControlConflictError,
     AccessControlNotFoundError,
-    AccessControlService,
     AccessControlValidationError,
 )
+from src.application.services.role_access_control_service import RoleAccessControlService
 from src.domain.identity.models import Role, User
 from src.domain.identity.rbac import CUSTOM_ROLE_PERMISSION_KEYS, PERMISSIONS
 from src.infrastructure.db.session import get_db_session
@@ -63,7 +63,7 @@ async def list_roles(
     db: AsyncSession = Depends(get_db_session),
     _super_admin: User = Depends(require_permission("roles", "read")),
 ) -> RoleListResponseSchema:
-    roles, user_counts = await AccessControlService(db).list_roles()
+    roles, user_counts = await RoleAccessControlService(db).list_roles()
     return RoleListResponseSchema(
         items=[_serialize_role(role, user_counts.get(role.id, 0)) for role in roles],
         permissions=[
@@ -92,7 +92,7 @@ async def create_role(
     _super_admin: User = Depends(require_permission("roles", "create")),
 ) -> RoleSchema:
     try:
-        role = await AccessControlService(db).create_role(
+        role = await RoleAccessControlService(db).create_role(
             name=data.name,
             display_name=data.display_name,
             description=data.description,
@@ -111,7 +111,7 @@ async def update_role(
     _super_admin: User = Depends(require_permission("roles", "update")),
 ) -> RoleSchema:
     try:
-        role = await AccessControlService(db).update_role(
+        role = await RoleAccessControlService(db).update_role(
             role_id,
             display_name=data.display_name,
             description=data.description,
@@ -139,6 +139,6 @@ async def delete_role(
     _super_admin: User = Depends(require_permission("roles", "delete")),
 ) -> None:
     try:
-        await AccessControlService(db).delete_role(role_id)
+        await RoleAccessControlService(db).delete_role(role_id)
     except (AccessControlNotFoundError, AccessControlConflictError) as exc:
         _raise_access_error(exc)
