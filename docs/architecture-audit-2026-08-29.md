@@ -38,7 +38,7 @@ Stan na 2026-09-10 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **262 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend pytest | **263 passed**, 0 failures, 0 errors, 0 warnings |
 | Backend coverage | **84.06%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0016_person_names`, jeden head |
@@ -46,7 +46,7 @@ Stan na 2026-09-10 po kolejnych etapach refaktoryzacji:
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 161 plików źródłowych |
+| Ruff / strict mypy | PASS, mypy analizuje 165 plików źródłowych |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -258,6 +258,14 @@ Kolekcje GET/POST są jawnie rejestrowane w kompozytorze z powodu ograniczenia
 FastAPI dla pustych ścieżek potomnych, a statyczne `/orders/management` pozostaje
 przed publicznym catch-all `/{id_or_slug}`. Testy kontraktowe weryfikują granice
 Bearer wszystkich operacji oraz rzeczywiste `401` dla panelu bez tokenu.
+
+Geografia ma teraz niezależne komendy aplikacyjne oraz `GeographyService`, który
+jest właścicielem zapytań i zapisów krajów, diecezji, miejsc i kościołów bez
+przejmowania transakcji requestu. Schematy transportowe dziedziczą walidację wejścia
+z komend, a adapter HTTP został rozdzielony na publiczne odczyty i chronione zapisy.
+Główny router zmniejszył się z 214 do 51 linii i nie zawiera już SQL. Test OpenAPI
+chroni publiczny charakter czterech operacji GET oraz Bearer dla czterech POST;
+integracje nadal potwierdzają paginację i granicę unit-of-work.
 
 Powstał automatyczny CI z lintem, strict mypy, testami/coverage, audytem zależności,
 kontrolą migracji, buildami frontendów oraz smoke testem całego stosu produkcyjnego.
