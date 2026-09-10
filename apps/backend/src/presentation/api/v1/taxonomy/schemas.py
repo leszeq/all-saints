@@ -9,17 +9,15 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from src.application.commands.taxonomy import CreateCategoryCommand, CreateTagCommand
+
 # ==============================================================================
 # CATEGORY SCHEMAS
 # ==============================================================================
 
 
-class CategoryCreateSchema(BaseModel):
-    name_pl: str = Field(..., min_length=2, max_length=300)
-    name_en: str = Field(..., min_length=2, max_length=300)
-    description: str | None = None
-    parent_id: uuid.UUID | None = None
-    sort_order: int = 0
+class CategoryCreateSchema(CreateCategoryCommand):
+    pass
 
 
 class CategoryUpdateSchema(BaseModel):
@@ -44,10 +42,8 @@ class CategorySchema(CategoryCreateSchema):
 # ==============================================================================
 
 
-class TagCreateSchema(BaseModel):
-    name_pl: str = Field(..., min_length=2, max_length=200)
-    name_en: str = Field(..., min_length=2, max_length=200)
-    color: str | None = Field(None, max_length=7, description="Hex color e.g. #FF5733")
+class TagCreateSchema(CreateTagCommand):
+    pass
 
 
 class TagUpdateSchema(BaseModel):

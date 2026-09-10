@@ -38,7 +38,7 @@ Stan na 2026-09-10 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **263 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend pytest | **264 passed**, 0 failures, 0 errors, 0 warnings |
 | Backend coverage | **84.06%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0016_person_names`, jeden head |
@@ -46,7 +46,7 @@ Stan na 2026-09-10 po kolejnych etapach refaktoryzacji:
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 165 plików źródłowych |
+| Ruff / strict mypy | PASS, mypy analizuje 169 plików źródłowych |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -266,6 +266,14 @@ z komend, a adapter HTTP został rozdzielony na publiczne odczyty i chronione za
 Główny router zmniejszył się z 214 do 51 linii i nie zawiera już SQL. Test OpenAPI
 chroni publiczny charakter czterech operacji GET oraz Bearer dla czterech POST;
 integracje nadal potwierdzają paginację i granicę unit-of-work.
+
+Taksonomia korzysta teraz z `TaxonomyService` i niezależnych komend tworzenia
+kategorii oraz tagów. Serwis przejął zapytania słowników, paginację, tworzenie
+slugów i zapis w transakcji wywołującego, a warstwa HTTP została rozdzielona na
+publiczne odczyty oraz chronione operacje redakcyjne. Router agregujący zmniejszył
+się ze 159 do 40 linii i nie zawiera już SQL. Kontrakt OpenAPI gwarantuje publiczny
+dostęp do czterech słowników oraz Bearer dla tworzenia kategorii i tagów; istniejące
+integracje nadal chronią paginację i atomowość requestu.
 
 Powstał automatyczny CI z lintem, strict mypy, testami/coverage, audytem zależności,
 kontrolą migracji, buildami frontendów oraz smoke testem całego stosu produkcyjnego.
