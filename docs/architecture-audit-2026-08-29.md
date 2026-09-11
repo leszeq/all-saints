@@ -38,7 +38,7 @@ Stan na 2026-09-11 po kolejnych etapach refaktoryzacji:
 
 | Kontrola | Wynik po zmianach |
 | --- | --- |
-| Backend pytest | **279 passed**, 0 failures, 0 errors, 0 warnings |
+| Backend pytest | **282 passed**, 0 failures, 0 errors, 0 warnings |
 | Backend coverage | **84.06%**, wymagany próg 80% spełniony |
 | Testy integracyjne | izolowany PostgreSQL z realnymi JSONB, TSVECTOR i pgvector |
 | `alembic current` / heads | `0018_person_translation_search`, jeden head |
@@ -46,7 +46,7 @@ Stan na 2026-09-11 po kolejnych etapach refaktoryzacji:
 | `alembic check` | PASS na bazie developerskiej i świeżej bazie |
 | `pip-audit` | 0 znanych podatności |
 | `npm audit` | 0 znanych podatności w panelu i portalu |
-| Ruff / strict mypy | PASS, mypy analizuje 191 plików źródłowych |
+| Ruff / strict mypy | PASS, mypy analizuje 193 pliki źródłowe |
 | Admin i web | ESLint, TypeScript, produkcyjne buildy Webpack i krytyczne E2E: PASS |
 | Kontrakt błędów API | wspólny envelope z kodem, komunikatem, `detail`, `details` i `request_id` |
 | Granice tras Next.js | spójne `error`, `loading`, `not-found`; 404 odróżnione od awarii API |
@@ -218,6 +218,16 @@ po zmianie hasła, ale nadal nie wykonuje `commit` poza granicą requestu. Endpo
 sesji odpowiadają już tylko za cookie i mapowanie stabilnych błędów aplikacyjnych na
 dotychczasowe statusy HTTP. Integracje potwierdzają rotację rekordu, zachowanie tokenu
 nieaktywnego konta, audyt logoutu oraz brak nadpisania wcześniejszej daty unieważnienia.
+
+Logowanie korzysta teraz z `AuthenticationLoginService`, a odczyt użytkownika wraz
+z pełną projekcją RBAC ma jednego właściciela w `AuthenticationUserQueryService`.
+Warstwa aplikacyjna normalizuje e-mail, weryfikuje hasło i stan konta, zleca trwały
+audyt odmowy oraz rozpoczyna sesję; adapter HTTP zachował wyłącznie rate limiting,
+cookie i mapowanie błędów. Ta sama usługa zapytań zasila zależność Bearer, dlatego
+cały pion HTTP auth nie zawiera już bezpośrednich operacji SQL. Regresje obejmują
+także nieczuły na wielkość liter e-mail oraz stabilne odpowiedzi i audyt dla kont
+zablokowanych administracyjnie i czasowo, a test architektoniczny nie pozwala
+ponownie wprowadzić konstruktorów zapytań SQL do adapterów uwierzytelniania.
 
 Publiczne wyszukiwanie semantyczne i rekomendacje zostały wydzielone z modułu API
 AI razem ze wspólnymi schematami i dependency providera. Główny moduł zmniejszył

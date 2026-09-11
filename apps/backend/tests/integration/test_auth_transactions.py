@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock
 
 import pytest
@@ -68,7 +69,7 @@ async def test_successful_login_waits_for_request_unit_of_work(
                 response = await client.post(
                     "/api/v1/auth/login",
                     json={
-                        "email": user.email,
+                        "email": user.email.upper(),
                         "password": "CorrectPassword123!",
                     },
                 )
@@ -147,3 +148,59 @@ async def test_failed_login_counter_and_audit_survive_request_rollback(
     assert user.failed_login_attempts == 10
     assert user.locked_until is not None
     assert failure_audit.extra_metadata == {"reason": "invalid_credentials"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("user_status", "locked_until", "expected_detail", "audit_reason"),
+    [
+        (
+            UserStatus.BANNED,
+            None,
+            "Konto zostało zablokowane",
+            "account_banned",
+        ),
+        (
+            UserStatus.ACTIVE,
+            datetime.now(UTC) + timedelta(minutes=10),
+            "Zbyt wiele nieudanych prób logowania. Spróbuj za chwilę.",
+            "account_locked",
+        ),
+    ],
+)
+async def test_denied_account_state_has_stable_response_and_durable_audit(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+    user_status: UserStatus,
+    locked_until: datetime | None,
+    expected_detail: str,
+    audit_reason: str,
+) -> None:
+    user = _active_user(f"auth-{audit_reason}@example.com")
+    user.status = user_status
+    user.locked_until = locked_until
+    db_session.add(user)
+    await db_session.commit()
+    user_id = user.id
+    monkeypatch.setattr(auth_login, "_enforce_login_rate_limit", AsyncMock())
+
+    response = await async_client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": user.email,
+            "password": "CorrectPassword123!",
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == expected_detail
+    audit_log = (
+        await db_session.execute(
+            select(AuditLog).where(
+                AuditLog.user_id == user_id,
+                AuditLog.action == AuditAction.LOGIN_FAILED.value,
+            )
+        )
+    ).scalar_one()
+    assert audit_log.extra_metadata == {"reason": audit_reason}

@@ -47,6 +47,48 @@ class AuthenticationSessionService:
         self.db = db
         self._token_service = token_service
 
+    async def start(
+        self,
+        user: User,
+        *,
+        audit_context: AuditContext,
+        user_agent: str | None = None,
+        ip_address: str | None = None,
+    ) -> RotatedSession:
+        """Stage the initial refresh token and login audit for a user."""
+        raw_token, token_hash = self._token_service.create_refresh_token()
+        self.db.add(
+            RefreshToken(
+                user_id=user.id,
+                token_hash=token_hash,
+                expires_at=self._token_service.get_token_expiry("refresh"),
+                user_agent=user_agent,
+                ip_address=ip_address,
+            )
+        )
+        add_audit_log(
+            self.db,
+            context=replace(
+                audit_context,
+                user_id=user.id,
+                user_email=user.email,
+            ),
+            action=AuditAction.LOGIN,
+            resource_type="authentication",
+            resource_id=user.id,
+        )
+        await self.db.flush()
+        role_names = [user_role.role.name for user_role in user.roles if user_role.role]
+        return RotatedSession(
+            access_token=self._token_service.create_access_token(
+                user_id=user.id,
+                email=user.email,
+                roles=role_names,
+                password_changed_at=user.password_changed_at,
+            ),
+            refresh_token=raw_token,
+        )
+
     async def rotate(
         self,
         raw_token: str,

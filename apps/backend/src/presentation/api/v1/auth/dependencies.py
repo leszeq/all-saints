@@ -7,12 +7,11 @@ from collections.abc import Awaitable, Callable
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import InvalidTokenError
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
+from src.application.services.auth_user_query_service import AuthenticationUserQueryService
 from src.core.security import jwt_service
-from src.domain.identity.models import Role, RolePermission, User, UserRole
+from src.domain.identity.models import User
 from src.infrastructure.db.session import get_db_session
 
 bearer_scheme = HTTPBearer(
@@ -45,18 +44,7 @@ async def get_current_user(
     except InvalidTokenError:
         raise credentials_exception from None
 
-    result = await db.execute(
-        select(User)
-        .options(
-            selectinload(User.roles)
-            .selectinload(UserRole.role)
-            .selectinload(Role.permissions)
-            .selectinload(RolePermission.permission)
-        )
-        .where(User.id == payload.user_id)
-        .where(User.deleted_at.is_(None))
-    )
-    user = result.scalar_one_or_none()
+    user = await AuthenticationUserQueryService(db).find_by_id(payload.user_id)
 
     if user is None or not payload.matches_password_version(user.password_changed_at):
         raise credentials_exception

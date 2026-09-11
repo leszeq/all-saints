@@ -3,26 +3,19 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from loguru import logger
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
-from src.application.services.audit_service import add_audit_log
+from src.application.services.auth_login_service import (
+    AuthenticationLoginService,
+    BannedLoginAccountError,
+    InvalidLoginCredentialsError,
+    LockedLoginAccountError,
+)
 from src.application.services.auth_security_service import AuthenticationSecurityRecorder
 from src.core.config import settings
-from src.core.security import jwt_service, password_hasher
-from src.domain.identity.models import (
-    AuditAction,
-    RefreshToken,
-    Role,
-    User,
-    UserRole,
-    UserStatus,
-)
 from src.infrastructure.cache.redis_client import RateLimiter, RedisClient, get_redis
 from src.infrastructure.db.session import get_db_session, get_session_factory
 from src.presentation.api.v1.auth.schemas import LoginRequest, TokenResponse
@@ -109,91 +102,35 @@ async def login(
     """Authenticate a user, record the attempt and issue both token types."""
     await _enforce_login_rate_limit(credentials, request, response, redis)
 
-    user = (
-        await db.execute(
-            select(User)
-            .options(
-                selectinload(User.roles).selectinload(UserRole.role).selectinload(Role.permissions)
-            )
-            .where(User.email == credentials.email.lower())
-            .where(User.deleted_at.is_(None))
-        )
-    ).scalar_one_or_none()
-
-    auth_error = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Nieprawidłowy email lub hasło",
-    )
-    if user is None:
-        await security_recorder.record_login_failure(
-            context=auth_audit_context(request, user_email=credentials.email.lower()),
-            reason="invalid_credentials",
-        )
-        raise auth_error
-
-    if user.status == UserStatus.BANNED:
-        await security_recorder.record_login_failure(
-            context=auth_audit_context(request, user_id=user.id, user_email=user.email),
-            reason="account_banned",
-        )
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Konto zostało zablokowane",
-        )
-
-    if user.is_locked:
-        await security_recorder.record_login_failure(
-            context=auth_audit_context(request, user_id=user.id, user_email=user.email),
-            reason="account_locked",
-        )
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Zbyt wiele nieudanych prób logowania. Spróbuj za chwilę.",
-        )
-
-    if not password_hasher.verify(credentials.password, user.hashed_password):
-        account_locked = await security_recorder.record_login_failure(
-            context=auth_audit_context(request, user_id=user.id, user_email=user.email),
-            reason="invalid_credentials",
-            increment_attempts=True,
-        )
-        if account_locked:
-            logger.warning(f"Account locked: {user.email} (too many failed attempts)")
-        raise auth_error
-
-    user.failed_login_attempts = 0
-    user.locked_until = None
-    user.last_login_at = datetime.now(UTC)
-    role_names = [user_role.role.name for user_role in user.roles if user_role.role]
-    access_token = jwt_service.create_access_token(
-        user_id=user.id,
-        email=user.email,
-        roles=role_names,
-        password_changed_at=user.password_changed_at,
-    )
-
-    raw_refresh_token, token_hash = jwt_service.create_refresh_token()
-    db.add(
-        RefreshToken(
-            user_id=user.id,
-            token_hash=token_hash,
-            expires_at=jwt_service.get_token_expiry("refresh"),
+    try:
+        session = await AuthenticationLoginService(
+            db,
+            security_recorder=security_recorder,
+        ).authenticate(
+            email=credentials.email,
+            password=credentials.password,
+            audit_context=auth_audit_context(request),
             user_agent=request.headers.get("User-Agent"),
             ip_address=request.client.host if request.client else None,
         )
-    )
-    add_audit_log(
-        db,
-        context=auth_audit_context(request, user_id=user.id, user_email=user.email),
-        action=AuditAction.LOGIN,
-        resource_type="authentication",
-        resource_id=user.id,
-    )
-    await db.flush()
+    except InvalidLoginCredentialsError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Nieprawidłowy email lub hasło",
+        ) from exc
+    except BannedLoginAccountError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Konto zostało zablokowane",
+        ) from exc
+    except LockedLoginAccountError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Zbyt wiele nieudanych prób logowania. Spróbuj za chwilę.",
+        ) from exc
 
-    set_refresh_cookie(response, raw_refresh_token)
-    logger.info(f"User logged in: {user.email}")
+    set_refresh_cookie(response, session.refresh_token)
     return TokenResponse(
-        access_token=access_token,
+        access_token=session.access_token,
         expires_in=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )

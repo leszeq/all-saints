@@ -7,6 +7,7 @@ from pathlib import Path
 
 BACKEND_ROOT = Path(__file__).parents[2]
 SRC_ROOT = BACKEND_ROOT / "src"
+AUTH_PRESENTATION_ROOT = SRC_ROOT / "presentation" / "api" / "v1" / "auth"
 
 
 def _resolved_import_module(path: Path, node: ast.ImportFrom) -> str:
@@ -58,3 +59,25 @@ def test_relative_presentation_imports_are_resolved() -> None:
         _resolved_import_module(SRC_ROOT / "application" / "services" / "example.py", node)
         == "src.presentation.api"
     )
+
+
+def test_authentication_http_adapters_do_not_own_sql_queries() -> None:
+    """Keep authentication persistence in application services."""
+    violations: dict[str, set[str]] = {}
+    for path in AUTH_PRESENTATION_ROOT.glob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        imports: set[str] = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom) and (node.module or "").startswith("sqlalchemy"):
+                module = node.module or ""
+                for alias in node.names:
+                    if module != "sqlalchemy.ext.asyncio" or alias.name != "AsyncSession":
+                        imports.add(f"{module}.{alias.name}")
+            elif isinstance(node, ast.Import):
+                imports.update(
+                    alias.name for alias in node.names if alias.name.startswith("sqlalchemy")
+                )
+        if imports:
+            violations[path.name] = imports
+
+    assert violations == {}
