@@ -28,7 +28,7 @@ pgvector = "^0.3.0"         # vector similarity search
 # ==============================================================================
 # CACHING & MESSAGING
 # ==============================================================================
-redis = { version = "^5.0.4", extras = ["hiredis"] }
+redis = { version = ">=5.0.4,<7.0.0", extras = ["hiredis"] }
 celery = { version = "^5.4.0", extras = ["redis"] }
 flower = "^2.0.1"
 
