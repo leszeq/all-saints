@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query, Response, status
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.application.services.source_catalogue_service import SourceCatalogueService
+from src.application.services.source_catalogue_service import (
+    SourceCatalogueNotFoundError,
+    SourceCatalogueService,
+)
 from src.domain.identity.models import User
 from src.infrastructure.db.session import get_db_session
 from src.presentation.api.pagination import (
@@ -20,8 +25,10 @@ from src.presentation.api.v1.sources.person_links import router as person_links_
 from src.presentation.api.v1.sources.schemas import (
     BibliographyCreateSchema,
     BibliographySchema,
+    BibliographyUpdateSchema,
     HistoricalSourceCreateSchema,
     HistoricalSourceSchema,
+    HistoricalSourceUpdateSchema,
     SourceStatsSchema,
 )
 
@@ -78,6 +85,24 @@ async def create_bibliography(
     return BibliographySchema.model_validate(bibliography)
 
 
+@router.patch(
+    "/bibliography/{bibliography_id}",
+    response_model=BibliographySchema,
+    summary="Update bibliography entry",
+)
+async def update_bibliography(
+    bibliography_id: uuid.UUID,
+    data: BibliographyUpdateSchema,
+    db: AsyncSession = Depends(get_db_session),
+    _user: User = Depends(require_permission("sources", "update")),
+) -> BibliographySchema:
+    try:
+        bibliography = await SourceCatalogueService(db).update_bibliography(bibliography_id, data)
+    except SourceCatalogueNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return BibliographySchema.model_validate(bibliography)
+
+
 # ==============================================================================
 # HISTORICAL SOURCES
 # ==============================================================================
@@ -117,6 +142,24 @@ async def create_historical_source(
     _user: User = Depends(require_permission("sources", "create")),
 ) -> HistoricalSourceSchema:
     source = await SourceCatalogueService(db).create_historical_source(data)
+    return HistoricalSourceSchema.model_validate(source)
+
+
+@router.patch(
+    "/historical-sources/{source_id}",
+    response_model=HistoricalSourceSchema,
+    summary="Update historical source",
+)
+async def update_historical_source(
+    source_id: uuid.UUID,
+    data: HistoricalSourceUpdateSchema,
+    db: AsyncSession = Depends(get_db_session),
+    _user: User = Depends(require_permission("sources", "update")),
+) -> HistoricalSourceSchema:
+    try:
+        source = await SourceCatalogueService(db).update_historical_source(source_id, data)
+    except SourceCatalogueNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     return HistoricalSourceSchema.model_validate(source)
 
 

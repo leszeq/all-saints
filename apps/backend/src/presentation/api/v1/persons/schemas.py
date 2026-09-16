@@ -18,6 +18,7 @@ from src.domain.hagiography.models import (
     PersonType,
     PublicationStatus,
 )
+from src.presentation.api.v1.sources.public_schemas import PublicPersonSourceSchema
 
 # Input schemas are owned by the application layer and re-exported here to keep
 # existing API imports and OpenAPI component names stable.
@@ -169,6 +170,7 @@ class PersonDetailSchema(PersonListItemSchema):
     aliases: list[PersonAliasSchema] = Field(default_factory=list)
     patronages: list[PersonPatronageSchema] = Field(default_factory=list)
     orders: list[PersonOrderMembershipSchema] = Field(default_factory=list)
+    sources: list[PublicPersonSourceSchema] = Field(default_factory=list)
     beatification: PersonBeatificationSchema | None = None
     canonization: PersonCanonizationSchema | None = None
 

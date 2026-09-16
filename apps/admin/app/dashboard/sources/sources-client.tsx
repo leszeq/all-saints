@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Archive,
   BadgeCheck,
@@ -11,11 +11,15 @@ import {
   FileText,
   Image as ImageIcon,
   Link2,
+  Pencil,
   RefreshCw,
   Search,
   ShieldAlert,
 } from "lucide-react";
+import { SourceEditorDialog } from "@/components/sources/source-editor-dialog";
+import { useAdminSystemCopy } from "@/components/admin-system-copy-context";
 import { sourcesApi } from "@/lib/api";
+import { formatAdminApiError } from "@/lib/i18n/api-errors";
 import { formatAdminDateTime } from "@/lib/i18n/format";
 import type {
   AdminAvatarLicenseKey,
@@ -24,6 +28,7 @@ import type {
   AdminSourcesHubDictionary,
   AdminSourceTypeKey,
 } from "@/lib/i18n/types";
+import { useAuthStore } from "@/lib/store/auth";
 
 type ApiRecord = Record<string, unknown>;
 export type SourcesInitialLicenseFilter = "" | "unknown";
@@ -90,8 +95,13 @@ export function SourcesClient({
   domainCopy: AdminDomainDictionary;
   locale: string;
 }) {
+  const queryClient = useQueryClient();
+  const { apiErrors } = useAdminSystemCopy();
   const [search, setSearch] = useState("");
+  const [editedSource, setEditedSource] = useState<ApiRecord | null>(null);
+  const [editedSourceIsHistorical, setEditedSourceIsHistorical] = useState(false);
   const licenseFilter = initialLicenseFilter;
+  const canUpdateSources = useAuthStore((state) => state.hasPermission("sources:update"));
 
   const bibliographyQuery = useQuery({
     queryKey: ["sources", "bibliography", search],
@@ -151,6 +161,27 @@ export function SourcesClient({
   const digitizedCount = historicalSources.filter((source) => source.is_digitized).length;
   const numberFormatter = new Intl.NumberFormat(locale);
 
+  const updateSourceMutation = useMutation({
+    mutationFn: ({
+      id,
+      historical,
+      payload,
+    }: {
+      id: string;
+      historical: boolean;
+      payload: Record<string, string | number | boolean | null>;
+    }) =>
+      historical
+        ? sourcesApi.updateHistoricalSource(id, payload)
+        : sourcesApi.updateBibliography(id, payload),
+    onSuccess: async (_data, variables) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["sources", variables.historical ? "historical" : "bibliography"],
+      });
+      setEditedSource(null);
+    },
+  });
+
   const refreshAll = () => {
     void Promise.all([
       bibliographyQuery.refetch(),
@@ -159,6 +190,12 @@ export function SourcesClient({
       unknownImagesQuery.refetch(),
       documentsQuery.refetch(),
     ]);
+  };
+
+  const openEditor = (source: ApiRecord, historical: boolean) => {
+    updateSourceMutation.reset();
+    setEditedSourceIsHistorical(historical);
+    setEditedSource(source);
   };
 
   return (
@@ -263,13 +300,14 @@ export function SourcesClient({
                   <th className="px-4 py-3">{copy.bibliography.columns.year}</th>
                   <th className="px-4 py-3">{copy.bibliography.columns.score}</th>
                   <th className="px-4 py-3">{copy.bibliography.columns.updated}</th>
+                  {canUpdateSources && <th className="px-4 py-3"><span className="sr-only">{copy.editor.editAction}</span></th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {bibliographyQuery.isLoading ? (
-                  <EmptyRow colSpan={5} label={copy.bibliography.loading} />
+                  <EmptyRow colSpan={canUpdateSources ? 6 : 5} label={copy.bibliography.loading} />
                 ) : bibliography.length === 0 ? (
-                  <EmptyRow colSpan={5} label={copy.bibliography.empty} />
+                  <EmptyRow colSpan={canUpdateSources ? 6 : 5} label={copy.bibliography.empty} />
                 ) : (
                   bibliography.map((source) => (
                     <tr key={String(source.id)} className="hover:bg-muted/30">
@@ -302,6 +340,13 @@ export function SourcesClient({
                       <td className="px-4 py-3 text-xs text-muted-foreground">
                         {formatAdminDateTime(source.updated_at as string, locale)}
                       </td>
+                      {canUpdateSources && (
+                        <td className="px-4 py-3 text-right">
+                          <button type="button" onClick={() => openEditor(source, false)} className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10">
+                            <Pencil className="h-3.5 w-3.5" /> {copy.editor.editAction}
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}
@@ -324,13 +369,14 @@ export function SourcesClient({
                   <th className="px-4 py-3">{copy.historical.columns.dating}</th>
                   <th className="px-4 py-3">{copy.historical.columns.digitization}</th>
                   <th className="px-4 py-3">{copy.historical.columns.updated}</th>
+                  {canUpdateSources && <th className="px-4 py-3"><span className="sr-only">{copy.editor.editAction}</span></th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {historicalQuery.isLoading ? (
-                  <EmptyRow colSpan={5} label={copy.historical.loading} />
+                  <EmptyRow colSpan={canUpdateSources ? 6 : 5} label={copy.historical.loading} />
                 ) : historicalSources.length === 0 ? (
-                  <EmptyRow colSpan={5} label={copy.historical.empty} />
+                  <EmptyRow colSpan={canUpdateSources ? 6 : 5} label={copy.historical.empty} />
                 ) : (
                   historicalSources.map((source) => (
                     <tr key={String(source.id)} className="hover:bg-muted/30">
@@ -358,6 +404,13 @@ export function SourcesClient({
                       <td className="px-4 py-3 text-xs text-muted-foreground">
                         {formatAdminDateTime(source.updated_at as string, locale)}
                       </td>
+                      {canUpdateSources && (
+                        <td className="px-4 py-3 text-right">
+                          <button type="button" onClick={() => openEditor(source, true)} className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10">
+                            <Pencil className="h-3.5 w-3.5" /> {copy.editor.editAction}
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}
@@ -366,6 +419,21 @@ export function SourcesClient({
           </div>
         </article>
       </section>
+
+      <SourceEditorDialog
+        key={editedSource ? `${String(editedSource.id)}-${editedSourceIsHistorical}` : "closed"}
+        open={editedSource !== null}
+        source={editedSource}
+        historical={editedSourceIsHistorical}
+        pending={updateSourceMutation.isPending}
+        error={updateSourceMutation.isError ? formatAdminApiError(updateSourceMutation.error, apiErrors) : null}
+        copy={copy.editor}
+        domainCopy={domainCopy}
+        onOpenChange={(open) => {
+          if (!open && !updateSourceMutation.isPending) setEditedSource(null);
+        }}
+        onSubmit={(id, payload) => updateSourceMutation.mutate({ id, historical: editedSourceIsHistorical, payload })}
+      />
 
       <section className="grid gap-5 xl:grid-cols-2">
         <article id="media" className="admin-card scroll-mt-6 overflow-hidden">

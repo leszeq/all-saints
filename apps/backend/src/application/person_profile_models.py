@@ -145,10 +145,21 @@ class PersonProfileDocument(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class ExistingPersonProfile(BaseModel):
+    """Explicit overwrite target selected during validation, never from file IDs."""
+
+    id: uuid.UUID
+    canonical_name: str
+    slug: str
+    status: str
+    version: int
+
+
 class PersonProfileValidationResult(BaseModel):
     """Business validation result shown before an import is persisted."""
 
     can_import: bool
     errors: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
+    existing_person: ExistingPersonProfile | None = None
     normalized_document: PersonProfileDocument

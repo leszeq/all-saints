@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import uuid
+from typing import cast
+
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.commands.source_catalogue import (
     CreateBibliographyCommand,
     CreateHistoricalSourceCommand,
+    UpdateBibliographyCommand,
+    UpdateHistoricalSourceCommand,
 )
 from src.application.services.pagination import execute_page
 from src.application.source_models import SourceStatsResult
@@ -19,6 +24,10 @@ from src.domain.sources.models import (
     ImageLicense,
     PersonSource,
 )
+
+
+class SourceCatalogueNotFoundError(ValueError):
+    """Raised when an active catalogue source cannot be found."""
 
 
 class SourceCatalogueService:
@@ -118,6 +127,20 @@ class SourceCatalogueService:
         await self.db.refresh(bibliography)
         return bibliography
 
+    async def update_bibliography(
+        self,
+        bibliography_id: uuid.UUID,
+        data: UpdateBibliographyCommand,
+    ) -> Bibliography:
+        """Update one active bibliography entry without affecting its assignments."""
+        bibliography = await self._get_active(Bibliography, bibliography_id)
+        assert isinstance(bibliography, Bibliography)
+        for field, value in data.model_dump(exclude_unset=True, mode="json").items():
+            setattr(bibliography, field, value)
+        await self.db.flush()
+        await self.db.refresh(bibliography)
+        return bibliography
+
     async def list_historical_sources(
         self,
         *,
@@ -145,3 +168,31 @@ class SourceCatalogueService:
         await self.db.flush()
         await self.db.refresh(historical_source)
         return historical_source
+
+    async def update_historical_source(
+        self,
+        source_id: uuid.UUID,
+        data: UpdateHistoricalSourceCommand,
+    ) -> HistoricalSource:
+        """Update one active historical source without affecting its assignments."""
+        historical_source = await self._get_active(HistoricalSource, source_id)
+        assert isinstance(historical_source, HistoricalSource)
+        for field, value in data.model_dump(exclude_unset=True, mode="json").items():
+            setattr(historical_source, field, value)
+        await self.db.flush()
+        await self.db.refresh(historical_source)
+        return historical_source
+
+    async def _get_active(
+        self,
+        model: type[Bibliography] | type[HistoricalSource],
+        source_id: uuid.UUID,
+    ) -> Bibliography | HistoricalSource:
+        source = (
+            await self.db.execute(
+                select(model).where(model.id == source_id, model.deleted_at.is_(None))
+            )
+        ).scalar_one_or_none()
+        if source is None:
+            raise SourceCatalogueNotFoundError("Źródło nie istnieje")
+        return cast(Bibliography | HistoricalSource, source)

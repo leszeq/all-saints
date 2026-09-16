@@ -7,6 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.application.commands.source_catalogue import (
     CreateBibliographyCommand,
     CreateHistoricalSourceCommand,
+    UpdateBibliographyCommand,
+    UpdateHistoricalSourceCommand,
 )
 from src.application.services.source_catalogue_service import SourceCatalogueService
 from src.domain.hagiography.models import Gender, Person, PersonType, PublicationStatus
@@ -49,6 +51,42 @@ async def test_source_catalogue_creates_and_filters_both_source_kinds(
     assert [item.id for item in bibliography_items] == [bibliography.id]
     assert historical_total == 1
     assert [item.id for item in historical_items] == [historical_source.id]
+
+
+async def test_source_catalogue_updates_links_without_replacing_records(
+    db_session: AsyncSession,
+) -> None:
+    service = SourceCatalogueService(db_session)
+    bibliography = await service.create_bibliography(
+        CreateBibliographyCommand(title="Rita da Cascia", source_type="website")
+    )
+    historical_source = await service.create_historical_source(
+        CreateHistoricalSourceCommand(title="Vita sanctae Ritae")
+    )
+
+    updated_bibliography = await service.update_bibliography(
+        bibliography.id,
+        UpdateBibliographyCommand(
+            url="https://www.santiebeati.it/dettaglio/56950",
+            url_access_date="2026-09-14",
+            reliability_score=5,
+        ),
+    )
+    updated_historical = await service.update_historical_source(
+        historical_source.id,
+        UpdateHistoricalSourceCommand(
+            digitization_url="https://archive.example.test/vita-ritae",
+            is_digitized=True,
+        ),
+    )
+
+    assert updated_bibliography.id == bibliography.id
+    assert updated_bibliography.url == "https://www.santiebeati.it/dettaglio/56950"
+    assert updated_bibliography.url_access_date == "2026-09-14"
+    assert updated_bibliography.reliability_score == 5
+    assert updated_historical.id == historical_source.id
+    assert updated_historical.digitization_url == "https://archive.example.test/vita-ritae"
+    assert updated_historical.is_digitized is True
 
 
 async def test_public_source_stats_exclude_unpublished_person_relations(

@@ -25,6 +25,7 @@ from src.application.services.person_profile_service import PersonProfileService
 from src.application.services.person_query_service import PersonQueryService
 from src.application.services.person_service import PersonService
 from src.domain.hagiography.models import PersonOrder, PublicationStatus
+from src.domain.identity.models import AuditLog
 from src.domain.liturgy.models import CalendarScope, Feast, LiturgicalCalendar
 from src.domain.sources.models import Bibliography, PersonSource, SourceType
 
@@ -155,3 +156,95 @@ async def test_profile_export_validation_and_import_round_trip(
     )
     assert duplicate_validation.can_import is False
     assert "samej nazwie" in duplicate_validation.errors[0]
+
+    # Replace the original (primary) profile, preserving its identity and history.
+    replacement = await PersonProfileExportService(db_session).export_profile(loaded)
+    replacement.profile.summary_pl = "Nowe streszczenie z pliku JSON"
+    replacement.orders[0].entry_date = "1902"
+    replacement.sources[0].link.page_reference = "sekcja 2"
+    old_id, old_slug, old_version = loaded.id, loaded.slug, loaded.version
+    overwrite_validation = await PersonProfileImportValidator(db_session).validate_import(
+        replacement,
+        overwrite_person_id=old_id,
+        expected_version=old_version,
+    )
+    assert overwrite_validation.can_import
+    assert overwrite_validation.normalized_document.feasts[0].is_primary
+    assert not overwrite_validation.warnings
+    overwritten = await PersonProfileService(db_session).import_profile(
+        replacement,
+        overwrite_person_id=old_id,
+        expected_version=old_version,
+        user_id=None,
+        audit_context=AuditContext(),
+        granted_permissions={"persons:update"},
+    )
+    assert (overwritten.id, overwritten.slug) == (old_id, old_slug)
+    assert overwritten.version > old_version
+    assert overwritten.summary_pl == "Nowe streszczenie z pliku JSON"
+    assert len(overwritten.orders) == 1
+    assert overwritten.orders[0].entry_date == "1902"
+    active_feasts = list(
+        (
+            await db_session.scalars(
+                select(Feast).where(
+                    Feast.person_id == old_id,
+                    Feast.deleted_at.is_(None),
+                )
+            )
+        ).all()
+    )
+    assert len(active_feasts) == 1 and active_feasts[0].is_primary
+    active_sources = list(
+        (
+            await db_session.scalars(
+                select(PersonSource).where(
+                    PersonSource.person_id == old_id,
+                    PersonSource.deleted_at.is_(None),
+                )
+            )
+        ).all()
+    )
+    assert len(active_sources) == 1 and active_sources[0].page_reference == "sekcja 2"
+    audit = (
+        await db_session.scalars(
+            select(AuditLog).where(
+                AuditLog.resource_id == old_id,
+                AuditLog.extra_metadata["operation"].astext == "profile_json_overwrite",
+            )
+        )
+    ).one()
+    assert audit.old_value["orders"][0]["entry_date"] == "1901"
+    assert audit.new_value["orders"][0]["entry_date"] == "1902"
+    assert audit.extra_metadata["previous_document"]["feasts"][0]["is_primary"]
+
+    # An empty list replaces old links, without deleting the shared catalogues.
+    replacement.orders = []
+    replacement.feasts = []
+    replacement.sources = []
+    overwritten = await PersonProfileService(db_session).import_profile(
+        replacement,
+        overwrite_person_id=old_id,
+        expected_version=overwritten.version,
+        user_id=None,
+        audit_context=AuditContext(),
+        granted_permissions={"persons:update"},
+    )
+    assert not overwritten.orders
+    assert not (
+        await db_session.scalars(
+            select(Feast).where(
+                Feast.person_id == old_id,
+                Feast.deleted_at.is_(None),
+            )
+        )
+    ).all()
+    assert not (
+        await db_session.scalars(
+            select(PersonSource).where(
+                PersonSource.person_id == old_id,
+                PersonSource.deleted_at.is_(None),
+            )
+        )
+    ).all()
+    assert await db_session.get(Bibliography, bibliography.id) is not None

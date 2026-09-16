@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.person_profile_models import (
@@ -20,6 +22,7 @@ from src.application.services.person_profile_service import (
     PersonProfileService,
 )
 from src.application.services.person_query_service import PersonQueryService
+from src.application.services.person_service import PersonVersionConflictError
 from src.domain.identity.models import User
 from src.infrastructure.db.session import get_db_session
 from src.presentation.api.v1.auth.router import require_permission
@@ -56,31 +59,56 @@ async def export_person_profile(
 )
 async def validate_person_profile_import(
     document: PersonProfileDocument,
+    overwrite_person_id: uuid.UUID | None = Query(None),
+    expected_version: int | None = Query(None, ge=1),
     db: AsyncSession = Depends(get_db_session),
     _user: User = Depends(require_permission("import", "create")),
 ) -> PersonProfileValidationResult:
     """Validate schema, duplicates, and database references without writing data."""
-    return await PersonProfileImportValidator(db).validate_import(document)
+    if overwrite_person_id is not None and not _user.has_permission("persons", "update"):
+        raise HTTPException(status_code=403, detail="Nadpisanie profilu wymaga persons:update")
+    result = await PersonProfileImportValidator(db).validate_import(
+        document,
+        overwrite_person_id=overwrite_person_id,
+        expected_version=expected_version,
+    )
+    if (
+        overwrite_person_id is not None
+        and result.existing_person is not None
+        and result.existing_person.status == "published"
+        and not _user.has_permission("persons", "publish")
+    ):
+        raise HTTPException(
+            status_code=403, detail="Nadpisanie opublikowanego profilu wymaga persons:publish"
+        )
+    return result
 
 
 @router.post(
     "/import",
     response_model=PersonDetailSchema,
     status_code=status.HTTP_201_CREATED,
+    responses={200: {"model": PersonDetailSchema, "description": "Existing profile overwritten"}},
     summary="Import a validated person profile JSON document",
 )
 async def import_person_profile(
     document: PersonProfileDocument,
     request: Request,
+    response: Response,
+    overwrite_person_id: uuid.UUID | None = Query(None),
+    expected_version: int | None = Query(None, ge=1),
     db: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(require_permission("import", "create")),
 ) -> PersonDetailSchema:
-    """Create an imported person as a draft together with supported relations."""
+    """Create a draft or explicitly overwrite a versioned existing profile."""
     try:
         person = await PersonProfileService(db).import_profile(
             document,
             user_id=current_user.id,
             audit_context=audit_context_from_request(request, current_user),
+            overwrite_person_id=overwrite_person_id,
+            expected_version=expected_version,
+            granted_permissions=current_user.get_permissions(),
         )
     except PersonProfileImportError as exc:
         raise HTTPException(
@@ -91,4 +119,10 @@ async def import_person_profile(
                 "warnings": exc.validation.warnings,
             },
         ) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except PersonVersionConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    if overwrite_person_id is not None:
+        response.status_code = status.HTTP_200_OK
     return PersonDetailSchema.model_validate(person)

@@ -15,13 +15,13 @@ function isRealRecurringDate(month: number, day: number) {
   return value.getUTCMonth() === month - 1 && value.getUTCDate() === day;
 }
 
-function normalizeAliasForComparison(value: string) {
+export function normalizeAliasForComparison(value: string) {
   return value
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\p{M}/gu, "")
     .replace(/[łŁ]/g, "l")
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim();
 }
 

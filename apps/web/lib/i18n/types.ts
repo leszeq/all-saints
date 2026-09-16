@@ -410,6 +410,26 @@ export interface WebDictionary {
     prayerMissing: string;
     iconographicAttributes: string;
     iconographicAttributesMissing: string;
+    sources: {
+      title: string;
+      description: string;
+      empty: string;
+      primary: string;
+      editor: string;
+      edition: string;
+      volume: string;
+      pages: string;
+      reference: string;
+      accessed: string;
+      repository: string;
+      callNumber: string;
+      dateRange: string;
+      open: string;
+      digitization: string;
+      openDoi: string;
+      newTab: string;
+      offline: string;
+    };
   };
 }
 

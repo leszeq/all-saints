@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import date
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.person_profile_models import (
+    ExistingPersonProfile,
     PersonProfileDocument,
     PersonProfileValidationResult,
 )
@@ -23,31 +25,62 @@ class PersonProfileImportValidator:
         self.db = db
 
     async def validate_import(
-        self, document: PersonProfileDocument
+        self,
+        document: PersonProfileDocument,
+        *,
+        overwrite_person_id: uuid.UUID | None = None,
+        expected_version: int | None = None,
     ) -> PersonProfileValidationResult:
         """Check duplicates and every database reference without mutating data."""
         normalized = document.model_copy(deep=True)
         warnings: list[str] = []
         errors: list[str] = []
-        if normalized.profile.status != PublicationStatus.DRAFT:
+        if overwrite_person_id is None and normalized.profile.status != PublicationStatus.DRAFT:
             warnings.append(
                 "Status z pliku zostanie zmieniony na szkic; import nie omija procesu redakcyjnego."
             )
             normalized.profile.status = PublicationStatus.DRAFT
 
-        duplicate = (
-            await self.db.execute(
-                select(Person.id)
-                .where(
-                    Person.deleted_at.is_(None),
-                    func.lower(Person.canonical_name)
-                    == normalized.profile.canonical_name.strip().lower(),
+        duplicates = list(
+            (
+                await self.db.execute(
+                    select(Person)
+                    .where(
+                        Person.deleted_at.is_(None),
+                        func.lower(Person.canonical_name)
+                        == normalized.profile.canonical_name.strip().lower(),
+                    )
+                    .limit(2)
                 )
-                .limit(1)
+            ).scalars()
+        )
+        duplicate = duplicates[0] if len(duplicates) == 1 else None
+        existing_person = (
+            ExistingPersonProfile(
+                id=duplicate.id,
+                canonical_name=duplicate.canonical_name,
+                slug=duplicate.slug,
+                status=duplicate.status,
+                version=duplicate.version,
             )
-        ).scalar_one_or_none()
-        if duplicate is not None:
+            if duplicate is not None
+            else None
+        )
+        if len(duplicates) > 1:
+            errors.append("Istnieje kilka profili o tej nazwie. Nadpisanie jest niejednoznaczne.")
+        elif overwrite_person_id is not None:
+            if duplicate is None or duplicate.id != overwrite_person_id:
+                errors.append("Profil do nadpisania nie odpowiada plikowi lub już nie istnieje.")
+            elif expected_version is None or expected_version != duplicate.version:
+                errors.append(
+                    "Profil zmienił się od walidacji. Wczytaj plik ponownie i sprawdź zmiany."
+                )
+            else:
+                normalized.profile.status = PublicationStatus(duplicate.status)
+        elif duplicate is not None:
             errors.append("Aktywny profil o tej samej nazwie kanonicznej już istnieje.")
+        elif expected_version is not None:
+            errors.append("Wersja rekordu wymaga wskazania profilu do nadpisania.")
 
         reference_checks = (
             ("birth_country_id", Country, "Kraj urodzenia"),
@@ -120,6 +153,13 @@ class PersonProfileImportValidator:
                         Feast.day == entry.day,
                         Feast.is_primary.is_(True),
                         Feast.deleted_at.is_(None),
+                        # The target's assignments will be replaced, so its own
+                        # primary entry does not conflict with the imported one.
+                        (
+                            Feast.person_id.is_distinct_from(overwrite_person_id)
+                            if overwrite_person_id is not None
+                            else true()
+                        ),
                     )
                     .limit(1)
                 )
@@ -136,5 +176,6 @@ class PersonProfileImportValidator:
             can_import=not errors,
             errors=errors,
             warnings=warnings,
+            existing_person=existing_person,
             normalized_document=normalized,
         )

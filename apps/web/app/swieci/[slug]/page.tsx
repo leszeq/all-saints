@@ -18,6 +18,8 @@ import { DEFAULT_WEB_UI_LOCALE } from "@/lib/i18n/config";
 import { getWebDictionary } from "@/lib/i18n/dictionaries";
 import { resolveDictionaryLabel, resolveDictionaryValue } from "@/lib/i18n/labels";
 import { readPublicPersonContent } from "@/lib/person-content";
+import { PersonSources } from "@/components/person-sources";
+import type { PublicPersonSource } from "@/lib/person-sources";
 
 interface PageProps {
   params: Promise<{
@@ -396,6 +398,7 @@ export default async function PersonDetailPage({ params }: PageProps) {
             )}
           </div>
         </div>
+        <PersonSources sources={Array.isArray(person.sources) ? person.sources as PublicPersonSource[] : []} copy={copy.sources} />
       </section>
     </article>
   );

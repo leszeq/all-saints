@@ -210,8 +210,10 @@ export const personsApi = {
   restore: (id: string) => api.post(`/persons/${id}/restore`),
   versions: (id: string) => api.get(`/persons/${id}/versions`),
   exportProfile: (id: string) => api.get(`/persons/admin/${id}/export`),
-  validateProfileImport: (data: unknown) => api.post("/persons/import/validate", data),
-  importProfile: (data: unknown) => api.post("/persons/import", data),
+  validateProfileImport: (data: unknown, params?: { overwrite_person_id: string; expected_version: number }) =>
+    api.post("/persons/import/validate", data, { params }),
+  importProfile: (data: unknown, params?: { overwrite_person_id: string; expected_version: number }) =>
+    api.post("/persons/import", data, { params }),
 };
 
 export const editorialApi = {
@@ -311,8 +313,12 @@ export const popesApi = {
 export const sourcesApi = {
   bibliography: (params?: Record<string, unknown>) =>
     api.get("/sources/bibliography", { params }),
+  updateBibliography: (id: string, data: unknown) =>
+    api.patch(`/sources/bibliography/${id}`, data),
   historicalSources: (params?: Record<string, unknown>) =>
     api.get("/sources/historical-sources", { params }),
+  updateHistoricalSource: (id: string, data: unknown) =>
+    api.patch(`/sources/historical-sources/${id}`, data),
   personSources: (personId: string) =>
     api.get(`/sources/person-links/${personId}`),
   assignPersonSource: (personId: string, data: unknown) =>

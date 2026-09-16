@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.services.person_localization import resolve_person_content
 from src.application.services.person_query_service import PersonQueryService
+from src.application.services.person_source_service import PersonSourceService
 from src.domain.hagiography.models import (
     Era,
     EraPeriod,
@@ -26,6 +27,7 @@ from src.presentation.api.v1.persons.schemas import (
     PersonListResponseSchema,
     PersonLocalizedSummarySchema,
 )
+from src.presentation.api.v1.sources.public_schemas import PublicPersonSourceSchema
 
 router = APIRouter()
 
@@ -120,4 +122,7 @@ async def get_person(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Osoba nie została znaleziona",
         )
-    return _localized_detail(person, locale)
+    links = await PersonSourceService(db).list_sources(person.id)
+    payload = _localized_detail(person, locale)
+    payload.sources = [PublicPersonSourceSchema.from_link(link) for link in links]
+    return payload

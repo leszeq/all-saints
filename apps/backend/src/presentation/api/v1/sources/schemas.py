@@ -17,8 +17,10 @@ from src.application.commands.person_sources import (
 from src.application.commands.source_catalogue import (
     CreateBibliographyCommand,
     CreateHistoricalSourceCommand,
+    UpdateBibliographyCommand,
+    UpdateHistoricalSourceCommand,
 )
-from src.domain.sources.models import DocumentType, ImageLicense, SourceType
+from src.domain.sources.models import DocumentType, ImageLicense
 
 # ==============================================================================
 # BIBLIOGRAPHY SCHEMAS
@@ -29,26 +31,8 @@ class BibliographyCreateSchema(CreateBibliographyCommand):
     """HTTP input for bibliography creation."""
 
 
-class BibliographyUpdateSchema(BaseModel):
-    source_type: SourceType | None = None
-    title: str | None = Field(None, min_length=2, max_length=1000)
-    subtitle: str | None = None
-    authors: str | None = None
-    editor: str | None = None
-    publisher: str | None = None
-    place_of_publication: str | None = None
-    year: int | None = None
-    edition: str | None = None
-    volume: str | None = None
-    pages: str | None = None
-    isbn: str | None = None
-    issn: str | None = None
-    doi: str | None = None
-    url: str | None = None
-    language: str | None = None
-    abstract: str | None = None
-    reliability_score: int | None = Field(None, ge=1, le=5)
-    notes: str | None = None
+class BibliographyUpdateSchema(UpdateBibliographyCommand):
+    """HTTP input for bibliography updates."""
 
 
 class BibliographySchema(BibliographyCreateSchema):
@@ -68,17 +52,8 @@ class HistoricalSourceCreateSchema(CreateHistoricalSourceCommand):
     """HTTP input for historical-source creation."""
 
 
-class HistoricalSourceUpdateSchema(BaseModel):
-    title: str | None = Field(None, min_length=2, max_length=1000)
-    original_title: str | None = None
-    source_type: SourceType | None = None
-    repository: str | None = None
-    call_number: str | None = None
-    date_range: str | None = None
-    language: str | None = None
-    description: str | None = None
-    digitization_url: str | None = None
-    is_digitized: bool | None = None
+class HistoricalSourceUpdateSchema(UpdateHistoricalSourceCommand):
+    """HTTP input for historical-source updates."""
 
 
 class HistoricalSourceSchema(HistoricalSourceCreateSchema):

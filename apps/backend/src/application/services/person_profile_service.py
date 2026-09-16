@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 
-from sqlalchemy import or_, select
+from sqlalchemy import delete, or_, select, update
 
 from src.application.commands.liturgical_calendar import CreateFeastEntryCommand
-from src.application.commands.persons import PersonCreateSchema
+from src.application.commands.persons import PersonCreateSchema, PersonUpdateSchema
 from src.application.person_profile_models import (
     PersonProfileDocument,
     PersonProfileValidationResult,
@@ -34,6 +35,7 @@ from src.application.services.person_snapshot import (
 from src.domain.geography.models import ReligiousOrder
 from src.domain.hagiography.models import Person, PersonOrder, PublicationStatus
 from src.domain.identity.models import AuditAction
+from src.domain.liturgy.models import Feast
 from src.domain.sources.models import Bibliography, HistoricalSource, PersonSource
 
 __all__ = ["PersonProfileImportError", "PersonProfileService"]
@@ -56,12 +58,45 @@ class PersonProfileService(PersonProfileImportValidator, PersonProfileExportServ
         *,
         user_id: uuid.UUID | None,
         audit_context: AuditContext,
+        overwrite_person_id: uuid.UUID | None = None,
+        expected_version: int | None = None,
+        granted_permissions: set[str] | None = None,
     ) -> Person:
         """Persist a validated profile and all supported relations atomically."""
-        validation = await self.validate_import(document)
+        if overwrite_person_id is not None:
+            # Refresh after waiting for concurrent writers before revalidating.
+            await self.db.get(
+                Person,
+                overwrite_person_id,
+                with_for_update=True,
+                populate_existing=True,
+            )
+        validation = await self.validate_import(
+            document,
+            overwrite_person_id=overwrite_person_id,
+            expected_version=expected_version,
+        )
         if not validation.can_import:
             raise PersonProfileImportError(validation)
+        if overwrite_person_id is not None:
+            permissions = granted_permissions or set()
+            if "persons:update" not in permissions:
+                raise PermissionError("Nadpisanie profilu wymaga uprawnienia persons:update")
+            if (
+                validation.existing_person is not None
+                and validation.existing_person.status == PublicationStatus.PUBLISHED.value
+                and "persons:publish" not in permissions
+            ):
+                raise PermissionError("Nadpisanie opublikowanego profilu wymaga persons:publish")
         normalized = validation.normalized_document
+        if overwrite_person_id is not None:
+            return await self._overwrite_profile(
+                normalized,
+                overwrite_person_id,
+                expected_version=expected_version,
+                user_id=user_id,
+                audit_context=audit_context,
+            )
         person = await PersonService(self.db).create_person(
             PersonCreateSchema.model_validate(
                 {
@@ -100,6 +135,82 @@ class PersonProfileService(PersonProfileImportValidator, PersonProfileExportServ
                 extra_metadata={"operation": "profile_json_import"},
             )
         await self.db.flush()
+        imported = await PersonQueryService(self.db).get_by_id_or_slug(str(person.id))
+        assert imported is not None
+        return imported
+
+    async def _overwrite_profile(
+        self,
+        document: PersonProfileDocument,
+        person_id: uuid.UUID,
+        *,
+        expected_version: int | None,
+        user_id: uuid.UUID | None,
+        audit_context: AuditContext,
+    ) -> Person:
+        person = await PersonQueryService(self.db).get_by_id_or_slug(str(person_id))
+        assert person is not None
+        previous_snapshot = await serialize_person_snapshot(self.db, person)
+        previous_document = await self.export_profile(person)
+        # Keep identity and publication workflow; the file replaces editable data.
+        person = await PersonService(self.db).update_person(
+            person,
+            PersonUpdateSchema.model_validate(
+                {
+                    **document.profile.model_dump(
+                        mode="json", exclude={"status", "canonical_name"}
+                    ),
+                    "expected_version": expected_version,
+                    "change_summary": "Nadpisanie danych profilu z pliku JSON",
+                }
+            ),
+            user_id=user_id,
+            audit_context=audit_context,
+        )
+        await self.db.execute(delete(PersonOrder).where(PersonOrder.person_id == person.id))
+        now = datetime.now(UTC)
+        await self.db.execute(
+            update(PersonSource)
+            .where(
+                PersonSource.person_id == person.id,
+                PersonSource.deleted_at.is_(None),
+            )
+            .values(deleted_at=now, updated_at=now)
+        )
+        await self.db.execute(
+            update(Feast)
+            .where(
+                Feast.person_id == person.id,
+                Feast.deleted_at.is_(None),
+            )
+            .values(deleted_at=now, updated_at=now, is_primary=False)
+        )
+        await self._import_orders(person.id, document.orders)
+        await self._import_feasts(person.id, document.feasts)
+        await self._import_sources(person.id, document.sources)
+        previous_snapshot, current_snapshot = await append_relation_version(
+            self.db,
+            person,
+            previous_snapshot=previous_snapshot,
+            changed_by_id=user_id,
+            change_summary="Nadpisanie powiązań profilu z pliku JSON",
+        )
+        add_audit_log(
+            self.db,
+            context=audit_context,
+            action=AuditAction.UPDATE,
+            resource_type="persons",
+            resource_id=person.id,
+            old_value=previous_snapshot,
+            new_value=current_snapshot,
+            extra_metadata={
+                "operation": "profile_json_overwrite",
+                "previous_document": previous_document.model_dump(mode="json"),
+                "imported_document": document.model_dump(mode="json"),
+            },
+        )
+        await self.db.flush()
+        await self.db.refresh(person, attribute_names=["orders"])
         imported = await PersonQueryService(self.db).get_by_id_or_slug(str(person.id))
         assert imported is not None
         return imported
