@@ -45,6 +45,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         order.description ||
         order.mission ||
         `${copy.metadataDescriptionPrefix}${order.name}.`,
+      openGraph: {
+        title: order.name,
+        url: `/zakony/${encodeURIComponent(order.slug)}`,
+        description:
+          order.description ||
+          order.mission ||
+          `${copy.metadataDescriptionPrefix}${order.name}.`,
+      },
     };
   } catch (error) {
     if (isApiNotFound(error)) return { title: copy.notFoundTitle };
