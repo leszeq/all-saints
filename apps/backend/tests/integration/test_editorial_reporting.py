@@ -248,7 +248,10 @@ async def test_editorial_transition_validates_content_and_persists_version(
     ready = seeded["ready"]
     editor = seeded["editor"]
 
-    with pytest.raises(EditorialTransitionError, match="streszczenie, biogram, licencja"):
+    with pytest.raises(
+        EditorialTransitionError,
+        match="streszczenia.*biogramu.*źródeł.*licencja",
+    ):
         await service.transition(
             incomplete.id,
             PublicationStatus.PUBLISHED,

@@ -37,6 +37,10 @@ PersonQualityRow = Row[tuple[Person, int, int, int, int, int]]
 class EditorialQualityPolicy:
     """Build consistent quality metrics and response records for a person."""
 
+    PUBLICATION_BLOCKER_CODES = frozenset(
+        {"missing_biography", "missing_summary", "missing_sources", "unknown_image_license"}
+    )
+
     @staticmethod
     def has_text(column: InstrumentedAttribute[str | None]) -> ColumnElement[bool]:
         return and_(column.is_not(None), func.length(func.trim(column)) > 0)
@@ -45,17 +49,10 @@ class EditorialQualityPolicy:
     def missing_text(column: InstrumentedAttribute[str | None]) -> ColumnElement[bool]:
         return or_(column.is_(None), func.length(func.trim(column)) == 0)
 
-    @classmethod
-    def quality_expressions(
-        cls,
-    ) -> tuple[
-        ColumnElement[int],
-        ColumnElement[int],
-        ColumnElement[int],
-        ColumnElement[int],
-        ColumnElement[int],
-    ]:
-        source_count = (
+    @staticmethod
+    def source_count_expression() -> ColumnElement[int]:
+        """Return the active, non-orphaned source count for a person."""
+        return (
             select(func.count(PersonSource.id))
             .where(
                 PersonSource.person_id == Person.id,
@@ -74,6 +71,18 @@ class EditorialQualityPolicy:
             .correlate(Person)
             .scalar_subquery()
         )
+
+    @classmethod
+    def quality_expressions(
+        cls,
+    ) -> tuple[
+        ColumnElement[int],
+        ColumnElement[int],
+        ColumnElement[int],
+        ColumnElement[int],
+        ColumnElement[int],
+    ]:
+        source_count = cls.source_count_expression()
         image_count = (
             select(func.count(Image.id))
             .where(Image.person_id == Person.id, Image.deleted_at.is_(None))
@@ -263,6 +272,34 @@ class EditorialQualityPolicy:
         ]
 
     @classmethod
+    def publication_blockers(
+        cls,
+        person: Person,
+        *,
+        source_count: int,
+        image_count: int,
+        unknown_license_count: int,
+    ) -> list[EditorialIssueSchema]:
+        """Return the quality issues that must block publication."""
+        order = {
+            "missing_summary": 0,
+            "missing_biography": 1,
+            "missing_sources": 2,
+            "unknown_image_license": 3,
+        }
+        blockers = [
+            issue
+            for issue in cls.issues(
+                person,
+                source_count=source_count,
+                image_count=image_count,
+                unknown_license_count=unknown_license_count,
+            )
+            if issue.code in cls.PUBLICATION_BLOCKER_CODES
+        ]
+        return sorted(blockers, key=lambda issue: order[issue.code])
+
+    @classmethod
     def queue_item(
         cls,
         row: PersonQualityRow,
@@ -275,7 +312,6 @@ class EditorialQualityPolicy:
             image_count=image_count,
             unknown_license_count=unknown_count,
         )
-        blockers = {"missing_biography", "missing_summary", "unknown_image_license"}
         now = datetime.now(UTC)
         updated_at = person.updated_at
         if updated_at.tzinfo is None:
@@ -306,7 +342,12 @@ class EditorialQualityPolicy:
             ),
             priority=cls.priority(int(priority_score)),
             issues=issues,
-            can_publish=not any(issue.code in blockers for issue in issues),
+            can_publish=not cls.publication_blockers(
+                person,
+                source_count=source_count,
+                image_count=image_count,
+                unknown_license_count=unknown_count,
+            ),
         )
 
     @classmethod

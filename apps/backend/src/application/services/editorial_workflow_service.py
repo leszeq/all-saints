@@ -4,14 +4,16 @@ from __future__ import annotations
 
 import uuid
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.commands.persons import PersonUpdateSchema
 from src.application.editorial_models import EditorialTransitionResponseSchema
 from src.application.services.audit_service import AuditContext
+from src.application.services.editorial_quality import EditorialQualityPolicy
 from src.application.services.person_query_service import PersonQueryService
 from src.application.services.person_service import PersonService
-from src.domain.hagiography.models import PublicationStatus
+from src.domain.hagiography.models import Person, PublicationStatus
 from src.domain.sources.models import ImageLicense
 
 
@@ -91,19 +93,29 @@ class EditorialWorkflowService:
                 "Zwrócenie rekordu do redaktora wymaga komentarza z uzasadnieniem"
             )
         if target_status == PublicationStatus.PUBLISHED:
-            missing = []
-            if not person.summary_pl or not person.summary_pl.strip():
-                missing.append("streszczenie")
-            if not person.biography_pl or not person.biography_pl.strip():
-                missing.append("biogram")
-            if any(
-                image.deleted_at is None and image.license == ImageLicense.UNKNOWN.value
-                for image in person.images
-            ):
-                missing.append("licencja obrazu")
-            if missing:
+            source_count = int(
+                (
+                    await self.db.execute(
+                        select(EditorialQualityPolicy.source_count_expression()).where(
+                            Person.id == person.id
+                        )
+                    )
+                ).scalar_one()
+                or 0
+            )
+            active_images = [image for image in person.images if image.deleted_at is None]
+            blockers = EditorialQualityPolicy.publication_blockers(
+                person,
+                source_count=source_count,
+                image_count=len(active_images),
+                unknown_license_count=sum(
+                    image.license == ImageLicense.UNKNOWN.value for image in active_images
+                ),
+            )
+            if blockers:
                 raise EditorialTransitionError(
-                    "Publikacja wymaga uzupełnienia: " + ", ".join(missing)
+                    "Publikacja wymaga uzupełnienia: "
+                    + ", ".join(issue.label.lower() for issue in blockers)
                 )
         summary = normalized_note or f"Workflow redakcyjny: {previous} → {target_status.value}"
         person = await PersonService(self.db).update_person(

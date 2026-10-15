@@ -22,6 +22,7 @@ from src.domain.identity.models import (
     UserStatus,
 )
 from src.domain.identity.rbac import ROLE_PERMISSIONS
+from src.domain.sources.models import Bibliography, PersonSource
 
 
 async def _create_role(
@@ -426,6 +427,22 @@ async def test_editor_and_reviewer_complete_the_full_publication_flow(
         headers=editor_headers,
         json={"target_status": "review", "expected_version": 3},
     )
+    approved_without_source = await async_client.post(
+        f"/api/v1/editorial/queue/{person_id}/transition",
+        headers=reviewer_headers,
+        json={"target_status": "published", "expected_version": 4},
+    )
+    bibliography = Bibliography(title="Źródło testowego profilu")
+    db_session.add(bibliography)
+    await db_session.flush()
+    db_session.add(
+        PersonSource(
+            person_id=uuid.UUID(person_id),
+            bibliography_id=bibliography.id,
+            is_primary=True,
+        )
+    )
+    await db_session.flush()
     approved = await async_client.post(
         f"/api/v1/editorial/queue/{person_id}/transition",
         headers=reviewer_headers,
@@ -444,6 +461,7 @@ async def test_editor_and_reviewer_complete_the_full_publication_flow(
     assert return_without_comment.status_code == 409
     assert returned.status_code == 200
     assert resubmitted.status_code == 200
+    assert approved_without_source.status_code == 409
     assert approved.status_code == 200
     assert approved.json()["status"] == "published"
     assert editor_published_edit.status_code == 403

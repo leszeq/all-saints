@@ -78,6 +78,19 @@ def test_completeness_score_has_a_transparent_100_point_breakdown():
     assert {criterion.key: criterion.weight for criterion in criteria}["sources"] == 15
 
 
+def test_publication_blockers_require_an_active_source():
+    person = make_person()
+
+    blockers = EditorialQualityPolicy.publication_blockers(
+        person,
+        source_count=0,
+        image_count=0,
+        unknown_license_count=0,
+    )
+
+    assert [issue.code for issue in blockers] == ["missing_sources"]
+
+
 def test_duplicate_key_normalizes_hagiographic_prefixes_and_diacritics():
     assert EditorialQualityPolicy.normalize_duplicate_key("Św. Rita z Cascii") == "rita z cascii"
     assert (
@@ -160,8 +173,11 @@ async def test_reviewer_can_accept_complete_record_without_generic_update_permis
         update_person=AsyncMock(return_value=updated),
     )
     patch_person_services(monkeypatch, person_service)
+    db = SimpleNamespace(
+        execute=AsyncMock(return_value=SimpleNamespace(scalar_one=lambda: 1)),
+    )
 
-    result = await EditorialWorkflowService(SimpleNamespace()).transition(
+    result = await EditorialWorkflowService(db).transition(
         person.id,
         PublicationStatus.PUBLISHED,
         user_id=uuid4(),
