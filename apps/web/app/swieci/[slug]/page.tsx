@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import {
   ArrowLeft,
   BadgeCheck,
@@ -56,10 +56,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const content = readPublicPersonContent(person);
     return {
       title: `${content.canonicalName}${copy.metadataTitleSuffix}`,
+      alternates: { canonical: `/swieci/${encodeURIComponent(String(person.slug))}` },
       description:
         content.summary || `${copy.metadataDescriptionPrefix}${content.canonicalName}.`,
       openGraph: {
         title: content.canonicalName,
+        url: `/swieci/${encodeURIComponent(String(person.slug))}`,
         description:
           content.summary || `${copy.metadataBiographyPrefix}${content.canonicalName}`,
         images: person.avatar?.url
@@ -98,6 +100,10 @@ export default async function PersonDetailPage({ params }: PageProps) {
 
   if (!person) {
     notFound();
+  }
+
+  if (slug !== String(person.slug)) {
+    permanentRedirect(`/swieci/${encodeURIComponent(String(person.slug))}`);
   }
 
   const content = readPublicPersonContent(person);

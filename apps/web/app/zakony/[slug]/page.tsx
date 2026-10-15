@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import {
   ArrowLeft,
   ArrowRight,
@@ -40,6 +40,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const order = (await fetchOrderDetail(slug)) as ReligiousOrderDetail;
     return {
       title: `${order.name}${copy.metadataTitleSuffix}`,
+      alternates: { canonical: `/zakony/${encodeURIComponent(order.slug)}` },
       description:
         order.description ||
         order.mission ||
@@ -65,6 +66,10 @@ export default async function OrderDetailPage({ params }: PageProps) {
   } catch (error) {
     if (isApiNotFound(error)) notFound();
     throw error;
+  }
+
+  if (slug !== order.slug) {
+    permanentRedirect(`/zakony/${encodeURIComponent(order.slug)}`);
   }
 
   let related: ReligiousOrder[] = [];

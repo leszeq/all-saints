@@ -5,10 +5,12 @@ import { Footer } from "@/components/footer";
 import { Providers } from "@/components/providers";
 import { DEFAULT_WEB_UI_LOCALE } from "@/lib/i18n/config";
 import { getWebDictionary } from "@/lib/i18n/dictionaries";
+import { getSiteUrl } from "@/lib/site-url";
 
 export async function generateMetadata(): Promise<Metadata> {
   const dictionary = await getWebDictionary(DEFAULT_WEB_UI_LOCALE);
   return {
+    metadataBase: getSiteUrl(),
     title: {
       default: dictionary.metadata.defaultTitle,
       template: dictionary.metadata.titleTemplate,
@@ -19,7 +21,7 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       type: "website",
       locale: dictionary.metadata.openGraphLocale,
-      url: "https://encyklopediaswietych.pl",
+      url: "/",
       siteName: dictionary.brand.name,
       title: dictionary.metadata.openGraphTitle,
       description: dictionary.metadata.openGraphDescription,
