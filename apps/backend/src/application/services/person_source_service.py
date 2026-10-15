@@ -19,6 +19,9 @@ from src.application.services.person_snapshot import (
     lock_person_for_snapshot,
     serialize_person_snapshot,
 )
+from src.application.services.published_content_guard import (
+    require_published_change_permission,
+)
 from src.domain.hagiography.models import Person
 from src.domain.identity.models import AuditAction
 from src.domain.sources.models import (
@@ -70,9 +73,13 @@ class PersonSourceService:
         *,
         user_id: uuid.UUID | None = None,
         audit_context: AuditContext | None = None,
+        allow_published_update: bool = False,
     ) -> PersonSource:
         """Create a non-duplicated source assignment with a person snapshot."""
-        person = await self._person_for_change(person_id)
+        person = await self._person_for_change(
+            person_id,
+            allow_published_update=allow_published_update,
+        )
         previous_snapshot = await serialize_person_snapshot(self.db, person)
 
         source_model = Bibliography if data.bibliography_id is not None else HistoricalSource
@@ -125,9 +132,13 @@ class PersonSourceService:
         *,
         user_id: uuid.UUID | None = None,
         audit_context: AuditContext | None = None,
+        allow_published_update: bool = False,
     ) -> PersonSource:
         """Create or reuse a URL source and attach it in one transaction."""
-        person = await self._person_for_change(person_id)
+        person = await self._person_for_change(
+            person_id,
+            allow_published_update=allow_published_update,
+        )
         previous_snapshot = await serialize_person_snapshot(self.db, person)
 
         normalized_url = str(data.url)
@@ -192,9 +203,13 @@ class PersonSourceService:
         *,
         user_id: uuid.UUID | None = None,
         audit_context: AuditContext | None = None,
+        allow_published_update: bool = False,
     ) -> None:
         """Soft-delete one assignment without deleting the source itself."""
-        person = await self._person_for_change(person_id)
+        person = await self._person_for_change(
+            person_id,
+            allow_published_update=allow_published_update,
+        )
         link = (
             await self.db.execute(
                 select(PersonSource).where(
@@ -219,10 +234,19 @@ class PersonSourceService:
             operation="remove",
         )
 
-    async def _person_for_change(self, person_id: uuid.UUID) -> Person:
+    async def _person_for_change(
+        self,
+        person_id: uuid.UUID,
+        *,
+        allow_published_update: bool,
+    ) -> Person:
         person = await lock_person_for_snapshot(self.db, person_id)
         if person is None:
             raise PersonSourceNotFoundError("Osoba nie istnieje")
+        require_published_change_permission(
+            person,
+            allow_published_update=allow_published_update,
+        )
         return person
 
     async def _get_loaded_link(self, link_id: uuid.UUID) -> PersonSource:

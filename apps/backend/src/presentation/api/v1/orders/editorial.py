@@ -13,6 +13,7 @@ from src.application.services.order_service import (
     OrderNotFoundError,
     OrderService,
 )
+from src.application.services.published_content_guard import PublishedContentChangeError
 from src.domain.geography.models import OrderCharism, ReligiousCommunityType
 from src.domain.identity.models import User
 from src.infrastructure.db.session import get_db_session
@@ -127,11 +128,14 @@ async def add_order_member(
             data,
             user_id=current_user.id,
             audit_context=audit_context_from_request(request, current_user),
+            allow_published_update=current_user.has_permission("persons", "publish"),
         )
     except OrderNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except OrderConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except PublishedContentChangeError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     return ReligiousOrderMembershipSchema.model_validate(membership)
 
 
@@ -153,7 +157,10 @@ async def delete_order_member(
             person_id,
             user_id=current_user.id,
             audit_context=audit_context_from_request(request, current_user),
+            allow_published_update=current_user.has_permission("persons", "publish"),
         )
     except OrderNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PublishedContentChangeError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)

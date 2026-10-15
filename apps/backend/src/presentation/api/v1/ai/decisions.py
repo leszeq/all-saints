@@ -13,6 +13,7 @@ from src.application.services.ai_suggestion_decision_service import (
     AISuggestionNotFoundError,
 )
 from src.application.services.person_service import PersonVersionConflictError
+from src.application.services.published_content_guard import PublishedContentChangeError
 from src.domain.identity.models import User
 from src.presentation.api.v1.ai.dependencies import (
     get_ai_suggestion_decision_service,
@@ -59,11 +60,14 @@ async def decide_ai_suggestion(
             selected_tags=data.selected_tags,
             note=data.note,
             audit_context=audit_context_from_request(request, current_user),
+            allow_published_update=current_user.has_permission("persons", "publish"),
         )
     except AISuggestionNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except AISuggestionDecisionError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except PublishedContentChangeError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     except PersonVersionConflictError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

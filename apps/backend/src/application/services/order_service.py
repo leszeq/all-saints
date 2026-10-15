@@ -23,6 +23,9 @@ from src.application.services.person_snapshot import (
     lock_person_for_snapshot,
     serialize_person_snapshot,
 )
+from src.application.services.published_content_guard import (
+    require_published_change_permission,
+)
 from src.domain.geography.models import ReligiousOrder
 from src.domain.hagiography.models import Person, PersonOrder
 from src.domain.identity.models import AuditAction
@@ -99,6 +102,7 @@ class OrderService(OrderQueryService):
         *,
         user_id: uuid.UUID | None = None,
         audit_context: AuditContext | None = None,
+        allow_published_update: bool = False,
     ) -> PersonOrder:
         """Attach a person to a community with a documented membership role."""
         order, _memberships = await self.get_order(
@@ -109,6 +113,10 @@ class OrderService(OrderQueryService):
         person = await lock_person_for_snapshot(self.db, data.person_id)
         if person is None:
             raise OrderNotFoundError("Osoba nie istnieje")
+        require_published_change_permission(
+            person,
+            allow_published_update=allow_published_update,
+        )
 
         existing = await self.db.get(
             PersonOrder,
@@ -160,6 +168,7 @@ class OrderService(OrderQueryService):
         *,
         user_id: uuid.UUID | None = None,
         audit_context: AuditContext | None = None,
+        allow_published_update: bool = False,
     ) -> None:
         """Remove one person-to-community link."""
         order, _memberships = await self.get_order(
@@ -170,6 +179,10 @@ class OrderService(OrderQueryService):
         person = await lock_person_for_snapshot(self.db, person_id)
         if person is None:
             raise OrderNotFoundError("Osoba nie istnieje")
+        require_published_change_permission(
+            person,
+            allow_published_update=allow_published_update,
+        )
         membership = await self.db.get(
             PersonOrder,
             {"person_id": person_id, "order_id": order.id},

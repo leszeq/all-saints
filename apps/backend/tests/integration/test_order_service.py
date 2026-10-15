@@ -18,6 +18,7 @@ from src.application.services.order_service import (
     OrderNotFoundError,
     OrderService,
 )
+from src.application.services.published_content_guard import PublishedContentChangeError
 from src.domain.geography.models import (
     OrderCharism,
     OrderMembershipType,
@@ -171,6 +172,12 @@ async def test_order_memberships_hide_drafts_and_reject_duplicates(
     published = await _person(db_session, "sw-opublikowany", PublicationStatus.PUBLISHED)
     draft = await _person(db_session, "szkic-czlonka", PublicationStatus.DRAFT)
 
+    with pytest.raises(PublishedContentChangeError, match="persons:publish"):
+        await service.add_membership(
+            order.slug,
+            AddReligiousOrderMembershipCommand(person_id=published.id),
+        )
+
     published_membership = await service.add_membership(
         order.slug,
         AddReligiousOrderMembershipCommand(
@@ -179,6 +186,7 @@ async def test_order_memberships_hide_drafts_and_reject_duplicates(
             membership_type=OrderMembershipType.FOUNDER,
             entry_date="1920",
         ),
+        allow_published_update=True,
     )
     await service.add_membership(
         order.slug,
@@ -210,6 +218,7 @@ async def test_order_memberships_hide_drafts_and_reject_duplicates(
         await service.add_membership(
             order.slug,
             AddReligiousOrderMembershipCommand(person_id=published.id),
+            allow_published_update=True,
         )
     with pytest.raises(OrderConflictError, match="powiązanej z osobami"):
         await service.soft_delete_order(order.slug)
@@ -219,7 +228,11 @@ async def test_order_memberships_hide_drafts_and_reject_duplicates(
             AddReligiousOrderMembershipCommand(person_id=uuid.uuid4()),
         )
 
-    await service.delete_membership(order.slug, published.id)
+    await service.delete_membership(
+        order.slug,
+        published.id,
+        allow_published_update=True,
+    )
     await db_session.refresh(published)
     removal_version = (
         await db_session.execute(
@@ -246,6 +259,10 @@ async def test_order_memberships_hide_drafts_and_reject_duplicates(
         "remove",
     ]
     with pytest.raises(OrderNotFoundError, match="Powiązanie"):
-        await service.delete_membership(order.slug, published.id)
+        await service.delete_membership(
+            order.slug,
+            published.id,
+            allow_published_update=True,
+        )
     with pytest.raises(OrderNotFoundError, match="Wspólnota"):
         await service.get_order("nieistniejaca-wspolnota")

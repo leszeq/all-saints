@@ -16,6 +16,7 @@ from src.application.services.ai_suggestion_decision_service import (
     AISuggestionDecisionService,
 )
 from src.application.services.person_service import PersonVersionConflictError
+from src.application.services.published_content_guard import PublishedContentChangeError
 from src.domain.hagiography.embedding_model import PersonEmbedding
 from src.domain.hagiography.models import (
     Gender,
@@ -392,6 +393,26 @@ async def test_ai_suggestions_support_audited_inline_editorial_decisions(
 
 
 @pytest.mark.asyncio
+async def test_ai_decisions_on_published_profiles_require_publish_permission(
+    db_session: AsyncSession,
+) -> None:
+    person = await _add_person(
+        db_session,
+        "opublikowany-ai-bez-uprawnien",
+        ai_summary="Oczekująca sugestia dla opublikowanego profilu.",
+    )
+
+    with pytest.raises(PublishedContentChangeError, match="persons:publish"):
+        await AISuggestionDecisionService(db_session).decide(
+            person.id,
+            kind="summary",
+            action="accept",
+            expected_version=person.version,
+            user_id=None,
+        )
+
+
+@pytest.mark.asyncio
 async def test_approved_ai_summary_is_visible_through_public_localization(
     async_client: AsyncClient,
     db_session: AsyncSession,
@@ -418,6 +439,7 @@ async def test_approved_ai_summary_is_visible_through_public_localization(
         expected_version=person.version,
         user_id=None,
         value="Streszczenie zatwierdzone przez redaktora.",
+        allow_published_update=True,
     )
     await db_session.commit()
 

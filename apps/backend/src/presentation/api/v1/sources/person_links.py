@@ -12,6 +12,7 @@ from src.application.services.person_source_service import (
     PersonSourceNotFoundError,
     PersonSourceService,
 )
+from src.application.services.published_content_guard import PublishedContentChangeError
 from src.domain.identity.models import User
 from src.infrastructure.db.session import get_db_session
 from src.presentation.api.v1.auth.router import require_permission
@@ -60,11 +61,14 @@ async def create_person_source(
             data,
             user_id=current_user.id,
             audit_context=audit_context_from_request(request, current_user),
+            allow_published_update=current_user.has_permission("persons", "publish"),
         )
     except PersonSourceNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except PersonSourceConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except PublishedContentChangeError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     return PersonSourceSchema.model_validate(link)
 
 
@@ -88,11 +92,14 @@ async def create_person_web_source(
             data,
             user_id=current_user.id,
             audit_context=audit_context_from_request(request, current_user),
+            allow_published_update=current_user.has_permission("persons", "publish"),
         )
     except PersonSourceNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except PersonSourceConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except PublishedContentChangeError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     return PersonSourceSchema.model_validate(link)
 
 
@@ -117,6 +124,9 @@ async def delete_person_source(
             link_id,
             user_id=current_user.id,
             audit_context=audit_context_from_request(request, current_user),
+            allow_published_update=current_user.has_permission("persons", "publish"),
         )
     except PersonSourceNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PublishedContentChangeError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc

@@ -301,6 +301,49 @@ async def test_adding_and_removing_source_creates_person_versions(
 
 
 @pytest.mark.asyncio
+async def test_published_relation_mutations_require_publish_permission(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    _user, headers = await _source_editor(
+        db_session,
+        role_name="published-relation-editor",
+        email="published-relation@example.com",
+    )
+    person = Person(
+        slug="sw-zrodlo-opublikowane",
+        canonical_name="Św. Źródło Opublikowane",
+        person_type=PersonType.SAINT.value,
+        status=PublicationStatus.PUBLISHED.value,
+        gender=Gender.UNKNOWN.value,
+    )
+    bibliography = Bibliography(title="Źródło opublikowanej postaci")
+    db_session.add_all([person, bibliography])
+    await db_session.flush()
+    person_id = person.id
+    bibliography_id = bibliography.id
+    await db_session.commit()
+
+    source_response = await async_client.post(
+        f"/api/v1/sources/person-links/{person_id}",
+        headers=headers,
+        json={"bibliography_id": str(bibliography_id)},
+    )
+    image_response = await async_client.post(
+        "/api/v1/sources/images",
+        headers=headers,
+        json={
+            "person_id": str(person_id),
+            "url": "https://example.test/published-image.jpg",
+        },
+    )
+
+    assert source_response.status_code == 403
+    assert image_response.status_code == 403
+    assert "persons:publish" in source_response.json()["detail"]
+
+
+@pytest.mark.asyncio
 async def test_image_metadata_rejects_missing_person(
     async_client: AsyncClient,
     db_session: AsyncSession,

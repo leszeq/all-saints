@@ -15,6 +15,9 @@ from src.application.services.person_snapshot import (
     lock_person_for_snapshot,
     serialize_person_snapshot,
 )
+from src.application.services.published_content_guard import (
+    require_published_change_permission,
+)
 from src.domain.identity.models import AuditAction
 from src.domain.sources.models import Document, Image, ImageLicense
 
@@ -52,6 +55,7 @@ class MediaService:
         *,
         user_id: uuid.UUID | None = None,
         audit_context: AuditContext | None = None,
+        allow_published_update: bool = False,
     ) -> Image:
         """Create an image and version its person relation when present."""
         person = None
@@ -60,6 +64,10 @@ class MediaService:
             person = await lock_person_for_snapshot(self.db, data.person_id)
             if person is None:
                 raise MediaPersonNotFoundError("Osoba nie istnieje")
+            require_published_change_permission(
+                person,
+                allow_published_update=allow_published_update,
+            )
             previous_snapshot = await serialize_person_snapshot(self.db, person)
             if data.is_primary:
                 await self.db.execute(

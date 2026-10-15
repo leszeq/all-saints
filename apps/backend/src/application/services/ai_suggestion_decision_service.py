@@ -18,6 +18,9 @@ from src.application.services.person_primary_translation_sync import (
 )
 from src.application.services.person_service import PersonVersionConflictError
 from src.application.services.person_snapshot import serialize_person_snapshot
+from src.application.services.published_content_guard import (
+    require_published_change_permission,
+)
 from src.domain.hagiography.models import Person, PersonTag, PersonVersion, Tag
 from src.domain.identity.models import AuditAction
 
@@ -48,6 +51,7 @@ class AISuggestionDecisionService:
         selected_tags: list[str] | None = None,
         note: str | None = None,
         audit_context: AuditContext | None = None,
+        allow_published_update: bool = False,
     ) -> AISuggestionDecisionResult:
         """Accept or reject one pending summary or tag proposal."""
         if kind not in {"summary", "tags"}:
@@ -68,6 +72,10 @@ class AISuggestionDecisionService:
         ).scalar_one_or_none()
         if person is None:
             raise AISuggestionNotFoundError("Profil osoby nie istnieje")
+        require_published_change_permission(
+            person,
+            allow_published_update=allow_published_update,
+        )
         if person.version != expected_version:
             raise PersonVersionConflictError(expected_version, person.version)
 
