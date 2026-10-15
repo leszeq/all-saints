@@ -22,6 +22,7 @@ import {
 import { DEFAULT_WEB_UI_LOCALE } from "@/lib/i18n/config";
 import { getWebDictionary } from "@/lib/i18n/dictionaries";
 import { resolveDictionaryLabel, resolveDictionaryValue } from "@/lib/i18n/labels";
+import { serializeJsonLd } from "@/lib/json-ld";
 
 export const revalidate = 300;
 
@@ -89,7 +90,7 @@ export default async function OrderDetailPage({ params }: PageProps) {
 
   return (
     <main>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
       <section className="border-b border-[#ded8cd] bg-burgundy-900 text-white">
         <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
           <Link href="/zakony" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-gold-300 hover:text-gold-200">

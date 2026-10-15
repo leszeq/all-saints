@@ -18,6 +18,7 @@ import { DEFAULT_WEB_UI_LOCALE } from "@/lib/i18n/config";
 import { getWebDictionary } from "@/lib/i18n/dictionaries";
 import { resolveDictionaryLabel, resolveDictionaryValue } from "@/lib/i18n/labels";
 import { readPublicPersonContent } from "@/lib/person-content";
+import { serializeJsonLd } from "@/lib/json-ld";
 import { PersonSources } from "@/components/person-sources";
 import type { PublicPersonSource } from "@/lib/person-sources";
 
@@ -140,7 +141,7 @@ export default async function PersonDetailPage({ params }: PageProps) {
       {/* Inject JSON-LD */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
 
       {/* ─── Hero Banner ──────────────────────────────────────────────────── */}

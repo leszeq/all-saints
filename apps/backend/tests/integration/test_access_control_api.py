@@ -431,6 +431,11 @@ async def test_editor_and_reviewer_complete_the_full_publication_flow(
         headers=reviewer_headers,
         json={"target_status": "published", "expected_version": 4},
     )
+    editor_published_edit = await async_client.patch(
+        f"/api/v1/persons/{person_id}",
+        headers=editor_headers,
+        json={"summary_pl": "Nie trafia bezpośrednio na live."},
+    )
     public_record = await async_client.get(f"/api/v1/persons/{slug}")
 
     assert submitted.status_code == 200
@@ -441,4 +446,5 @@ async def test_editor_and_reviewer_complete_the_full_publication_flow(
     assert resubmitted.status_code == 200
     assert approved.status_code == 200
     assert approved.json()["status"] == "published"
+    assert editor_published_edit.status_code == 403
     assert public_record.status_code == 200

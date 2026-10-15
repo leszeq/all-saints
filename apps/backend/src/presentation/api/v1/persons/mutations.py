@@ -12,6 +12,7 @@ from src.application.services.person_service import (
     PersonStatusChangeError,
     PersonVersionConflictError,
 )
+from src.domain.hagiography.models import PublicationStatus
 from src.domain.identity.models import User
 from src.infrastructure.db.session import get_db_session
 from src.presentation.api.v1.auth.router import require_permission
@@ -63,6 +64,13 @@ async def update_person(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Osoba nie została znaleziona",
+        )
+    if person.status == PublicationStatus.PUBLISHED.value and not current_user.has_permission(
+        "persons", "publish"
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Edycja opublikowanego profilu wymaga uprawnienia persons:publish",
         )
 
     try:

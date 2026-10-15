@@ -204,11 +204,11 @@ const dictionary = {
     searchAriaLabel: "Zapytaj o świętych",
     searchPlaceholder: "Np. patron osób chorych w średniowieczu…",
     searchButton: "Szukaj w encyklopedii",
-    searchHint: "Możesz wpisać imię, miejsce, patronat albo pytanie naturalnym językiem.",
+    searchHint: "Możesz wpisać imię, patronat albo fragment biogramu.",
     projectAriaLabel: "O projekcie",
     projectTitle: "Wiedza budowana źródło po źródle.",
     projectDescription:
-      "Profile przechodzą przez proces redakcyjny, weryfikację danych i kontrolę bibliografii.",
+      "Profile są porządkowane przez redakcję, a przypisane źródła pokazujemy bezpośrednio przy opracowaniu.",
     peopleStat: "opracowanych postaci",
     sourcesStat: "przypisanych źródeł",
     featuredCommemoration: "Główne wspomnienie",
@@ -216,7 +216,7 @@ const dictionary = {
     pendingDayTitle: "Dzień czeka na opracowanie",
     pendingEntrySummary: "Opis tego wpisu jest obecnie opracowywany przez redakcję.",
     missingTodaySummary:
-      "Redakcja nie przypisała jeszcze zweryfikowanego wpisu do dzisiejszej daty.",
+      "Redakcja nie przypisała jeszcze opracowanego wpisu do dzisiejszej daty.",
     viewWholeDay: "Zobacz cały dzień",
     discoverKicker: "Punkty wyjścia",
     discoverTitle: "Odkrywaj według patronatu",
@@ -226,7 +226,7 @@ const dictionary = {
     todayTitle: "Dzisiaj wspominamy",
     openCalendarAriaLabel: "Otwórz kalendarz liturgiczny",
     emptyCalendar:
-      "Brak zweryfikowanych wpisów na dzisiejszy dzień. Kalendarz jest sukcesywnie uzupełniany przez redakcję.",
+      "Brak opracowanych wpisów na dzisiejszy dzień. Kalendarz jest sukcesywnie uzupełniany przez redakcję.",
     fullDayList: "Pełna lista dnia",
     timelineKicker: "Oś czasu",
     timelineTitle: "Święci przez wieki",
@@ -239,13 +239,13 @@ const dictionary = {
     editorialKicker: "Praca redakcji",
     recentTitle: "Ostatnio opracowane",
     allProfiles: "Wszystkie profile",
-    verified: "Zweryfikowany",
+    verified: "Opublikowany",
     datesPending: "Daty w opracowaniu",
     profilePending: "Profil jest obecnie opracowywany przez redakcję.",
     recentEmpty: "Brak opublikowanych profili do wyświetlenia.",
     methodologyKicker: "Metodologia",
     methodologyDescription:
-      "Oddzielamy tradycję hagiograficzną od ustaleń historycznych, oznaczamy rozbieżności i wskazujemy źródła przy konkretnych informacjach.",
+      "Profile pokazują informacje biograficzne oraz przypisane do nich źródła. Zakres opracowania zależy od dostępnych materiałów.",
     methodologyAction: "Rozpocznij odkrywanie",
   },
   calendar: {
