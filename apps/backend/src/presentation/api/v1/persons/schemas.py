@@ -198,6 +198,23 @@ class PersonListResponseSchema(BaseModel):
     pages: int
 
 
+class PublicIndexItemSchema(BaseModel):
+    """Minimal public profile URL projection for crawlers."""
+
+    id: uuid.UUID
+    slug: str
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PublicIndexResponseSchema(BaseModel):
+    """Cursor page of public profile URLs."""
+
+    items: list[PublicIndexItemSchema]
+    next_cursor: str | None = None
+
+
 class PersonAdminListItemSchema(PersonListItemSchema):
     """Person row enriched with internal editorial audit information."""
 

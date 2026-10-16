@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { fetchOrders, fetchPersons } from "@/lib/api";
+import { fetchOrders, fetchPublicPersonIndex } from "@/lib/api";
 import { absoluteSiteUrl } from "@/lib/site-url";
 
 type SitemapPerson = {
@@ -14,7 +14,7 @@ type SitemapOrder = {
 
 type PersonPage = {
   items?: SitemapPerson[];
-  pages?: number;
+  next_cursor?: string | null;
 };
 
 function lastModified(value?: string): Date | undefined {
@@ -25,19 +25,16 @@ function lastModified(value?: string): Date | undefined {
 
 async function fetchAllPersons(): Promise<SitemapPerson[]> {
   const people: SitemapPerson[] = [];
-  let page = 1;
-  let pages = 1;
+  let cursor: string | undefined;
 
   do {
-    const result = (await fetchPersons({
-      page,
-      per_page: 100,
-      sort: "updated_desc",
+    const result = (await fetchPublicPersonIndex({
+      cursor,
+      limit: 100,
     })) as PersonPage;
     people.push(...(result.items ?? []));
-    pages = result.pages ?? page;
-    page += 1;
-  } while (page <= pages);
+    cursor = result.next_cursor ?? undefined;
+  } while (cursor);
 
   return people;
 }

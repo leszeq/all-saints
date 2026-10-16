@@ -6,6 +6,7 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.services.person_localization import resolve_person_content
@@ -110,7 +111,7 @@ async def get_person(
     id_or_slug: str,
     locale: Annotated[str, LOCALE_QUERY] = "pl",
     db: AsyncSession = Depends(get_db_session),
-) -> PersonDetailSchema:
+) -> PersonDetailSchema | RedirectResponse:
     """Fetch a published person with localized content."""
     person = await PersonQueryService(db).get_by_id_or_slug(
         id_or_slug,
@@ -118,9 +119,20 @@ async def get_person(
         include_translations=True,
     )
     if person is None:
+        redirect_person = await PersonQueryService(db).get_public_slug_redirect(id_or_slug)
+        if redirect_person is not None:
+            return RedirectResponse(
+                url=f"/api/v1/persons/{redirect_person.slug}",
+                status_code=status.HTTP_301_MOVED_PERMANENTLY,
+            )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Osoba nie została znaleziona",
+        )
+    if id_or_slug != person.slug:
+        return RedirectResponse(
+            url=f"/api/v1/persons/{person.slug}",
+            status_code=status.HTTP_301_MOVED_PERMANENTLY,
         )
     links = await PersonSourceService(db).list_sources(person.id)
     payload = _localized_detail(person, locale)

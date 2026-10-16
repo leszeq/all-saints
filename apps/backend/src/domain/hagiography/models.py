@@ -523,6 +523,35 @@ class Person(BaseModel, Base):
         )
 
 
+class PersonSlugRedirect(Base):
+    """Historical public slug that permanently redirects to one person."""
+
+    __tablename__ = "person_slug_redirects"
+    __table_args__ = (
+        UniqueConstraint("old_slug", name="uq_person_slug_redirect_old_slug"),
+        Index("ix_person_slug_redirects_person_id", "person_id"),
+        {"comment": "Historical public slugs kept for permanent redirects"},
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    old_slug: Mapped[str] = mapped_column(String(600), nullable=False)
+    person_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("persons.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("now()"),
+    )
+
+
 # ==============================================================================
 # PERSON TRANSLATION
 # ==============================================================================

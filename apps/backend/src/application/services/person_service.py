@@ -34,6 +34,7 @@ from src.application.services.person_snapshot import serialize_person_snapshot
 from src.domain.hagiography.models import (
     Person,
     PersonOrder,
+    PersonSlugRedirect,
     PersonVersion,
     PublicationStatus,
 )
@@ -68,11 +69,12 @@ class PersonService(PersonQueryService):
     """Mutate people while retaining the legacy read-compatible interface."""
 
     async def _generate_unique_slug(self, name: str, person_id: uuid.UUID | None = None) -> str:
-        """Generate a URL-safe slug unique across active and soft-deleted people.
+        """Generate a URL-safe slug unique across people and historical redirects.
 
         Soft-deleted rows deliberately remain in this lookup. Their public URL is
         reserved so that restoring a record cannot collide with a newer person or
-        silently point an established canonical URL at different content.
+        silently point an established canonical URL at different content. Historical
+        redirects are reserved as well, so an old URL can never be reassigned.
         """
         base_slug = slugify(name) or "person"
         slug = base_slug
@@ -84,7 +86,11 @@ class PersonService(PersonQueryService):
                 stmt = stmt.where(Person.id != person_id)
             res = await self.db.execute(stmt)
             if res.scalar_one_or_none() is None:
-                break
+                redirect_id = await self.db.scalar(
+                    select(PersonSlugRedirect.id).where(PersonSlugRedirect.old_slug == slug)
+                )
+                if redirect_id is None:
+                    break
             slug = f"{base_slug}-{counter}"
             counter += 1
 
@@ -247,15 +253,21 @@ class PersonService(PersonQueryService):
             },
         )
 
+        old_slug = person.slug
+        slug_changed = False
         if (
             "canonical_name" in update_dict
             and update_dict["canonical_name"] != person.canonical_name
         ):
             person.slug = await self._generate_unique_slug(update_dict["canonical_name"], person.id)
+            slug_changed = person.slug != old_slug
 
         for key, value in update_dict.items():
             if hasattr(person, key):
                 setattr(person, key, value.value if hasattr(value, "value") else value)
+
+        if slug_changed:
+            self.db.add(PersonSlugRedirect(old_slug=old_slug, person_id=person.id))
 
         relations = PersonRelationSynchronizer(self.db)
         if avatar_was_set:

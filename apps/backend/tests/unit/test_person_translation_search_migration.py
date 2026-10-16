@@ -33,8 +33,12 @@ def test_translation_search_migration_is_single_head_reversible_and_backfilled()
 
     migration = scripts.get_revision("0018_person_translation_search")
     assert migration is not None
-    assert scripts.get_current_head() == migration.revision
     assert len(scripts.get_heads()) == 1
+    reachable_revisions = {
+        revision.revision
+        for revision in scripts.walk_revisions("base", scripts.get_heads()[0])
+    }
+    assert migration.revision in reachable_revisions
     assert migration.down_revision == "0017_translation_workflow_rbac"
     assert "CREATE TRIGGER trg_person_translations_search_vector" in source
     assert "UPDATE person_translations SET canonical_name = canonical_name" in source

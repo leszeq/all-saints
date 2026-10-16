@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import base64
+import binascii
 import uuid
 from collections.abc import Sequence
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import cast
 
 from sqlalchemy import and_, func, or_, select
@@ -19,6 +23,7 @@ from src.domain.hagiography.models import (
     Person,
     PersonName,
     PersonOrder,
+    PersonSlugRedirect,
     PersonSort,
     PersonTranslation,
     PersonType,
@@ -27,6 +32,48 @@ from src.domain.hagiography.models import (
 )
 from src.domain.hagiography.person_names import normalize_person_name
 from src.domain.identity.models import User
+
+
+@dataclass(frozen=True, slots=True)
+class PublicIndexItem:
+    """Minimal public record used by crawlers and sitemap generation."""
+
+    id: uuid.UUID
+    slug: str
+    updated_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class PublicIndexPage:
+    """Cursor page for published public profile URLs."""
+
+    items: list[PublicIndexItem]
+    next_cursor: str | None
+
+
+class PublicIndexCursorError(ValueError):
+    """Raised when a public-index cursor is malformed."""
+
+
+def _encode_public_index_cursor(updated_at: datetime, person_id: uuid.UUID) -> str:
+    timestamp = updated_at.astimezone(UTC).isoformat()
+    payload = f"{timestamp}|{person_id}".encode()
+    return base64.urlsafe_b64encode(payload).decode().rstrip("=")
+
+
+def _decode_public_index_cursor(cursor: str) -> tuple[datetime, uuid.UUID]:
+    try:
+        padding = "=" * (-len(cursor) % 4)
+        timestamp, raw_person_id = (
+            base64.urlsafe_b64decode(f"{cursor}{padding}").decode().split("|", maxsplit=1)
+        )
+        parsed_timestamp = datetime.fromisoformat(timestamp)
+        if parsed_timestamp.tzinfo is None:
+            parsed_timestamp = parsed_timestamp.replace(tzinfo=UTC)
+        return parsed_timestamp, uuid.UUID(raw_person_id)
+    except (ValueError, UnicodeError, binascii.Error) as exc:
+        raise PublicIndexCursorError("Nieprawidłowy kursor indeksu publicznego") from exc
+
 
 ERA_PERIOD_ERAS: dict[EraPeriod, tuple[Era, ...]] = {
     EraPeriod.EARLY_WITNESSES: (
@@ -105,6 +152,54 @@ class PersonQueryService:
 
         result = await self.db.execute(statement)
         return result.scalar_one_or_none()
+
+    async def get_public_slug_redirect(self, old_slug: str) -> Person | None:
+        """Resolve a historical slug only when its target is still public."""
+        result = await self.db.execute(
+            select(Person)
+            .join(PersonSlugRedirect, PersonSlugRedirect.person_id == Person.id)
+            .where(
+                PersonSlugRedirect.old_slug == old_slug,
+                Person.status == PublicationStatus.PUBLISHED.value,
+                Person.deleted_at.is_(None),
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def list_public_index(
+        self,
+        *,
+        cursor: str | None = None,
+        limit: int = 100,
+    ) -> PublicIndexPage:
+        """Return lightweight published profile URLs in stable cursor order."""
+        if not 1 <= limit <= 500:
+            raise ValueError("Limit indeksu publicznego musi mieścić się w zakresie 1–500")
+
+        query = select(Person.id, Person.slug, Person.updated_at).where(
+            Person.status == PublicationStatus.PUBLISHED.value,
+            Person.deleted_at.is_(None),
+        )
+        if cursor:
+            updated_at, person_id = _decode_public_index_cursor(cursor)
+            query = query.where(
+                or_(
+                    Person.updated_at < updated_at,
+                    and_(Person.updated_at == updated_at, Person.id < person_id),
+                )
+            )
+        query = query.order_by(Person.updated_at.desc(), Person.id.desc()).limit(limit + 1)
+        rows = list((await self.db.execute(query)).all())
+        has_more = len(rows) > limit
+        rows = rows[:limit]
+        items = [
+            PublicIndexItem(id=person_id, slug=slug, updated_at=updated_at)
+            for person_id, slug, updated_at in rows
+        ]
+        next_cursor = (
+            _encode_public_index_cursor(items[-1].updated_at, items[-1].id) if has_more else None
+        )
+        return PublicIndexPage(items=items, next_cursor=next_cursor)
 
     async def list_persons(
         self,

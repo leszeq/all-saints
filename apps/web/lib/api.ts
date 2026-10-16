@@ -42,6 +42,11 @@ export const fetchPersons = async (params?: Record<string, unknown>) => {
   return data;
 };
 
+export const fetchPublicPersonIndex = async (params?: Record<string, unknown>) => {
+  const { data } = await publicApi.get("/public-index/persons", { params });
+  return data;
+};
+
 export const fetchPersonDetail = async (
   idOrSlug: string,
   locale: WebUiLocale = DEFAULT_WEB_UI_LOCALE,
