@@ -582,6 +582,12 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
                     {content.canonicalName}
                   </h2>
 
+                  {search && typeof p.search_reason === "string" && copy.searchReasonLabels[p.search_reason] && (
+                    <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-gold-700">
+                      {copy.searchReasonLabels[p.search_reason]}
+                    </p>
+                  )}
+
                   {Boolean(p.latin_name) && (
                     <p className="mt-0.5 text-xs italic text-gray-500">
                       {String(p.latin_name)}

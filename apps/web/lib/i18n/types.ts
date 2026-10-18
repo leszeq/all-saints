@@ -378,6 +378,7 @@ export interface WebDictionary {
     nationalityFilter: string;
     allValues: string;
     facetCount: string;
+    searchReasonLabels: Record<string, string>;
     resultsPrefix: string;
     resultsSuffix: string;
     emptyTitle: string;

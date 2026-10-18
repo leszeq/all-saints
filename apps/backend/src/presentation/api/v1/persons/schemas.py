@@ -82,6 +82,10 @@ class PersonListItemSchema(BaseModel):
     is_featured: bool
     avatar: PersonAvatarSchema | None = None
     localized_content: PersonLocalizedSummarySchema | None = None
+    search_reason: str | None = Field(
+        default=None,
+        description="Stable reason code for the match when a search query is supplied",
+    )
     created_at: datetime
     updated_at: datetime
 

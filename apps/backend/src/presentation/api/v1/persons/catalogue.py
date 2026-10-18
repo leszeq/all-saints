@@ -57,7 +57,7 @@ def _localized_detail(person: Person, locale: str) -> PersonDetailSchema:
 async def list_persons(
     page: Annotated[int, Query(ge=1)] = 1,
     per_page: Annotated[int, Query(ge=1, le=100)] = 20,
-    search: str | None = Query(None, max_length=200),
+    search: str | None = Query(None, min_length=2, max_length=200),
     person_type: Annotated[
         list[PersonType] | None, Query(description="One or more Church recognition types")
     ] = None,
@@ -128,7 +128,7 @@ async def list_persons(
     description="Return relational facet counts for the published catalogue after the supplied filters.",
 )
 async def list_person_facets(
-    search: str | None = Query(None, max_length=200),
+    search: str | None = Query(None, min_length=2, max_length=200),
     person_type: Annotated[
         list[PersonType] | None, Query(description="One or more Church recognition types")
     ] = None,

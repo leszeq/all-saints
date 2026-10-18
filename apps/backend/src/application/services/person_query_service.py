@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import cast
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute, selectinload
 from sqlalchemy.sql.elements import ColumnElement
@@ -69,6 +69,50 @@ class PersonFacetCounts:
 
 class PublicIndexCursorError(ValueError):
     """Raised when a public-index cursor is malformed."""
+
+
+class SearchPolicy:
+    """Keep public person search limits, boosts, and reason codes in one place."""
+
+    MIN_QUERY_LENGTH = 2
+    MAX_QUERY_LENGTH = 200
+
+    @classmethod
+    def normalize_query(cls, value: str | None) -> str | None:
+        """Trim a query and reject terms too short to produce a useful ranking."""
+        if value is None:
+            return None
+        term = value.strip()
+        if len(term) < cls.MIN_QUERY_LENGTH:
+            return None
+        return term[: cls.MAX_QUERY_LENGTH]
+
+    @staticmethod
+    def reason_for_person(person: Person, term: str) -> str:
+        """Return a stable reason code suitable for a public search hit."""
+        normalized_term = normalize_person_name(term)
+        if normalize_person_name(person.canonical_name) == normalized_term:
+            return "canonical_exact"
+        if (
+            person.canonical_name_en
+            and normalize_person_name(person.canonical_name_en) == normalized_term
+        ):
+            return "canonical_exact_en"
+        if person.latin_name and normalize_person_name(person.latin_name) == normalized_term:
+            return "transliteration_exact"
+        if any(
+            translation.deleted_at is None
+            and translation.canonical_name
+            and normalize_person_name(translation.canonical_name) == normalized_term
+            for translation in person.translations
+        ):
+            return "translation_exact"
+        if any(
+            alias.deleted_at is None and alias.normalized_value == normalized_term
+            for alias in person.aliases
+        ):
+            return "alias_exact"
+        return "fuzzy"
 
 
 def _encode_public_index_cursor(updated_at: datetime, person_id: uuid.UUID) -> str:
@@ -337,7 +381,10 @@ class PersonQueryService:
     ) -> tuple[list[Person], int]:
         """List persons with full-text search, filtering, and pagination."""
         load_options = [selectinload(Person.images), selectinload(Person.patronages)]
-        if include_translations:
+        search_term = SearchPolicy.normalize_query(search)
+        if search_term:
+            load_options.append(selectinload(Person.aliases))
+        if include_translations or search_term:
             load_options.append(selectinload(Person.translations))
         query = select(Person).options(*load_options).where(Person.deleted_at.is_(None))
 
@@ -367,8 +414,8 @@ class PersonQueryService:
         )
 
         search_score = None
-        if search and search.strip():
-            term = search.strip()
+        if search_term:
+            term = search_term
             like_term = f"%{term}%"
             normalized_term = normalize_person_name(term)
             text_query = func.websearch_to_tsquery("simple", func.unaccent(term))
@@ -422,6 +469,44 @@ class PersonQueryService:
                 full_text_rank,
                 func.coalesce(translation_full_text_rank, 0.0),
             ) + (fuzzy_rank * 0.25)
+            search_score = (
+                search_score
+                + case(
+                    (
+                        func.lower(func.unaccent(Person.canonical_name)) == normalized_term,
+                        10.0,
+                    ),
+                    else_=0.0,
+                )
+                + case(
+                    (
+                        func.lower(func.unaccent(func.coalesce(Person.canonical_name_en, "")))
+                        == normalized_term,
+                        8.0,
+                    ),
+                    else_=0.0,
+                )
+                + case(
+                    (
+                        func.lower(func.unaccent(func.coalesce(Person.latin_name, "")))
+                        == normalized_term,
+                        7.0,
+                    ),
+                    else_=0.0,
+                )
+                + case(
+                    (
+                        Person.aliases.any(
+                            and_(
+                                PersonName.deleted_at.is_(None),
+                                PersonName.normalized_value == normalized_term,
+                            )
+                        ),
+                        8.0,
+                    ),
+                    else_=0.0,
+                )
+            )
             query = query.where(
                 or_(
                     Person.search_vector.op("@@")(text_query),
@@ -469,14 +554,26 @@ class PersonQueryService:
         total = int((await self.db.execute(count_statement)).scalar_one())
 
         if search_score is not None:
-            query = query.order_by(search_score.desc(), Person.canonical_name.asc())
+            query = query.order_by(
+                search_score.desc(), Person.canonical_name.asc(), Person.id.asc()
+            )
         elif sort == PersonSort.UPDATED_DESC:
-            query = query.order_by(Person.updated_at.desc(), Person.canonical_name.asc())
+            query = query.order_by(
+                Person.updated_at.desc(), Person.canonical_name.asc(), Person.id.asc()
+            )
         else:
-            query = query.order_by(Person.canonical_name.asc())
+            query = query.order_by(Person.canonical_name.asc(), Person.id.asc())
         query = query.offset((page - 1) * per_page).limit(per_page)
         result = await self.db.execute(query)
-        return list(result.scalars().all()), total
+        persons = list(result.scalars().all())
+        if search_term:
+            for person in persons:
+                object.__setattr__(
+                    person,
+                    "search_reason",
+                    SearchPolicy.reason_for_person(person, search_term),
+                )
+        return persons, total
 
     async def list_person_facets(
         self,

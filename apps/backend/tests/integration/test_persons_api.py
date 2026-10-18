@@ -102,6 +102,12 @@ async def test_public_person_endpoints_expose_explicit_localization_projection(
     assert list_content["iconographic_attributes"] == "Giglio; libro"
     assert "biography" not in list_content
 
+    search_response = await async_client.get(
+        "/api/v1/persons", params={"search": "San Giovanni di Test"}
+    )
+    assert search_response.status_code == 200
+    assert search_response.json()["items"][0]["search_reason"] == "translation_exact"
+
 
 @pytest.mark.asyncio
 async def test_legacy_admin_edit_keeps_primary_translation_current(
