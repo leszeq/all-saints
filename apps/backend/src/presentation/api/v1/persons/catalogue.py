@@ -24,6 +24,8 @@ from src.domain.hagiography.models import (
 from src.infrastructure.db.session import get_db_session
 from src.presentation.api.v1.persons.schemas import (
     PersonDetailSchema,
+    PersonFacetCountSchema,
+    PersonFacetCountsSchema,
     PersonListItemSchema,
     PersonListResponseSchema,
     PersonLocalizedSummarySchema,
@@ -69,6 +71,15 @@ async def list_persons(
         Query(description="One or more public patronage discovery groups"),
     ] = None,
     country_id: uuid.UUID | None = None,
+    birth_country_id: uuid.UUID | None = None,
+    death_country_id: uuid.UUID | None = None,
+    nationality_id: uuid.UUID | None = None,
+    order_id: uuid.UUID | None = None,
+    occupation_id: uuid.UUID | None = None,
+    birth_year_from: Annotated[int | None, Query(ge=-5000, le=2100)] = None,
+    birth_year_to: Annotated[int | None, Query(ge=-5000, le=2100)] = None,
+    death_year_from: Annotated[int | None, Query(ge=-5000, le=2100)] = None,
+    death_year_to: Annotated[int | None, Query(ge=-5000, le=2100)] = None,
     is_featured: bool | None = None,
     sort: PersonSort = PersonSort.NAME_ASC,
     locale: Annotated[str, LOCALE_QUERY] = "pl",
@@ -85,6 +96,15 @@ async def list_persons(
         period=period,
         patronage=patronage,
         country_id=country_id,
+        birth_country_id=birth_country_id,
+        death_country_id=death_country_id,
+        nationality_id=nationality_id,
+        order_id=order_id,
+        occupation_id=occupation_id,
+        birth_year_from=birth_year_from,
+        birth_year_to=birth_year_to,
+        death_year_from=death_year_from,
+        death_year_to=death_year_to,
         is_featured=is_featured,
         published_only=True,
         sort=sort,
@@ -98,6 +118,73 @@ async def list_persons(
         page=page,
         per_page=per_page,
         pages=pages,
+    )
+
+
+@router.get(
+    "/facets",
+    response_model=PersonFacetCountsSchema,
+    summary="Count public person discovery facets",
+    description="Return relational facet counts for the published catalogue after the supplied filters.",
+)
+async def list_person_facets(
+    search: str | None = Query(None, max_length=200),
+    person_type: Annotated[
+        list[PersonType] | None, Query(description="One or more Church recognition types")
+    ] = None,
+    gender: Annotated[list[Gender] | None, Query(description="One or more genders")] = None,
+    era: Annotated[list[Era] | None, Query(description="One or more historical eras")] = None,
+    period: Annotated[
+        list[EraPeriod] | None, Query(description="One or more public timeline groups")
+    ] = None,
+    patronage: Annotated[
+        list[PatronageGroup] | None,
+        Query(description="One or more public patronage discovery groups"),
+    ] = None,
+    country_id: uuid.UUID | None = None,
+    birth_country_id: uuid.UUID | None = None,
+    death_country_id: uuid.UUID | None = None,
+    nationality_id: uuid.UUID | None = None,
+    order_id: uuid.UUID | None = None,
+    occupation_id: uuid.UUID | None = None,
+    birth_year_from: Annotated[int | None, Query(ge=-5000, le=2100)] = None,
+    birth_year_to: Annotated[int | None, Query(ge=-5000, le=2100)] = None,
+    death_year_from: Annotated[int | None, Query(ge=-5000, le=2100)] = None,
+    death_year_to: Annotated[int | None, Query(ge=-5000, le=2100)] = None,
+    is_featured: bool | None = None,
+    db: AsyncSession = Depends(get_db_session),
+) -> PersonFacetCountsSchema:
+    """Return counts from the same published result set as ``GET /persons``."""
+    counts = await PersonQueryService(db).list_person_facets(
+        search=search,
+        person_type=person_type,
+        gender=gender,
+        era=era,
+        period=period,
+        patronage=patronage,
+        country_id=country_id,
+        birth_country_id=birth_country_id,
+        death_country_id=death_country_id,
+        nationality_id=nationality_id,
+        order_id=order_id,
+        occupation_id=occupation_id,
+        birth_year_from=birth_year_from,
+        birth_year_to=birth_year_to,
+        death_year_from=death_year_from,
+        death_year_to=death_year_to,
+        is_featured=is_featured,
+    )
+
+    def serialize(items: list[tuple[uuid.UUID, int]]) -> list[PersonFacetCountSchema]:
+        return [PersonFacetCountSchema(id=facet_id, count=count) for facet_id, count in items]
+
+    return PersonFacetCountsSchema(
+        total=counts.total,
+        orders=serialize(counts.orders),
+        occupations=serialize(counts.occupations),
+        birth_countries=serialize(counts.birth_countries),
+        death_countries=serialize(counts.death_countries),
+        nationalities=serialize(counts.nationalities),
     )
 
 

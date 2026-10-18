@@ -198,6 +198,24 @@ class PersonListResponseSchema(BaseModel):
     pages: int
 
 
+class PersonFacetCountSchema(BaseModel):
+    """Count for one relational discovery value."""
+
+    id: uuid.UUID
+    count: int
+
+
+class PersonFacetCountsSchema(BaseModel):
+    """Counts calculated from the same published set as the person catalogue."""
+
+    total: int
+    orders: list[PersonFacetCountSchema] = Field(default_factory=list)
+    occupations: list[PersonFacetCountSchema] = Field(default_factory=list)
+    birth_countries: list[PersonFacetCountSchema] = Field(default_factory=list)
+    death_countries: list[PersonFacetCountSchema] = Field(default_factory=list)
+    nationalities: list[PersonFacetCountSchema] = Field(default_factory=list)
+
+
 class PublicIndexItemSchema(BaseModel):
     """Minimal public profile URL projection for crawlers."""
 

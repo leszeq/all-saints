@@ -12,16 +12,20 @@ from typing import cast
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import InstrumentedAttribute, selectinload
+from sqlalchemy.sql.elements import ColumnElement
 
+from src.domain.geography.models import ReligiousOrder
 from src.domain.hagiography.models import (
     Era,
     EraPeriod,
     Gender,
+    Occupation,
     Patronage,
     PatronageGroup,
     Person,
     PersonName,
+    PersonOccupation,
     PersonOrder,
     PersonSlugRedirect,
     PersonSort,
@@ -49,6 +53,18 @@ class PublicIndexPage:
 
     items: list[PublicIndexItem]
     next_cursor: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class PersonFacetCounts:
+    """Counts for relational discovery facets over one public result set."""
+
+    total: int
+    orders: list[tuple[uuid.UUID, int]]
+    occupations: list[tuple[uuid.UUID, int]]
+    birth_countries: list[tuple[uuid.UUID, int]]
+    death_countries: list[tuple[uuid.UUID, int]]
+    nationalities: list[tuple[uuid.UUID, int]]
 
 
 class PublicIndexCursorError(ValueError):
@@ -109,6 +125,98 @@ def _enum_values(
         for item in raw_values
         if item is not None
     ]
+
+
+def _person_catalogue_filters(
+    *,
+    person_type: PersonType | list[PersonType] | None = None,
+    gender: Gender | list[Gender] | None = None,
+    era: Era | list[Era] | None = None,
+    period: EraPeriod | list[EraPeriod] | None = None,
+    patronage: PatronageGroup | list[PatronageGroup] | None = None,
+    country_id: uuid.UUID | None = None,
+    birth_country_id: uuid.UUID | None = None,
+    death_country_id: uuid.UUID | None = None,
+    nationality_id: uuid.UUID | None = None,
+    order_id: uuid.UUID | None = None,
+    occupation_id: uuid.UUID | None = None,
+    birth_year_from: int | None = None,
+    birth_year_to: int | None = None,
+    death_year_from: int | None = None,
+    death_year_to: int | None = None,
+    is_featured: bool | None = None,
+) -> list[ColumnElement[bool]]:
+    """Build the relational predicates shared by list and facet queries."""
+    filters: list[ColumnElement[bool]] = []
+    person_type_values = _enum_values(person_type)
+    if person_type_values:
+        filters.append(Person.person_type.in_(person_type_values))
+    gender_values = _enum_values(gender)
+    if gender_values:
+        filters.append(Person.gender.in_(gender_values))
+    period_values = _enum_values(period)
+    era_values = _enum_values(era)
+    if period_values:
+        period_eras: set[str] = set()
+        for period_value in period_values:
+            period_eras.update(
+                period_era.value for period_era in ERA_PERIOD_ERAS[EraPeriod(period_value)]
+            )
+        filters.append(Person.era.in_(sorted(period_eras)))
+    elif era_values:
+        filters.append(Person.era.in_(era_values))
+    patronage_values = _enum_values(patronage)
+    if patronage_values:
+        patronage_types: set[str] = set()
+        for patronage_value in patronage_values:
+            patronage_types.update(PATRONAGE_GROUP_TYPES[PatronageGroup(patronage_value)])
+        filters.append(
+            Person.patronages.any(
+                and_(
+                    Patronage.deleted_at.is_(None),
+                    Patronage.patronage_type.in_(sorted(patronage_types)),
+                )
+            )
+        )
+    if country_id:
+        filters.append(
+            or_(Person.birth_country_id == country_id, Person.death_country_id == country_id)
+        )
+    if birth_country_id:
+        filters.append(Person.birth_country_id == birth_country_id)
+    if death_country_id:
+        filters.append(Person.death_country_id == death_country_id)
+    if nationality_id:
+        filters.append(Person.nationality_id == nationality_id)
+    if order_id:
+        filters.append(
+            Person.orders.any(
+                and_(
+                    PersonOrder.order_id == order_id,
+                    PersonOrder.order.has(ReligiousOrder.deleted_at.is_(None)),
+                )
+            )
+        )
+    if occupation_id:
+        filters.append(
+            Person.occupations.any(
+                and_(
+                    PersonOccupation.occupation_id == occupation_id,
+                    PersonOccupation.occupation.has(Occupation.deleted_at.is_(None)),
+                )
+            )
+        )
+    if birth_year_from is not None:
+        filters.append(Person.birth_year >= birth_year_from)
+    if birth_year_to is not None:
+        filters.append(Person.birth_year <= birth_year_to)
+    if death_year_from is not None:
+        filters.append(Person.death_year >= death_year_from)
+    if death_year_to is not None:
+        filters.append(Person.death_year <= death_year_to)
+    if is_featured is not None:
+        filters.append(Person.is_featured == is_featured)
+    return filters
 
 
 class PersonQueryService:
@@ -213,6 +321,15 @@ class PersonQueryService:
         period: EraPeriod | list[EraPeriod] | None = None,
         patronage: PatronageGroup | list[PatronageGroup] | None = None,
         country_id: uuid.UUID | None = None,
+        birth_country_id: uuid.UUID | None = None,
+        death_country_id: uuid.UUID | None = None,
+        nationality_id: uuid.UUID | None = None,
+        order_id: uuid.UUID | None = None,
+        occupation_id: uuid.UUID | None = None,
+        birth_year_from: int | None = None,
+        birth_year_to: int | None = None,
+        death_year_from: int | None = None,
+        death_year_to: int | None = None,
         is_featured: bool | None = None,
         published_only: bool = False,
         sort: PersonSort = PersonSort.NAME_ASC,
@@ -226,43 +343,28 @@ class PersonQueryService:
 
         if published_only:
             query = query.where(Person.status == PublicationStatus.PUBLISHED.value)
-
-        person_type_values = _enum_values(person_type)
-        if person_type_values:
-            query = query.where(Person.person_type.in_(person_type_values))
         if status and not published_only:
             query = query.where(Person.status == status.value)
-        gender_values = _enum_values(gender)
-        if gender_values:
-            query = query.where(Person.gender.in_(gender_values))
-        period_values = _enum_values(period)
-        era_values = _enum_values(era)
-        if period_values:
-            period_eras: set[str] = set()
-            for period_value in period_values:
-                period_eras.update(era.value for era in ERA_PERIOD_ERAS[EraPeriod(period_value)])
-            query = query.where(Person.era.in_(sorted(period_eras)))
-        elif era_values:
-            query = query.where(Person.era.in_(era_values))
-        patronage_values = _enum_values(patronage)
-        if patronage_values:
-            patronage_types: set[str] = set()
-            for patronage_value in patronage_values:
-                patronage_types.update(PATRONAGE_GROUP_TYPES[PatronageGroup(patronage_value)])
-            query = query.where(
-                Person.patronages.any(
-                    and_(
-                        Patronage.deleted_at.is_(None),
-                        Patronage.patronage_type.in_(sorted(patronage_types)),
-                    )
-                )
+        query = query.where(
+            *_person_catalogue_filters(
+                person_type=person_type,
+                gender=gender,
+                era=era,
+                period=period,
+                patronage=patronage,
+                country_id=country_id,
+                birth_country_id=birth_country_id,
+                death_country_id=death_country_id,
+                nationality_id=nationality_id,
+                order_id=order_id,
+                occupation_id=occupation_id,
+                birth_year_from=birth_year_from,
+                birth_year_to=birth_year_to,
+                death_year_from=death_year_from,
+                death_year_to=death_year_to,
+                is_featured=is_featured,
             )
-        if country_id:
-            query = query.where(
-                or_(Person.birth_country_id == country_id, Person.death_country_id == country_id)
-            )
-        if is_featured is not None:
-            query = query.where(Person.is_featured == is_featured)
+        )
 
         search_score = None
         if search and search.strip():
@@ -375,6 +477,129 @@ class PersonQueryService:
         query = query.offset((page - 1) * per_page).limit(per_page)
         result = await self.db.execute(query)
         return list(result.scalars().all()), total
+
+    async def list_person_facets(
+        self,
+        *,
+        search: str | None = None,
+        person_type: PersonType | list[PersonType] | None = None,
+        gender: Gender | list[Gender] | None = None,
+        era: Era | list[Era] | None = None,
+        period: EraPeriod | list[EraPeriod] | None = None,
+        patronage: PatronageGroup | list[PatronageGroup] | None = None,
+        country_id: uuid.UUID | None = None,
+        birth_country_id: uuid.UUID | None = None,
+        death_country_id: uuid.UUID | None = None,
+        nationality_id: uuid.UUID | None = None,
+        order_id: uuid.UUID | None = None,
+        occupation_id: uuid.UUID | None = None,
+        birth_year_from: int | None = None,
+        birth_year_to: int | None = None,
+        death_year_from: int | None = None,
+        death_year_to: int | None = None,
+        is_featured: bool | None = None,
+    ) -> PersonFacetCounts:
+        """Count relational facets using the same public visibility boundary as the catalogue."""
+        query = select(Person.id).where(
+            Person.deleted_at.is_(None),
+            Person.status == PublicationStatus.PUBLISHED.value,
+        )
+        query = query.where(
+            *_person_catalogue_filters(
+                person_type=person_type,
+                gender=gender,
+                era=era,
+                period=period,
+                patronage=patronage,
+                country_id=country_id,
+                birth_country_id=birth_country_id,
+                death_country_id=death_country_id,
+                nationality_id=nationality_id,
+                order_id=order_id,
+                occupation_id=occupation_id,
+                birth_year_from=birth_year_from,
+                birth_year_to=birth_year_to,
+                death_year_from=death_year_from,
+                death_year_to=death_year_to,
+                is_featured=is_featured,
+            )
+        )
+        if search and search.strip():
+            term = search.strip()
+            like_term = f"%{term}%"
+            text_query = func.websearch_to_tsquery("simple", func.unaccent(term))
+            query = query.where(
+                or_(
+                    Person.search_vector.op("@@")(text_query),
+                    Person.canonical_name.ilike(like_term),
+                    Person.canonical_name_en.ilike(like_term),
+                    Person.latin_name.ilike(like_term),
+                )
+            )
+
+        selected = query.subquery()
+        person_ids = select(selected.c.id)
+        total = int(
+            (await self.db.execute(select(func.count()).select_from(selected))).scalar_one()
+        )
+
+        order_rows = (
+            await self.db.execute(
+                select(
+                    PersonOrder.order_id,
+                    func.count(func.distinct(PersonOrder.person_id)),
+                )
+                .join(ReligiousOrder, ReligiousOrder.id == PersonOrder.order_id)
+                .where(
+                    PersonOrder.person_id.in_(person_ids),
+                    ReligiousOrder.deleted_at.is_(None),
+                )
+                .group_by(PersonOrder.order_id)
+                .order_by(func.count(func.distinct(PersonOrder.person_id)).desc())
+            )
+        ).all()
+        occupation_rows = (
+            await self.db.execute(
+                select(
+                    PersonOccupation.occupation_id,
+                    func.count(func.distinct(PersonOccupation.person_id)),
+                )
+                .join(Occupation, Occupation.id == PersonOccupation.occupation_id)
+                .where(
+                    PersonOccupation.person_id.in_(person_ids),
+                    Occupation.deleted_at.is_(None),
+                )
+                .group_by(PersonOccupation.occupation_id)
+                .order_by(func.count(func.distinct(PersonOccupation.person_id)).desc())
+            )
+        ).all()
+
+        async def country_counts(
+            column: InstrumentedAttribute[uuid.UUID | None],
+        ) -> list[tuple[uuid.UUID, int]]:
+            rows = (
+                await self.db.execute(
+                    select(column, func.count())
+                    .where(selected.c.id == Person.id, column.is_not(None))
+                    .group_by(column)
+                    .order_by(func.count().desc())
+                )
+            ).all()
+            return [
+                (country_id, int(count)) for country_id, count in rows if country_id is not None
+            ]
+
+        birth_country_rows = await country_counts(Person.birth_country_id)
+        death_country_rows = await country_counts(Person.death_country_id)
+        nationality_rows = await country_counts(Person.nationality_id)
+        return PersonFacetCounts(
+            total=total,
+            orders=[(facet_id, int(count)) for facet_id, count in order_rows],
+            occupations=[(facet_id, int(count)) for facet_id, count in occupation_rows],
+            birth_countries=birth_country_rows,
+            death_countries=death_country_rows,
+            nationalities=nationality_rows,
+        )
 
     async def get_last_editors(
         self,

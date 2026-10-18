@@ -42,6 +42,11 @@ export const fetchPersons = async (params?: Record<string, unknown>) => {
   return data;
 };
 
+export const fetchPersonFacets = async (params?: Record<string, unknown>) => {
+  const { data } = await publicApi.get("/persons/facets", { params });
+  return data;
+};
+
 export const fetchPublicPersonIndex = async (params?: Record<string, unknown>) => {
   const { data } = await publicApi.get("/public-index/persons", { params });
   return data;

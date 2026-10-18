@@ -2,13 +2,25 @@
 Integration tests for Person API endpoints.
 """
 
+import uuid
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.commands.persons import PersonCreateSchema, PersonUpdateSchema
 from src.application.services.person_service import PersonService
-from src.domain.hagiography.models import PersonTranslation, PublicationStatus
+from src.domain.geography.models import Country, ReligiousOrder
+from src.domain.hagiography.models import (
+    Gender,
+    Occupation,
+    Person,
+    PersonOccupation,
+    PersonOrder,
+    PersonTranslation,
+    PersonType,
+    PublicationStatus,
+)
 
 
 @pytest.mark.asyncio
@@ -145,3 +157,85 @@ async def test_public_person_locale_rejects_malformed_language_tag(
     response = await async_client.get("/api/v1/persons", params={"locale": "not a locale"})
 
     assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_public_catalogue_relational_filters_and_facets_exclude_drafts(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    country = Country(
+        id=uuid.uuid4(),
+        name_pl="Polska testowa",
+        name_en="Test Poland",
+        iso_code_alpha2="TP",
+        iso_code_alpha3="TST",
+    )
+    order = ReligiousOrder(id=uuid.uuid4(), slug="zakon-fasetowy", name="Zakon Fasetowy")
+    occupation = Occupation(id=uuid.uuid4(), name_pl="Lekarz testowy", name_en="Test doctor")
+    matching = Person(
+        id=uuid.uuid4(),
+        slug="sw-faseta-pasuje",
+        canonical_name="Św. Pasująca Faseta",
+        person_type=PersonType.SAINT.value,
+        status=PublicationStatus.PUBLISHED.value,
+        gender=Gender.FEMALE.value,
+        birth_country_id=country.id,
+        nationality_id=country.id,
+        birth_year=1890,
+        death_year=1960,
+    )
+    order_only = Person(
+        id=uuid.uuid4(),
+        slug="sw-faseta-tylko-zakon",
+        canonical_name="Św. Tylko Zakon",
+        person_type=PersonType.SAINT.value,
+        status=PublicationStatus.PUBLISHED.value,
+        gender=Gender.MALE.value,
+        birth_year=1880,
+        death_year=1950,
+    )
+    draft = Person(
+        id=uuid.uuid4(),
+        slug="draft-faseta",
+        canonical_name="Draft Faseta",
+        person_type=PersonType.SAINT.value,
+        status=PublicationStatus.DRAFT.value,
+        gender=Gender.MALE.value,
+        birth_year=1890,
+        death_year=1960,
+    )
+    db_session.add_all([country, order, occupation, matching, order_only, draft])
+    await db_session.flush()
+    db_session.add_all(
+        [
+            PersonOrder(person_id=matching.id, order_id=order.id),
+            PersonOrder(person_id=order_only.id, order_id=order.id),
+            PersonOrder(person_id=draft.id, order_id=order.id),
+            PersonOccupation(person_id=matching.id, occupation_id=occupation.id),
+        ]
+    )
+    await db_session.commit()
+
+    filtered = await async_client.get(
+        "/api/v1/persons",
+        params={
+            "order_id": str(order.id),
+            "occupation_id": str(occupation.id),
+            "birth_year_from": 1885,
+            "birth_year_to": 1900,
+            "nationality_id": str(country.id),
+        },
+    )
+    assert filtered.status_code == 200
+    assert filtered.json()["total"] == 1
+    assert filtered.json()["items"][0]["slug"] == matching.slug
+
+    facets = await async_client.get("/api/v1/persons/facets")
+    assert facets.status_code == 200
+    facet_data = facets.json()
+    assert facet_data["total"] == 2
+    assert facet_data["orders"] == [{"id": str(order.id), "count": 2}]
+    assert facet_data["occupations"] == [{"id": str(occupation.id), "count": 1}]
+    assert facet_data["birth_countries"] == [{"id": str(country.id), "count": 1}]
+    assert facet_data["nationalities"] == [{"id": str(country.id), "count": 1}]
