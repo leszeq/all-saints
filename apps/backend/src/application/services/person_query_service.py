@@ -527,6 +527,7 @@ class PersonQueryService:
         if search and search.strip():
             term = search.strip()
             like_term = f"%{term}%"
+            normalized_term = normalize_person_name(term)
             text_query = func.websearch_to_tsquery("simple", func.unaccent(term))
             query = query.where(
                 or_(
@@ -534,6 +535,40 @@ class PersonQueryService:
                     Person.canonical_name.ilike(like_term),
                     Person.canonical_name_en.ilike(like_term),
                     Person.latin_name.ilike(like_term),
+                    Person.canonical_name.op("%")(term),
+                    Person.canonical_name_en.op("%")(term),
+                    Person.latin_name.op("%")(term),
+                    Person.aliases.any(
+                        and_(
+                            PersonName.deleted_at.is_(None),
+                            or_(
+                                PersonName.normalized_value == normalized_term,
+                                PersonName.value.ilike(like_term),
+                                PersonName.value.op("%")(term),
+                            ),
+                        )
+                    ),
+                    Person.translations.any(
+                        and_(
+                            PersonTranslation.deleted_at.is_(None),
+                            or_(
+                                PersonTranslation.search_vector.op("@@")(text_query),
+                                PersonTranslation.canonical_name.ilike(like_term),
+                                PersonTranslation.canonical_name.op("%")(term),
+                            ),
+                        )
+                    ),
+                    Person.patronages.any(
+                        and_(
+                            Patronage.deleted_at.is_(None),
+                            or_(
+                                Patronage.name_pl.ilike(like_term),
+                                Patronage.name_en.ilike(like_term),
+                                Patronage.description.ilike(like_term),
+                                Patronage.patronage_type.ilike(like_term),
+                            ),
+                        )
+                    ),
                 )
             )
 

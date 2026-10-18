@@ -370,6 +370,14 @@ export interface WebDictionary {
     submit: string;
     activeFilters: string;
     clearFilters: string;
+    relationalFilters: string;
+    orderFilter: string;
+    occupationFilter: string;
+    birthCountryFilter: string;
+    deathCountryFilter: string;
+    nationalityFilter: string;
+    allValues: string;
+    facetCount: string;
     resultsPrefix: string;
     resultsSuffix: string;
     emptyTitle: string;

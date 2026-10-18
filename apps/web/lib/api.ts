@@ -65,6 +65,11 @@ export const fetchCountries = async () => {
   return data;
 };
 
+export const fetchOccupations = async () => {
+  const { data } = await publicApi.get("/taxonomy/occupations");
+  return data;
+};
+
 export const fetchOrders = async (params?: Record<string, unknown>) => {
   const { data } = await publicApi.get("/orders", { params });
   return data;

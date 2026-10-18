@@ -1,12 +1,19 @@
 import Link from "next/link";
 import { BookOpen, ChevronRight, Search } from "lucide-react";
-import { fetchPersons } from "@/lib/api";
+import {
+  fetchCountries,
+  fetchOccupations,
+  fetchOrders,
+  fetchPersonFacets,
+  fetchPersons,
+} from "@/lib/api";
 import { SaintAvatar, type SaintAvatarData } from "@/components/saint-avatar";
 import { DEFAULT_WEB_UI_LOCALE } from "@/lib/i18n/config";
 import { getWebDictionary } from "@/lib/i18n/dictionaries";
 import { resolveDictionaryLabel, resolveDictionaryValue } from "@/lib/i18n/labels";
 import { readPublicPersonContent } from "@/lib/person-content";
 import { LEGACY_ERA_PERIODS, LEGACY_SEARCH_PATRONAGES } from "@/lib/person-filters";
+import type { ReligiousOrder } from "@/lib/orders";
 
 export const revalidate = 30;
 
@@ -20,9 +27,25 @@ interface PageProps {
     period?: SearchParamValue;
     patronage?: SearchParamValue;
     gender?: SearchParamValue;
+    order_id?: SearchParamValue;
+    occupation_id?: SearchParamValue;
+    birth_country_id?: SearchParamValue;
+    death_country_id?: SearchParamValue;
+    nationality_id?: SearchParamValue;
     page?: SearchParamValue;
   }>;
 }
+
+type FacetCount = { id: string; count: number };
+type PersonFacets = {
+  orders?: FacetCount[];
+  occupations?: FacetCount[];
+  birth_countries?: FacetCount[];
+  death_countries?: FacetCount[];
+  nationalities?: FacetCount[];
+};
+type OccupationRecord = { id: string; name_pl: string };
+type CountryRecord = { id: string; name_pl: string };
 
 type PatronageRecord = {
   id?: string;
@@ -61,6 +84,11 @@ function buildDirectoryHref({
   periodFilters,
   eraFilters,
   patronageFilters,
+  orderId,
+  occupationId,
+  birthCountryId,
+  deathCountryId,
+  nationalityId,
   page,
 }: {
   search: string;
@@ -69,6 +97,11 @@ function buildDirectoryHref({
   periodFilters: string[];
   eraFilters: string[];
   patronageFilters: string[];
+  orderId?: string;
+  occupationId?: string;
+  birthCountryId?: string;
+  deathCountryId?: string;
+  nationalityId?: string;
   page?: number;
 }) {
   const query = new URLSearchParams();
@@ -79,6 +112,11 @@ function buildDirectoryHref({
   periodFilters.forEach((value) => query.append("period", value));
   eraFilters.forEach((value) => query.append("era", value));
   patronageFilters.forEach((value) => query.append("patronage", value));
+  if (orderId) query.set("order_id", orderId);
+  if (occupationId) query.set("occupation_id", occupationId);
+  if (birthCountryId) query.set("birth_country_id", birthCountryId);
+  if (deathCountryId) query.set("death_country_id", deathCountryId);
+  if (nationalityId) query.set("nationality_id", nationalityId);
   if (page && page > 1) query.set("page", String(page));
 
   const serialized = query.toString();
@@ -136,6 +174,38 @@ function FilterOption({
   );
 }
 
+function RelationalSelect({
+  name,
+  label,
+  value,
+  options,
+  allLabel,
+}: {
+  name: string;
+  label: string;
+  value: string;
+  options: Array<{ id: string; label: string; count: number }>;
+  allLabel: string;
+}) {
+  return (
+    <label className="flex flex-col gap-1.5 text-xs font-semibold text-stone-600">
+      <span>{label}</span>
+      <select
+        name={name}
+        defaultValue={value}
+        className="rounded-xl border border-gold-500/30 bg-gray-50/50 px-3 py-2.5 text-sm font-normal text-gray-900 focus:border-gold-500 focus:outline-none focus:ring-2 focus:ring-gold-400/20"
+      >
+        <option value="">{allLabel}</option>
+        {options.map((option) => (
+          <option key={option.id} value={option.id}>
+            {option.label} ({option.count})
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
   const dictionary = await getWebDictionary(DEFAULT_WEB_UI_LOCALE);
   const copy = dictionary.saintsDirectory;
@@ -162,7 +232,48 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
   const eraFilters = periodFilters.length
     ? []
     : validParamValues(params.era, domain.eras);
+  const orderId = firstParamValue(params.order_id);
+  const occupationId = firstParamValue(params.occupation_id);
+  const birthCountryId = firstParamValue(params.birth_country_id);
+  const deathCountryId = firstParamValue(params.death_country_id);
+  const nationalityId = firstParamValue(params.nationality_id);
   const page = Number(firstParamValue(params.page) || "1");
+
+  const discoveryParams = {
+    ...(search && { search }),
+    ...(typeFilters.length && { person_type: typeFilters }),
+    ...(genderFilters.length && { gender: genderFilters }),
+    ...(periodFilters.length && { period: periodFilters }),
+    ...(patronageFilters.length && { patronage: patronageFilters }),
+    ...(eraFilters.length && { era: eraFilters }),
+    ...(orderId && { order_id: orderId }),
+    ...(occupationId && { occupation_id: occupationId }),
+    ...(birthCountryId && { birth_country_id: birthCountryId }),
+    ...(deathCountryId && { death_country_id: deathCountryId }),
+    ...(nationalityId && { nationality_id: nationalityId }),
+  };
+  const [res, facetResponse, orderResponse, occupationResponse, countryResponse] =
+    await Promise.all([
+      fetchPersons({ page, per_page: 18, ...discoveryParams }),
+      fetchPersonFacets(discoveryParams),
+      fetchOrders(),
+      fetchOccupations(),
+      fetchCountries(),
+    ]);
+  const orders = (Array.isArray(orderResponse) ? orderResponse : []) as ReligiousOrder[];
+  const occupations = (Array.isArray(occupationResponse) ? occupationResponse : []) as OccupationRecord[];
+  const countries = (Array.isArray(countryResponse) ? countryResponse : []) as CountryRecord[];
+  const facets = (facetResponse ?? {}) as PersonFacets;
+  const findLabel = (
+    items: Array<{ id: string; name_pl?: string; name?: string }>,
+    id: string,
+    fallback: string,
+  ) => {
+    const item = items.find((candidate) => candidate.id === id);
+    return item?.name_pl ?? item?.name ?? fallback;
+  };
+  const findCount = (items: FacetCount[] | undefined, id: string) =>
+    items?.find((item) => item.id === id)?.count ?? 0;
   const activeFilters = [
     ...typeFilters.map((value) => ({
       label: resolveDictionaryValue(domain.personTypes, value)?.label ?? value,
@@ -184,21 +295,62 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
       label: resolveDictionaryValue(domain.patronageGroups, value)?.title ?? value,
       context: resolveDictionaryValue(domain.patronageGroups, value)?.detail ?? value,
     })),
+    ...(orderId
+      ? [{ label: findLabel(orders, orderId, copy.orderFilter), context: copy.orderFilter }]
+      : []),
+    ...(occupationId
+      ? [{
+          label: findLabel(occupations, occupationId, copy.occupationFilter),
+          context: copy.occupationFilter,
+        }]
+      : []),
+    ...(birthCountryId
+      ? [{
+          label: findLabel(countries, birthCountryId, copy.birthCountryFilter),
+          context: copy.birthCountryFilter,
+        }]
+      : []),
+    ...(deathCountryId
+      ? [{
+          label: findLabel(countries, deathCountryId, copy.deathCountryFilter),
+          context: copy.deathCountryFilter,
+        }]
+      : []),
+    ...(nationalityId
+      ? [{
+          label: findLabel(countries, nationalityId, copy.nationalityFilter),
+          context: copy.nationalityFilter,
+        }]
+      : []),
   ];
-
-  const res = await fetchPersons({
-    page,
-    per_page: 18,
-    ...(search && { search }),
-    ...(typeFilters.length && { person_type: typeFilters }),
-    ...(genderFilters.length && { gender: genderFilters }),
-    ...(periodFilters.length && { period: periodFilters }),
-    ...(patronageFilters.length && { patronage: patronageFilters }),
-    ...(eraFilters.length && { era: eraFilters }),
-  });
   const persons: Array<Record<string, unknown>> = res?.items ?? [];
   const total = res?.total ?? 0;
   const totalPages = res?.pages ?? 1;
+  const orderOptions = orders.map((order) => ({
+    id: order.id,
+    label: order.name,
+    count: findCount(facets.orders, order.id),
+  }));
+  const occupationOptions = occupations.map((occupation) => ({
+    id: occupation.id,
+    label: occupation.name_pl,
+    count: findCount(facets.occupations, occupation.id),
+  }));
+  const countryOptions = countries.map((country) => ({
+    id: country.id,
+    label: country.name_pl,
+    count: findCount(facets.birth_countries, country.id),
+  }));
+  const deathCountryOptions = countries.map((country) => ({
+    id: country.id,
+    label: country.name_pl,
+    count: findCount(facets.death_countries, country.id),
+  }));
+  const nationalityOptions = countries.map((country) => ({
+    id: country.id,
+    label: country.name_pl,
+    count: findCount(facets.nationalities, country.id),
+  }));
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 space-y-8">
@@ -294,6 +446,49 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
               ))}
             </div>
           </fieldset>
+        </div>
+
+        <div className="mt-5 border-t border-gold-500/15 pt-4">
+          <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-stone-500">
+            {copy.relationalFilters}
+          </h2>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <RelationalSelect
+              name="order_id"
+              label={copy.orderFilter}
+              value={orderId}
+              options={orderOptions}
+              allLabel={copy.allValues}
+            />
+            <RelationalSelect
+              name="occupation_id"
+              label={copy.occupationFilter}
+              value={occupationId}
+              options={occupationOptions}
+              allLabel={copy.allValues}
+            />
+            <RelationalSelect
+              name="birth_country_id"
+              label={copy.birthCountryFilter}
+              value={birthCountryId}
+              options={countryOptions}
+              allLabel={copy.allValues}
+            />
+            <RelationalSelect
+              name="death_country_id"
+              label={copy.deathCountryFilter}
+              value={deathCountryId}
+              options={deathCountryOptions}
+              allLabel={copy.allValues}
+            />
+            <RelationalSelect
+              name="nationality_id"
+              label={copy.nationalityFilter}
+              value={nationalityId}
+              options={nationalityOptions}
+              allLabel={copy.allValues}
+            />
+          </div>
         </div>
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-gold-500/15 pt-4">
@@ -499,6 +694,11 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
                   periodFilters,
                   eraFilters,
                   patronageFilters,
+                  orderId,
+                  occupationId,
+                  birthCountryId,
+                  deathCountryId,
+                  nationalityId,
                   page: pageNum,
                 })}
                 className={`h-9 w-9 rounded-lg flex items-center justify-center text-sm font-semibold transition-all ${
