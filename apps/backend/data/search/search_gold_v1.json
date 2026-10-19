@@ -1,0 +1,821 @@
+{
+  "version": "search-gold-v1",
+  "status": "starter",
+  "description": "Wersjonowany zestaw 100 pytań oparty na opublikowanym katalogu; warianty typo wymagają ręcznej oceny przed użyciem jako release gate.",
+  "source_files": [
+    "data/religious-orders/persons.csv",
+    "data/liturgical-calendar/persons-08-24.csv",
+    "data/liturgical-calendar/persons-08-25.csv",
+    "data/liturgical-calendar/persons-08-26.csv"
+  ],
+  "cutoff": 10,
+  "top_k": 5,
+  "thresholds": {
+    "top_k_success": 0.9,
+    "mrr_at_cutoff": 0.85,
+    "ndcg_at_cutoff": 0.9
+  },
+  "cases": [
+    {
+      "case_id": "canonical_exact-001",
+      "query": "Św. Bartłomiej Apostoł",
+      "expected_slugs": [
+        "sw-bartlomiej-apostol"
+      ],
+      "query_class": "canonical_exact"
+    },
+    {
+      "case_id": "canonical_exact-002",
+      "query": "Św. Emilia de Vialar",
+      "expected_slugs": [
+        "sw-emilia-de-vialar"
+      ],
+      "query_class": "canonical_exact"
+    },
+    {
+      "case_id": "canonical_exact-003",
+      "query": "Bł. Maria od Wcielenia (Vincenta Rosal)",
+      "expected_slugs": [
+        "bl-maria-od-wcielenia-vincenta-rosal"
+      ],
+      "query_class": "canonical_exact"
+    },
+    {
+      "case_id": "canonical_exact-004",
+      "query": "Bł. Mirosław Bulesić",
+      "expected_slugs": [
+        "bl-miroslaw-bulesic"
+      ],
+      "query_class": "canonical_exact"
+    },
+    {
+      "case_id": "canonical_exact-005",
+      "query": "Bł. Czesław Jóźwiak",
+      "expected_slugs": [
+        "bl-czeslaw-jozwiak"
+      ],
+      "query_class": "canonical_exact"
+    },
+    {
+      "case_id": "canonical_exact-006",
+      "query": "Bł. Edward Kaźmierski",
+      "expected_slugs": [
+        "bl-edward-kazmierski"
+      ],
+      "query_class": "canonical_exact"
+    },
+    {
+      "case_id": "canonical_exact-007",
+      "query": "Bł. Edward Klinik",
+      "expected_slugs": [
+        "bl-edward-klinik"
+      ],
+      "query_class": "canonical_exact"
+    },
+    {
+      "case_id": "canonical_exact-008",
+      "query": "Bł. Franciszek Kęsy",
+      "expected_slugs": [
+        "bl-franciszek-kesy"
+      ],
+      "query_class": "canonical_exact"
+    },
+    {
+      "case_id": "canonical_exact-009",
+      "query": "Bł. Jarogniew Wojciechowski",
+      "expected_slugs": [
+        "bl-jarogniew-wojciechowski"
+      ],
+      "query_class": "canonical_exact"
+    },
+    {
+      "case_id": "canonical_exact-010",
+      "query": "Św. Ludwik IX, król Francji",
+      "expected_slugs": [
+        "sw-ludwik-ix-krol-francji"
+      ],
+      "query_class": "canonical_exact"
+    },
+    {
+      "case_id": "canonical_exact-011",
+      "query": "Św. Józef Kalasanty",
+      "expected_slugs": [
+        "sw-jozef-kalasanty"
+      ],
+      "query_class": "canonical_exact"
+    },
+    {
+      "case_id": "canonical_exact-012",
+      "query": "Św. Maria od Jezusa Ukrzyżowanego (Mała Arabka)",
+      "expected_slugs": [
+        "sw-maria-od-jezusa-ukrzyzowanego-mala-arabka"
+      ],
+      "query_class": "canonical_exact"
+    },
+    {
+      "case_id": "canonical_exact-013",
+      "query": "Bł. Maria del Tránsito od Jezusa Sakramentalnego",
+      "expected_slugs": [
+        "bl-maria-del-transito-od-jezusa-sakramentalnego"
+      ],
+      "query_class": "canonical_exact"
+    },
+    {
+      "case_id": "canonical_exact-014",
+      "query": "Św. Maria Troncatti",
+      "expected_slugs": [
+        "sw-maria-troncatti"
+      ],
+      "query_class": "canonical_exact"
+    },
+    {
+      "case_id": "canonical_exact-015",
+      "query": "Św. Joanna Elżbieta Bichier des Ages",
+      "expected_slugs": [
+        "sw-joanna-elzbieta-bichier-des-ages"
+      ],
+      "query_class": "canonical_exact"
+    },
+    {
+      "case_id": "canonical_exact-016",
+      "query": "Św. Teresa od Jezusa Jornet e Ibars",
+      "expected_slugs": [
+        "sw-teresa-od-jezusa-jornet-e-ibars"
+      ],
+      "query_class": "canonical_exact"
+    },
+    {
+      "case_id": "canonical_exact-017",
+      "query": "Bł. Maria od Aniołów Ginard Martí",
+      "expected_slugs": [
+        "bl-maria-od-aniolow-ginard-marti"
+      ],
+      "query_class": "canonical_exact"
+    },
+    {
+      "case_id": "canonical_exact-018",
+      "query": "Św. Benedykt z Nursji",
+      "expected_slugs": [
+        "sw-benedykt-z-nursji"
+      ],
+      "query_class": "canonical_exact"
+    },
+    {
+      "case_id": "canonical_exact-019",
+      "query": "Św. Faustyna Kowalska",
+      "expected_slugs": [
+        "sw-faustyna-kowalska"
+      ],
+      "query_class": "canonical_exact"
+    },
+    {
+      "case_id": "english_exact-001",
+      "query": "St. Bartholomew the Apostle",
+      "expected_slugs": [
+        "sw-bartlomiej-apostol"
+      ],
+      "query_class": "english_exact"
+    },
+    {
+      "case_id": "english_exact-002",
+      "query": "St. Émilie de Vialar",
+      "expected_slugs": [
+        "sw-emilia-de-vialar"
+      ],
+      "query_class": "english_exact"
+    },
+    {
+      "case_id": "english_exact-003",
+      "query": "Bl. María de la Encarnación Rosal",
+      "expected_slugs": [
+        "bl-maria-od-wcielenia-vincenta-rosal"
+      ],
+      "query_class": "english_exact"
+    },
+    {
+      "case_id": "english_exact-004",
+      "query": "Bl. Miroslav Bulešić",
+      "expected_slugs": [
+        "bl-miroslaw-bulesic"
+      ],
+      "query_class": "english_exact"
+    },
+    {
+      "case_id": "english_exact-005",
+      "query": "Bl. Czesław Jóźwiak",
+      "expected_slugs": [
+        "bl-czeslaw-jozwiak"
+      ],
+      "query_class": "english_exact"
+    },
+    {
+      "case_id": "english_exact-006",
+      "query": "Bl. Edward Kaźmierski",
+      "expected_slugs": [
+        "bl-edward-kazmierski"
+      ],
+      "query_class": "english_exact"
+    },
+    {
+      "case_id": "english_exact-007",
+      "query": "Bl. Edward Klinik",
+      "expected_slugs": [
+        "bl-edward-klinik"
+      ],
+      "query_class": "english_exact"
+    },
+    {
+      "case_id": "english_exact-008",
+      "query": "Bl. Franciszek Kęsy",
+      "expected_slugs": [
+        "bl-franciszek-kesy"
+      ],
+      "query_class": "english_exact"
+    },
+    {
+      "case_id": "english_exact-009",
+      "query": "Bl. Jarogniew Wojciechowski",
+      "expected_slugs": [
+        "bl-jarogniew-wojciechowski"
+      ],
+      "query_class": "english_exact"
+    },
+    {
+      "case_id": "english_exact-010",
+      "query": "St. Louis IX, King of France",
+      "expected_slugs": [
+        "sw-ludwik-ix-krol-francji"
+      ],
+      "query_class": "english_exact"
+    },
+    {
+      "case_id": "english_exact-011",
+      "query": "St. Joseph Calasanz",
+      "expected_slugs": [
+        "sw-jozef-kalasanty"
+      ],
+      "query_class": "english_exact"
+    },
+    {
+      "case_id": "english_exact-012",
+      "query": "St. Mariam of Jesus Crucified (Mariam Baouardy)",
+      "expected_slugs": [
+        "sw-maria-od-jezusa-ukrzyzowanego-mala-arabka"
+      ],
+      "query_class": "english_exact"
+    },
+    {
+      "case_id": "english_exact-013",
+      "query": "Bl. María del Tránsito Cabanillas",
+      "expected_slugs": [
+        "bl-maria-del-transito-od-jezusa-sakramentalnego"
+      ],
+      "query_class": "english_exact"
+    },
+    {
+      "case_id": "english_exact-014",
+      "query": "St. Maria Troncatti",
+      "expected_slugs": [
+        "sw-maria-troncatti"
+      ],
+      "query_class": "english_exact"
+    },
+    {
+      "case_id": "english_exact-015",
+      "query": "St. Jeanne-Elisabeth Bichier des Ages",
+      "expected_slugs": [
+        "sw-joanna-elzbieta-bichier-des-ages"
+      ],
+      "query_class": "english_exact"
+    },
+    {
+      "case_id": "english_exact-016",
+      "query": "St. Teresa of Jesus Jornet Ibars",
+      "expected_slugs": [
+        "sw-teresa-od-jezusa-jornet-e-ibars"
+      ],
+      "query_class": "english_exact"
+    },
+    {
+      "case_id": "english_exact-017",
+      "query": "Bl. María de los Ángeles Ginard Martí",
+      "expected_slugs": [
+        "bl-maria-od-aniolow-ginard-marti"
+      ],
+      "query_class": "english_exact"
+    },
+    {
+      "case_id": "english_exact-018",
+      "query": "St. Benedict of Nursia",
+      "expected_slugs": [
+        "sw-benedykt-z-nursji"
+      ],
+      "query_class": "english_exact"
+    },
+    {
+      "case_id": "english_exact-019",
+      "query": "St. Faustina Kowalska",
+      "expected_slugs": [
+        "sw-faustyna-kowalska"
+      ],
+      "query_class": "english_exact"
+    },
+    {
+      "case_id": "latin_exact-001",
+      "query": "Sanctus Bartholomaeus Apostolus",
+      "expected_slugs": [
+        "sw-bartlomiej-apostol"
+      ],
+      "query_class": "latin_exact"
+    },
+    {
+      "case_id": "latin_exact-002",
+      "query": "Sancta Aemilia de Vialar",
+      "expected_slugs": [
+        "sw-emilia-de-vialar"
+      ],
+      "query_class": "latin_exact"
+    },
+    {
+      "case_id": "latin_exact-003",
+      "query": "Beata Maria ab Incarnatione Rosal",
+      "expected_slugs": [
+        "bl-maria-od-wcielenia-vincenta-rosal"
+      ],
+      "query_class": "latin_exact"
+    },
+    {
+      "case_id": "latin_exact-004",
+      "query": "Beatus Miroslav Bulešić",
+      "expected_slugs": [
+        "bl-miroslaw-bulesic"
+      ],
+      "query_class": "latin_exact"
+    },
+    {
+      "case_id": "latin_exact-005",
+      "query": "Beatus Ceslaus Jóźwiak",
+      "expected_slugs": [
+        "bl-czeslaw-jozwiak"
+      ],
+      "query_class": "latin_exact"
+    },
+    {
+      "case_id": "latin_exact-006",
+      "query": "Beatus Eduardus Kaźmierski",
+      "expected_slugs": [
+        "bl-edward-kazmierski"
+      ],
+      "query_class": "latin_exact"
+    },
+    {
+      "case_id": "latin_exact-007",
+      "query": "Beatus Eduardus Klinik",
+      "expected_slugs": [
+        "bl-edward-klinik"
+      ],
+      "query_class": "latin_exact"
+    },
+    {
+      "case_id": "latin_exact-008",
+      "query": "Beatus Franciscus Kęsy",
+      "expected_slugs": [
+        "bl-franciszek-kesy"
+      ],
+      "query_class": "latin_exact"
+    },
+    {
+      "case_id": "latin_exact-009",
+      "query": "Beatus Jarogniew Wojciechowski",
+      "expected_slugs": [
+        "bl-jarogniew-wojciechowski"
+      ],
+      "query_class": "latin_exact"
+    },
+    {
+      "case_id": "latin_exact-010",
+      "query": "Sanctus Ludovicus IX Francorum Rex",
+      "expected_slugs": [
+        "sw-ludwik-ix-krol-francji"
+      ],
+      "query_class": "latin_exact"
+    },
+    {
+      "case_id": "latin_exact-011",
+      "query": "Sanctus Iosephus Calasanctius",
+      "expected_slugs": [
+        "sw-jozef-kalasanty"
+      ],
+      "query_class": "latin_exact"
+    },
+    {
+      "case_id": "latin_exact-012",
+      "query": "Sancta Maria a Iesu Crucifixo",
+      "expected_slugs": [
+        "sw-maria-od-jezusa-ukrzyzowanego-mala-arabka"
+      ],
+      "query_class": "latin_exact"
+    },
+    {
+      "case_id": "latin_exact-013",
+      "query": "Beata Maria a Transitu Iesu Sacramentati",
+      "expected_slugs": [
+        "bl-maria-del-transito-od-jezusa-sakramentalnego"
+      ],
+      "query_class": "latin_exact"
+    },
+    {
+      "case_id": "latin_exact-014",
+      "query": "Sancta Maria Troncatti",
+      "expected_slugs": [
+        "sw-maria-troncatti"
+      ],
+      "query_class": "latin_exact"
+    },
+    {
+      "case_id": "latin_exact-015",
+      "query": "Sancta Ioanna Elisabeth Bichier des Ages",
+      "expected_slugs": [
+        "sw-joanna-elzbieta-bichier-des-ages"
+      ],
+      "query_class": "latin_exact"
+    },
+    {
+      "case_id": "latin_exact-016",
+      "query": "Sancta Teresia a Iesu Jornet Ibars",
+      "expected_slugs": [
+        "sw-teresa-od-jezusa-jornet-e-ibars"
+      ],
+      "query_class": "latin_exact"
+    },
+    {
+      "case_id": "latin_exact-017",
+      "query": "Beata Maria Angelorum Ginard Martí",
+      "expected_slugs": [
+        "bl-maria-od-aniolow-ginard-marti"
+      ],
+      "query_class": "latin_exact"
+    },
+    {
+      "case_id": "latin_exact-018",
+      "query": "Sanctus Benedictus Nursinus",
+      "expected_slugs": [
+        "sw-benedykt-z-nursji"
+      ],
+      "query_class": "latin_exact"
+    },
+    {
+      "case_id": "latin_exact-019",
+      "query": "Sancta Maria Faustina Kowalska",
+      "expected_slugs": [
+        "sw-faustyna-kowalska"
+      ],
+      "query_class": "latin_exact"
+    },
+    {
+      "case_id": "accentless-001",
+      "query": "Sw. Bartłomiej Apostoł",
+      "expected_slugs": [
+        "sw-bartlomiej-apostol"
+      ],
+      "query_class": "accentless"
+    },
+    {
+      "case_id": "accentless-002",
+      "query": "Sw. Emilia de Vialar",
+      "expected_slugs": [
+        "sw-emilia-de-vialar"
+      ],
+      "query_class": "accentless"
+    },
+    {
+      "case_id": "accentless-003",
+      "query": "Bł. Maria od Wcielenia (Vincenta Rosal)",
+      "expected_slugs": [
+        "bl-maria-od-wcielenia-vincenta-rosal"
+      ],
+      "query_class": "accentless"
+    },
+    {
+      "case_id": "accentless-004",
+      "query": "Bł. Mirosław Bulesic",
+      "expected_slugs": [
+        "bl-miroslaw-bulesic"
+      ],
+      "query_class": "accentless"
+    },
+    {
+      "case_id": "accentless-005",
+      "query": "Bł. Czesław Jozwiak",
+      "expected_slugs": [
+        "bl-czeslaw-jozwiak"
+      ],
+      "query_class": "accentless"
+    },
+    {
+      "case_id": "accentless-006",
+      "query": "Bł. Edward Kazmierski",
+      "expected_slugs": [
+        "bl-edward-kazmierski"
+      ],
+      "query_class": "accentless"
+    },
+    {
+      "case_id": "accentless-007",
+      "query": "Bł. Edward Klinik",
+      "expected_slugs": [
+        "bl-edward-klinik"
+      ],
+      "query_class": "accentless"
+    },
+    {
+      "case_id": "accentless-008",
+      "query": "Bł. Franciszek Kesy",
+      "expected_slugs": [
+        "bl-franciszek-kesy"
+      ],
+      "query_class": "accentless"
+    },
+    {
+      "case_id": "accentless-009",
+      "query": "Bł. Jarogniew Wojciechowski",
+      "expected_slugs": [
+        "bl-jarogniew-wojciechowski"
+      ],
+      "query_class": "accentless"
+    },
+    {
+      "case_id": "accentless-010",
+      "query": "Sw. Ludwik IX, krol Francji",
+      "expected_slugs": [
+        "sw-ludwik-ix-krol-francji"
+      ],
+      "query_class": "accentless"
+    },
+    {
+      "case_id": "accentless-011",
+      "query": "Sw. Jozef Kalasanty",
+      "expected_slugs": [
+        "sw-jozef-kalasanty"
+      ],
+      "query_class": "accentless"
+    },
+    {
+      "case_id": "accentless-012",
+      "query": "Sw. Maria od Jezusa Ukrzyzowanego (Mała Arabka)",
+      "expected_slugs": [
+        "sw-maria-od-jezusa-ukrzyzowanego-mala-arabka"
+      ],
+      "query_class": "accentless"
+    },
+    {
+      "case_id": "accentless-013",
+      "query": "Bł. Maria del Transito od Jezusa Sakramentalnego",
+      "expected_slugs": [
+        "bl-maria-del-transito-od-jezusa-sakramentalnego"
+      ],
+      "query_class": "accentless"
+    },
+    {
+      "case_id": "accentless-014",
+      "query": "Sw. Maria Troncatti",
+      "expected_slugs": [
+        "sw-maria-troncatti"
+      ],
+      "query_class": "accentless"
+    },
+    {
+      "case_id": "accentless-015",
+      "query": "Sw. Joanna Elzbieta Bichier des Ages",
+      "expected_slugs": [
+        "sw-joanna-elzbieta-bichier-des-ages"
+      ],
+      "query_class": "accentless"
+    },
+    {
+      "case_id": "accentless-016",
+      "query": "Sw. Teresa od Jezusa Jornet e Ibars",
+      "expected_slugs": [
+        "sw-teresa-od-jezusa-jornet-e-ibars"
+      ],
+      "query_class": "accentless"
+    },
+    {
+      "case_id": "accentless-017",
+      "query": "Bł. Maria od Aniołow Ginard Marti",
+      "expected_slugs": [
+        "bl-maria-od-aniolow-ginard-marti"
+      ],
+      "query_class": "accentless"
+    },
+    {
+      "case_id": "accentless-018",
+      "query": "Sw. Benedykt z Nursji",
+      "expected_slugs": [
+        "sw-benedykt-z-nursji"
+      ],
+      "query_class": "accentless"
+    },
+    {
+      "case_id": "accentless-019",
+      "query": "Sw. Faustyna Kowalska",
+      "expected_slugs": [
+        "sw-faustyna-kowalska"
+      ],
+      "query_class": "accentless"
+    },
+    {
+      "case_id": "partial-001",
+      "query": "Bartłomiej Apostoł",
+      "expected_slugs": [
+        "sw-bartlomiej-apostol"
+      ],
+      "query_class": "partial"
+    },
+    {
+      "case_id": "partial-002",
+      "query": "Emilia de Vialar",
+      "expected_slugs": [
+        "sw-emilia-de-vialar"
+      ],
+      "query_class": "partial"
+    },
+    {
+      "case_id": "partial-003",
+      "query": "Maria od Wcielenia (Vincenta Rosal)",
+      "expected_slugs": [
+        "bl-maria-od-wcielenia-vincenta-rosal"
+      ],
+      "query_class": "partial"
+    },
+    {
+      "case_id": "partial-004",
+      "query": "Mirosław Bulesić",
+      "expected_slugs": [
+        "bl-miroslaw-bulesic"
+      ],
+      "query_class": "partial"
+    },
+    {
+      "case_id": "partial-005",
+      "query": "Czesław Jóźwiak",
+      "expected_slugs": [
+        "bl-czeslaw-jozwiak"
+      ],
+      "query_class": "partial"
+    },
+    {
+      "case_id": "partial-006",
+      "query": "Edward Kaźmierski",
+      "expected_slugs": [
+        "bl-edward-kazmierski"
+      ],
+      "query_class": "partial"
+    },
+    {
+      "case_id": "partial-007",
+      "query": "Edward Klinik",
+      "expected_slugs": [
+        "bl-edward-klinik"
+      ],
+      "query_class": "partial"
+    },
+    {
+      "case_id": "partial-008",
+      "query": "Franciszek Kęsy",
+      "expected_slugs": [
+        "bl-franciszek-kesy"
+      ],
+      "query_class": "partial"
+    },
+    {
+      "case_id": "partial-009",
+      "query": "Jarogniew Wojciechowski",
+      "expected_slugs": [
+        "bl-jarogniew-wojciechowski"
+      ],
+      "query_class": "partial"
+    },
+    {
+      "case_id": "partial-010",
+      "query": "Ludwik IX, król Francji",
+      "expected_slugs": [
+        "sw-ludwik-ix-krol-francji"
+      ],
+      "query_class": "partial"
+    },
+    {
+      "case_id": "partial-011",
+      "query": "Józef Kalasanty",
+      "expected_slugs": [
+        "sw-jozef-kalasanty"
+      ],
+      "query_class": "partial"
+    },
+    {
+      "case_id": "partial-012",
+      "query": "Maria od Jezusa Ukrzyżowanego (Mała Arabka)",
+      "expected_slugs": [
+        "sw-maria-od-jezusa-ukrzyzowanego-mala-arabka"
+      ],
+      "query_class": "partial"
+    },
+    {
+      "case_id": "partial-013",
+      "query": "Maria del Tránsito od Jezusa Sakramentalnego",
+      "expected_slugs": [
+        "bl-maria-del-transito-od-jezusa-sakramentalnego"
+      ],
+      "query_class": "partial"
+    },
+    {
+      "case_id": "partial-014",
+      "query": "Maria Troncatti",
+      "expected_slugs": [
+        "sw-maria-troncatti"
+      ],
+      "query_class": "partial"
+    },
+    {
+      "case_id": "partial-015",
+      "query": "Joanna Elżbieta Bichier des Ages",
+      "expected_slugs": [
+        "sw-joanna-elzbieta-bichier-des-ages"
+      ],
+      "query_class": "partial"
+    },
+    {
+      "case_id": "partial-016",
+      "query": "Teresa od Jezusa Jornet e Ibars",
+      "expected_slugs": [
+        "sw-teresa-od-jezusa-jornet-e-ibars"
+      ],
+      "query_class": "partial"
+    },
+    {
+      "case_id": "partial-017",
+      "query": "Maria od Aniołów Ginard Martí",
+      "expected_slugs": [
+        "bl-maria-od-aniolow-ginard-marti"
+      ],
+      "query_class": "partial"
+    },
+    {
+      "case_id": "partial-018",
+      "query": "Benedykt z Nursji",
+      "expected_slugs": [
+        "sw-benedykt-z-nursji"
+      ],
+      "query_class": "partial"
+    },
+    {
+      "case_id": "partial-019",
+      "query": "Faustyna Kowalska",
+      "expected_slugs": [
+        "sw-faustyna-kowalska"
+      ],
+      "query_class": "partial"
+    },
+    {
+      "case_id": "typo-001",
+      "query": "Św. Bartłomiej Aposto",
+      "expected_slugs": [
+        "sw-bartlomiej-apostol"
+      ],
+      "query_class": "typo"
+    },
+    {
+      "case_id": "typo-002",
+      "query": "Św. Emilia de Viala",
+      "expected_slugs": [
+        "sw-emilia-de-vialar"
+      ],
+      "query_class": "typo"
+    },
+    {
+      "case_id": "typo-003",
+      "query": "Bł. Maria od Wcielenia (Vincenta Rosal",
+      "expected_slugs": [
+        "bl-maria-od-wcielenia-vincenta-rosal"
+      ],
+      "query_class": "typo"
+    },
+    {
+      "case_id": "typo-004",
+      "query": "Bł. Mirosław Bulesi",
+      "expected_slugs": [
+        "bl-miroslaw-bulesic"
+      ],
+      "query_class": "typo"
+    },
+    {
+      "case_id": "typo-005",
+      "query": "Bł. Czesław Jóźwia",
+      "expected_slugs": [
+        "bl-czeslaw-jozwiak"
+      ],
+      "query_class": "typo"
+    }
+  ]
+}
+

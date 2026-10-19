@@ -1,6 +1,6 @@
 .PHONY: help install setup dev dev-build dev-backend dev-db dev-detach stop \
 	prod-check prod-build prod-up prod-down migrate migrate-create migrate-down migrate-history \
-	seed reset-db test test-unit test-integration test-e2e test-coverage lint \
+	seed reset-db test test-unit test-integration test-e2e test-coverage search-benchmark lint \
 	lint-backend lint-frontend format format-check type-check type-check-backend \
 	type-check-frontend audit logs logs-backend logs-db ps shell-backend shell-db clean \
 	build export-xlsx export-pdf openapi-export backup-db translations-backfill-check \
@@ -136,6 +136,13 @@ test-unit: ## Run unit tests only
 
 test-integration: ## Run integration tests only
 	$(BACKEND_RUN) python -m pytest -q -o addopts='' tests/integration
+
+search-benchmark: ## Evaluate the offline person-search benchmark (SEARCH_RESULTS=...)
+	@test -n "$(SEARCH_RESULTS)" || (echo "Set SEARCH_RESULTS to a JSON result file under apps/backend" >&2; exit 2)
+	$(BACKEND_RUN) python -m src.application.search_benchmark \
+		--fixture data/search/search_gold_v1.json \
+		--results "$(SEARCH_RESULTS)" \
+		--check
 
 test-e2e: ## Run Playwright smoke tests against the local development stack
 	$(COMPOSE_DEV) up -d --wait db redis minio backend

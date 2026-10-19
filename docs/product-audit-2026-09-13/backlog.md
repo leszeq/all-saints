@@ -535,16 +535,16 @@ Dobre mechanizmy SQL nie mają produktu jakościowego mierzonego na realnych pyt
 
 **Backend**
 
-- [ ] Wydzielić SearchPolicy w istniejącym PersonQueryService.
-- [ ] exact canonical/alias boost, tie-breaker ID, reason code w SearchHitSchema.
-- [ ] API GET /persons zachować kompatybilne.
-- [ ] kontrolować krótkie zapytania i max długość.
+- [x] Wydzielić SearchPolicy w istniejącym PersonQueryService.
+- [x] exact canonical/alias boost, tie-breaker ID, reason code w SearchHitSchema.
+- [x] API GET /persons zachować kompatybilne.
+- [x] kontrolować krótkie zapytania i max długość.
 
 **Database**
 
 - [ ] Zachować FTS/trigram indeksy z migracji 0010/0016/0018.
 - [ ] modyfikować dopiero po EXPLAIN.
-- [ ] gold queries i expected IDs jako wersjonowane fixture, nie tabela produkcyjna.
+- [x] gold queries i expected IDs jako wersjonowane fixture, nie tabela produkcyjna.
 
 **Frontend**
 
@@ -560,8 +560,16 @@ Dobre mechanizmy SQL nie mają produktu jakościowego mierzonego na realnych pyt
 
 **Infrastructure**
 
-- [ ] Powtarzalny benchmark offline w CI lub release check.
-- [ ] brak nowej usługi.
+- [x] Powtarzalny benchmark offline w CI lub release check.
+- [x] brak nowej usługi.
+
+**Stan implementacji (2026-10-19)**
+
+Starter fixture `apps/backend/data/search/search_gold_v1.json` zawiera 100
+przypadków z opublikowanych slugów. Evaluator raportuje top-k, MRR@10,
+nDCG@10 i puste wyniki; `make search-benchmark SEARCH_RESULTS=...` uruchamia
+go/no-go. Ręczna ocena pytań i zapis baseline'u pozostają wymagane przed
+traktowaniem progów jako release gate.
 
 **Definition of Done**
 
