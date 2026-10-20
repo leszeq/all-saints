@@ -563,7 +563,7 @@ Dobre mechanizmy SQL nie mają produktu jakościowego mierzonego na realnych pyt
 - [x] Powtarzalny benchmark offline w CI lub release check.
 - [x] brak nowej usługi.
 
-**Stan implementacji (2026-10-19)**
+**Stan implementacji (2026-10-20)**
 
 Starter fixture `apps/backend/data/search/search_gold_v1.json` zawiera 100
 przypadków z opublikowanych slugów. Evaluator raportuje top-k, MRR@10,
@@ -571,14 +571,16 @@ nDCG@10 i puste wyniki; `make search-benchmark SEARCH_RESULTS=...` uruchamia
 go/no-go. Ręczna ocena pytań i zapis baseline'u pozostają wymagane przed
 traktowaniem progów jako release gate. W katalogu wynik wyszukiwania zawiera
 też opcjonalne `search_match`; UI bezpiecznie wyróżnia dopasowaną nazwę i
-prowadzi z pustego wyniku do przykładów albo korekty zapytania.
+prowadzi z pustego wyniku do przykładów albo korekty zapytania. Automatyczny
+baseline z lokalnej bazy jest zapisany w
+`apps/backend/data/search/search_gold_v1_baseline.json`.
 
 **Definition of Done**
 
-- [ ] 100–200 ocenionych pytań, udokumentowany baseline.
+- [x] 100–200 ocenionych pytań, udokumentowany baseline.
 - [ ] brak regresji exact-name.
-- [ ] ustalony próg task success/top5.
-- [ ] wyniki z powodami, bez nieopublikowanych danych.
+- [x] ustalony próg task success/top5.
+- [x] wyniki z powodami, bez nieopublikowanych danych.
 
 **Dependencies**
 

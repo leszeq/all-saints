@@ -1,0 +1,27 @@
+{
+  "fixture": "search_gold_v1.json",
+  "fixture_version": "search-gold-v1",
+  "captured_at": "2026-10-20",
+  "captured_timezone": "Europe/Warsaw",
+  "implementation_commit": "6f78a03",
+  "environment": "lokalna baza PostgreSQL development",
+  "visibility": "published_only=true",
+  "query_count": 100,
+  "cutoff": 10,
+  "top_k": 5,
+  "metrics": {
+    "top_k_success": 1.0,
+    "mrr_at_cutoff": 0.98,
+    "ndcg_at_cutoff": 0.9852371901428583,
+    "zero_results_rate": 0.0
+  },
+  "thresholds": {
+    "top_k_success": 0.9,
+    "mrr_at_cutoff": 0.85,
+    "ndcg_at_cutoff": 0.9
+  },
+  "notes": [
+    "Wyniki obejmują wyłącznie publiczne slugi zwrócone przez PersonQueryService.",
+    "To automatyczny baseline rankingowy; ręczna ocena trafności i klas pytań pozostaje wymagana przed release gate."
+  ]
+}
