@@ -554,7 +554,7 @@ Dobre mechanizmy SQL nie mają produktu jakościowego mierzonego na realnych pyt
 
 **Tests**
 
-- [ ] Backend: ranking exact/alias/transliteration/typo i polskie formy.
+- [x] Backend: ranking exact/alias/transliteration/typo i polskie formy.
 - [ ] Frontend: bezpieczne highlight, puste wyniki.
 - [ ] E2E: realny query set + ręczna ocena MRR/nDCG przed/po.
 
