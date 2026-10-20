@@ -636,7 +636,7 @@ Osoba nie ma publicznej listy swoich obchodów; pusty dzień i niepełny katalog
 **Frontend**
 
 - [x] Profil: tabela wspomnień według kalendarzy.
-- [ ] dzień/miesiąc: nazwa zakresu i empty state „brak opracowanych wpisów”.
+- [x] dzień/miesiąc: nazwa zakresu i empty state „brak opracowanych wpisów”.
 - [ ] rozdzielić martyrologium od normatywnej odpowiedzi.
 
 **Tests**
@@ -666,8 +666,9 @@ Dodano publiczny odczyt `GET /api/v1/persons/{id_or_slug}/commemorations`.
 Zwraca wyłącznie opublikowane osoby, aktywne kalendarze i stałe wpisy z
 pochodzeniem. `CalendarCoverageSchema` jasno oznacza zakres `fixed_only`.
 Profil pokazuje tabelę dat według kalendarza, zakres opracowania, źródło oraz
-link do dnia w kalendarzu. Puste stany dnia/miesiąca, rozdzielenie
-martyrologium i test E2E przejścia pozostają kolejnym krokiem.
+link do dnia w kalendarzu. Strony dnia i miesiąca również pokazują zakres
+`fixed_only` i rozróżniają pustą datę od braku dnia w kalendarzu. Pozostają
+rozdzielenie martyrologium i test E2E przejścia.
 
 **Risk**
 

@@ -44,6 +44,7 @@ export default async function LiturgicalCalendarPage({ searchParams }: PageProps
     calendars.length === 0 || calendars.some((calendar) => calendar.code === requestedCalendar)
       ? requestedCalendar
       : "roman_pl";
+  const selectedCalendar = calendars.find((calendar) => calendar.code === calendarCode);
 
   const monthData = (await fetchCalendarMonth(
     selected.year,
@@ -82,6 +83,11 @@ export default async function LiturgicalCalendarPage({ searchParams }: PageProps
                   ? ` ${copy.withMartyrologyDescription}`
                   : ""} {copy.multipleEntriesDescription}
               </p>
+              {selectedCalendar?.coverage && (
+                <p className="mt-2 max-w-2xl text-xs leading-5 text-stone-500">
+                  {selectedCalendar.coverage.coverage_note}
+                </p>
+              )}
             </div>
             <div className="flex gap-6 text-sm">
               <div><strong className="block font-serif text-3xl text-burgundy-700">{populatedDays}</strong><span className="text-stone-500">{copy.populatedDays}</span></div>

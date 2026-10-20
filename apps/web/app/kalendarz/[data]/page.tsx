@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowRight, BookOpen, CalendarDays, ChevronLeft, ChevronRight, Layers3 } from "lucide-react";
 
 import { SaintAvatar } from "@/components/saint-avatar";
-import { fetchCalendarDay } from "@/lib/api";
+import { fetchCalendarDay, fetchLiturgicalCalendars } from "@/lib/api";
 import {
   calendarEntryAvatar,
   calendarEntryHref,
@@ -17,6 +17,7 @@ import {
   formatCalendarDate,
   isValidCalendarDate,
   shiftDate,
+  type LiturgicalCalendarInfo,
 } from "@/lib/calendar";
 import { DEFAULT_WEB_UI_LOCALE } from "@/lib/i18n/config";
 import { getWebDictionary } from "@/lib/i18n/dictionaries";
@@ -75,7 +76,13 @@ export default async function CalendarDayPage({ params, searchParams }: PageProp
   const query = await searchParams;
   const calendarCode = query.calendar || "roman_pl";
 
-  const day: CalendarDay = await fetchCalendarDay(data, calendarCode);
+  const [dayResponse, calendarsResponse] = await Promise.all([
+    fetchCalendarDay(data, calendarCode),
+    fetchLiturgicalCalendars(),
+  ]);
+  const day = dayResponse as CalendarDay;
+  const calendars = calendarsResponse as LiturgicalCalendarInfo[];
+  const selectedCalendar = calendars.find((calendar) => calendar.code === calendarCode);
 
   const formattedDate = formatCalendarDate(data, DEFAULT_WEB_UI_LOCALE);
   const isToday = data === currentWarsawDate();
@@ -169,6 +176,11 @@ export default async function CalendarDayPage({ params, searchParams }: PageProp
                     {day.includes_universal ? copy.universalSuffix : ""}
                     {day.includes_martyrology ? copy.martyrologySuffix : ""}.
                   </p>
+                  {selectedCalendar?.coverage && (
+                    <p className="mt-3 border-t border-[#ded8cd] pt-3 text-xs leading-5 text-stone-500">
+                      {selectedCalendar.coverage.coverage_note}
+                    </p>
+                  )}
                 </div>
                 {primary.source_url && (
                   <div className="surface-card p-5">
@@ -185,6 +197,9 @@ export default async function CalendarDayPage({ params, searchParams }: PageProp
             <CalendarDays className="mx-auto h-10 w-10 text-gold-700" strokeWidth={1.4} />
             <h2 className="mt-5 font-serif text-3xl font-semibold text-charcoal">{copy.emptyTitle}</h2>
             <p className="mt-3 text-sm leading-6 text-stone-600">{copy.emptyDescription}</p>
+            {selectedCalendar?.coverage && (
+              <p className="mt-3 text-xs leading-5 text-stone-500">{selectedCalendar.coverage.coverage_note}</p>
+            )}
             <Link href={`/kalendarz?month=${monthKey}&calendar=${calendarCode}`} className="mt-7 inline-flex h-11 items-center rounded-lg bg-burgundy-700 px-5 text-sm font-semibold text-white">{copy.wholeMonth}</Link>
           </div>
         )}
