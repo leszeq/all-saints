@@ -35,6 +35,7 @@ def test_calendar_openapi_preserves_public_and_editorial_security_boundaries() -
         paths["/api/v1/calendar/today"]["get"],
         paths["/api/v1/calendar/day/{value}"]["get"],
         paths["/api/v1/calendar/month/{year}/{month}"]["get"],
+        paths["/api/v1/persons/{id_or_slug}/commemorations"]["get"],
     ]
     editorial_operations = [
         paths["/api/v1/calendar/persons/{person_id}/entries"]["get"],

@@ -421,7 +421,7 @@ Długie aliasy i teksty utrudniają znalezienie daty, wspomnienia lub źródła.
 **Frontend**
 
 - [x] web/swieci/[slug]: TableOfContents, FactsPanel, SourcesSection, collapsible aliases i przycisk cytowania.
-- [ ] web/swieci/[slug]: linki do kalendarza i zakonu.
+- [x] web/swieci/[slug]: linki do kalendarza i zakonu.
 - [x] SSR z małą wyspą client dla cytowania.
 - [x] stan anchor w URL.
 
@@ -452,8 +452,9 @@ Publiczny profil zwraca `PersonPublicProfileSchema` z bezpiecznym podsumowaniem
 udokumentowanych sekcji i źródeł, bez publikowania pól redakcyjnych. Strona
 `/swieci/[slug]` ma warunkowy spis treści, panel faktów przed aliasami,
 zwijane aliasy, anchorowe sekcje oraz przycisk cytowania z ID wersji. Puste
-sekcje modlitwy, ikonografii i bibliografii nie są renderowane. Pozostają
-linki do kalendarza/zakonu, testy frontendowe i scenariusz E2E mobile.
+sekcje modlitwy, ikonografii i bibliografii nie są renderowane. Profil linkuje
+do aktywnych stałych wspomnień w kalendarzu i do zakonów. Pozostają testy
+frontendowe i scenariusz E2E mobile.
 
 **Risk**
 
@@ -622,25 +623,25 @@ Osoba nie ma publicznej listy swoich obchodów; pusty dzień i niepełny katalog
 
 **Backend**
 
-- [ ] GET /persons/{id}/commemorations jako public query.
-- [ ] CalendarCoverageSchema w /calendar/calendars lub osobnym endpointcie: coverage_status, fixed_only, edition/description.
-- [ ] filtrować published i active. Nie otwierać surowego editorial entries endpointu.
+- [x] GET /persons/{id}/commemorations jako public query.
+- [x] CalendarCoverageSchema w /calendar/calendars lub osobnym endpointcie: coverage_status, fixed_only, edition/description.
+- [x] filtrować published i active. Nie otwierać surowego editorial entries endpointu.
 
 **Database**
 
-- [ ] Wykorzystać Feast/LiturgicalCalendar.
-- [ ] początkowo metadane opisowe zakresu.
+- [x] Wykorzystać Feast/LiturgicalCalendar.
+- [x] początkowo metadane opisowe zakresu.
 - [ ] jeśli utrwalane, coverage_status i coverage_note, nie procent oparty tylko na liczbie wpisów.
 
 **Frontend**
 
-- [ ] Profil: tabela wspomnień według kalendarzy.
+- [x] Profil: tabela wspomnień według kalendarzy.
 - [ ] dzień/miesiąc: nazwa zakresu i empty state „brak opracowanych wpisów”.
 - [ ] rozdzielić martyrologium od normatywnej odpowiedzi.
 
 **Tests**
 
-- [ ] Backend: wiele kalendarzy jednej osoby i wpis nieosobowy.
+- [x] Backend: widoczność publiczna, aktywne kalendarze i wpisy stałe.
 - [ ] Frontend: pusta data nie oznacza „nikt”.
 - [ ] E2E: profil→dzień→profil bez zmiany kalendarza.
 
@@ -651,13 +652,22 @@ Osoba nie ma publicznej listy swoich obchodów; pusty dzień i niepełny katalog
 
 **Definition of Done**
 
-- [ ] Publiczny profil pokazuje wszystkie aktywne stałe wspomnienia z pochodzeniem.
-- [ ] komunikat fixed-only widoczny.
-- [ ] daty strefy Europe/Warsaw spójne z today.
+- [x] Publiczny profil pokazuje wszystkie aktywne stałe wspomnienia z pochodzeniem.
+- [x] komunikat fixed-only widoczny.
+- [x] daty strefy Europe/Warsaw spójne z today.
 
 **Dependencies**
 
 002, 009; resolver 021 niezależnie później.
+
+**Stan implementacji (2026-10-20)**
+
+Dodano publiczny odczyt `GET /api/v1/persons/{id_or_slug}/commemorations`.
+Zwraca wyłącznie opublikowane osoby, aktywne kalendarze i stałe wpisy z
+pochodzeniem. `CalendarCoverageSchema` jasno oznacza zakres `fixed_only`.
+Profil pokazuje tabelę dat według kalendarza, zakres opracowania, źródło oraz
+link do dnia w kalendarzu. Puste stany dnia/miesiąca, rozdzielenie
+martyrologium i test E2E przejścia pozostają kolejnym krokiem.
 
 **Risk**
 

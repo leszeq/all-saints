@@ -60,6 +60,11 @@ export const fetchPersonDetail = async (
   return data;
 };
 
+export const fetchPersonCommemorations = async (idOrSlug: string) => {
+  const { data } = await publicApi.get(`/persons/${idOrSlug}/commemorations`);
+  return data;
+};
+
 export const fetchCountries = async () => {
   const { data } = await publicApi.get("/geography/countries");
   return data;

@@ -12,9 +12,10 @@ import {
   Landmark,
   Sparkles,
 } from "lucide-react";
-import { fetchPersonDetail, isApiNotFound } from "@/lib/api";
+import { fetchPersonCommemorations, fetchPersonDetail, isApiNotFound } from "@/lib/api";
 import { SaintAvatar, type SaintAvatarData } from "@/components/saint-avatar";
 import { PersonCitationButton } from "@/components/person-citation-button";
+import { PersonCommemorations } from "@/components/person-commemorations";
 import { PersonFacts } from "@/components/person-facts";
 import { PersonTableOfContents, type PersonTableOfContentsItem } from "@/components/person-table-of-contents";
 import { DEFAULT_WEB_UI_LOCALE } from "@/lib/i18n/config";
@@ -24,6 +25,7 @@ import { readPublicPersonContent } from "@/lib/person-content";
 import { serializeJsonLd } from "@/lib/json-ld";
 import { PersonSources } from "@/components/person-sources";
 import type { PublicPersonSource } from "@/lib/person-sources";
+import type { PersonCommemoration } from "@/lib/calendar";
 
 interface PageProps {
   params: Promise<{
@@ -110,6 +112,14 @@ export default async function PersonDetailPage({ params }: PageProps) {
   }
 
   const content = readPublicPersonContent(person);
+  let commemorations: PersonCommemoration[] = [];
+  let commemorationsLoaded = false;
+  try {
+    commemorations = (await fetchPersonCommemorations(String(person.slug))) as PersonCommemoration[];
+    commemorationsLoaded = true;
+  } catch {
+    // The profile remains usable when calendar data is temporarily unavailable.
+  }
 
   const aliases = (Array.isArray(person.aliases) ? person.aliases : [])
     .map((alias) => String((alias as Record<string, unknown>).value ?? "").trim())
@@ -165,6 +175,7 @@ export default async function PersonDetailPage({ params }: PageProps) {
     ...(hasBiography ? [{ id: "zyciorys", label: copy.biographySection }] : []),
     ...(hasPatronages ? [{ id: "patronaty", label: copy.patronagesSection }] : []),
     ...(hasOrders ? [{ id: "zakony", label: copy.ordersSection }] : []),
+    ...(commemorationsLoaded ? [{ id: "wspomnienia", label: copy.commemorations.title }] : []),
     ...(hasPrayer ? [{ id: "modlitwa", label: copy.prayerSection }] : []),
     ...(hasIconography ? [{ id: "ikonografia", label: copy.iconographySection }] : []),
     ...(publicSources.length ? [{ id: "bibliografia", label: copy.sourcesSection }] : []),
@@ -386,6 +397,14 @@ export default async function PersonDetailPage({ params }: PageProps) {
               })}
             </div>
           </section>
+        )}
+
+        {commemorationsLoaded && (
+          <PersonCommemorations
+            entries={commemorations}
+            copy={copy.commemorations}
+            rankLabels={dictionary.calendar.feastRanks}
+          />
         )}
 
         {/* Prayers / Attributes Grid */}

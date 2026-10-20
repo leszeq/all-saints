@@ -6,6 +6,10 @@ from fastapi import APIRouter, status
 
 from src.presentation.api.v1.persons.catalogue import get_person, list_persons
 from src.presentation.api.v1.persons.catalogue import router as catalogue_router
+from src.presentation.api.v1.persons.commemorations import (
+    list_public_person_commemorations,
+)
+from src.presentation.api.v1.persons.commemorations import router as commemorations_router
 from src.presentation.api.v1.persons.editorial_reads import (
     get_person_for_admin,
     list_persons_for_admin,
@@ -44,6 +48,7 @@ __all__ = [
     "get_person_versions",
     "import_person_profile",
     "list_persons",
+    "list_public_person_commemorations",
     "list_persons_for_admin",
     "restore_person",
     "update_person",
@@ -63,6 +68,7 @@ router.add_api_route(
 )
 router.include_router(editorial_reads_router)
 router.include_router(profile_portability_router)
+router.include_router(commemorations_router)
 
 router.add_api_route(
     "",

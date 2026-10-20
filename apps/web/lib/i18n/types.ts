@@ -421,6 +421,14 @@ export interface WebDictionary {
     citeProfile: string;
     citationCopied: string;
     citationVersion: string;
+    commemorations: {
+      title: string;
+      description: string;
+      empty: string;
+      fixedOnly: string;
+      viewDay: string;
+      sourcePrefix: string;
+    };
     birthYear: string;
     deathYear: string;
     gender: string;

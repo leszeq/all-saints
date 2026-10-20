@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -21,6 +22,16 @@ from src.presentation.api.v1.persons.schemas import (
 )
 
 
+class CalendarCoverageSchema(BaseModel):
+    """Explicit public boundary of the currently implemented calendar data."""
+
+    coverage_status: Literal["fixed_only"] = "fixed_only"
+    fixed_only: bool = True
+    coverage_note: str = (
+        "Zakres obejmuje opracowane stałe wpisy; reguły ruchome nie są obecnie rozwiązywane."
+    )
+
+
 class LiturgicalCalendarSchema(BaseModel):
     """Calendar metadata exposed with every commemoration."""
 
@@ -31,6 +42,7 @@ class LiturgicalCalendarSchema(BaseModel):
     scope: CalendarScope
     description: str | None = None
     is_active: bool
+    coverage: CalendarCoverageSchema = Field(default_factory=CalendarCoverageSchema)
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -102,6 +114,23 @@ class FeastEntrySchema(BaseModel):
     calendar: LiturgicalCalendarSchema
     created_at: datetime
     updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PublicPersonCommemorationSchema(BaseModel):
+    """Public fixed-date commemoration without editorial target relations."""
+
+    id: uuid.UUID
+    month: int
+    day: int
+    date_note: str | None = None
+    rank: FeastRank
+    liturgical_color: LiturgicalColor | None = None
+    is_primary: bool
+    source_title: str | None = None
+    source_url: str | None = None
+    calendar: LiturgicalCalendarSchema
 
     model_config = ConfigDict(from_attributes=True)
 

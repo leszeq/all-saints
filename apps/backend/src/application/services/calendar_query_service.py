@@ -300,3 +300,31 @@ class CalendarQueryService:
             )
         )
         return list(result.scalars().unique().all())
+
+    async def list_public_person_entries(self, person_id: uuid.UUID) -> list[Feast]:
+        """Return published person's active fixed commemorations for public profiles."""
+        result = await self.db.execute(
+            select(Feast)
+            .join(Feast.calendar)
+            .join(Feast.person)
+            .where(
+                Feast.person_id == person_id,
+                Feast.deleted_at.is_(None),
+                Feast.is_suppressed.is_(False),
+                Feast.is_moveable.is_(False),
+                Feast.month.is_not(None),
+                Feast.day.is_not(None),
+                Person.deleted_at.is_(None),
+                Person.status == "published",
+                LiturgicalCalendar.deleted_at.is_(None),
+                LiturgicalCalendar.is_active.is_(True),
+            )
+            .options(joinedload(Feast.calendar))
+            .order_by(
+                LiturgicalCalendar.scope.asc(),
+                LiturgicalCalendar.name.asc(),
+                Feast.month.asc(),
+                Feast.day.asc(),
+            )
+        )
+        return list(result.scalars().unique().all())

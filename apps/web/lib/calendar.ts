@@ -46,6 +46,26 @@ export interface LiturgicalCalendarInfo {
   scope: string;
   description?: string | null;
   is_active: boolean;
+  coverage: CalendarCoverage;
+}
+
+export interface CalendarCoverage {
+  coverage_status: "fixed_only";
+  fixed_only: boolean;
+  coverage_note: string;
+}
+
+export interface PersonCommemoration {
+  id: string;
+  month: number;
+  day: number;
+  date_note?: string | null;
+  rank: string;
+  liturgical_color?: string | null;
+  is_primary: boolean;
+  source_title?: string | null;
+  source_url?: string | null;
+  calendar: LiturgicalCalendarInfo;
 }
 
 export interface CalendarEntry {
