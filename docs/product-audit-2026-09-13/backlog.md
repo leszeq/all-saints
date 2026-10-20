@@ -548,8 +548,8 @@ Dobre mechanizmy SQL nie mają produktu jakościowego mierzonego na realnych pyt
 
 **Frontend**
 
-- [ ] Komunikat powodów dopasowania, wyróżnienie dopasowanego aliasu.
-- [ ] zero-results z przykładami i linkiem do korekty.
+- [x] Komunikat powodów dopasowania, wyróżnienie dopasowanego aliasu.
+- [x] zero-results z przykładami i linkiem do korekty.
 - [ ] nie generować odpowiedzi NLP.
 
 **Tests**
@@ -569,7 +569,9 @@ Starter fixture `apps/backend/data/search/search_gold_v1.json` zawiera 100
 przypadków z opublikowanych slugów. Evaluator raportuje top-k, MRR@10,
 nDCG@10 i puste wyniki; `make search-benchmark SEARCH_RESULTS=...` uruchamia
 go/no-go. Ręczna ocena pytań i zapis baseline'u pozostają wymagane przed
-traktowaniem progów jako release gate.
+traktowaniem progów jako release gate. W katalogu wynik wyszukiwania zawiera
+też opcjonalne `search_match`; UI bezpiecznie wyróżnia dopasowaną nazwę i
+prowadzi z pustego wyniku do przykładów albo korekty zapytania.
 
 **Definition of Done**
 

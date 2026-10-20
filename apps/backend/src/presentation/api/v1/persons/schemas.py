@@ -86,6 +86,10 @@ class PersonListItemSchema(BaseModel):
         default=None,
         description="Stable reason code for the match when a search query is supplied",
     )
+    search_match: str | None = Field(
+        default=None,
+        description="Public name that explains an exact search match",
+    )
     created_at: datetime
     updated_at: datetime
 

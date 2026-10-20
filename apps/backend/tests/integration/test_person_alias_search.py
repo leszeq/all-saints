@@ -47,12 +47,12 @@ async def test_catalogue_search_finds_aliases_and_translated_names(
     )
     await db_session.commit()
 
-    expected_reasons = {
-        "Karol Wojtyla": "alias_exact",
-        "JPII": "alias_exact",
-        "Johannes Paul II": "translation_exact",
+    expected_matches = {
+        "Karol Wojtyla": ("alias_exact", "Karol Wojtyła"),
+        "JPII": ("alias_exact", "JPII"),
+        "Johannes Paul II": ("translation_exact", "Johannes Paul II."),
     }
-    for phrase, expected_reason in expected_reasons.items():
+    for phrase, (expected_reason, expected_match) in expected_matches.items():
         results, total = await service.list_persons(
             search=phrase,
             published_only=True,
@@ -61,6 +61,7 @@ async def test_catalogue_search_finds_aliases_and_translated_names(
         assert total == 1
         assert [result.id for result in results] == [person.id]
         assert results[0].search_reason == expected_reason
+        assert results[0].search_match == expected_match
 
     loaded = await service.get_by_id_or_slug(str(person.id), published_only=True)
     assert loaded is not None
@@ -90,3 +91,4 @@ async def test_catalogue_search_prioritizes_exact_canonical_name(
     assert total == 2
     assert results[0].id == exact.id
     assert results[0].search_reason == "canonical_exact"
+    assert results[0].search_match == "Jan Paweł"

@@ -13,6 +13,7 @@ import { getWebDictionary } from "@/lib/i18n/dictionaries";
 import { resolveDictionaryLabel, resolveDictionaryValue } from "@/lib/i18n/labels";
 import { readPublicPersonContent } from "@/lib/person-content";
 import { LEGACY_ERA_PERIODS, LEGACY_SEARCH_PATRONAGES } from "@/lib/person-filters";
+import { highlightSearchText } from "@/lib/search-highlight";
 import type { ReligiousOrder } from "@/lib/orders";
 
 export const revalidate = 30;
@@ -543,7 +544,51 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
         <div className="rounded-2xl border border-gold-500/20 bg-white p-12 text-center">
           <BookOpen className="mx-auto h-10 w-10 text-gold-600 mb-3" />
           <p className="text-base font-semibold text-burgundy-900">{copy.emptyTitle}</p>
-          <p className="mt-1 text-xs text-gray-500">{copy.emptyDescription}</p>
+          <p className="mx-auto mt-1 max-w-xl text-xs text-gray-500">
+            {search ? copy.emptySearchDescription : copy.emptyDescription}
+          </p>
+          {search && (
+            <div className="mx-auto mt-5 flex max-w-xl flex-wrap items-center justify-center gap-2">
+              <span className="w-full text-[10px] font-bold uppercase tracking-[0.14em] text-stone-400">
+                {copy.searchExamplesLabel}
+              </span>
+              {copy.searchExamples.map((example) => (
+                <Link
+                  key={example}
+                  href={buildDirectoryHref({
+                    search: example,
+                    typeFilters: [],
+                    genderFilters: [],
+                    periodFilters: [],
+                    eraFilters: [],
+                    patronageFilters: [],
+                  })}
+                  className="rounded-full border border-gold-500/30 px-3 py-1.5 text-xs font-semibold text-burgundy-800 transition-colors hover:bg-gold-50"
+                >
+                  {example}
+                </Link>
+              ))}
+              <Link
+                href={buildDirectoryHref({
+                  search: "",
+                  typeFilters,
+                  genderFilters,
+                  periodFilters,
+                  eraFilters,
+                  patronageFilters,
+                  orderId,
+                  occupationId,
+                  birthCountryId,
+                  deathCountryId,
+                  nationalityId,
+                  page: 1,
+                })}
+                className="w-full text-xs font-semibold text-burgundy-700 hover:underline"
+              >
+                {copy.clearSearch}
+              </Link>
+            </div>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -579,8 +624,14 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
                   </div>
 
                   <h2 className="font-serif text-xl font-bold text-burgundy-900 transition-colors group-hover:text-gold-700">
-                    {content.canonicalName}
+                    {highlightSearchText(content.canonicalName, search)}
                   </h2>
+
+                  {search && typeof p.search_match === "string" && p.search_match !== content.canonicalName && (
+                    <p className="mt-1 text-xs text-stone-500">
+                      {copy.searchMatchLabel} {highlightSearchText(p.search_match, search)}
+                    </p>
+                  )}
 
                   {search && typeof p.search_reason === "string" && copy.searchReasonLabels[p.search_reason] && (
                     <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-gold-700">
@@ -590,7 +641,7 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
 
                   {Boolean(p.latin_name) && (
                     <p className="mt-0.5 text-xs italic text-gray-500">
-                      {String(p.latin_name)}
+                      {highlightSearchText(String(p.latin_name), search)}
                     </p>
                   )}
 

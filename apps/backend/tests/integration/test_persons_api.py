@@ -107,6 +107,7 @@ async def test_public_person_endpoints_expose_explicit_localization_projection(
     )
     assert search_response.status_code == 200
     assert search_response.json()["items"][0]["search_reason"] == "translation_exact"
+    assert search_response.json()["items"][0]["search_match"] == "San Giovanni di Test"
 
 
 @pytest.mark.asyncio

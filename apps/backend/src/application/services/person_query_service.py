@@ -88,31 +88,53 @@ class SearchPolicy:
         return term[: cls.MAX_QUERY_LENGTH]
 
     @staticmethod
-    def reason_for_person(person: Person, term: str) -> str:
-        """Return a stable reason code suitable for a public search hit."""
+    def _exact_match(person: Person, term: str) -> tuple[str, str] | None:
+        """Return the reason and safe public label for an exact name match."""
         normalized_term = normalize_person_name(term)
         if normalize_person_name(person.canonical_name) == normalized_term:
-            return "canonical_exact"
+            return "canonical_exact", person.canonical_name
         if (
             person.canonical_name_en
             and normalize_person_name(person.canonical_name_en) == normalized_term
         ):
-            return "canonical_exact_en"
+            return "canonical_exact_en", person.canonical_name_en
         if person.latin_name and normalize_person_name(person.latin_name) == normalized_term:
-            return "transliteration_exact"
-        if any(
-            translation.deleted_at is None
-            and translation.canonical_name
-            and normalize_person_name(translation.canonical_name) == normalized_term
-            for translation in person.translations
-        ):
-            return "translation_exact"
-        if any(
-            alias.deleted_at is None and alias.normalized_value == normalized_term
-            for alias in person.aliases
-        ):
-            return "alias_exact"
-        return "fuzzy"
+            return "transliteration_exact", person.latin_name
+        translation_match = next(
+            (
+                translation.canonical_name
+                for translation in person.translations
+                if translation.deleted_at is None
+                and translation.canonical_name
+                and normalize_person_name(translation.canonical_name) == normalized_term
+            ),
+            None,
+        )
+        if translation_match:
+            return "translation_exact", translation_match
+        alias = next(
+            (
+                alias
+                for alias in person.aliases
+                if alias.deleted_at is None and alias.normalized_value == normalized_term
+            ),
+            None,
+        )
+        if alias:
+            return "alias_exact", alias.value
+        return None
+
+    @classmethod
+    def reason_for_person(cls, person: Person, term: str) -> str:
+        """Return a stable reason code suitable for a public search hit."""
+        match = cls._exact_match(person, term)
+        return match[0] if match else "fuzzy"
+
+    @classmethod
+    def match_for_person(cls, person: Person, term: str) -> str | None:
+        """Return the public name that explains an exact search match."""
+        match = cls._exact_match(person, term)
+        return match[1] if match else None
 
 
 def _encode_public_index_cursor(updated_at: datetime, person_id: uuid.UUID) -> str:
@@ -572,6 +594,11 @@ class PersonQueryService:
                     person,
                     "search_reason",
                     SearchPolicy.reason_for_person(person, search_term),
+                )
+                object.__setattr__(
+                    person,
+                    "search_match",
+                    SearchPolicy.match_for_person(person, search_term),
                 )
         return persons, total
 

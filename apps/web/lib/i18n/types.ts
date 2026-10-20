@@ -379,10 +379,15 @@ export interface WebDictionary {
     allValues: string;
     facetCount: string;
     searchReasonLabels: Record<string, string>;
+    searchMatchLabel: string;
     resultsPrefix: string;
     resultsSuffix: string;
     emptyTitle: string;
     emptyDescription: string;
+    emptySearchDescription: string;
+    searchExamplesLabel: string;
+    searchExamples: string[];
+    clearSearch: string;
     summaryFallback: string;
     primaryPatronages: string;
     patronages: string;
