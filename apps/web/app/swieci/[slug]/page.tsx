@@ -14,6 +14,9 @@ import {
 } from "lucide-react";
 import { fetchPersonDetail, isApiNotFound } from "@/lib/api";
 import { SaintAvatar, type SaintAvatarData } from "@/components/saint-avatar";
+import { PersonCitationButton } from "@/components/person-citation-button";
+import { PersonFacts } from "@/components/person-facts";
+import { PersonTableOfContents, type PersonTableOfContentsItem } from "@/components/person-table-of-contents";
 import { DEFAULT_WEB_UI_LOCALE } from "@/lib/i18n/config";
 import { getWebDictionary } from "@/lib/i18n/dictionaries";
 import { resolveDictionaryLabel, resolveDictionaryValue } from "@/lib/i18n/labels";
@@ -141,6 +144,31 @@ export default async function PersonDetailPage({ params }: PageProps) {
     canonization?.canonization_year as number | null,
     DEFAULT_WEB_UI_LOCALE,
   );
+  const hasSummary = Boolean(content.summary);
+  const hasFacts = Boolean(
+    person.birth_year ||
+      person.death_year ||
+      person.gender ||
+      (person.state_of_life as Record<string, unknown> | null)?.name_pl,
+  );
+  const hasRecognition = Boolean(beatificationLabel || canonizationLabel);
+  const hasBiography = Boolean(content.biography);
+  const hasPatronages = Array.isArray(person.patronages) && person.patronages.length > 0;
+  const hasOrders = Array.isArray(person.orders) && person.orders.length > 0;
+  const hasPrayer = Boolean(content.prayers);
+  const hasIconography = Boolean(content.iconographicAttributes);
+  const publicSources = Array.isArray(person.sources) ? person.sources : [];
+  const tocItems: PersonTableOfContentsItem[] = [
+    ...(hasFacts ? [{ id: "fakty", label: copy.factsTitle }] : []),
+    ...(hasSummary ? [{ id: "streszczenie", label: copy.summarySection }] : []),
+    ...(hasRecognition ? [{ id: "uznanie", label: copy.recognitionSection }] : []),
+    ...(hasBiography ? [{ id: "zyciorys", label: copy.biographySection }] : []),
+    ...(hasPatronages ? [{ id: "patronaty", label: copy.patronagesSection }] : []),
+    ...(hasOrders ? [{ id: "zakony", label: copy.ordersSection }] : []),
+    ...(hasPrayer ? [{ id: "modlitwa", label: copy.prayerSection }] : []),
+    ...(hasIconography ? [{ id: "ikonografia", label: copy.iconographySection }] : []),
+    ...(publicSources.length ? [{ id: "bibliografia", label: copy.sourcesSection }] : []),
+  ];
 
   return (
     <article className="pb-16 space-y-12">
@@ -193,44 +221,42 @@ export default async function PersonDetailPage({ params }: PageProps) {
                 </p>
               )}
 
+              <PersonFacts
+                title={copy.factsTitle}
+                labels={{
+                  birth: copy.birthYear,
+                  death: copy.deathYear,
+                  gender: copy.gender,
+                  state: copy.stateOfLife,
+                }}
+                birthYear={person.birth_year ? String(person.birth_year) : null}
+                deathYear={person.death_year ? String(person.death_year) : null}
+                gender={person.gender ? String(person.gender) : null}
+                genderLabel={resolveDictionaryLabel(copy.genderLabels, person.gender)}
+                stateOfLife={String((person.state_of_life as Record<string, unknown> | null)?.name_pl ?? "") || null}
+              />
+
               {aliases.length > 0 && (
-                <p className="max-w-2xl text-sm leading-6 text-burgundy-100">
-                  <span className="font-semibold text-gold-200">{copy.aliasesPrefix}</span>{" "}
-                  {aliases.join(", ")}
-                </p>
+                <details className="group max-w-2xl text-sm leading-6 text-burgundy-100">
+                  <summary className="cursor-pointer list-none font-semibold text-gold-200 outline-offset-2 marker:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-300">
+                    <span>{copy.aliasesPrefix}</span>
+                    <span className="ml-2 text-xs font-normal text-burgundy-200 group-open:hidden">{copy.aliasesExpand}</span>
+                    <span className="ml-2 hidden text-xs font-normal text-burgundy-200 group-open:inline">{copy.aliasesCollapse}</span>
+                  </summary>
+                  <p className="mt-2 text-burgundy-100">{aliases.join(", ")}</p>
+                </details>
               )}
 
-              {/* Quick Stats */}
-              <dl className="grid grid-cols-2 overflow-hidden rounded-xl border border-white/15 bg-black/10 shadow-sm sm:grid-cols-4">
-                {Boolean(person.birth_year) && (
-                  <div className="border-b border-r border-white/10 bg-burgundy-900/55 px-4 py-3 sm:border-b-0">
-                    <dt className="text-[10px] font-bold uppercase tracking-wider text-gold-300">{copy.birthYear}</dt>
-                    <dd className="mt-1 text-sm font-semibold text-white">{String(person.birth_year)}</dd>
-                  </div>
-                )}
-                {Boolean(person.death_year) && (
-                  <div className="border-b border-white/10 bg-burgundy-900/55 px-4 py-3 sm:border-b-0 sm:border-r">
-                    <dt className="text-[10px] font-bold uppercase tracking-wider text-gold-300">{copy.deathYear}</dt>
-                    <dd className="mt-1 text-sm font-semibold text-white">{String(person.death_year)}</dd>
-                  </div>
-                )}
-                {Boolean(person.gender) && (
-                  <div className="border-r border-white/10 bg-burgundy-900/55 px-4 py-3">
-                    <dt className="text-[10px] font-bold uppercase tracking-wider text-gold-300">{copy.gender}</dt>
-                    <dd className="mt-1 text-sm font-semibold text-white">
-                      {resolveDictionaryLabel(copy.genderLabels, person.gender) ?? "—"}
-                    </dd>
-                  </div>
-                )}
-                {Boolean((person.state_of_life as Record<string, unknown> | null)?.name_pl) && (
-                  <div className="bg-burgundy-900/55 px-4 py-3">
-                    <dt className="text-[10px] font-bold uppercase tracking-wider text-gold-300">{copy.stateOfLife}</dt>
-                    <dd className="mt-1 text-sm font-semibold text-white">
-                      {String((person.state_of_life as Record<string, unknown>).name_pl)}
-                    </dd>
-                  </div>
-                )}
-              </dl>
+              <div className="flex flex-wrap items-center gap-3">
+                <span id={`wersja-${Number(person.version) || 1}`} className="text-xs text-burgundy-200">
+                  {copy.citationVersion} {Number(person.version) || 1}
+                </span>
+                <PersonCitationButton
+                  label={copy.citeProfile}
+                  copiedLabel={copy.citationCopied}
+                  version={Number(person.version) || 1}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -238,9 +264,10 @@ export default async function PersonDetailPage({ params }: PageProps) {
 
       {/* ─── Content Body ─────────────────────────────────────────────────── */}
       <section className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 space-y-8">
+        <PersonTableOfContents title={copy.tocTitle} items={tocItems} />
         {/* Summary Card */}
-        {Boolean(content.summary) && (
-          <div className="rounded-2xl border border-gold-500/30 bg-gold-50/50 p-6 sm:p-8 shadow-sm">
+        {hasSummary && (
+          <div id="streszczenie" className="scroll-mt-24 rounded-2xl border border-gold-500/30 bg-gold-50/50 p-6 sm:p-8 shadow-sm">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-gold-800 mb-2 flex items-center gap-1.5">
               <Sparkles className="h-4 w-4 text-gold-600" />
               {copy.summary}
@@ -251,8 +278,8 @@ export default async function PersonDetailPage({ params }: PageProps) {
           </div>
         )}
 
-        {(beatificationLabel || canonizationLabel) && (
-          <section className="rounded-2xl border border-gold-500/25 bg-[#fffdf8] p-6 shadow-sm sm:p-8">
+        {hasRecognition && (
+          <section id="uznanie" className="scroll-mt-24 rounded-2xl border border-gold-500/25 bg-[#fffdf8] p-6 shadow-sm sm:p-8">
             <div className="flex items-start gap-3">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gold-500/30 bg-gold-50 text-gold-700">
                 <BadgeCheck className="h-5 w-5" />
@@ -295,23 +322,21 @@ export default async function PersonDetailPage({ params }: PageProps) {
         )}
 
         {/* Biography */}
-        <div className="rounded-2xl border border-gold-500/20 bg-white p-6 sm:p-8 shadow-sm space-y-4">
+        {hasBiography && (
+        <div id="zyciorys" className="scroll-mt-24 rounded-2xl border border-gold-500/20 bg-white p-6 sm:p-8 shadow-sm space-y-4">
           <h2 className="font-serif text-2xl font-bold text-burgundy-900 flex items-center gap-2 border-b border-gray-100 pb-3">
             <BookOpen className="h-5 w-5 text-gold-600" />
             {copy.biographyTitle}
           </h2>
-          {Boolean(content.biography) ? (
-            <div className="prose prose-burgundy max-w-none text-base text-gray-800 leading-relaxed whitespace-pre-line">
-              {content.biography}
-            </div>
-          ) : (
-            <p className="text-sm text-gray-500">{copy.biographyMissing}</p>
-          )}
+          <div className="prose prose-burgundy max-w-none text-base text-gray-800 leading-relaxed whitespace-pre-line">
+            {content.biography}
+          </div>
         </div>
+        )}
 
         {/* Patronages */}
-        {Array.isArray(person.patronages) && person.patronages.length > 0 && (
-          <section className="rounded-2xl border border-gold-500/20 bg-white p-6 shadow-sm sm:p-8">
+        {hasPatronages && (
+          <section id="patronaty" className="scroll-mt-24 rounded-2xl border border-gold-500/20 bg-white p-6 shadow-sm sm:p-8">
             <h2 className="flex items-center gap-2 font-serif text-2xl font-bold text-burgundy-900">
               <HeartHandshake className="h-5 w-5 text-gold-600" />
               {copy.patronages}
@@ -330,8 +355,8 @@ export default async function PersonDetailPage({ params }: PageProps) {
         )}
 
         {/* Religious communities */}
-        {Array.isArray(person.orders) && person.orders.length > 0 && (
-          <section className="rounded-2xl border border-gold-500/20 bg-white p-6 shadow-sm sm:p-8">
+        {hasOrders && (
+          <section id="zakony" className="scroll-mt-24 rounded-2xl border border-gold-500/20 bg-white p-6 shadow-sm sm:p-8">
             <h2 className="flex items-center gap-2 font-serif text-2xl font-bold text-burgundy-900">
               <Landmark className="h-5 w-5 text-gold-600" />
               {copy.orders}
@@ -364,48 +389,43 @@ export default async function PersonDetailPage({ params }: PageProps) {
         )}
 
         {/* Prayers / Attributes Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {(hasPrayer || hasIconography) && <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {/* Prayers */}
-          <div className="rounded-2xl border border-gold-500/20 bg-white p-6 shadow-sm space-y-3">
+          {hasPrayer && <div id="modlitwa" className="scroll-mt-24 rounded-2xl border border-gold-500/20 bg-white p-6 shadow-sm space-y-3">
             <h3 className="font-serif text-lg font-bold text-burgundy-900 flex items-center gap-2">
               <Heart className="h-4 w-4 text-gold-600" />
               {copy.prayer}
             </h3>
-            {Boolean(content.prayers) ? (
-              <p className="whitespace-pre-line text-sm leading-relaxed text-gray-700 italic">
-                {content.prayers}
-              </p>
-            ) : (
-              <p className="text-xs text-gray-400">{copy.prayerMissing}</p>
-            )}
+            <p className="whitespace-pre-line text-sm leading-relaxed text-gray-700 italic">
+              {content.prayers}
+            </p>
           </div>
+          }
 
           {/* Iconography */}
-          <div className="rounded-2xl border border-gold-500/20 bg-white p-6 shadow-sm space-y-3">
+          {hasIconography && <div id="ikonografia" className="scroll-mt-24 rounded-2xl border border-gold-500/20 bg-white p-6 shadow-sm space-y-3">
             <h3 className="font-serif text-lg font-bold text-burgundy-900 flex items-center gap-2">
               <Crown className="h-4 w-4 text-gold-600" />
               {copy.iconographicAttributes}
             </h3>
-            {Boolean(content.iconographicAttributes) ? (
-              <ul className="flex flex-wrap gap-2">
-                {String(content.iconographicAttributes)
-                  .split(/[;\n]+/)
-                  .map((attribute) => attribute.trim())
-                  .filter(Boolean)
-                  .map((attribute) => (
-                    <li key={attribute} className="rounded-full border border-gold-500/25 bg-gold-50 px-3 py-1 text-xs text-burgundy-900">
-                      {attribute}
-                    </li>
-                  ))}
-              </ul>
-            ) : (
-              <p className="text-xs text-gray-400">
-                {copy.iconographicAttributesMissing}
-              </p>
-            )}
+            <ul className="flex flex-wrap gap-2">
+              {String(content.iconographicAttributes)
+                .split(/[;\n]+/)
+                .map((attribute) => attribute.trim())
+                .filter(Boolean)
+                .map((attribute) => (
+                  <li key={attribute} className="rounded-full border border-gold-500/25 bg-gold-50 px-3 py-1 text-xs text-burgundy-900">
+                    {attribute}
+                  </li>
+                ))}
+            </ul>
           </div>
+          }
         </div>
-        <PersonSources sources={Array.isArray(person.sources) ? person.sources as PublicPersonSource[] : []} copy={copy.sources} />
+        }
+        {publicSources.length > 0 && (
+          <PersonSources sources={publicSources as PublicPersonSource[]} copy={copy.sources} />
+        )}
       </section>
     </article>
   );

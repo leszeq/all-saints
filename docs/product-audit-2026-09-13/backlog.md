@@ -409,24 +409,25 @@ Długie aliasy i teksty utrudniają znalezienie daty, wspomnienia lub źródła.
 
 **Backend**
 
-- [ ] PersonPublicProfileSchema z lekkimi sekcjami i quality/source summary.
-- [ ] agregację rozszerzać przez public query, bez surowych ORM relacji w payloadzie.
-- [ ] v1 używa istniejących danych.
+- [x] PersonPublicProfileSchema z lekkimi sekcjami i quality/source summary.
+- [x] agregację rozszerzać przez public query, bez surowych ORM relacji w payloadzie.
+- [x] v1 używa istniejących danych.
 
 **Database**
 
-- [ ] V1 brak migracji.
+- [x] V1 brak migracji.
 - [ ] późniejsza struktura bloków biografii związana z 016 i rewizją. Nie przepisywać wszystkich biografii tylko dla TOC.
 
 **Frontend**
 
-- [ ] web/swieci/[slug]: TableOfContents, FactsPanel, SourcesSection, collapsible aliases, linki do kalendarza/zakonu, przycisk cytowania.
-- [ ] SSR z małymi client islands.
-- [ ] stan anchor w URL.
+- [x] web/swieci/[slug]: TableOfContents, FactsPanel, SourcesSection, collapsible aliases i przycisk cytowania.
+- [ ] web/swieci/[slug]: linki do kalendarza i zakonu.
+- [x] SSR z małą wyspą client dla cytowania.
+- [x] stan anchor w URL.
 
 **Tests**
 
-- [ ] Backend: zgodność pól i widoczności.
+- [x] Backend: zgodność pól i widoczności.
 - [ ] Frontend: warunkowe sekcje i brak pustych anchorów.
 - [ ] E2E mobile: przejście do źródeł w ≤2 działaniach, back do wyników zachowuje filtry.
 
@@ -436,14 +437,23 @@ Długie aliasy i teksty utrudniają znalezienie daty, wspomnienia lub źródła.
 
 **Definition of Done**
 
-- [ ] Najważniejsze fakty widoczne wcześniej niż pełna lista aliasów.
-- [ ] TOC działa klawiaturą.
-- [ ] cytowany profil ma ID wersji.
-- [ ] brak udawanych pustych sekcji mapy/grafu.
+- [x] Najważniejsze fakty widoczne wcześniej niż pełna lista aliasów.
+- [x] TOC działa klawiaturą.
+- [x] cytowany profil ma ID wersji.
+- [x] brak udawanych pustych sekcji mapy/grafu.
 
 **Dependencies**
 
 002, 010, 012; 018 dla related.
+
+**Stan implementacji (2026-10-20)**
+
+Publiczny profil zwraca `PersonPublicProfileSchema` z bezpiecznym podsumowaniem
+udokumentowanych sekcji i źródeł, bez publikowania pól redakcyjnych. Strona
+`/swieci/[slug]` ma warunkowy spis treści, panel faktów przed aliasami,
+zwijane aliasy, anchorowe sekcje oraz przycisk cytowania z ID wersji. Puste
+sekcje modlitwy, ikonografii i bibliografii nie są renderowane. Pozostają
+linki do kalendarza/zakonu, testy frontendowe i scenariusz E2E mobile.
 
 **Risk**
 

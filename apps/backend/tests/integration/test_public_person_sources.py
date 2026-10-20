@@ -77,6 +77,17 @@ async def test_public_citations_include_verifiable_facts_without_editorial_data(
     assert sources[0]["bibliography"]["url"] == "https://example.org/rita"
     assert sources[1]["historical_source"]["call_number"] == "MS 123"
     assert sources[1]["historical_source"]["digitization_url"] == "https://example.org/skan"
+    assert response.json()["source_summary"] == {
+        "total": 2,
+        "primary": 1,
+        "with_online_link": 2,
+    }
+    assert response.json()["quality_summary"] == {
+        "has_summary": False,
+        "has_biography": False,
+        "has_recognition": False,
+        "has_relational_context": False,
+    }
     for private in (
         "WEWNĘTRZ",
         "NIEPUBLICZNY",

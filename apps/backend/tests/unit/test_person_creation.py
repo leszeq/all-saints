@@ -31,6 +31,7 @@ from src.presentation.api.v1.persons.schemas import (
     PersonCreateSchema,
     PersonDetailSchema,
     PersonListItemSchema,
+    PersonPublicProfileSchema,
     PersonUpdateSchema,
 )
 
@@ -243,6 +244,44 @@ def test_person_recognition_dates_are_editable_and_exposed_in_detail() -> None:
     assert detail.beatification.beatification_date == "2011-05-01"
     assert detail.canonization is not None
     assert detail.canonization.canonization_date == "2014-04-27"
+
+
+def test_public_profile_contract_keeps_section_and_source_summaries_explicit() -> None:
+    now = "2026-08-25T12:00:00Z"
+    payload = PersonPublicProfileSchema.model_validate(
+        {
+            "id": uuid.uuid4(),
+            "slug": "sw-rita-z-cascii",
+            "canonical_name": "Św. Rita z Cascii",
+            "person_type": "saint",
+            "status": "published",
+            "gender": "female",
+            "is_featured": True,
+            "localized_content": {
+                "requested_locale": "pl",
+                "resolved_locale": "pl",
+                "fallback_used": False,
+                "source": "legacy_person_columns",
+                "canonical_name": "Św. Rita z Cascii",
+                "summary": "Krótki opis.",
+                "biography": "Pełny biogram.",
+            },
+            "version": 4,
+            "created_at": now,
+            "updated_at": now,
+            "quality_summary": {
+                "has_summary": True,
+                "has_biography": True,
+                "has_recognition": False,
+                "has_relational_context": False,
+            },
+            "source_summary": {"total": 2, "primary": 1, "with_online_link": 1},
+        }
+    )
+
+    assert payload.version == 4
+    assert payload.quality_summary.has_biography is True
+    assert payload.source_summary.with_online_link == 1
 
 
 @pytest.mark.asyncio

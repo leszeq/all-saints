@@ -196,6 +196,30 @@ class PersonDetailSchema(PersonListItemSchema):
     model_config = ConfigDict(from_attributes=True)
 
 
+class PersonPublicQualitySummarySchema(BaseModel):
+    """Publicly safe signals describing which profile sections are documented."""
+
+    has_summary: bool
+    has_biography: bool
+    has_recognition: bool
+    has_relational_context: bool
+
+
+class PersonPublicSourceSummarySchema(BaseModel):
+    """Small source summary used by the public profile without editorial scoring."""
+
+    total: int
+    primary: int
+    with_online_link: int
+
+
+class PersonPublicProfileSchema(PersonDetailSchema):
+    """Public profile contract with explicit section and citation metadata."""
+
+    quality_summary: PersonPublicQualitySummarySchema
+    source_summary: PersonPublicSourceSummarySchema
+
+
 class PersonListResponseSchema(BaseModel):
     """Paginated response wrapper."""
 

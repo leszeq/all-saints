@@ -29,6 +29,9 @@ from src.presentation.api.v1.persons.schemas import (
     PersonListItemSchema,
     PersonListResponseSchema,
     PersonLocalizedSummarySchema,
+    PersonPublicProfileSchema,
+    PersonPublicQualitySummarySchema,
+    PersonPublicSourceSummarySchema,
 )
 from src.presentation.api.v1.sources.public_schemas import PublicPersonSourceSchema
 
@@ -52,6 +55,46 @@ def _localized_list_item(person: Person, locale: str) -> PersonListItemSchema:
 def _localized_detail(person: Person, locale: str) -> PersonDetailSchema:
     payload = PersonDetailSchema.model_validate(person)
     return payload.model_copy(update={"localized_content": resolve_person_content(person, locale)})
+
+
+def _public_profile(
+    person: Person,
+    locale: str,
+    sources: list[PublicPersonSourceSchema],
+) -> PersonPublicProfileSchema:
+    """Build a public projection from application data, never from raw relations."""
+    detail = _localized_detail(person, locale)
+    content = detail.localized_content
+    source_summary = PersonPublicSourceSummarySchema(
+        total=len(sources),
+        primary=sum(1 for source in sources if source.is_primary),
+        with_online_link=sum(
+            1
+            for source in sources
+            if (
+                source.bibliography is not None
+                and bool(source.bibliography.url or source.bibliography.doi)
+            )
+            or (
+                source.historical_source is not None
+                and bool(source.historical_source.digitization_url)
+            )
+        ),
+    )
+    quality_summary = PersonPublicQualitySummarySchema(
+        has_summary=bool(content and content.summary),
+        has_biography=bool(content and content.biography),
+        has_recognition=detail.beatification is not None or detail.canonization is not None,
+        has_relational_context=bool(detail.patronages or detail.orders),
+    )
+    return PersonPublicProfileSchema.model_validate(
+        {
+            **detail.model_dump(),
+            "sources": sources,
+            "quality_summary": quality_summary,
+            "source_summary": source_summary,
+        }
+    )
 
 
 async def list_persons(
@@ -190,7 +233,7 @@ async def list_person_facets(
 
 @router.get(
     "/{id_or_slug}",
-    response_model=PersonDetailSchema,
+    response_model=PersonPublicProfileSchema,
     summary="Get person detail",
     description="Fetch a single person by UUID or URL slug.",
 )
@@ -222,6 +265,5 @@ async def get_person(
             status_code=status.HTTP_301_MOVED_PERMANENTLY,
         )
     links = await PersonSourceService(db).list_sources(person.id)
-    payload = _localized_detail(person, locale)
-    payload.sources = [PublicPersonSourceSchema.from_link(link) for link in links]
-    return payload
+    sources = [PublicPersonSourceSchema.from_link(link) for link in links]
+    return _public_profile(person, locale, sources)
