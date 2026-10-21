@@ -643,7 +643,7 @@ Osoba nie ma publicznej listy swoich obchodów; pusty dzień i niepełny katalog
 
 - [x] Backend: widoczność publiczna, aktywne kalendarze i wpisy stałe.
 - [ ] Frontend: pusta data nie oznacza „nikt”.
-- [ ] E2E: profil→dzień→profil bez zmiany kalendarza.
+- [x] E2E: profil→dzień→profil bez zmiany kalendarza.
 
 **Infrastructure**
 
@@ -669,8 +669,9 @@ Profil pokazuje tabelę dat według kalendarza, zakres opracowania, źródło or
 link do dnia w kalendarzu. Strony dnia i miesiąca również pokazują zakres
 `fixed_only` i rozróżniają pustą datę od braku dnia w kalendarzu. Odpowiedź dnia
 udostępnia osobne pola `normative_entries` i `martyrology_entries`, a UI pokazuje
-martyrologium w wydzielonej sekcji bez wpływu na główne wspomnienie. Pozostaje
-test E2E przejścia.
+martyrologium w wydzielonej sekcji bez wpływu na główne wspomnienie. Playwright
+sprawdza przejście profil → dzień → profil z zachowaniem kodu kalendarza.
+Pozostaje izolowany test frontendowy pustej daty oraz cache per kalendarz/data.
 
 **Risk**
 

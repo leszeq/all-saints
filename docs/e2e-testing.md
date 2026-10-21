@@ -1,8 +1,9 @@
 # Testy E2E krytycznych ścieżek
 
-Smoke testy Playwright obejmują cztery granice, których nie pokrywają same testy
-backendu: logowanie w panelu, przejście `draft → review → published`, ukrycie szkicu
-w portalu publicznym oraz upload i odczyt obrazu.
+Smoke testy Playwright obejmują granice, których nie pokrywają same testy backendu:
+logowanie w panelu, przejście `draft → review → published`, ukrycie szkicu w portalu
+publicznym, przejście profil → dzień kalendarza → profil z zachowaniem parametru
+kalendarza oraz upload i odczyt obrazu.
 
 ## Uruchomienie lokalne
 

@@ -20,6 +20,17 @@ type CreatedPerson = {
   canonical_name: string;
 };
 
+type CalendarMonthEntry = {
+  date: string;
+  person: {
+    slug: string;
+    canonical_name: string;
+  };
+  calendar: {
+    code: string;
+  };
+};
+
 async function loginAs(request: APIRequestContext, email: string) {
   const response = await request.post(`${apiUrl}/auth/login`, {
     data: { email, password },
@@ -80,11 +91,21 @@ test("szkic staje się publiczny dopiero po pełnym workflow", async ({ page, re
     expect(reviewResponse.status()).toBe(200);
     expect((await reviewResponse.json()).status).toBe("review");
 
+    const sourceResponse = await request.post(`${apiUrl}/sources/person-links/${person.id}/web`, {
+      headers: authorization(editorToken),
+      data: {
+        title: "Źródło testowego profilu E2E",
+        url: `https://example.test/e2e/${uniqueSuffix}`,
+        is_primary: true,
+      },
+    });
+    expect(sourceResponse.status()).toBe(201);
+
     const publishResponse = await request.post(
       `${apiUrl}/editorial/queue/${person.id}/transition`,
       {
         headers: authorization(reviewerToken),
-        data: { target_status: "published", expected_version: 2 },
+        data: { target_status: "published", expected_version: 3 },
       },
     );
     expect(publishResponse.status()).toBe(200);
@@ -102,6 +123,46 @@ test("szkic staje się publiczny dopiero po pełnym workflow", async ({ page, re
       expect(cleanupResponse.status()).toBe(204);
     }
   }
+});
+
+test("profil prowadzi do dnia i zachowuje wybrany kalendarz", async ({ page, request }) => {
+  const year = new Date().getUTCFullYear();
+  const monthResponse = await request.get(
+    `${apiUrl}/calendar/month/${year}/8?calendar_code=roman_pl&include_universal=true&include_martyrology=true`,
+  );
+  expect(monthResponse.ok()).toBeTruthy();
+  const month = (await monthResponse.json()) as {
+    days: Array<{
+      date: string;
+      entries: Array<{
+        person: CalendarMonthEntry["person"] | null;
+        calendar: CalendarMonthEntry["calendar"];
+      }>;
+    }>;
+  };
+  const candidate = month.days
+    .flatMap((day) =>
+      day.entries
+        .filter((entry): entry is { person: CalendarMonthEntry["person"]; calendar: CalendarMonthEntry["calendar"] } => Boolean(entry.person))
+        .map((entry) => ({ date: day.date, ...entry })),
+    )[0];
+  expect(candidate, "Sierpniowy fixture musi zawierać osobę z wpisem kalendarzowym").toBeTruthy();
+  if (!candidate) return;
+
+  await page.goto(`${webUrl}/swieci/${candidate.person.slug}`);
+  await expect(page.getByRole("heading", { name: candidate.person.canonical_name, exact: true })).toBeVisible();
+
+  const dayPath = `/kalendarz/${candidate.date}?calendar=${encodeURIComponent(candidate.calendar.code)}`;
+  const dayLink = page.locator(`#wspomnienia a[href="${dayPath}"]`);
+  await expect(dayLink).toHaveCount(1);
+  await dayLink.click();
+  await expect(page).toHaveURL(new URL(dayPath, webUrl).toString());
+
+  const profileLink = page.locator(`a[href="/swieci/${candidate.person.slug}"]`).first();
+  await expect(profileLink).toBeVisible();
+  await profileLink.click();
+  await expect(page).toHaveURL(new URL(`/swieci/${candidate.person.slug}`, webUrl).toString());
+  await expect(page.getByRole("heading", { name: candidate.person.canonical_name, exact: true })).toBeVisible();
 });
 
 test("redaktor może przesłać obraz, a zapisany plik jest dostępny", async ({ request }) => {
