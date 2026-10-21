@@ -334,6 +334,10 @@ const dictionary = {
       scopeTitle: "Zakres kalendarza",
       universalSuffix: " wraz z obchodami kalendarza powszechnego",
       martyrologySuffix: " oraz osobną warstwą Martyrologium Rzymskiego",
+      martyrologyTitle: "Martyrologium Rzymskie",
+      martyrologyDescription:
+        "Poniższe wzmianki pochodzą z osobnej warstwy martyrologium i nie ustalają normatywnego porządku dnia.",
+      martyrologyEntry: "Wpis martyrologium",
       sourceTitle: "Źródło wpisu",
       sourceFallback: "Dokument liturgiczny",
       emptyTitle: "Dzień czeka na opracowanie",

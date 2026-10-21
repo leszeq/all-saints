@@ -136,7 +136,7 @@ class PublicPersonCommemorationSchema(BaseModel):
 
 
 class CalendarDaySchema(BaseModel):
-    """All commemorations for one civil date after calendar merging."""
+    """All commemorations for one date, with normative and martyrology layers."""
 
     date: date
     calendar_code: str
@@ -145,6 +145,8 @@ class CalendarDaySchema(BaseModel):
     includes_martyrology: bool
     primary: FeastEntrySchema | None
     entries: list[FeastEntrySchema]
+    normative_entries: list[FeastEntrySchema] = Field(default_factory=list)
+    martyrology_entries: list[FeastEntrySchema] = Field(default_factory=list)
     total: int
 
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, date, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
@@ -17,6 +18,7 @@ from src.infrastructure.db.import_catalogue_persons import read_person_rows
 from src.infrastructure.db.import_liturgical_calendar import read_rows
 from src.infrastructure.db.import_liturgical_observances import read_observance_rows
 from src.main import app
+from src.presentation.api.v1.calendar.public import _day_response
 from src.presentation.api.v1.calendar.schemas import (
     FeastEntryCreateSchema,
     FeastEntryUpdateSchema,
@@ -195,6 +197,36 @@ def test_merge_supports_non_person_observance() -> None:
     assert entries == [mary]
     assert entries[0].person is None
     assert entries[0].observance.title_pl == "Najświętsza Maryja Panna Częstochowska"
+
+
+def test_day_response_separates_normative_and_martyrology_layers() -> None:
+    polish = _calendar("roman_pl")
+    martyrology = _calendar("roman_martyrology")
+    normative_person = _person("Św. Wspomnienie normatywne")
+    martyrology_person = _person("Św. Wpis martyrologium")
+    normative = _feast(normative_person, polish, primary=True)
+    martyrology_entry = _feast(martyrology_person, martyrology)
+    timestamp = datetime.now(UTC)
+    normative.created_at = timestamp
+    normative.updated_at = timestamp
+    martyrology_entry.created_at = timestamp
+    martyrology_entry.updated_at = timestamp
+
+    response = _day_response(
+        date(2026, 8, 23),
+        polish,
+        [normative, martyrology_entry],
+        include_universal=True,
+        include_martyrology=True,
+    )
+
+    assert response.primary is not None
+    assert response.primary.calendar.code == "roman_pl"
+    assert [entry.calendar.code for entry in response.normative_entries] == ["roman_pl"]
+    assert [entry.calendar.code for entry in response.martyrology_entries] == [
+        "roman_martyrology"
+    ]
+    assert len(response.entries) == 2
 
 
 def test_csv_reader_normalizes_import_fields(tmp_path: Path) -> None:

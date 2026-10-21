@@ -95,6 +95,8 @@ export interface CalendarDay {
   includes_martyrology: boolean;
   primary: CalendarEntry | null;
   entries: CalendarEntry[];
+  normative_entries?: CalendarEntry[];
+  martyrology_entries?: CalendarEntry[];
   total: number;
 }
 

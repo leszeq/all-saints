@@ -263,6 +263,9 @@ export interface WebDictionary {
       scopeTitle: string;
       universalSuffix: string;
       martyrologySuffix: string;
+      martyrologyTitle: string;
+      martyrologyDescription: string;
+      martyrologyEntry: string;
       sourceTitle: string;
       sourceFallback: string;
       emptyTitle: string;

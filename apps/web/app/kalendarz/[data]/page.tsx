@@ -50,6 +50,48 @@ function entryTypeLabel(
 }
 
 
+function MartyrologySection({
+  entries,
+  copy,
+  calendarCopy,
+}: {
+  entries: CalendarEntry[];
+  copy: WebDictionary["calendar"]["day"];
+  calendarCopy: WebDictionary["calendar"];
+}) {
+  return (
+    <section className="mt-12 rounded-2xl border border-gold-200 bg-gold-50/50 p-6 sm:p-8">
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+        <div>
+          <p className="editorial-label">{copy.martyrologyEntry}</p>
+          <h2 className="mt-2 font-serif text-3xl font-semibold text-charcoal">{copy.martyrologyTitle}</h2>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-stone-600">{copy.martyrologyDescription}</p>
+        </div>
+        <span className="text-sm text-stone-500">{formatCalendarEntryCount(entries.length, calendarCopy.entryCount)}</span>
+      </div>
+      <div className="mt-6 divide-y divide-gold-200 border-y border-gold-200">
+        {entries.map((entry) => (
+          <article key={entry.id} className="flex flex-col gap-4 py-5 sm:flex-row sm:items-center">
+            <SaintAvatar name={calendarEntryTitle(entry, calendarCopy.unknownObservance)} avatar={calendarEntryAvatar(entry)} className="h-14 w-14 shrink-0 text-base" />
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-wide text-gold-800">
+                <span>{resolveDictionaryLabel(calendarCopy.feastRanks, entry.rank) ?? entry.rank}</span>
+                <span>·</span>
+                <span>{entry.calendar.name}</span>
+              </div>
+              <h3 className="mt-1 font-serif text-2xl font-semibold text-charcoal">{calendarEntryTitle(entry, calendarCopy.unknownObservance)}</h3>
+            </div>
+            <Link href={calendarEntryHref(entry)} className="inline-flex items-center gap-1 text-sm font-semibold text-burgundy-700">
+              {entry.person ? copy.profile : copy.observance} <ChevronRight className="h-4 w-4" />
+            </Link>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const [{ data }, dictionary] = await Promise.all([
     params,
@@ -87,8 +129,10 @@ export default async function CalendarDayPage({ params, searchParams }: PageProp
   const formattedDate = formatCalendarDate(data, DEFAULT_WEB_UI_LOCALE);
   const isToday = data === currentWarsawDate();
   const monthKey = data.slice(0, 7);
-  const primary = day.primary;
-  const remaining = primary ? day.entries.filter((entry) => entry.id !== primary.id) : [];
+  const normativeEntries = day.normative_entries ?? day.entries.filter((entry) => entry.calendar.code !== "roman_martyrology");
+  const martyrologyEntries = day.martyrology_entries ?? day.entries.filter((entry) => entry.calendar.code === "roman_martyrology");
+  const primary = normativeEntries[0] ?? null;
+  const remaining = primary ? normativeEntries.filter((entry) => entry.id !== primary.id) : [];
 
   return (
     <main>
@@ -114,9 +158,11 @@ export default async function CalendarDayPage({ params, searchParams }: PageProp
       </section>
 
       <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        {primary ? (
+        {primary || martyrologyEntries.length > 0 ? (
           <>
-            <article className="surface-card overflow-hidden">
+            {primary ? (
+              <>
+              <article className="surface-card overflow-hidden">
               <div className="grid lg:grid-cols-[18rem_1fr]">
                 <div className="flex min-h-72 items-center justify-center bg-burgundy-800 p-8">
                   <SaintAvatar name={calendarEntryTitle(primary, calendarCopy.unknownObservance)} avatar={calendarEntryAvatar(primary)} className="h-44 w-44 border-4 border-white/20 text-4xl" />
@@ -191,6 +237,12 @@ export default async function CalendarDayPage({ params, searchParams }: PageProp
                 )}
               </aside>
             </div>
+              </>
+            ) : null}
+
+            {martyrologyEntries.length > 0 && (
+              <MartyrologySection entries={martyrologyEntries} copy={copy} calendarCopy={calendarCopy} />
+            )}
           </>
         ) : (
           <div className="surface-card mx-auto max-w-2xl p-10 text-center">

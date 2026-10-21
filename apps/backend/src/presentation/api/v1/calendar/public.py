@@ -37,14 +37,22 @@ def _day_response(
     include_martyrology: bool,
 ) -> CalendarDaySchema:
     serialized = [FeastEntrySchema.model_validate(entry) for entry in entries]
+    normative_entries = [
+        entry for entry in serialized if entry.calendar.code != "roman_martyrology"
+    ]
+    martyrology_entries = [
+        entry for entry in serialized if entry.calendar.code == "roman_martyrology"
+    ]
     return CalendarDaySchema(
         date=value,
         calendar_code=calendar.code,
         calendar_name=calendar.name,
         includes_universal=include_universal and calendar.code != "roman_universal",
         includes_martyrology=(include_martyrology and calendar.code != "roman_martyrology"),
-        primary=serialized[0] if serialized else None,
+        primary=normative_entries[0] if normative_entries else None,
         entries=serialized,
+        normative_entries=normative_entries,
+        martyrology_entries=martyrology_entries,
         total=len(serialized),
     )
 

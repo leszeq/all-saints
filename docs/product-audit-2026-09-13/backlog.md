@@ -637,7 +637,7 @@ Osoba nie ma publicznej listy swoich obchodów; pusty dzień i niepełny katalog
 
 - [x] Profil: tabela wspomnień według kalendarzy.
 - [x] dzień/miesiąc: nazwa zakresu i empty state „brak opracowanych wpisów”.
-- [ ] rozdzielić martyrologium od normatywnej odpowiedzi.
+- [x] rozdzielić martyrologium od normatywnej odpowiedzi.
 
 **Tests**
 
@@ -667,8 +667,10 @@ Zwraca wyłącznie opublikowane osoby, aktywne kalendarze i stałe wpisy z
 pochodzeniem. `CalendarCoverageSchema` jasno oznacza zakres `fixed_only`.
 Profil pokazuje tabelę dat według kalendarza, zakres opracowania, źródło oraz
 link do dnia w kalendarzu. Strony dnia i miesiąca również pokazują zakres
-`fixed_only` i rozróżniają pustą datę od braku dnia w kalendarzu. Pozostają
-rozdzielenie martyrologium i test E2E przejścia.
+`fixed_only` i rozróżniają pustą datę od braku dnia w kalendarzu. Odpowiedź dnia
+udostępnia osobne pola `normative_entries` i `martyrology_entries`, a UI pokazuje
+martyrologium w wydzielonej sekcji bez wpływu na główne wspomnienie. Pozostaje
+test E2E przejścia.
 
 **Risk**
 
