@@ -642,7 +642,7 @@ Osoba nie ma publicznej listy swoich obchodów; pusty dzień i niepełny katalog
 **Tests**
 
 - [x] Backend: widoczność publiczna, aktywne kalendarze i wpisy stałe.
-- [ ] Frontend: pusta data nie oznacza „nikt”.
+- [x] Frontend: pusta data nie oznacza „nikt”.
 - [x] E2E: profil→dzień→profil bez zmiany kalendarza.
 
 **Infrastructure**
@@ -673,7 +673,8 @@ martyrologium w wydzielonej sekcji bez wpływu na główne wspomnienie. Playwrig
 sprawdza przejście profil → dzień → profil z zachowaniem kodu kalendarza. Publiczne
 odpowiedzi dnia i miesiąca są cache'owane w Redis z TTL, wersją danych oraz kluczem
 obejmującym datę, kalendarz i warstwy; awaria Redis wykonuje bezpieczny fallback do DB.
-Pozostaje izolowany test frontendowy pustej daty.
+Izolowany test frontendowy pustej daty potwierdza komunikat o braku opracowania i brak
+sugerowania, że danego dnia „nikt” nie występuje.
 
 **Risk**
 

@@ -3,7 +3,8 @@
 Smoke testy Playwright obejmują granice, których nie pokrywają same testy backendu:
 logowanie w panelu, przejście `draft → review → published`, ukrycie szkicu w portalu
 publicznym, przejście profil → dzień kalendarza → profil z zachowaniem parametru
-kalendarza oraz upload i odczyt obrazu.
+kalendarza, pusty dzień z komunikatem o braku opracowanych wpisów oraz upload i odczyt
+obrazu.
 
 ## Uruchomienie lokalne
 
