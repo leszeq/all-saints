@@ -166,6 +166,11 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: str = ""
     REDIS_URL: str = "redis://localhost:6379/0"
 
+    # ── Calendar response cache ──────────────────────────────────────────────
+    # Bump CALENDAR_DATA_VERSION whenever the imported calendar dataset changes.
+    CALENDAR_CACHE_TTL_SECONDS: int = 300
+    CALENDAR_DATA_VERSION: str = "1"
+
     # ── Celery ─────────────────────────────────────────────────────────────────
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"

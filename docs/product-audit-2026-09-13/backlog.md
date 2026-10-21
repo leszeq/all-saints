@@ -647,7 +647,7 @@ Osoba nie ma publicznej listy swoich obchodów; pusty dzień i niepełny katalog
 
 **Infrastructure**
 
-- [ ] Cache per calendar/date i wersja danych.
+- [x] Cache per calendar/date i wersja danych.
 - [ ] bez silnika reguł w tym przyroście.
 
 **Definition of Done**
@@ -660,7 +660,7 @@ Osoba nie ma publicznej listy swoich obchodów; pusty dzień i niepełny katalog
 
 002, 009; resolver 021 niezależnie później.
 
-**Stan implementacji (2026-10-20)**
+**Stan implementacji (2026-10-21)**
 
 Dodano publiczny odczyt `GET /api/v1/persons/{id_or_slug}/commemorations`.
 Zwraca wyłącznie opublikowane osoby, aktywne kalendarze i stałe wpisy z
@@ -670,8 +670,10 @@ link do dnia w kalendarzu. Strony dnia i miesiąca również pokazują zakres
 `fixed_only` i rozróżniają pustą datę od braku dnia w kalendarzu. Odpowiedź dnia
 udostępnia osobne pola `normative_entries` i `martyrology_entries`, a UI pokazuje
 martyrologium w wydzielonej sekcji bez wpływu na główne wspomnienie. Playwright
-sprawdza przejście profil → dzień → profil z zachowaniem kodu kalendarza.
-Pozostaje izolowany test frontendowy pustej daty oraz cache per kalendarz/data.
+sprawdza przejście profil → dzień → profil z zachowaniem kodu kalendarza. Publiczne
+odpowiedzi dnia i miesiąca są cache'owane w Redis z TTL, wersją danych oraz kluczem
+obejmującym datę, kalendarz i warstwy; awaria Redis wykonuje bezpieczny fallback do DB.
+Pozostaje izolowany test frontendowy pustej daty.
 
 **Risk**
 

@@ -8,6 +8,7 @@ from typing import Annotated
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.services.calendar_query_service import (
@@ -16,6 +17,8 @@ from src.application.services.calendar_query_service import (
     ObservanceNotFoundError,
 )
 from src.domain.liturgy.models import Feast, LiturgicalCalendar
+from src.infrastructure.cache.calendar_cache import CalendarResponseCache
+from src.infrastructure.cache.redis_client import RedisClient, get_redis
 from src.infrastructure.db.session import get_db_session
 from src.presentation.api.v1.calendar.schemas import (
     CalendarDaySchema,
@@ -115,6 +118,7 @@ async def get_today(
     include_universal: bool = True,
     include_martyrology: bool = True,
     db: AsyncSession = Depends(get_db_session),
+    redis: RedisClient = Depends(get_redis),
 ) -> CalendarDaySchema:
     value = datetime.now(ZoneInfo("Europe/Warsaw")).date()
     return await _get_day_response(
@@ -123,6 +127,7 @@ async def get_today(
         include_universal,
         include_martyrology,
         db,
+        redis,
     )
 
 
@@ -138,6 +143,7 @@ async def get_day(
     include_universal: bool = True,
     include_martyrology: bool = True,
     db: AsyncSession = Depends(get_db_session),
+    redis: RedisClient = Depends(get_redis),
 ) -> CalendarDaySchema:
     return await _get_day_response(
         value,
@@ -145,6 +151,7 @@ async def get_day(
         include_universal,
         include_martyrology,
         db,
+        redis,
     )
 
 
@@ -154,7 +161,22 @@ async def _get_day_response(
     include_universal: bool,
     include_martyrology: bool,
     db: AsyncSession,
+    redis: RedisClient | None = None,
 ) -> CalendarDaySchema:
+    cache = CalendarResponseCache(redis)
+    cache_key = cache.day_key(
+        value,
+        calendar_code,
+        include_universal,
+        include_martyrology,
+    )
+    cached = await cache.get(cache_key)
+    if cached is not None:
+        try:
+            return CalendarDaySchema.model_validate(cached)
+        except ValidationError:
+            pass
+
     service = CalendarQueryService(db)
     try:
         calendar, entries = await service.get_day(
@@ -165,13 +187,15 @@ async def _get_day_response(
         )
     except CalendarNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    return _day_response(
+    response = _day_response(
         value,
         calendar,
         entries,
         include_universal=include_universal,
         include_martyrology=include_martyrology,
     )
+    await cache.set(cache_key, response.model_dump(mode="json"))
+    return response
 
 
 @router.get(
@@ -190,7 +214,23 @@ async def get_month(
     include_universal: bool = True,
     include_martyrology: bool = True,
     db: AsyncSession = Depends(get_db_session),
+    redis: RedisClient = Depends(get_redis),
 ) -> CalendarMonthSchema:
+    cache = CalendarResponseCache(redis)
+    cache_key = cache.month_key(
+        year,
+        month,
+        calendar_code,
+        include_universal,
+        include_martyrology,
+    )
+    cached = await cache.get(cache_key)
+    if cached is not None:
+        try:
+            return CalendarMonthSchema.model_validate(cached)
+        except ValidationError:
+            pass
+
     service = CalendarQueryService(db)
     try:
         selected, grouped = await service.get_month(
@@ -213,7 +253,7 @@ async def get_month(
         )
         for day in range(1, civil_calendar.monthrange(year, month)[1] + 1)
     ]
-    return CalendarMonthSchema(
+    response = CalendarMonthSchema(
         year=year,
         month=month,
         calendar_code=selected.code,
@@ -222,3 +262,5 @@ async def get_month(
         includes_martyrology=(include_martyrology and selected.code != "roman_martyrology"),
         days=days,
     )
+    await cache.set(cache_key, response.model_dump(mode="json"))
+    return response
