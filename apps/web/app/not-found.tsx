@@ -9,7 +9,7 @@ export default async function NotFound() {
   const copy = dictionary.system.notFound;
 
   return (
-    <section className="mx-auto flex min-h-[62vh] max-w-3xl items-center px-4 py-16 sm:px-6">
+    <main className="mx-auto flex min-h-[62vh] max-w-3xl items-center px-4 py-16 sm:px-6">
       <div className="surface-card w-full p-8 text-center sm:p-12">
         <BookOpen className="mx-auto h-10 w-10 text-gold-700" strokeWidth={1.4} />
         <p className="editorial-label mt-7">{copy.kicker}</p>
@@ -34,6 +34,6 @@ export default async function NotFound() {
           </Link>
         </div>
       </div>
-    </section>
+    </main>
   );
 }

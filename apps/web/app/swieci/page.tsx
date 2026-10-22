@@ -354,7 +354,7 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
   }));
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 space-y-8">
+    <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 space-y-8">
       {/* Page Title */}
       <div>
         <h1 className="font-serif text-3xl sm:text-4xl font-bold text-burgundy-900">
@@ -770,6 +770,6 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
           })}
         </div>
       )}
-    </div>
+    </main>
   );
 }

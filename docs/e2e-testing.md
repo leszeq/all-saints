@@ -4,7 +4,7 @@ Smoke testy Playwright obejmują granice, których nie pokrywają same testy bac
 logowanie w panelu, przejście `draft → review → published`, ukrycie szkicu w portalu
 publicznym, przejście profil → dzień kalendarza → profil z zachowaniem parametru
 kalendarza, pusty dzień z komunikatem o braku opracowanych wpisów oraz upload i odczyt
-obrazu.
+obrazu. Publiczny katalog ma też test skip linku i pojedynczego landmarku `main`.
 
 ## Uruchomienie lokalne
 

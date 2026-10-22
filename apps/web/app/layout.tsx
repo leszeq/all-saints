@@ -44,8 +44,16 @@ export default async function RootLayout({
     >
       <body className="flex min-h-screen flex-col antialiased">
         <Providers systemCopy={dictionary.system}>
+          <a
+            href="#main-content"
+            className="sr-only fixed left-4 top-4 z-[60] rounded-lg bg-burgundy-700 px-4 py-3 text-sm font-semibold text-white focus:not-sr-only focus:outline-none focus:ring-2 focus:ring-gold-300"
+          >
+            {dictionary.header.skipToContent}
+          </a>
           <Header dictionary={{ brand: dictionary.brand, header: dictionary.header }} />
-          <main className="flex-1">{children}</main>
+          <div id="main-content" className="flex-1">
+            {children}
+          </div>
           <Footer dictionary={{ brand: dictionary.brand, footer: dictionary.footer }} />
         </Providers>
       </body>

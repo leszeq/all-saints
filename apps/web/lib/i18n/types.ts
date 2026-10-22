@@ -91,6 +91,7 @@ export interface WebDictionary {
   };
   header: {
     homeAriaLabel: string;
+    skipToContent: string;
     navigationAriaLabel: string;
     mobileNavigationAriaLabel: string;
     searchAriaLabel: string;

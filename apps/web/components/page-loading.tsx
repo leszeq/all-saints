@@ -11,7 +11,7 @@ export function PageLoading({ variant = "default" }: { variant?: LoadingVariant 
   const copy = useWebSystemCopy().loading;
 
   return (
-    <div className="mx-auto min-h-[62vh] max-w-7xl px-4 py-14 sm:px-6 lg:px-8" aria-live="polite">
+    <main className="mx-auto min-h-[62vh] max-w-7xl px-4 py-14 sm:px-6 lg:px-8" aria-live="polite">
       <div className="flex items-center gap-3 text-gold-700">
         <BookOpen className="h-5 w-5 animate-pulse" strokeWidth={1.5} />
         <p className="editorial-label">{copy.labels[variant]}</p>
@@ -26,6 +26,6 @@ export function PageLoading({ variant = "default" }: { variant?: LoadingVariant 
         </div>
       </div>
       <span className="sr-only">{copy.screenReaderLabel}</span>
-    </div>
+    </main>
   );
 }

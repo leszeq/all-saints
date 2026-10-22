@@ -14,7 +14,7 @@ export function RouteError({ error, retry }: RouteErrorProps) {
   const copy = useWebSystemCopy().error;
 
   return (
-    <section className="mx-auto flex min-h-[62vh] max-w-3xl items-center px-4 py-16 sm:px-6">
+    <main className="mx-auto flex min-h-[62vh] max-w-3xl items-center px-4 py-16 sm:px-6">
       <div className="surface-card w-full p-8 text-center sm:p-12">
         <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-gold-300 bg-gold-50 text-burgundy-700">
           <AlertTriangle className="h-6 w-6" strokeWidth={1.6} />
@@ -47,6 +47,6 @@ export function RouteError({ error, retry }: RouteErrorProps) {
           </Link>
         </div>
       </div>
-    </section>
+    </main>
   );
 }

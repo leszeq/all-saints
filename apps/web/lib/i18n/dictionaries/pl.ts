@@ -28,6 +28,7 @@ const dictionary = {
   },
   header: {
     homeAriaLabel: "Encyklopedia Świętych — strona główna",
+    skipToContent: "Przejdź do treści",
     navigationAriaLabel: "Nawigacja główna",
     mobileNavigationAriaLabel: "Nawigacja mobilna",
     searchAriaLabel: "Szukaj w encyklopedii",
