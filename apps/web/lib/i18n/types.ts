@@ -362,6 +362,7 @@ export interface WebDictionary {
   saintsDirectory: {
     title: string;
     description: string;
+    searchAriaLabel: string;
     searchPlaceholder: string;
     personTypeLegend: string;
     genderLegend: string;

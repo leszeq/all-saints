@@ -152,10 +152,10 @@ export default async function OrdersPage({ searchParams }: PageProps) {
 
       <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
         <form method="GET" className="grid gap-3 rounded-2xl border border-[#ded8cd] bg-white p-4 shadow-sm md:grid-cols-[1.4fr_repeat(3,1fr)_auto]">
-          <label className="relative">
+          <label htmlFor="orders-search" className="relative">
             <span className="sr-only">{copy.searchAriaLabel}</span>
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
-            <input name="search" defaultValue={params.search} className="h-11 w-full rounded-lg border border-[#ded8cd] bg-[#fffdf8] pl-9 pr-3 text-sm outline-none focus:border-gold-500" placeholder={copy.searchPlaceholder} />
+            <input id="orders-search" name="search" defaultValue={params.search} className="h-11 w-full rounded-lg border border-[#ded8cd] bg-[#fffdf8] pl-9 pr-3 text-sm outline-none focus:border-gold-500" placeholder={copy.searchPlaceholder} />
           </label>
           <label>
             <span className="sr-only">{copy.familyAriaLabel}</span>

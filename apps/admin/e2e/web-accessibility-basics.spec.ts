@@ -12,4 +12,8 @@ test("publiczna strona ma skip link i jeden landmark main", async ({ page }) => 
 
   await expect(page.getByRole("main")).toHaveCount(1);
   await expect(page.locator("#main-content")).toHaveCount(1);
+  await expect(page.getByLabel("Szukaj świętego, patronatu lub atrybutu ikonograficznego")).toHaveAttribute(
+    "id",
+    "saints-search",
+  );
 });

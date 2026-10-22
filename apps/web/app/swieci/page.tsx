@@ -368,9 +368,13 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
       {/* Search & Filter Bar */}
       <form method="GET" className="rounded-2xl border border-gold-500/20 bg-white p-4 shadow-sm">
         {/* Search Input */}
+        <label htmlFor="saints-search" className="sr-only">
+          {copy.searchAriaLabel}
+        </label>
         <div className="relative">
           <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gold-600" />
           <input
+            id="saints-search"
             type="text"
             name="search"
             defaultValue={search}

@@ -120,10 +120,10 @@ export default async function HomePage() {
             </p>
 
             <form action="/swieci" method="GET" className="glass-search mt-9 flex max-w-2xl flex-col gap-2 rounded-xl p-2 sm:flex-row">
-              <label className="relative min-w-0 flex-1">
+              <label htmlFor="home-search" className="relative min-w-0 flex-1">
                 <span className="sr-only">{copy.searchAriaLabel}</span>
                 <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gold-700" />
-                <input name="search" className="h-12 w-full rounded-lg bg-transparent pl-12 pr-4 text-sm text-charcoal outline-none placeholder:text-stone-400" placeholder={copy.searchPlaceholder} />
+                <input id="home-search" name="search" className="h-12 w-full rounded-lg bg-transparent pl-12 pr-4 text-sm text-charcoal outline-none placeholder:text-stone-400" placeholder={copy.searchPlaceholder} />
               </label>
               <button className="h-12 rounded-lg bg-burgundy-700 px-6 text-sm font-semibold text-white transition-colors hover:bg-burgundy-600">
                 {copy.searchButton}

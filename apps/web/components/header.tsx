@@ -39,10 +39,10 @@ export function Header({ dictionary }: { dictionary: WebHeaderDictionary }) {
         </nav>
 
         <form onSubmit={submitSearch} className="hidden md:block">
-          <label className="relative block">
+          <label htmlFor="site-search-desktop" className="relative block">
             <span className="sr-only">{dictionary.header.searchAriaLabel}</span>
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-500" />
-            <input value={search} onChange={(event) => setSearch(event.target.value)} className="h-10 w-48 rounded-lg border border-[#ded8cd] bg-[#fffdf8] pl-9 pr-3 text-sm outline-none transition-all placeholder:text-stone-400 focus:w-60 focus:border-gold-500" placeholder={dictionary.header.searchPlaceholder} />
+            <input id="site-search-desktop" value={search} onChange={(event) => setSearch(event.target.value)} className="h-10 w-48 rounded-lg border border-[#ded8cd] bg-[#fffdf8] pl-9 pr-3 text-sm outline-none transition-all placeholder:text-stone-400 focus:w-60 focus:border-gold-500" placeholder={dictionary.header.searchPlaceholder} />
           </label>
         </form>
 
@@ -54,7 +54,8 @@ export function Header({ dictionary }: { dictionary: WebHeaderDictionary }) {
       {mobileMenuOpen && (
         <div className="border-t border-[#ded8cd] bg-[#fffdf8] px-4 py-5 lg:hidden">
           <form onSubmit={submitSearch} className="mb-4 flex gap-2">
-            <input value={search} onChange={(event) => setSearch(event.target.value)} className="h-11 min-w-0 flex-1 rounded-lg border border-[#ded8cd] bg-white px-3 text-sm" placeholder={dictionary.header.mobileSearchPlaceholder} />
+            <label htmlFor="site-search-mobile" className="sr-only">{dictionary.header.searchAriaLabel}</label>
+            <input id="site-search-mobile" value={search} onChange={(event) => setSearch(event.target.value)} className="h-11 min-w-0 flex-1 rounded-lg border border-[#ded8cd] bg-white px-3 text-sm" placeholder={dictionary.header.mobileSearchPlaceholder} />
             <button className="h-11 rounded-lg bg-burgundy-700 px-4 text-sm font-semibold text-white">{dictionary.header.searchButton}</button>
           </form>
           <nav className="grid gap-1" aria-label={dictionary.header.mobileNavigationAriaLabel}>

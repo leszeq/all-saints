@@ -441,6 +441,7 @@ const dictionary = {
   saintsDirectory: {
     title: "Katalog Świętych i Błogosławionych",
     description: "Przeszukaj całą bazę hagiograficzną Kościoła Katolickiego",
+    searchAriaLabel: "Szukaj świętego, patronatu lub atrybutu ikonograficznego",
     searchPlaceholder: "Szukaj po imieniu, patronacie lub atrybucie ikonograficznym...",
     personTypeLegend: "Typ osoby",
     genderLegend: "Płeć",
