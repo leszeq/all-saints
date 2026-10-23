@@ -16,4 +16,11 @@ test("publiczna strona ma skip link i jeden landmark main", async ({ page }) => 
     "id",
     "saints-search",
   );
+
+  const saintFilter = page.getByRole("checkbox", { name: "Święty/a" });
+  await saintFilter.focus();
+  await expect(saintFilter).toBeFocused();
+  await expect(saintFilter.locator("xpath=following-sibling::span")).toHaveClass(
+    /peer-focus-visible:outline/,
+  );
 });

@@ -168,7 +168,7 @@ function FilterOption({
         defaultChecked={checked}
         className="peer sr-only"
       />
-      <span className="inline-flex rounded-full border border-gold-500/25 bg-white px-3 py-1.5 text-xs font-semibold text-stone-600 transition-colors hover:border-gold-500/60 hover:bg-gold-50 peer-checked:border-burgundy-900 peer-checked:bg-burgundy-900 peer-checked:text-white">
+      <span className="inline-flex rounded-full border border-gold-500/25 bg-white px-3 py-1.5 text-xs font-semibold text-stone-600 transition-colors hover:border-gold-500/60 hover:bg-gold-50 peer-checked:border-burgundy-900 peer-checked:bg-burgundy-900 peer-checked:text-white peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-gold-600 peer-focus-visible:outline-offset-2">
         {label}
       </span>
     </label>

@@ -5,7 +5,7 @@ logowanie w panelu, przejście `draft → review → published`, ukrycie szkicu 
 publicznym, przejście profil → dzień kalendarza → profil z zachowaniem parametru
 kalendarza, pusty dzień z komunikatem o braku opracowanych wpisów oraz upload i odczyt
 obrazu. Publiczny katalog ma też test skip linku, pojedynczego landmarku `main` i
-dostępnej etykiety wyszukiwania.
+dostępnej etykiety wyszukiwania oraz widocznego focusu filtra checkbox.
 
 ## Uruchomienie lokalne
 
