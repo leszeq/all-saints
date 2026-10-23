@@ -364,6 +364,8 @@ export interface WebDictionary {
     description: string;
     searchAriaLabel: string;
     searchPlaceholder: string;
+    mobileFilters: string;
+    closeFilters: string;
     personTypeLegend: string;
     genderLegend: string;
     patronageLegend: string;

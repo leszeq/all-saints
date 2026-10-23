@@ -714,7 +714,7 @@ Filtry i hero opóźniają dostęp do treści; część pól ma tylko tekst obok
 - [x] Skip link i jeden main w web.
 - [x] label wyszukiwania.
 - [x] peer-focus-visible dla checkboxów.
-- [ ] mobile filter drawer.
+- [x] mobile filter drawer.
 - [ ] label/id/aria-describedby w admin.
 - [ ] zarządzanie focus w dialogach i błędach.
 - [ ] prefers-reduced-motion.

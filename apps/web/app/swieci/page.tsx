@@ -8,6 +8,7 @@ import {
   fetchPersons,
 } from "@/lib/api";
 import { SaintAvatar, type SaintAvatarData } from "@/components/saint-avatar";
+import { MobileFilterDrawer } from "@/components/mobile-filter-drawer";
 import { DEFAULT_WEB_UI_LOCALE } from "@/lib/i18n/config";
 import { getWebDictionary } from "@/lib/i18n/dictionaries";
 import { resolveDictionaryLabel, resolveDictionaryValue } from "@/lib/i18n/labels";
@@ -383,7 +384,8 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
           />
         </div>
 
-        <div className="mt-4 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+        <MobileFilterDrawer title={copy.mobileFilters} closeLabel={copy.closeFilters}>
+          <div className="mt-4 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
           <fieldset>
             <legend className="text-[11px] font-bold uppercase tracking-[0.16em] text-stone-500">
               {copy.personTypeLegend}
@@ -451,9 +453,9 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
               ))}
             </div>
           </fieldset>
-        </div>
+          </div>
 
-        <div className="mt-5 border-t border-gold-500/15 pt-4">
+          <div className="mt-5 border-t border-gold-500/15 pt-4">
           <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-stone-500">
             {copy.relationalFilters}
           </h2>
@@ -494,7 +496,8 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
               allLabel={copy.allValues}
             />
           </div>
-        </div>
+          </div>
+        </MobileFilterDrawer>
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-gold-500/15 pt-4">
           <p className="text-xs text-stone-500">

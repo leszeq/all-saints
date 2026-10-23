@@ -443,6 +443,8 @@ const dictionary = {
     description: "Przeszukaj całą bazę hagiograficzną Kościoła Katolickiego",
     searchAriaLabel: "Szukaj świętego, patronatu lub atrybutu ikonograficznego",
     searchPlaceholder: "Szukaj po imieniu, patronacie lub atrybucie ikonograficznym...",
+    mobileFilters: "Filtry katalogu",
+    closeFilters: "Zamknij filtry",
     personTypeLegend: "Typ osoby",
     genderLegend: "Płeć",
     patronageLegend: "Patronaty",

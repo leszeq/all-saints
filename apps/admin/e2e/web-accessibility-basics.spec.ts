@@ -24,3 +24,20 @@ test("publiczna strona ma skip link i jeden landmark main", async ({ page }) => 
     /peer-focus-visible:outline/,
   );
 });
+
+test("mobilny katalog otwiera i zamyka drawer filtrów", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${webUrl}/swieci`);
+
+  const openFilters = page.getByRole("button", { name: "Filtry katalogu" });
+  await expect(openFilters).toBeVisible();
+  await openFilters.click();
+
+  const drawer = page.getByRole("dialog", { name: "Filtry katalogu" });
+  await expect(drawer).toBeVisible();
+  await expect(drawer.getByRole("checkbox", { name: "Święty/a" })).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await expect(drawer).toBeHidden();
+  await expect(openFilters).toBeFocused();
+});
