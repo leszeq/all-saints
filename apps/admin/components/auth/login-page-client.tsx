@@ -142,10 +142,12 @@ export function LoginPageClient({ dictionary }: { dictionary: AdminLoginDictiona
                 autoComplete="email"
                 placeholder={copy.emailPlaceholder}
                 {...register("email")}
+                aria-describedby={errors.email ? "login-email-error" : undefined}
+                aria-invalid={errors.email ? true : undefined}
                 className="h-11 w-full rounded-lg border border-[#d5d2cc] bg-white px-3 text-sm text-[#202225] outline-none transition-colors placeholder:text-[#aaa49c] focus:border-[#a8843d]"
               />
               {errors.email && (
-                <p className="mt-1.5 text-xs text-[#b3261e]">{errors.email.message}</p>
+                <p id="login-email-error" role="alert" className="mt-1.5 text-xs text-[#b3261e]">{errors.email.message}</p>
               )}
             </div>
             <div>
@@ -164,6 +166,8 @@ export function LoginPageClient({ dictionary }: { dictionary: AdminLoginDictiona
                   autoComplete="current-password"
                   placeholder="••••••••"
                   {...register("password")}
+                  aria-describedby={errors.password ? "login-password-error" : undefined}
+                  aria-invalid={errors.password ? true : undefined}
                   className="h-11 w-full rounded-lg border border-[#d5d2cc] bg-white px-3 pr-11 text-sm text-[#202225] outline-none transition-colors placeholder:text-[#aaa49c] focus:border-[#a8843d]"
                 />
                 <button
@@ -182,7 +186,7 @@ export function LoginPageClient({ dictionary }: { dictionary: AdminLoginDictiona
                 </button>
               </div>
               {errors.password && (
-                <p className="mt-1.5 text-xs text-[#b3261e]">{errors.password.message}</p>
+                <p id="login-password-error" role="alert" className="mt-1.5 text-xs text-[#b3261e]">{errors.password.message}</p>
               )}
             </div>
             <p className="text-xs leading-5 text-[#716b64]">{copy.sessionStorageNotice}</p>

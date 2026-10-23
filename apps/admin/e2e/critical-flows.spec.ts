@@ -54,6 +54,20 @@ test("redaktor loguje się do panelu administracyjnego", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Pulpit redakcyjny" })).toBeVisible();
 });
 
+test("błędy walidacji logowania są powiązane z polami", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByRole("button", { name: "Zaloguj się" }).click();
+
+  const email = page.getByLabel("Adres e-mail");
+  const passwordInput = page.locator("#password");
+  await expect(email).toHaveAttribute("aria-invalid", "true");
+  await expect(email).toHaveAttribute("aria-describedby", "login-email-error");
+  await expect(page.locator("#login-email-error")).toHaveRole("alert");
+  await expect(passwordInput).toHaveAttribute("aria-invalid", "true");
+  await expect(passwordInput).toHaveAttribute("aria-describedby", "login-password-error");
+  await expect(page.locator("#login-password-error")).toHaveRole("alert");
+});
+
 test("szkic staje się publiczny dopiero po pełnym workflow", async ({ page, request }) => {
   const editorToken = await loginAs(request, accounts.editor);
   const reviewerToken = await loginAs(request, accounts.reviewer);

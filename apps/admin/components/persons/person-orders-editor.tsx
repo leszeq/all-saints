@@ -114,25 +114,25 @@ export function PersonOrdersEditor({
         </div>
 
         <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <label className="space-y-1.5 text-xs font-medium xl:col-span-2">
+          <label htmlFor="person-order-community" className="space-y-1.5 text-xs font-medium xl:col-span-2">
             <span>{copy.community}</span>
-            <select value={orderId} onChange={(event) => setOrderId(event.target.value)} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
+            <select id="person-order-community" value={orderId} onChange={(event) => setOrderId(event.target.value)} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
               <option value="">{copy.selectCommunity}</option>
               {availableOrders.map((order) => <option key={order.id} value={order.id}>{order.name}{order.abbreviation ? ` (${order.abbreviation})` : ""}</option>)}
             </select>
           </label>
-          <label className="space-y-1.5 text-xs font-medium">
+          <label htmlFor="person-order-membership-type" className="space-y-1.5 text-xs font-medium">
             <span>{copy.membershipType}</span>
-            <select value={membershipType} onChange={(event) => setMembershipType(event.target.value as OrderMembershipType)} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
+            <select id="person-order-membership-type" value={membershipType} onChange={(event) => setMembershipType(event.target.value as OrderMembershipType)} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
               {Object.entries(domainCopy.orderMembershipTypeLabels).map(([value, label]) => (
                 <option key={value} value={value as AdminOrderMembershipTypeKey}>{label}</option>
               ))}
             </select>
           </label>
-          <label className="flex items-end gap-2 pb-2 text-sm"><input type="checkbox" checked={isFounder} onChange={(event) => setIsFounder(event.target.checked)} /> {copy.founder}</label>
-          <label className="space-y-1.5 text-xs font-medium"><span>{copy.entry}</span><input value={entryDate} onChange={(event) => setEntryDate(event.target.value)} placeholder={copy.entryPlaceholder} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" /></label>
-          <label className="space-y-1.5 text-xs font-medium"><span>{copy.exit}</span><input value={exitDate} onChange={(event) => setExitDate(event.target.value)} placeholder={copy.exitPlaceholder} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" /></label>
-          <label className="space-y-1.5 text-xs font-medium xl:col-span-2"><span>{copy.notes}</span><input value={notes} onChange={(event) => setNotes(event.target.value)} placeholder={copy.notesPlaceholder} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" /></label>
+          <label htmlFor="person-order-founder" className="flex items-end gap-2 pb-2 text-sm"><input id="person-order-founder" type="checkbox" checked={isFounder} onChange={(event) => setIsFounder(event.target.checked)} /> {copy.founder}</label>
+          <label htmlFor="person-order-entry-date" className="space-y-1.5 text-xs font-medium"><span>{copy.entry}</span><input id="person-order-entry-date" value={entryDate} onChange={(event) => setEntryDate(event.target.value)} placeholder={copy.entryPlaceholder} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" /></label>
+          <label htmlFor="person-order-exit-date" className="space-y-1.5 text-xs font-medium"><span>{copy.exit}</span><input id="person-order-exit-date" value={exitDate} onChange={(event) => setExitDate(event.target.value)} placeholder={copy.exitPlaceholder} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" /></label>
+          <label htmlFor="person-order-notes" className="space-y-1.5 text-xs font-medium xl:col-span-2"><span>{copy.notes}</span><input id="person-order-notes" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder={copy.notesPlaceholder} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" /></label>
         </div>
         <div className="mt-4 flex items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">{copy.catalogueHint}</p>

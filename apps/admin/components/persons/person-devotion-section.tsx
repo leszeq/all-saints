@@ -2,7 +2,7 @@ import type { UseFormRegister } from "react-hook-form";
 import type { AdminPersonEditorDictionary } from "@/lib/i18n/types";
 import { cn } from "@/lib/utils";
 import type { PersonFormData } from "./person-form-model";
-import { PERSON_FORM_INPUT_CLASS, PERSON_FORM_LABEL_CLASS } from "./person-form-styles";
+import { PERSON_FORM_INPUT_CLASS, PERSON_FORM_LABEL_CLASS, personFieldId } from "./person-form-styles";
 
 interface PersonDevotionSectionProps {
   copy: AdminPersonEditorDictionary["devotion"];
@@ -13,8 +13,9 @@ export function PersonDevotionSection({ copy, register }: PersonDevotionSectionP
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <div>
-        <label className={PERSON_FORM_LABEL_CLASS}>{copy.prayer}</label>
+        <label htmlFor={personFieldId("prayers")} className={PERSON_FORM_LABEL_CLASS}>{copy.prayer}</label>
         <textarea
+          id={personFieldId("prayers")}
           {...register("prayers")}
           rows={10}
           className={cn(PERSON_FORM_INPUT_CLASS, "resize-y leading-6")}
@@ -26,8 +27,9 @@ export function PersonDevotionSection({ copy, register }: PersonDevotionSectionP
       </div>
 
       <div>
-        <label className={PERSON_FORM_LABEL_CLASS}>{copy.iconography}</label>
+        <label htmlFor={personFieldId("iconographic_attributes")} className={PERSON_FORM_LABEL_CLASS}>{copy.iconography}</label>
         <textarea
+          id={personFieldId("iconographic_attributes")}
           {...register("iconographic_attributes")}
           rows={10}
           className={cn(PERSON_FORM_INPUT_CLASS, "resize-y leading-6")}

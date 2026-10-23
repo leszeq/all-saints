@@ -19,6 +19,8 @@ import {
   PERSON_FORM_ERROR_CLASS,
   PERSON_FORM_INPUT_CLASS,
   PERSON_FORM_LABEL_CLASS,
+  personErrorId,
+  personFieldId,
 } from "./person-form-styles";
 
 interface StateOfLifeOption {
@@ -99,24 +101,31 @@ export function PersonBasicSection({
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <div className="sm:col-span-2">
-        <label className={PERSON_FORM_LABEL_CLASS}>{copy.canonicalName}</label>
-        <input {...register("canonical_name")} className={PERSON_FORM_INPUT_CLASS} placeholder={copy.canonicalNamePlaceholder} />
-        {errors.canonical_name && <p className={PERSON_FORM_ERROR_CLASS}>{errors.canonical_name.message}</p>}
+        <label htmlFor={personFieldId("canonical_name")} className={PERSON_FORM_LABEL_CLASS}>{copy.canonicalName}</label>
+        <input
+          id={personFieldId("canonical_name")}
+          {...register("canonical_name")}
+          aria-describedby={errors.canonical_name ? personErrorId("canonical_name") : undefined}
+          aria-invalid={errors.canonical_name ? true : undefined}
+          className={PERSON_FORM_INPUT_CLASS}
+          placeholder={copy.canonicalNamePlaceholder}
+        />
+        {errors.canonical_name && <p id={personErrorId("canonical_name")} role="alert" className={PERSON_FORM_ERROR_CLASS}>{errors.canonical_name.message}</p>}
       </div>
 
       <div>
-        <label className={PERSON_FORM_LABEL_CLASS}>{copy.canonicalNameEn}</label>
-        <input {...register("canonical_name_en")} className={PERSON_FORM_INPUT_CLASS} placeholder={copy.canonicalNameEnPlaceholder} />
+        <label htmlFor={personFieldId("canonical_name_en")} className={PERSON_FORM_LABEL_CLASS}>{copy.canonicalNameEn}</label>
+        <input id={personFieldId("canonical_name_en")} {...register("canonical_name_en")} className={PERSON_FORM_INPUT_CLASS} placeholder={copy.canonicalNameEnPlaceholder} />
       </div>
 
       <div>
-        <label className={PERSON_FORM_LABEL_CLASS}>{copy.latinName}</label>
-        <input {...register("latin_name")} className={PERSON_FORM_INPUT_CLASS} placeholder={copy.latinNamePlaceholder} />
+        <label htmlFor={personFieldId("latin_name")} className={PERSON_FORM_LABEL_CLASS}>{copy.latinName}</label>
+        <input id={personFieldId("latin_name")} {...register("latin_name")} className={PERSON_FORM_INPUT_CLASS} placeholder={copy.latinNamePlaceholder} />
       </div>
 
       <div>
-        <label className={PERSON_FORM_LABEL_CLASS}>{copy.personType}</label>
-        <select {...register("person_type")} className={PERSON_FORM_INPUT_CLASS}>
+        <label htmlFor={personFieldId("person_type")} className={PERSON_FORM_LABEL_CLASS}>{copy.personType}</label>
+        <select id={personFieldId("person_type")} {...register("person_type")} className={PERSON_FORM_INPUT_CLASS}>
           {Object.entries(domainCopy.personTypeLabels).map(([value, label]) => (
             <option key={value} value={value as AdminPersonTypeKey}>{label}</option>
           ))}
@@ -124,8 +133,8 @@ export function PersonBasicSection({
       </div>
 
       <div>
-        <label className={PERSON_FORM_LABEL_CLASS}>{copy.publicationStatus}</label>
-        <input type="hidden" {...register("status")} />
+        <label htmlFor={personFieldId("status")} className={PERSON_FORM_LABEL_CLASS}>{copy.publicationStatus}</label>
+        <input id={personFieldId("status")} type="hidden" {...register("status")} />
         <div className="rounded-lg border border-input bg-muted/45 px-3 py-2">
           <p className="text-sm font-medium">{domainCopy.personStatusLabels[publicationStatus as AdminPublicationStatusKey] ?? publicationStatus}</p>
           <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
@@ -135,8 +144,8 @@ export function PersonBasicSection({
       </div>
 
       <div>
-        <label className={PERSON_FORM_LABEL_CLASS}>{copy.gender}</label>
-        <select {...register("gender")} className={PERSON_FORM_INPUT_CLASS}>
+        <label htmlFor={personFieldId("gender")} className={PERSON_FORM_LABEL_CLASS}>{copy.gender}</label>
+        <select id={personFieldId("gender")} {...register("gender")} className={PERSON_FORM_INPUT_CLASS}>
           {Object.entries(domainCopy.genderLabels).map(([value, label]) => (
             <option key={value} value={value as AdminGenderKey}>{label}</option>
           ))}
@@ -144,8 +153,8 @@ export function PersonBasicSection({
       </div>
 
       <div>
-        <label className={PERSON_FORM_LABEL_CLASS}>{copy.era}</label>
-        <select {...register("era")} className={PERSON_FORM_INPUT_CLASS}>
+        <label htmlFor={personFieldId("era")} className={PERSON_FORM_LABEL_CLASS}>{copy.era}</label>
+        <select id={personFieldId("era")} {...register("era")} className={PERSON_FORM_INPUT_CLASS}>
           <option value="">—</option>
           {Object.entries(domainCopy.eraLabels).map(([value, label]) => (
             <option key={value} value={value}>{label}</option>
@@ -154,8 +163,9 @@ export function PersonBasicSection({
       </div>
 
       <div>
-        <label className={PERSON_FORM_LABEL_CLASS}>{copy.stateOfLife}</label>
+        <label htmlFor={personFieldId("state_of_life_id")} className={PERSON_FORM_LABEL_CLASS}>{copy.stateOfLife}</label>
         <select
+          id={personFieldId("state_of_life_id")}
           {...register("state_of_life_id")}
           className={PERSON_FORM_INPUT_CLASS}
           disabled={statesUnavailable}
@@ -221,8 +231,14 @@ export function PersonBasicSection({
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="lg:col-span-2">
-            <label className={PERSON_FORM_LABEL_CLASS}>{copy.feast.calendar}</label>
-            <select {...register("feast_calendar_code")} className={PERSON_FORM_INPUT_CLASS}>
+            <label htmlFor={personFieldId("feast_calendar_code")} className={PERSON_FORM_LABEL_CLASS}>{copy.feast.calendar}</label>
+            <select
+              id={personFieldId("feast_calendar_code")}
+              {...register("feast_calendar_code")}
+              aria-describedby={errors.feast_calendar_code ? personErrorId("feast_calendar_code") : undefined}
+              aria-invalid={errors.feast_calendar_code ? true : undefined}
+              className={PERSON_FORM_INPUT_CLASS}
+            >
               {calendars.length === 0 && (
                 <>
                   <option value="roman_pl">{copy.feast.fallbackCalendars.romanPl}</option>
@@ -234,7 +250,7 @@ export function PersonBasicSection({
                 <option key={calendar.code} value={calendar.code}>{calendar.name}</option>
               ))}
             </select>
-            {errors.feast_calendar_code && <p className={PERSON_FORM_ERROR_CLASS}>{errors.feast_calendar_code.message}</p>}
+            {errors.feast_calendar_code && <p id={personErrorId("feast_calendar_code")} role="alert" className={PERSON_FORM_ERROR_CLASS}>{errors.feast_calendar_code.message}</p>}
             {calendarsError && (
               <button type="button" onClick={retryCalendars} className="mt-1 text-xs text-primary hover:underline">
                 {copy.feast.retryCalendars}
@@ -243,37 +259,46 @@ export function PersonBasicSection({
           </div>
 
           <div>
-            <label className={PERSON_FORM_LABEL_CLASS}>{copy.feast.month}</label>
-            <select {...register("feast_month", { setValueAs: numberOrNull })} className={PERSON_FORM_INPUT_CLASS}>
+            <label htmlFor={personFieldId("feast_month")} className={PERSON_FORM_LABEL_CLASS}>{copy.feast.month}</label>
+            <select
+              id={personFieldId("feast_month")}
+              {...register("feast_month", { setValueAs: numberOrNull })}
+              aria-describedby={errors.feast_month ? personErrorId("feast_month") : undefined}
+              aria-invalid={errors.feast_month ? true : undefined}
+              className={PERSON_FORM_INPUT_CLASS}
+            >
               <option value="">—</option>
               {monthOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select>
-            {errors.feast_month && <p className={PERSON_FORM_ERROR_CLASS}>{errors.feast_month.message}</p>}
+            {errors.feast_month && <p id={personErrorId("feast_month")} role="alert" className={PERSON_FORM_ERROR_CLASS}>{errors.feast_month.message}</p>}
           </div>
 
           <div>
-            <label className={PERSON_FORM_LABEL_CLASS}>{copy.feast.day}</label>
+            <label htmlFor={personFieldId("feast_day")} className={PERSON_FORM_LABEL_CLASS}>{copy.feast.day}</label>
             <input
+              id={personFieldId("feast_day")}
               type="number"
               min={1}
               max={31}
               {...register("feast_day", { setValueAs: numberOrNull })}
+              aria-describedby={errors.feast_day ? personErrorId("feast_day") : undefined}
+              aria-invalid={errors.feast_day ? true : undefined}
               className={PERSON_FORM_INPUT_CLASS}
               placeholder={copy.feast.dayPlaceholder}
             />
-            {errors.feast_day && <p className={PERSON_FORM_ERROR_CLASS}>{errors.feast_day.message}</p>}
+            {errors.feast_day && <p id={personErrorId("feast_day")} role="alert" className={PERSON_FORM_ERROR_CLASS}>{errors.feast_day.message}</p>}
           </div>
 
           <div className="lg:col-span-2">
-            <label className={PERSON_FORM_LABEL_CLASS}>{copy.feast.rank}</label>
-            <select {...register("feast_rank")} className={PERSON_FORM_INPUT_CLASS}>
+            <label htmlFor={personFieldId("feast_rank")} className={PERSON_FORM_LABEL_CLASS}>{copy.feast.rank}</label>
+            <select id={personFieldId("feast_rank")} {...register("feast_rank")} className={PERSON_FORM_INPUT_CLASS}>
               {FEAST_RANK_VALUES.map((rank) => <option key={rank} value={rank}>{domainCopy.feastRankLabels[rank as AdminFeastRankKey]}</option>)}
             </select>
           </div>
 
           <div>
-            <label className={PERSON_FORM_LABEL_CLASS}>{copy.feast.color}</label>
-            <select {...register("feast_liturgical_color")} className={PERSON_FORM_INPUT_CLASS}>
+            <label htmlFor={personFieldId("feast_liturgical_color")} className={PERSON_FORM_LABEL_CLASS}>{copy.feast.color}</label>
+            <select id={personFieldId("feast_liturgical_color")} {...register("feast_liturgical_color")} className={PERSON_FORM_INPUT_CLASS}>
               <option value="">—</option>
               {LITURGICAL_COLOR_VALUES.map((color) => (
                 <option key={color} value={color}>{domainCopy.liturgicalColorLabels[color as AdminLiturgicalColorKey]}</option>
@@ -292,8 +317,9 @@ export function PersonBasicSection({
           </div>
 
           <div className="lg:col-span-2">
-            <label className={PERSON_FORM_LABEL_CLASS}>{copy.feast.sourceTitle}</label>
+            <label htmlFor={personFieldId("feast_source_title")} className={PERSON_FORM_LABEL_CLASS}>{copy.feast.sourceTitle}</label>
             <input
+              id={personFieldId("feast_source_title")}
               {...register("feast_source_title")}
               className={PERSON_FORM_INPUT_CLASS}
               placeholder={copy.feast.sourceTitlePlaceholder}
@@ -301,14 +327,22 @@ export function PersonBasicSection({
           </div>
 
           <div className="lg:col-span-2">
-            <label className={PERSON_FORM_LABEL_CLASS}>{copy.feast.sourceUrl}</label>
-            <input {...register("feast_source_url")} className={PERSON_FORM_INPUT_CLASS} placeholder={copy.feast.sourceUrlPlaceholder} />
-            {errors.feast_source_url && <p className={PERSON_FORM_ERROR_CLASS}>{errors.feast_source_url.message}</p>}
+            <label htmlFor={personFieldId("feast_source_url")} className={PERSON_FORM_LABEL_CLASS}>{copy.feast.sourceUrl}</label>
+            <input
+              id={personFieldId("feast_source_url")}
+              {...register("feast_source_url")}
+              aria-describedby={errors.feast_source_url ? personErrorId("feast_source_url") : undefined}
+              aria-invalid={errors.feast_source_url ? true : undefined}
+              className={PERSON_FORM_INPUT_CLASS}
+              placeholder={copy.feast.sourceUrlPlaceholder}
+            />
+            {errors.feast_source_url && <p id={personErrorId("feast_source_url")} role="alert" className={PERSON_FORM_ERROR_CLASS}>{errors.feast_source_url.message}</p>}
           </div>
 
           <div className="sm:col-span-2 lg:col-span-4">
-            <label className={PERSON_FORM_LABEL_CLASS}>{copy.feast.notes}</label>
+            <label htmlFor={personFieldId("feast_notes")} className={PERSON_FORM_LABEL_CLASS}>{copy.feast.notes}</label>
             <textarea
+              id={personFieldId("feast_notes")}
               {...register("feast_notes")}
               rows={3}
               className={cn(PERSON_FORM_INPUT_CLASS, "resize-y")}

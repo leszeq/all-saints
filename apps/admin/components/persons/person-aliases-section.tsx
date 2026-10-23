@@ -11,6 +11,8 @@ import {
   PERSON_FORM_ERROR_CLASS,
   PERSON_FORM_INPUT_CLASS,
   PERSON_FORM_LABEL_CLASS,
+  personErrorId,
+  personFieldId,
 } from "./person-form-styles";
 
 interface PersonAliasesSectionProps {
@@ -79,20 +81,24 @@ export function PersonAliasesSection({
 
               <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_7rem]">
                 <div>
-                  <label className={PERSON_FORM_LABEL_CLASS}>{copy.name}</label>
+                  <label htmlFor={personFieldId(`aliases-${index}-value`)} className={PERSON_FORM_LABEL_CLASS}>{copy.name}</label>
                   <input
+                    id={personFieldId(`aliases-${index}-value`)}
                     {...register(`aliases.${index}.value` as const)}
+                    aria-describedby={errors.aliases?.[index]?.value ? personErrorId(`aliases-${index}-value`) : undefined}
+                    aria-invalid={errors.aliases?.[index]?.value ? true : undefined}
                     className={PERSON_FORM_INPUT_CLASS}
                     placeholder={copy.namePlaceholder}
                   />
                   {errors.aliases?.[index]?.value && (
-                    <p className={PERSON_FORM_ERROR_CLASS}>{errors.aliases[index]?.value?.message}</p>
+                    <p id={personErrorId(`aliases-${index}-value`)} role="alert" className={PERSON_FORM_ERROR_CLASS}>{errors.aliases[index]?.value?.message}</p>
                   )}
                 </div>
 
                 <div>
-                  <label className={PERSON_FORM_LABEL_CLASS}>{copy.kind}</label>
+                  <label htmlFor={personFieldId(`aliases-${index}-kind`)} className={PERSON_FORM_LABEL_CLASS}>{copy.kind}</label>
                   <select
+                    id={personFieldId(`aliases-${index}-kind`)}
                     {...register(`aliases.${index}.kind` as const)}
                     className={PERSON_FORM_INPUT_CLASS}
                   >
@@ -103,21 +109,24 @@ export function PersonAliasesSection({
                 </div>
 
                 <div>
-                  <label className={PERSON_FORM_LABEL_CLASS}>{copy.language}</label>
+                  <label htmlFor={personFieldId(`aliases-${index}-language-code`)} className={PERSON_FORM_LABEL_CLASS}>{copy.language}</label>
                   <input
+                    id={personFieldId(`aliases-${index}-language-code`)}
                     {...register(`aliases.${index}.language_code` as const)}
+                    aria-describedby={errors.aliases?.[index]?.language_code ? personErrorId(`aliases-${index}-language-code`) : undefined}
+                    aria-invalid={errors.aliases?.[index]?.language_code ? true : undefined}
                     className={PERSON_FORM_INPUT_CLASS}
                     placeholder={copy.languagePlaceholder}
                   />
                   {errors.aliases?.[index]?.language_code && (
-                    <p className={PERSON_FORM_ERROR_CLASS}>{errors.aliases[index]?.language_code?.message}</p>
+                    <p id={personErrorId(`aliases-${index}-language-code`)} role="alert" className={PERSON_FORM_ERROR_CLASS}>{errors.aliases[index]?.language_code?.message}</p>
                   )}
                 </div>
               </div>
             </section>
           ))}
           {errors.aliases?.root?.message && (
-            <p className={PERSON_FORM_ERROR_CLASS}>{errors.aliases.root.message}</p>
+            <p id={personErrorId("aliases-root")} role="alert" className={PERSON_FORM_ERROR_CLASS}>{errors.aliases.root.message}</p>
           )}
         </div>
       )}

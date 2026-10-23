@@ -11,6 +11,8 @@ import {
   PERSON_FORM_ERROR_CLASS,
   PERSON_FORM_INPUT_CLASS,
   PERSON_FORM_LABEL_CLASS,
+  personErrorId,
+  personFieldId,
 } from "./person-form-styles";
 
 interface PersonPatronagesSectionProps {
@@ -86,9 +88,12 @@ export function PersonPatronagesSection({
 
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className={PERSON_FORM_LABEL_CLASS}>{copy.type}</label>
+                  <label htmlFor={personFieldId(`patronages-${index}-type`)} className={PERSON_FORM_LABEL_CLASS}>{copy.type}</label>
                   <select
+                    id={personFieldId(`patronages-${index}-type`)}
                     {...register(`patronages.${index}.patronage_type` as const)}
+                    aria-describedby={errors.patronages?.[index]?.patronage_type ? personErrorId(`patronages-${index}-type`) : undefined}
+                    aria-invalid={errors.patronages?.[index]?.patronage_type ? true : undefined}
                     className={PERSON_FORM_INPUT_CLASS}
                   >
                     {Object.entries(domainCopy.patronageTypeLabels).map(([value, label]) => (
@@ -96,25 +101,29 @@ export function PersonPatronagesSection({
                     ))}
                   </select>
                   {errors.patronages?.[index]?.patronage_type && (
-                    <p className={PERSON_FORM_ERROR_CLASS}>{errors.patronages[index]?.patronage_type?.message}</p>
+                    <p id={personErrorId(`patronages-${index}-type`)} role="alert" className={PERSON_FORM_ERROR_CLASS}>{errors.patronages[index]?.patronage_type?.message}</p>
                   )}
                 </div>
 
                 <div>
-                  <label className={PERSON_FORM_LABEL_CLASS}>{copy.name}</label>
+                  <label htmlFor={personFieldId(`patronages-${index}-name`)} className={PERSON_FORM_LABEL_CLASS}>{copy.name}</label>
                   <input
+                    id={personFieldId(`patronages-${index}-name`)}
                     {...register(`patronages.${index}.name_pl` as const)}
+                    aria-describedby={errors.patronages?.[index]?.name_pl ? personErrorId(`patronages-${index}-name`) : undefined}
+                    aria-invalid={errors.patronages?.[index]?.name_pl ? true : undefined}
                     className={PERSON_FORM_INPUT_CLASS}
                     placeholder={copy.namePlaceholder}
                   />
                   {errors.patronages?.[index]?.name_pl && (
-                    <p className={PERSON_FORM_ERROR_CLASS}>{errors.patronages[index]?.name_pl?.message}</p>
+                    <p id={personErrorId(`patronages-${index}-name`)} role="alert" className={PERSON_FORM_ERROR_CLASS}>{errors.patronages[index]?.name_pl?.message}</p>
                   )}
                 </div>
 
                 <div>
-                  <label className={PERSON_FORM_LABEL_CLASS}>{copy.nameEn}</label>
+                  <label htmlFor={personFieldId(`patronages-${index}-name-en`)} className={PERSON_FORM_LABEL_CLASS}>{copy.nameEn}</label>
                   <input
+                    id={personFieldId(`patronages-${index}-name-en`)}
                     {...register(`patronages.${index}.name_en` as const)}
                     className={PERSON_FORM_INPUT_CLASS}
                     placeholder={copy.nameEnPlaceholder}
@@ -134,8 +143,9 @@ export function PersonPatronagesSection({
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className={PERSON_FORM_LABEL_CLASS}>{copy.notes}</label>
+                  <label htmlFor={personFieldId(`patronages-${index}-description`)} className={PERSON_FORM_LABEL_CLASS}>{copy.notes}</label>
                   <textarea
+                    id={personFieldId(`patronages-${index}-description`)}
                     {...register(`patronages.${index}.description` as const)}
                     rows={3}
                     className={cn(PERSON_FORM_INPUT_CLASS, "resize-y")}

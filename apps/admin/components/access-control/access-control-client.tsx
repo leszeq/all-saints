@@ -216,13 +216,13 @@ function UserForm({
   return (
     <form onSubmit={handleSubmit} className="mt-6 space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
-        <label className="space-y-1.5 text-sm font-medium">
+        <label htmlFor="access-user-full-name" className="space-y-1.5 text-sm font-medium">
           {copy.userDialog.fullName}
-          <input name="full_name" defaultValue={user?.full_name ?? ""} required minLength={2} maxLength={300} className={inputClassName} />
+          <input id="access-user-full-name" name="full_name" defaultValue={user?.full_name ?? ""} required minLength={2} maxLength={300} className={inputClassName} />
         </label>
-        <label className="space-y-1.5 text-sm font-medium">
+        <label htmlFor="access-user-role" className="space-y-1.5 text-sm font-medium">
           {copy.userDialog.role}
-          <select name="role_id" defaultValue={user?.primary_role?.id ?? ""} required className={inputClassName}>
+          <select id="access-user-role" name="role_id" defaultValue={user?.primary_role?.id ?? ""} required className={inputClassName}>
             <option value="" disabled>{copy.userDialog.chooseRole}</option>
             {selectableRoles.map((role) => (
               <option key={role.id} value={role.id}>
@@ -236,21 +236,21 @@ function UserForm({
       </div>
       {!user && (
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="space-y-1.5 text-sm font-medium">
+          <label htmlFor="access-user-email" className="space-y-1.5 text-sm font-medium">
             {copy.userDialog.email}
-            <input name="email" type="email" required autoComplete="off" className={inputClassName} />
+            <input id="access-user-email" name="email" type="email" required autoComplete="off" className={inputClassName} />
           </label>
-          <label className="space-y-1.5 text-sm font-medium">
+          <label htmlFor="access-user-password" className="space-y-1.5 text-sm font-medium">
             {copy.userDialog.temporaryPassword}
-            <input name="password" type="password" required minLength={8} maxLength={128} autoComplete="new-password" className={inputClassName} />
-            <span className="block text-[11px] font-normal text-muted-foreground">{copy.userDialog.passwordHelp}</span>
+            <input id="access-user-password" name="password" type="password" required minLength={8} maxLength={128} autoComplete="new-password" aria-describedby="access-user-password-help" className={inputClassName} />
+            <span id="access-user-password-help" className="block text-[11px] font-normal text-muted-foreground">{copy.userDialog.passwordHelp}</span>
           </label>
         </div>
       )}
       {user && (
-        <label className="block space-y-1.5 text-sm font-medium sm:max-w-[calc(50%-0.5rem)]">
+        <label htmlFor="access-user-status" className="block space-y-1.5 text-sm font-medium sm:max-w-[calc(50%-0.5rem)]">
           {copy.userDialog.status}
-          <select name="status" defaultValue={user.status} className={inputClassName}>
+          <select id="access-user-status" name="status" defaultValue={user.status} className={inputClassName}>
             {Object.entries(copy.userStatusLabels).map(([value, label]) => (
               <option key={value} value={value}>{label}</option>
             ))}
@@ -308,20 +308,20 @@ function RoleForm({
     <form onSubmit={handleSubmit} className="mt-6 space-y-5">
       <div className="grid gap-4 sm:grid-cols-2">
         {!role && (
-          <label className="space-y-1.5 text-sm font-medium">
+          <label htmlFor="access-role-identifier" className="space-y-1.5 text-sm font-medium">
             {copy.roleDialog.identifier}
-            <input name="name" required minLength={3} maxLength={50} pattern="[a-z][a-z0-9_]+" placeholder={copy.roleDialog.identifierPlaceholder} className={inputClassName} />
-            <span className="block text-[11px] font-normal text-muted-foreground">{copy.roleDialog.identifierHelp}</span>
+            <input id="access-role-identifier" name="name" required minLength={3} maxLength={50} pattern="[a-z][a-z0-9_]+" placeholder={copy.roleDialog.identifierPlaceholder} aria-describedby="access-role-identifier-help" className={inputClassName} />
+            <span id="access-role-identifier-help" className="block text-[11px] font-normal text-muted-foreground">{copy.roleDialog.identifierHelp}</span>
           </label>
         )}
-        <label className="space-y-1.5 text-sm font-medium">
+        <label htmlFor="access-role-display-name" className="space-y-1.5 text-sm font-medium">
           {copy.roleDialog.displayName}
-          <input name="display_name" defaultValue={role?.display_name ?? ""} required minLength={2} maxLength={200} className={inputClassName} />
+          <input id="access-role-display-name" name="display_name" defaultValue={role?.display_name ?? ""} required minLength={2} maxLength={200} className={inputClassName} />
         </label>
       </div>
-      <label className="block space-y-1.5 text-sm font-medium">
+      <label htmlFor="access-role-description" className="block space-y-1.5 text-sm font-medium">
         {copy.roleDialog.responsibility}
-        <textarea name="description" defaultValue={role?.description ?? ""} rows={2} maxLength={1000} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" />
+        <textarea id="access-role-description" name="description" defaultValue={role?.description ?? ""} rows={2} maxLength={1000} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" />
       </label>
       <fieldset>
         <legend className="text-sm font-semibold">{copy.roleDialog.permissionsLegend}</legend>
@@ -521,7 +521,7 @@ export function AccessControlClient({
           <div className="border-b border-border p-4">
             <div className="relative max-w-md">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={copy.users.searchPlaceholder} className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" />
+              <input aria-label={copy.users.searchPlaceholder} value={search} onChange={(event) => setSearch(event.target.value)} placeholder={copy.users.searchPlaceholder} className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" />
             </div>
           </div>
           <div className="overflow-x-auto">

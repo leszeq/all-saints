@@ -1,7 +1,7 @@
 import type { UseFormRegister } from "react-hook-form";
 import type { AdminPersonEditorDictionary } from "@/lib/i18n/types";
 import type { PersonFormData } from "./person-form-model";
-import { PERSON_FORM_INPUT_CLASS, PERSON_FORM_LABEL_CLASS } from "./person-form-styles";
+import { PERSON_FORM_INPUT_CLASS, PERSON_FORM_LABEL_CLASS, personFieldId } from "./person-form-styles";
 
 interface CountryOption {
   id: string;
@@ -32,8 +32,9 @@ export function PersonDatesSection({
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <div>
-        <label className={PERSON_FORM_LABEL_CLASS}>{copy.birthYear}</label>
+        <label htmlFor={personFieldId("birth_year")} className={PERSON_FORM_LABEL_CLASS}>{copy.birthYear}</label>
         <input
+          id={personFieldId("birth_year")}
           type="number"
           {...register("birth_year", { setValueAs: numberOrNull })}
           className={PERSON_FORM_INPUT_CLASS}
@@ -42,8 +43,9 @@ export function PersonDatesSection({
       </div>
 
       <div>
-        <label className={PERSON_FORM_LABEL_CLASS}>{copy.deathYear}</label>
+        <label htmlFor={personFieldId("death_year")} className={PERSON_FORM_LABEL_CLASS}>{copy.deathYear}</label>
         <input
+          id={personFieldId("death_year")}
           type="number"
           {...register("death_year", { setValueAs: numberOrNull })}
           className={PERSON_FORM_INPUT_CLASS}
@@ -52,8 +54,9 @@ export function PersonDatesSection({
       </div>
 
       <div>
-        <label className={PERSON_FORM_LABEL_CLASS}>{copy.birthCountry}</label>
+        <label htmlFor={personFieldId("birth_country_id")} className={PERSON_FORM_LABEL_CLASS}>{copy.birthCountry}</label>
         <select
+          id={personFieldId("birth_country_id")}
           {...register("birth_country_id")}
           className={PERSON_FORM_INPUT_CLASS}
           disabled={countriesUnavailable}
@@ -63,8 +66,9 @@ export function PersonDatesSection({
       </div>
 
       <div>
-        <label className={PERSON_FORM_LABEL_CLASS}>{copy.deathCountry}</label>
+        <label htmlFor={personFieldId("death_country_id")} className={PERSON_FORM_LABEL_CLASS}>{copy.deathCountry}</label>
         <select
+          id={personFieldId("death_country_id")}
           {...register("death_country_id")}
           className={PERSON_FORM_INPUT_CLASS}
           disabled={countriesUnavailable}
@@ -157,12 +161,13 @@ function MilestoneFields({
     <section className="space-y-4 rounded-xl border border-border bg-muted/20 p-4">
       <h4 className="text-sm font-semibold text-foreground">{title}</h4>
       <div>
-        <label className={PERSON_FORM_LABEL_CLASS}>{exactDateLabel}</label>
-        <input type="date" {...register(dateField)} className={PERSON_FORM_INPUT_CLASS} />
+        <label htmlFor={personFieldId(dateField)} className={PERSON_FORM_LABEL_CLASS}>{exactDateLabel}</label>
+        <input id={personFieldId(dateField)} type="date" {...register(dateField)} className={PERSON_FORM_INPUT_CLASS} />
       </div>
       <div>
-        <label className={PERSON_FORM_LABEL_CLASS}>{yearOnlyLabel}</label>
+        <label htmlFor={personFieldId(yearField)} className={PERSON_FORM_LABEL_CLASS}>{yearOnlyLabel}</label>
         <input
+          id={personFieldId(yearField)}
           type="number"
           {...register(yearField, { setValueAs: numberOrNull })}
           className={PERSON_FORM_INPUT_CLASS}

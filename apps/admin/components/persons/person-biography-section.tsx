@@ -2,7 +2,7 @@ import type { UseFormRegister } from "react-hook-form";
 import type { AdminPersonEditorDictionary } from "@/lib/i18n/types";
 import { cn } from "@/lib/utils";
 import type { PersonFormData } from "./person-form-model";
-import { PERSON_FORM_INPUT_CLASS, PERSON_FORM_LABEL_CLASS } from "./person-form-styles";
+import { PERSON_FORM_INPUT_CLASS, PERSON_FORM_LABEL_CLASS, personFieldId } from "./person-form-styles";
 
 interface PersonBiographySectionProps {
   copy: AdminPersonEditorDictionary["biography"];
@@ -14,8 +14,9 @@ export function PersonBiographySection({ copy, register, isEdit }: PersonBiograp
   return (
     <div className="space-y-4">
       <div>
-        <label className={PERSON_FORM_LABEL_CLASS}>{copy.summary}</label>
+        <label htmlFor={personFieldId("summary_pl")} className={PERSON_FORM_LABEL_CLASS}>{copy.summary}</label>
         <textarea
+          id={personFieldId("summary_pl")}
           {...register("summary_pl")}
           rows={3}
           className={cn(PERSON_FORM_INPUT_CLASS, "resize-none")}
@@ -23,8 +24,9 @@ export function PersonBiographySection({ copy, register, isEdit }: PersonBiograp
         />
       </div>
       <div>
-        <label className={PERSON_FORM_LABEL_CLASS}>{copy.biography}</label>
+        <label htmlFor={personFieldId("biography_pl")} className={PERSON_FORM_LABEL_CLASS}>{copy.biography}</label>
         <textarea
+          id={personFieldId("biography_pl")}
           {...register("biography_pl")}
           rows={10}
           className={cn(PERSON_FORM_INPUT_CLASS, "resize-y")}
@@ -33,8 +35,9 @@ export function PersonBiographySection({ copy, register, isEdit }: PersonBiograp
       </div>
       {isEdit && (
         <div>
-          <label className={PERSON_FORM_LABEL_CLASS}>{copy.changeSummary}</label>
+          <label htmlFor={personFieldId("change_summary")} className={PERSON_FORM_LABEL_CLASS}>{copy.changeSummary}</label>
           <input
+            id={personFieldId("change_summary")}
             {...register("change_summary")}
             className={PERSON_FORM_INPUT_CLASS}
             placeholder={copy.changeSummaryPlaceholder}

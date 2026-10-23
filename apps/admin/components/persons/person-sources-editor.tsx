@@ -207,8 +207,9 @@ export function PersonSourcesEditor({ copy, locale, personId }: PersonSourcesEdi
           {sourceMode === "web" ? (
             <>
               <div>
-                <label className="mb-1 block text-sm font-medium text-foreground">{copy.title}</label>
+                <label htmlFor="person-source-title" className="mb-1 block text-sm font-medium text-foreground">{copy.title}</label>
                 <input
+                  id="person-source-title"
                   value={webTitle}
                   onChange={(event) => setWebTitle(event.target.value)}
                   className={inputClassName}
@@ -216,24 +217,27 @@ export function PersonSourcesEditor({ copy, locale, personId }: PersonSourcesEdi
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-foreground">{copy.url}</label>
+                <label htmlFor="person-source-url" className="mb-1 block text-sm font-medium text-foreground">{copy.url}</label>
                 <input
+                  id="person-source-url"
                   type="url"
                   value={webUrl}
                   onChange={(event) => setWebUrl(event.target.value)}
                   className={inputClassName}
                   placeholder={copy.urlPlaceholder}
+                  aria-describedby={webUrl && !isValidWebUrl ? "person-source-url-error" : undefined}
                   aria-invalid={Boolean(webUrl) && !isValidWebUrl}
                 />
                 {webUrl && !isValidWebUrl && (
-                  <p className="mt-1 text-xs text-destructive">
+                  <p id="person-source-url-error" role="alert" className="mt-1 text-xs text-destructive">
                     {copy.invalidUrl}
                   </p>
                 )}
               </div>
               <div className="md:col-span-2">
-                <label className="mb-1 block text-sm font-medium text-foreground">{copy.author}</label>
+                <label htmlFor="person-source-authors" className="mb-1 block text-sm font-medium text-foreground">{copy.author}</label>
                 <input
+                  id="person-source-authors"
                   value={webAuthors}
                   onChange={(event) => setWebAuthors(event.target.value)}
                   className={inputClassName}
@@ -244,8 +248,9 @@ export function PersonSourcesEditor({ copy, locale, personId }: PersonSourcesEdi
           ) : (
             <>
               <div>
-                <label className="mb-1 block text-sm font-medium text-foreground">{copy.kind}</label>
+                <label htmlFor="person-source-kind" className="mb-1 block text-sm font-medium text-foreground">{copy.kind}</label>
                 <select
+                  id="person-source-kind"
                   value={sourceKind}
                   onChange={(event) => {
                     setSourceKind(event.target.value as SourceKind);
@@ -258,8 +263,9 @@ export function PersonSourcesEditor({ copy, locale, personId }: PersonSourcesEdi
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-foreground">{copy.position}</label>
+                <label htmlFor="person-source-id" className="mb-1 block text-sm font-medium text-foreground">{copy.position}</label>
                 <select
+                  id="person-source-id"
                   value={sourceId}
                   onChange={(event) => setSourceId(event.target.value)}
                   className={inputClassName}
@@ -277,8 +283,9 @@ export function PersonSourcesEditor({ copy, locale, personId }: PersonSourcesEdi
           )}
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">{copy.pageReference}</label>
+            <label htmlFor="person-source-page-reference" className="mb-1 block text-sm font-medium text-foreground">{copy.pageReference}</label>
             <input
+              id="person-source-page-reference"
               value={pageReference}
               onChange={(event) => setPageReference(event.target.value)}
               className={inputClassName}
@@ -287,8 +294,9 @@ export function PersonSourcesEditor({ copy, locale, personId }: PersonSourcesEdi
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">{copy.notes}</label>
+            <label htmlFor="person-source-notes" className="mb-1 block text-sm font-medium text-foreground">{copy.notes}</label>
             <input
+              id="person-source-notes"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
               className={inputClassName}

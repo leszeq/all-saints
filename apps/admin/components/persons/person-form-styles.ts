@@ -3,3 +3,11 @@ export const PERSON_FORM_INPUT_CLASS =
 
 export const PERSON_FORM_LABEL_CLASS = "mb-1 block text-sm font-medium text-foreground";
 export const PERSON_FORM_ERROR_CLASS = "mt-1 text-xs text-destructive";
+
+export function personFieldId(name: string) {
+  return `person-field-${name.replace(/[^a-zA-Z0-9_-]+/g, "-")}`;
+}
+
+export function personErrorId(name: string) {
+  return `${personFieldId(name)}-error`;
+}

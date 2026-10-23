@@ -12,6 +12,8 @@ import {
   PERSON_FORM_ERROR_CLASS,
   PERSON_FORM_INPUT_CLASS,
   PERSON_FORM_LABEL_CLASS,
+  personErrorId,
+  personFieldId,
 } from "./person-form-styles";
 
 interface PersonAvatarSectionProps {
@@ -80,10 +82,12 @@ export function PersonAvatarSection({
               type="file"
               accept="image/jpeg,image/png,image/webp"
               className="sr-only"
+              aria-describedby={avatarFileError ? "avatar-file-error" : undefined}
+              aria-invalid={avatarFileError ? true : undefined}
               onChange={(event) => selectAvatarFile(event.target.files?.[0])}
             />
           </label>
-          {avatarFileError && <p className={PERSON_FORM_ERROR_CLASS}>{avatarFileError}</p>}
+          {avatarFileError && <p id="avatar-file-error" role="alert" className={PERSON_FORM_ERROR_CLASS}>{avatarFileError}</p>}
           {avatarFile && (
             <div className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-3 py-2">
               <div className="flex min-w-0 items-center gap-2">
@@ -112,35 +116,45 @@ export function PersonAvatarSection({
         </div>
 
         <div className="sm:col-span-2">
-          <label className={PERSON_FORM_LABEL_CLASS}>{copy.imageUrl}</label>
+          <label htmlFor={personFieldId("avatar_url")} className={PERSON_FORM_LABEL_CLASS}>{copy.imageUrl}</label>
           <div className="relative">
             <ImagePlus className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
+              id={personFieldId("avatar_url")}
               {...register("avatar_url")}
+              aria-describedby={errors.avatar_url ? personErrorId("avatar_url") : undefined}
+              aria-invalid={errors.avatar_url ? true : undefined}
               className={cn(PERSON_FORM_INPUT_CLASS, "pl-9")}
               placeholder={copy.imageUrlPlaceholder}
             />
           </div>
-          {errors.avatar_url && <p className={PERSON_FORM_ERROR_CLASS}>{errors.avatar_url.message}</p>}
+          {errors.avatar_url && <p id={personErrorId("avatar_url")} role="alert" className={PERSON_FORM_ERROR_CLASS}>{errors.avatar_url.message}</p>}
           {avatarFile && (
             <p className="mt-1 text-xs text-muted-foreground">{copy.fileOverridesUrl}</p>
           )}
         </div>
 
         <div>
-          <label className={PERSON_FORM_LABEL_CLASS}>{copy.thumbnailUrl}</label>
-          <input {...register("avatar_thumbnail_url")} className={PERSON_FORM_INPUT_CLASS} placeholder={copy.thumbnailUrlPlaceholder} />
-          {errors.avatar_thumbnail_url && <p className={PERSON_FORM_ERROR_CLASS}>{errors.avatar_thumbnail_url.message}</p>}
+          <label htmlFor={personFieldId("avatar_thumbnail_url")} className={PERSON_FORM_LABEL_CLASS}>{copy.thumbnailUrl}</label>
+          <input
+            id={personFieldId("avatar_thumbnail_url")}
+            {...register("avatar_thumbnail_url")}
+            aria-describedby={errors.avatar_thumbnail_url ? personErrorId("avatar_thumbnail_url") : undefined}
+            aria-invalid={errors.avatar_thumbnail_url ? true : undefined}
+            className={PERSON_FORM_INPUT_CLASS}
+            placeholder={copy.thumbnailUrlPlaceholder}
+          />
+          {errors.avatar_thumbnail_url && <p id={personErrorId("avatar_thumbnail_url")} role="alert" className={PERSON_FORM_ERROR_CLASS}>{errors.avatar_thumbnail_url.message}</p>}
         </div>
 
         <div>
-          <label className={PERSON_FORM_LABEL_CLASS}>{copy.altText}</label>
-          <input {...register("avatar_title")} className={PERSON_FORM_INPUT_CLASS} placeholder={`${copy.altTextPrefix} ${canonicalName}`} />
+          <label htmlFor={personFieldId("avatar_title")} className={PERSON_FORM_LABEL_CLASS}>{copy.altText}</label>
+          <input id={personFieldId("avatar_title")} {...register("avatar_title")} className={PERSON_FORM_INPUT_CLASS} placeholder={`${copy.altTextPrefix} ${canonicalName}`} />
         </div>
 
         <div>
-          <label className={PERSON_FORM_LABEL_CLASS}>{copy.license}</label>
-          <select {...register("avatar_license")} className={PERSON_FORM_INPUT_CLASS}>
+          <label htmlFor={personFieldId("avatar_license")} className={PERSON_FORM_LABEL_CLASS}>{copy.license}</label>
+          <select id={personFieldId("avatar_license")} {...register("avatar_license")} className={PERSON_FORM_INPUT_CLASS}>
             {Object.entries(domainCopy.avatarLicenseLabels).map(([value, label]) => (
               <option key={value} value={value as AdminAvatarLicenseKey}>{label}</option>
             ))}
@@ -148,14 +162,21 @@ export function PersonAvatarSection({
         </div>
 
         <div>
-          <label className={PERSON_FORM_LABEL_CLASS}>{copy.photographer}</label>
-          <input {...register("avatar_photographer")} className={PERSON_FORM_INPUT_CLASS} placeholder={copy.photographerPlaceholder} />
+          <label htmlFor={personFieldId("avatar_photographer")} className={PERSON_FORM_LABEL_CLASS}>{copy.photographer}</label>
+          <input id={personFieldId("avatar_photographer")} {...register("avatar_photographer")} className={PERSON_FORM_INPUT_CLASS} placeholder={copy.photographerPlaceholder} />
         </div>
 
         <div className="sm:col-span-2">
-          <label className={PERSON_FORM_LABEL_CLASS}>{copy.sourceUrl}</label>
-          <input {...register("avatar_source_url")} className={PERSON_FORM_INPUT_CLASS} placeholder={copy.sourceUrlPlaceholder} />
-          {errors.avatar_source_url && <p className={PERSON_FORM_ERROR_CLASS}>{errors.avatar_source_url.message}</p>}
+          <label htmlFor={personFieldId("avatar_source_url")} className={PERSON_FORM_LABEL_CLASS}>{copy.sourceUrl}</label>
+          <input
+            id={personFieldId("avatar_source_url")}
+            {...register("avatar_source_url")}
+            aria-describedby={errors.avatar_source_url ? personErrorId("avatar_source_url") : undefined}
+            aria-invalid={errors.avatar_source_url ? true : undefined}
+            className={PERSON_FORM_INPUT_CLASS}
+            placeholder={copy.sourceUrlPlaceholder}
+          />
+          {errors.avatar_source_url && <p id={personErrorId("avatar_source_url")} role="alert" className={PERSON_FORM_ERROR_CLASS}>{errors.avatar_source_url.message}</p>}
         </div>
 
         <div className="sm:col-span-2 flex gap-2 rounded-lg border border-primary/15 bg-primary/5 p-3 text-xs leading-5 text-muted-foreground">
