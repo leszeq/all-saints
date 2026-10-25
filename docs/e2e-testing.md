@@ -7,6 +7,8 @@ kalendarza, pusty dzień z komunikatem o braku opracowanych wpisów oraz upload 
 obrazu. Publiczny katalog ma też test skip linku, pojedynczego landmarku `main` i
 dostępnej etykiety wyszukiwania, widocznego focusu filtra checkbox oraz otwierania
 draweru filtrów na szerokości mobilnej.
+Test dostępności sprawdza też tryb `prefers-reduced-motion`, w którym przejścia i
+przewijanie są skrócone do minimalnego czasu.
 
 ## Uruchomienie lokalne
 

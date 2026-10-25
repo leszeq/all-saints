@@ -41,3 +41,25 @@ test("mobilny katalog otwiera i zamyka drawer filtrów", async ({ page }) => {
   await expect(drawer).toBeHidden();
   await expect(openFilters).toBeFocused();
 });
+
+test("publiczna strona respektuje ograniczenie ruchu", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto(`${webUrl}/swieci`);
+
+  const motionStyles = await page.evaluate(() => {
+    const probe = document.createElement("div");
+    probe.className = "transition-colors";
+    document.body.appendChild(probe);
+    const styles = getComputedStyle(probe);
+    const htmlStyles = getComputedStyle(document.documentElement);
+    const result = {
+      transitionDurationMs: Number.parseFloat(styles.transitionDuration) * (styles.transitionDuration.endsWith("s") ? 1000 : 1),
+      scrollBehavior: htmlStyles.scrollBehavior,
+    };
+    probe.remove();
+    return result;
+  });
+
+  expect(motionStyles.transitionDurationMs).toBeCloseTo(0.01, 5);
+  expect(motionStyles.scrollBehavior).toBe("auto");
+});

@@ -717,7 +717,7 @@ Filtry i hero opóźniają dostęp do treści; część pól ma tylko tekst obok
 - [x] mobile filter drawer.
 - [x] label/id/aria-describedby w admin.
 - [x] zarządzanie focus w dialogach i błędach.
-- [ ] prefers-reduced-motion.
+- [x] prefers-reduced-motion.
 
 **Tests**
 
