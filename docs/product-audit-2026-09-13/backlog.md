@@ -723,7 +723,7 @@ Filtry i hero opóźniają dostęp do treści; część pól ma tylko tekst obok
 
 - [ ] Backend: bez nowych testów dla CSS.
 - [x] Frontend: axe lub równoważny check, kontrast i semantyka etykiet.
-- [ ] E2E: keyboard-only i 390 px, 200% zoom, czytnik ekranu dla formularza i listy.
+- [x] E2E: keyboard-only i 390 px, 200% zoom, czytnik ekranu dla formularza i listy.
 
 **Infrastructure**
 

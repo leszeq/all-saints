@@ -31,15 +31,36 @@ test("mobilny katalog otwiera i zamyka drawer filtrów", async ({ page }) => {
 
   const openFilters = page.getByRole("button", { name: "Filtry katalogu" });
   await expect(openFilters).toBeVisible();
-  await openFilters.click();
+  await openFilters.focus();
+  await page.keyboard.press("Enter");
 
   const drawer = page.getByRole("dialog", { name: "Filtry katalogu" });
   await expect(drawer).toBeVisible();
   await expect(drawer.getByRole("checkbox", { name: "Święty/a" })).toBeVisible();
+  await expect(drawer.getByRole("button", { name: "Zamknij filtry" })).toBeFocused();
+
+  await page.keyboard.press("Tab");
+  await expect(drawer.getByRole("checkbox", { name: "Święty/a" })).toBeFocused();
 
   await page.keyboard.press("Escape");
   await expect(drawer).toBeHidden();
   await expect(openFilters).toBeFocused();
+});
+
+test("publiczny katalog zachowuje układ przy 200 procentach zoomu", async ({ page }) => {
+  // Połowa szerokości desktopowego viewportu odwzorowuje CSS viewport przy 200% zoomu.
+  await page.setViewportSize({ width: 640, height: 900 });
+  await page.goto(`${webUrl}/swieci`);
+
+  const widths = await page.evaluate(() => ({
+    viewport: document.documentElement.clientWidth,
+    document: document.documentElement.scrollWidth,
+    body: document.body.scrollWidth,
+  }));
+
+  expect(widths.document).toBeLessThanOrEqual(widths.viewport + 1);
+  expect(widths.body).toBeLessThanOrEqual(widths.viewport + 1);
+  await expect(page.getByLabel("Szukaj świętego, patronatu lub atrybutu ikonograficznego")).toBeVisible();
 });
 
 test("publiczna strona respektuje ograniczenie ruchu", async ({ page }) => {

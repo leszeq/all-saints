@@ -83,6 +83,46 @@ test("formularz osoby kieruje fokus na pierwsze pole z błędem", async ({ page 
   await expect(canonicalName).toHaveAttribute("aria-describedby", "person-field-canonical_name-error");
 });
 
+test("lista i formularz osób zachowują semantykę przy 200 procentach zoomu", async ({ page }) => {
+  // Połowa szerokości desktopowego viewportu odwzorowuje CSS viewport przy 200% zoomu.
+  await page.setViewportSize({ width: 640, height: 900 });
+  await page.goto("/login");
+  await page.getByLabel("Adres e-mail").fill(accounts.editor);
+  await page.locator("#password").fill(password);
+  await page.getByRole("button", { name: "Zaloguj się" }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+
+  await page.goto("/dashboard/persons");
+  const list = page.getByRole("table", { name: "Lista osób i świętych" });
+  await expect(list).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Szukaj osób po imieniu lub nazwie" })).toBeVisible();
+
+  const listWidths = await page.evaluate(() => ({
+    viewport: document.documentElement.clientWidth,
+    body: document.body.scrollWidth,
+  }));
+  const tableScroller = list.locator("xpath=..");
+  const tableScrollWidths = await tableScroller.evaluate((element) => ({
+    client: element.clientWidth,
+    scroll: element.scrollWidth,
+  }));
+  expect(listWidths.body).toBeLessThanOrEqual(listWidths.viewport + 1);
+  expect(tableScrollWidths.scroll).toBeGreaterThan(tableScrollWidths.client);
+
+  await page.goto("/dashboard/persons/new");
+  const form = page.locator("form");
+  const canonicalName = page.getByRole("textbox", { name: "Imię kanoniczne (PL) *" });
+  await expect(form).toHaveCount(1);
+  await expect(canonicalName).toBeVisible();
+
+  await page.getByRole("button", { name: "Utwórz osobę" }).click();
+  await expect(canonicalName).toHaveAttribute("aria-invalid", "true");
+  await expect(canonicalName).toHaveAttribute("aria-describedby", "person-field-canonical_name-error");
+  const canonicalNameError = page.locator("#person-field-canonical_name-error");
+  await expect(canonicalNameError).toHaveRole("alert");
+  await expect(canonicalNameError).toBeVisible();
+});
+
 test("szkic staje się publiczny dopiero po pełnym workflow", async ({ page, request }) => {
   const editorToken = await loginAs(request, accounts.editor);
   const reviewerToken = await loginAs(request, accounts.reviewer);

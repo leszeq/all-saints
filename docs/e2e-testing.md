@@ -6,7 +6,10 @@ publicznym, przejście profil → dzień kalendarza → profil z zachowaniem par
 kalendarza, pusty dzień z komunikatem o braku opracowanych wpisów oraz upload i odczyt
 obrazu. Publiczny katalog ma też test skip linku, pojedynczego landmarku `main` i
 dostępnej etykiety wyszukiwania, widocznego focusu filtra checkbox oraz otwierania
-draweru filtrów na szerokości mobilnej.
+draweru filtrów na szerokości mobilnej. Scenariusz mobilny przechodzi przez drawer
+wyłącznie klawiaturą, weryfikuje powrót focusu po `Escape`, a osobne testy sprawdzają
+brak poziomego overflowu przy CSS viewport odpowiadającym 200% zoomu oraz semantykę
+listy i formularza osób widoczną dla czytnika ekranu.
 Test dostępności sprawdza też tryb `prefers-reduced-motion`, w którym przejścia i
 przewijanie są skrócone do minimalnego czasu.
 

@@ -15,9 +15,9 @@ export default async function DashboardLayout({
     <SessionSync>
       <div className="flex h-screen overflow-hidden bg-background">
         <Sidebar dictionary={{ brand: dictionary.brand, sidebar: dictionary.sidebar }} />
-        <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <Topbar dictionary={dictionary.topbar} />
-          <main className="flex-1 overflow-y-auto p-5 lg:p-7">{children}</main>
+          <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-5 lg:p-7">{children}</main>
         </div>
       </div>
     </SessionSync>
