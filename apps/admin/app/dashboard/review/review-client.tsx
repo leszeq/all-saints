@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { SaintAvatar } from "@/components/persons/saint-avatar";
 import { editorialApi, getApiErrorMessage } from "@/lib/api";
+import { focusFirstDialogControl } from "@/lib/focus";
 import { useAuthStore } from "@/lib/store/auth";
 import {
   EDITORIAL_PRIORITY_COLORS,
@@ -416,7 +417,7 @@ export function EditorialQueueClient({
       <Dialog.Root open={returnDecision !== null} onOpenChange={(open) => { if (!open) { setReturnDecision(null); setReturnNote(""); } }}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-50 bg-slate-950/55 backdrop-blur-[2px]" />
-          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 shadow-2xl focus:outline-none">
+          <Dialog.Content onOpenAutoFocus={focusFirstDialogControl} className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 shadow-2xl focus:outline-none">
             <Dialog.Title className="pr-10 text-lg font-semibold">{copy.returnDialog.title}</Dialog.Title>
             <Dialog.Description className="mt-1 text-sm leading-6 text-muted-foreground">
               {copy.returnDialog.descriptionPrefix}{" "}

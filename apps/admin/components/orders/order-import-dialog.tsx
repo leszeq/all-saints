@@ -15,6 +15,7 @@ import { useRef, useState } from "react";
 import { useAdminSystemCopy } from "@/components/admin-system-copy-context";
 import { ordersApi } from "@/lib/api";
 import { formatAdminApiError } from "@/lib/i18n/api-errors";
+import { focusFirstDialogControl } from "@/lib/focus";
 import type { AdminOrdersDictionary } from "@/lib/i18n/types";
 import type {
   ReligiousOrderImportDocument,
@@ -136,7 +137,7 @@ export function OrderImportDialog({
     >
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-slate-950/55 backdrop-blur-[2px]" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-border bg-card p-6 shadow-2xl focus:outline-none">
+        <Dialog.Content onOpenAutoFocus={focusFirstDialogControl} className="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-border bg-card p-6 shadow-2xl focus:outline-none">
           <Dialog.Title className="pr-12 text-xl font-semibold">
             {copy.title}
           </Dialog.Title>

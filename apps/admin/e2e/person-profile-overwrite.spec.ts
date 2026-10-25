@@ -38,6 +38,7 @@ test("nadpisanie profilu wymaga wyboru i ponownej walidacji", async ({ page }) =
   await page.goto("/dashboard/persons");
   await page.getByRole("button", { name: /Import/ }).click();
   const dialog = page.getByRole("dialog");
+  await expect(dialog.locator('input[type="file"]')).toBeFocused();
   await dialog.locator('input[type="file"]').setInputFiles({
     name: "sw-rita-z-cascii.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(document)),
   });

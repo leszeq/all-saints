@@ -2,13 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, BookOpenText, Loader2, Save, ShieldCheck } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAdminSystemCopy } from "@/components/admin-system-copy-context";
 import { calendarApi, geographyApi, personsApi, sourcesApi, taxonomyApi } from "@/lib/api";
 import { formatAdminApiError } from "@/lib/i18n/api-errors";
+import { personFieldId } from "./person-form-styles";
 import type { AdminDomainDictionary, AdminPersonEditorDictionary } from "@/lib/i18n/types";
 import { cn } from "@/lib/utils";
 import { PersonAliasesSection } from "./person-aliases-section";
@@ -42,6 +43,61 @@ const TAB_IDS = [
 ] as const;
 
 type PersonFormTabId = (typeof TAB_IDS)[number];
+
+const TAB_BY_FIELD: Record<string, PersonFormTabId> = {
+  canonical_name: "basic",
+  canonical_name_en: "basic",
+  latin_name: "basic",
+  person_type: "basic",
+  status: "basic",
+  gender: "basic",
+  era: "basic",
+  state_of_life_id: "basic",
+  is_featured: "basic",
+  feast_calendar_code: "basic",
+  feast_month: "basic",
+  feast_day: "basic",
+  feast_rank: "basic",
+  feast_liturgical_color: "basic",
+  feast_is_primary: "basic",
+  feast_source_title: "basic",
+  feast_source_url: "basic",
+  feast_notes: "basic",
+  aliases: "aliases",
+  birth_year: "dates",
+  death_year: "dates",
+  birth_country_id: "dates",
+  death_country_id: "dates",
+  beatification_date: "dates",
+  beatification_year: "dates",
+  canonization_date: "dates",
+  canonization_year: "dates",
+  summary_pl: "biography",
+  biography_pl: "biography",
+  change_summary: "biography",
+  patronages: "patronages",
+  prayers: "devotion",
+  iconographic_attributes: "devotion",
+  avatar_url: "avatar",
+  avatar_thumbnail_url: "avatar",
+  avatar_title: "avatar",
+  avatar_license: "avatar",
+  avatar_photographer: "avatar",
+  avatar_source_url: "avatar",
+};
+
+function firstErrorPath(value: unknown, prefix = ""): string | null {
+  if (!value || typeof value !== "object") return null;
+  if ("message" in value || "ref" in value) return prefix || null;
+
+  for (const [key, child] of Object.entries(value)) {
+    if (key === "root") continue;
+    const path = firstErrorPath(child, prefix ? `${prefix}.${key}` : key);
+    if (path) return path;
+  }
+
+  return null;
+}
 
 interface PersonFormProps {
   copy: AdminPersonEditorDictionary;
@@ -226,6 +282,16 @@ export function PersonForm({
   const mutation = isEdit ? updateMutation : createMutation;
 
   useEffect(() => {
+    if (!mutation.isError) return;
+    window.requestAnimationFrame(() => document.getElementById("person-form-error")?.focus());
+  }, [mutation.isError]);
+
+  useEffect(() => {
+    if (!avatarFileError) return;
+    window.requestAnimationFrame(() => document.getElementById("avatar-file-error")?.focus());
+  }, [avatarFileError]);
+
+  useEffect(() => {
     const syncTabFromHash = () => {
       const hash = window.location.hash.replace("#", "");
       if (TAB_IDS.some((tabId) => tabId === hash)) {
@@ -285,13 +351,26 @@ export function PersonForm({
     setAvatarFileError(null);
   };
 
+  const focusFirstInvalidField = (formErrors: FieldErrors<PersonFormData>) => {
+    const path = firstErrorPath(formErrors);
+    const firstField = path?.split(".")[0] ?? "";
+    const tab = TAB_BY_FIELD[firstField];
+    if (tab) selectTab(tab);
+
+    window.requestAnimationFrame(() => {
+      const field = path ? document.getElementById(personFieldId(path)) : null;
+      const fallback = document.querySelector<HTMLElement>("[aria-invalid='true']");
+      (field ?? fallback)?.focus();
+    });
+  };
+
   const selectTab = (tabId: PersonFormTabId) => {
     setActiveTab(tabId);
     window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${tabId}`);
   };
 
   return (
-    <form onSubmit={handleSubmit((data) => mutation.mutate(data))} className="space-y-6">
+    <form onSubmit={handleSubmit((data) => mutation.mutate(data), focusFirstInvalidField)} className="space-y-6">
       <div className="flex w-fit max-w-full flex-wrap gap-1 rounded-lg border border-border bg-muted/40 p-1">
         {TAB_IDS.map((tabId) => (
           <button
@@ -435,7 +514,7 @@ export function PersonForm({
       </div>
 
       {mutation.isError && (
-        <p role="alert" className="rounded-lg border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+        <p id="person-form-error" tabIndex={-1} role="alert" className="rounded-lg border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive">
           {formatAdminApiError(mutation.error, apiErrors)}
         </p>
       )}

@@ -7,6 +7,7 @@ import { AlertTriangle, Check, Loader2, Sparkles, X } from "lucide-react";
 
 import { useAdminSystemCopy } from "@/components/admin-system-copy-context";
 import { aiApi } from "@/lib/api";
+import { focusFirstDialogControl } from "@/lib/focus";
 import type { AiSuggestionItem } from "@/lib/ai";
 import { formatAdminApiError } from "@/lib/i18n/api-errors";
 import type { AdminAiSuggestionsDictionary } from "@/lib/i18n/types";
@@ -102,7 +103,7 @@ export function AiSuggestionDecisionDialog({
     >
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-[2px]" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[92vh] w-[calc(100%-2rem)] max-w-5xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl focus:outline-none">
+        <Dialog.Content onOpenAutoFocus={focusFirstDialogControl} className="fixed left-1/2 top-1/2 z-50 max-h-[92vh] w-[calc(100%-2rem)] max-w-5xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl focus:outline-none">
           <div className="pr-12">
             <p className="admin-label">AI · {item.person_name}</p>
             <Dialog.Title className="mt-1 text-xl font-semibold">

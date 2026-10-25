@@ -68,6 +68,21 @@ test("błędy walidacji logowania są powiązane z polami", async ({ page }) => 
   await expect(page.locator("#login-password-error")).toHaveRole("alert");
 });
 
+test("formularz osoby kieruje fokus na pierwsze pole z błędem", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByLabel("Adres e-mail").fill(accounts.editor);
+  await page.locator("#password").fill(password);
+  await page.getByRole("button", { name: "Zaloguj się" }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+
+  await page.goto("/dashboard/persons/new");
+  await page.getByRole("button", { name: "Utwórz osobę" }).click();
+
+  const canonicalName = page.locator("#person-field-canonical_name");
+  await expect(canonicalName).toBeFocused();
+  await expect(canonicalName).toHaveAttribute("aria-describedby", "person-field-canonical_name-error");
+});
+
 test("szkic staje się publiczny dopiero po pełnym workflow", async ({ page, request }) => {
   const editorToken = await loginAs(request, accounts.editor);
   const reviewerToken = await loginAs(request, accounts.reviewer);

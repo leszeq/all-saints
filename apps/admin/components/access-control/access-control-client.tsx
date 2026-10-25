@@ -30,6 +30,7 @@ import type {
 import { USER_STATUS_COLORS } from "@/lib/access-control";
 import { getApiErrorMessage, rolesApi, usersApi } from "@/lib/api";
 import { formatAdminDateTime } from "@/lib/i18n/format";
+import { focusFirstDialogControl } from "@/lib/focus";
 import type {
   AdminAccessControlDictionary,
   AdminPermissionGroupKey,
@@ -144,7 +145,7 @@ function ModalShell({
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-slate-950/55 backdrop-blur-[2px]" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-border bg-card p-6 shadow-2xl focus:outline-none">
+        <Dialog.Content onOpenAutoFocus={focusFirstDialogControl} className="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-border bg-card p-6 shadow-2xl focus:outline-none">
           <div className="pr-10">
             <Dialog.Title className="text-lg font-semibold">{title}</Dialog.Title>
             <Dialog.Description className="mt-1 text-sm leading-6 text-muted-foreground">

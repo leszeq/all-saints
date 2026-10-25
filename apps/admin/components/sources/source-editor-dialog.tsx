@@ -8,6 +8,7 @@ import type {
   AdminSourceTypeKey,
   AdminSourcesHubDictionary,
 } from "@/lib/i18n/types";
+import { focusFirstDialogControl } from "@/lib/focus";
 
 type SourceRecord = Record<string, unknown>;
 type Draft = Record<string, string | boolean>;
@@ -230,7 +231,7 @@ export function SourceEditorDialog({
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/45" />
-        <Dialog.Content className="fixed inset-x-4 top-1/2 z-50 max-h-[90vh] w-auto max-w-4xl -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl md:left-1/2 md:right-auto md:w-[calc(100%-2rem)] md:-translate-x-1/2">
+        <Dialog.Content onOpenAutoFocus={focusFirstDialogControl} className="fixed inset-x-4 top-1/2 z-50 max-h-[90vh] w-auto max-w-4xl -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl md:left-1/2 md:right-auto md:w-[calc(100%-2rem)] md:-translate-x-1/2">
           <div className="flex items-start justify-between gap-4">
             <div>
               <Dialog.Title className="text-lg font-semibold text-foreground">
