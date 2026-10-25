@@ -10,6 +10,10 @@ draweru filtrów na szerokości mobilnej.
 Test dostępności sprawdza też tryb `prefers-reduced-motion`, w którym przejścia i
 przewijanie są skrócone do minimalnego czasu.
 
+Smoke test `accessibility-smoke.spec.ts` uruchamia axe-core dla publicznego katalogu
+i logowania admina, sprawdzając reguły WCAG 2.0 A/AA, kontrast, semantykę landmarków
+oraz dostępne nazwy kontrolek.
+
 ## Uruchomienie lokalne
 
 ```bash

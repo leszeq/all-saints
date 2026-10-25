@@ -556,7 +556,7 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
           </p>
           {search && (
             <div className="mx-auto mt-5 flex max-w-xl flex-wrap items-center justify-center gap-2">
-              <span className="w-full text-[10px] font-bold uppercase tracking-[0.14em] text-stone-400">
+              <span className="w-full text-[10px] font-bold uppercase tracking-[0.14em] text-stone-600">
                 {copy.searchExamplesLabel}
               </span>
               {copy.searchExamples.map((example) => (
@@ -658,7 +658,7 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
 
                   {highlightedPatronages.length > 0 && (
                     <div className="mt-4 space-y-2">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-stone-400">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-stone-600">
                         {officialPatronages.length
                           ? copy.primaryPatronages
                           : copy.patronages}
@@ -685,7 +685,7 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
 
                   {secondaryPatronages.length > 0 && (
                     <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-stone-500">
-                      <span className="font-semibold text-stone-400">
+                      <span className="font-semibold text-stone-600">
                         {copy.secondaryPatronages}
                       </span>
                       {secondaryPatronages.slice(0, 2).map((patronage) => (

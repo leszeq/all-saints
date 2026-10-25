@@ -8,8 +8,8 @@ export function Footer({ dictionary }: { dictionary: WebFooterDictionary }) {
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.7fr_1fr_1fr] lg:px-8">
         <div className="max-w-lg">
           <div className="flex items-center gap-3 text-[#d2b977]"><BookOpenText className="h-5 w-5" strokeWidth={1.6} /><span className="font-serif text-xl font-semibold">{dictionary.brand.name}</span></div>
-          <p className="mt-4 text-sm leading-6 text-stone-400">{dictionary.footer.description}</p>
-          <p className="mt-5 text-xs text-stone-500">{dictionary.footer.disclaimer}</p>
+          <p className="mt-4 text-sm leading-6 text-stone-300">{dictionary.footer.description}</p>
+          <p className="mt-5 text-xs text-stone-300">{dictionary.footer.disclaimer}</p>
         </div>
         {dictionary.footer.groups.map((group) => (
           <div key={group.title}>
@@ -20,7 +20,7 @@ export function Footer({ dictionary }: { dictionary: WebFooterDictionary }) {
           </div>
         ))}
       </div>
-      <div className="border-t border-white/10 px-4 py-5 text-center text-xs text-stone-500">© {new Date().getFullYear()} {dictionary.brand.name}. {dictionary.footer.rightsReserved}</div>
+      <div className="border-t border-white/10 px-4 py-5 text-center text-xs text-stone-300">© {new Date().getFullYear()} {dictionary.brand.name}. {dictionary.footer.rightsReserved}</div>
     </footer>
   );
 }
