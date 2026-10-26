@@ -728,7 +728,7 @@ Filtry i hero opóźniają dostęp do treści; część pól ma tylko tekst obok
 **Infrastructure**
 
 - [ ] Brak nowych usług.
-- [ ] automatyczny accessibility smoke w CI.
+- [x] automatyczny accessibility smoke w CI.
 
 **Definition of Done**
 

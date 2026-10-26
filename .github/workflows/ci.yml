@@ -152,6 +152,10 @@ jobs:
             -e DEMO_USER_PASSWORD="$E2E_PASSWORD" \
             backend python -m src.infrastructure.db.seed
 
+      - name: Run accessibility smoke tests
+        working-directory: apps/admin
+        run: npm run test:e2e:a11y
+
       - name: Run Playwright smoke tests
         working-directory: apps/admin
         run: npm run test:e2e

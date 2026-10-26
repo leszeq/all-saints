@@ -15,12 +15,20 @@ przewijanie są skrócone do minimalnego czasu.
 
 Smoke test `accessibility-smoke.spec.ts` uruchamia axe-core dla publicznego katalogu
 i logowania admina, sprawdzając reguły WCAG 2.0 A/AA, kontrast, semantykę landmarków
-oraz dostępne nazwy kontrolek.
+oraz dostępne nazwy kontrolek. W CI ten smoke jest osobnym krokiem `test:e2e:a11y`,
+a następnie wykonywany jest pełny zestaw krytycznych ścieżek.
 
 ## Uruchomienie lokalne
 
 ```bash
 make test-e2e
+```
+
+Sam accessibility smoke można uruchomić po przygotowaniu usług:
+
+```bash
+cd apps/admin
+npm run test:e2e:a11y
 ```
 
 Polecenie uruchamia wymagane usługi Docker, wykonuje migracje, synchronizuje
