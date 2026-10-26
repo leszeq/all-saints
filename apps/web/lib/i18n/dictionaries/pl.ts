@@ -562,6 +562,11 @@ const dictionary = {
     prayerMissing: "Brak przypisanych modlitw.",
     iconographicAttributes: "Atrybuty Ikonograficzne",
     iconographicAttributesMissing: "Brak podanych atrybutów.",
+    feedbackTitle: "Czy ta strona pomogła Ci znaleźć informację?",
+    feedbackDescription: "Twoja krótka ocena pomaga nam poprawiać katalog.",
+    feedbackHelpful: "Tak, pomogła",
+    feedbackNotHelpful: "Nie, wymaga poprawy",
+    feedbackThanks: "Dziękujemy za opinię.",
     sources: {
       title: "Źródła i bibliografia",
       description: "Materiały przypisane do tego opracowania. Skorzystaj z odsyłaczy i danych bibliograficznych, aby zweryfikować informacje zawarte w profilu.",

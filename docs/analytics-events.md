@@ -24,5 +24,12 @@ Portal emituje zdarzenia przez jedną delegowaną warstwę klientową zamontowan
 - wysłanie wyszukiwania albo zastosowanie filtra (z klasą zapytania, bez wartości zapytania),
 - wyświetlenie wyników (z ograniczoną liczbą wyników),
 - otwarcie profilu, relacji do zakonu i zewnętrznego źródła.
+- dobrowolna ocena pomocności profilu (`helpful` albo `not_helpful`).
 
 Sesja jest tworzona w `sessionStorage`, a wysyłka używa `sendBeacon` z nieblokującym fallbackiem do `fetch`. Listener jest instalowany raz na cykl życia providerów, więc hydration nie duplikuje zdarzeń.
+
+## Agregaty i panel
+
+`POST /api/v1/events/aggregates/rebuild` materializuje maksymalnie 31 dni agregatów i wymaga uprawnienia redakcyjnego `persons:read`. `GET /api/v1/events/aggregates` zwraca wyłącznie dzienne wiersze z liczbą zdarzeń, unikalnych sesji, wyników, pustych wyników i niepustych wyników. Panel `/dashboard/analytics` korzysta z rebuildu dla ostatnich 28 dni i nie ma dostępu do surowych wierszy.
+
+„Wynik niepusty” jest proxy sukcesu zadania: oznacza `search_results` z `result_count > 0`. Nie jest to potwierdzenie, że czytelnik znalazł poprawną informację; tę granicę opisuje panel i pozostaje ona częścią baseline'u do walidacji badaniami.

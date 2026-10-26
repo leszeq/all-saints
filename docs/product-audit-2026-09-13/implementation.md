@@ -692,19 +692,19 @@ Techniczna: **4/10 (średnia)**; dane: **2/10**; utrzymanie: **4/10**. Są to ko
 
 **Backend — endpointy, serwisy, schemas, permissions**
 
-Event ingestion (własny POST /events lub wybrany produkt) z allowlist schema, anon session_id, event/query class; nie zbierać domyślnie raw text i PII; agregaty search success i zero-results. Collector i kontrakt allowlist są zrealizowane; agregaty pozostają kolejnym przyrostem.
+Event ingestion (własny POST /events lub wybrany produkt) z allowlist schema, anon session_id, event/query class; nie zbierać domyślnie raw text i PII; agregaty search success i zero-results. Collector przyjmuje wyłącznie kontrakt allowlist, a endpoint rebuild tworzy dzienne agregaty wyników pustych i niepustych.
 
 **Database — tabele, relacje, indeksy, migracje**
 
-Jeśli własny collector: ProductEvent z datą/typem/małym payload i retencją, indeks time+event; agregaty dzienne. Nie zapisywać pełnych danych użytkownika w domenowej Person DB. ProductEvent i retencja są zrealizowane; agregaty dzienne pozostają kolejnym przyrostem.
+Jeśli własny collector: ProductEvent z datą/typem/małym payload i retencją, indeks time+event; agregaty dzienne. Nie zapisywać pełnych danych użytkownika w domenowej Person DB. Tabela agregatów nie przechowuje identyfikatorów sesji ani surowych właściwości.
 
 **Frontend — strony, komponenty, stan, integracja API**
 
-Instrumentacja search submitted/results/opened, filters, source click, relation, feedback; session state ograniczony i opisany; panel baseline dla PM. Zrealizowano wyszukiwanie, wyniki, profile, źródła, relacje i ograniczoną sesję; feedback oraz panel baseline pozostają do wykonania.
+Instrumentacja search submitted/results/opened, filters, source click, relation, feedback; session state ograniczony i opisany; panel baseline dla PM. Portal emituje cały opisany zestaw zdarzeń, a panel `/dashboard/analytics` pokazuje 28-dniowy baseline z agregatów.
 
 **Tests — backend, frontend, E2E**
 
-Backend: walidacja eventów, redakcja i retencja; Frontend: jeden event na działanie, bez duplikacji hydration; E2E: ścieżka search→profile→source składa się w poprawny funnel. Kontrakt backendu i test pojedynczego zdarzenia wyszukiwania są zrealizowane; pełny funnel pozostaje do domknięcia.
+Backend: walidacja eventów, redakcja i retencja; Frontend: jeden event na działanie, bez duplikacji hydration; E2E: ścieżka search→profile→source składa się w poprawny funnel. Testy obejmują agregację wyników pustych/niepustych oraz pełny funnel.
 
 **Infrastructure**
 

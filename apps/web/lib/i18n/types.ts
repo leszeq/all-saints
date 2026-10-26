@@ -454,6 +454,11 @@ export interface WebDictionary {
     prayerMissing: string;
     iconographicAttributes: string;
     iconographicAttributesMissing: string;
+    feedbackTitle: string;
+    feedbackDescription: string;
+    feedbackHelpful: string;
+    feedbackNotHelpful: string;
+    feedbackThanks: string;
     sources: {
       title: string;
       description: string;

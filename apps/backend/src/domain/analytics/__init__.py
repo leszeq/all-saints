@@ -2,6 +2,7 @@
 
 from src.domain.analytics.models import (
     ProductEvent,
+    ProductEventDailyAggregate,
     ProductEventName,
     ProductFeedback,
     ProductFilterName,
@@ -12,6 +13,7 @@ from src.domain.analytics.models import (
 
 __all__ = [
     "ProductEvent",
+    "ProductEventDailyAggregate",
     "ProductEventName",
     "ProductFilterName",
     "ProductFeedback",

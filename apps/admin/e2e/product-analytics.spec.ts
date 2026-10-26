@@ -8,12 +8,12 @@ declare global {
   }
 }
 
-test("wyszukiwanie emituje jedno zdarzenie bez treści zapytania", async ({ page }) => {
+test("funnel wyszukiwanie → profil → źródło emituje zdarzenia bez danych surowych", async ({ page }) => {
   const events: Array<Record<string, unknown>> = [];
   await page.exposeFunction("__captureAnalyticsBeacon", (url: string, body: string) => {
     if (!url.includes("/api/v1/events")) return;
     const payload = JSON.parse(body) as Record<string, unknown>;
-    if (payload.event_name === "search_submitted") events.push(payload);
+    events.push(payload);
   });
   await page.addInitScript(() => {
     Object.defineProperty(navigator, "sendBeacon", {
@@ -33,9 +33,20 @@ test("wyszukiwanie emituje jedno zdarzenie bez treści zapytania", async ({ page
   await page.getByRole("textbox", { name: "Szukaj świętego, patronatu lub atrybutu ikonograficznego" }).fill("Jan");
   await page.getByRole("button", { name: "Filtruj" }).click();
 
-  await expect.poll(() => events.length).toBe(1);
+  const searchEvent = () => events.find((event) => event.event_name === "search_submitted");
+  await expect.poll(searchEvent).toBeTruthy();
+  const profileLink = page.locator('a[href^="/swieci/"]').first();
+  await expect(profileLink).toBeVisible();
+  await profileLink.click();
+  await expect(page).toHaveURL(/\/swieci\/[^/?#]+$/);
+  await expect.poll(() => events.filter((event) => event.event_name === "profile_opened").length).toBe(1);
 
-  const event = events[0];
+  const sourceLink = page.locator("#bibliografia a[data-analytics-source-kind]").first();
+  await expect(sourceLink).toBeVisible();
+  await sourceLink.dispatchEvent("click");
+  await expect.poll(() => events.filter((event) => event.event_name === "source_opened").length).toBe(1);
+
+  const event = searchEvent();
   expect(event).toMatchObject({ event_name: "search_submitted", query_class: "name" });
   expect(event).not.toHaveProperty("query");
   expect(event).not.toHaveProperty("search");

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src.domain.analytics.models import ProductEvent  # noqa: F401
+from src.domain.analytics.models import ProductEvent, ProductEventDailyAggregate  # noqa: F401
 from src.domain.base import Base
 
 EXPECTED_SERVER_DEFAULTS = {
@@ -10,6 +10,15 @@ EXPECTED_SERVER_DEFAULTS = {
         "id": "gen_random_uuid()",
         "created_at": "now()",
         "retention_until": "now() + interval '90 days'",
+    },
+    "product_event_daily_aggregates": {
+        "id": "gen_random_uuid()",
+        "event_count": "0",
+        "unique_sessions": "0",
+        "result_count_sum": "0",
+        "zero_results_count": "0",
+        "search_success_count": "0",
+        "generated_at": "now()",
     },
     "audit_logs": {"id": "gen_random_uuid()", "created_at": "now()"},
     "bibliography": {"source_type": "'book'"},

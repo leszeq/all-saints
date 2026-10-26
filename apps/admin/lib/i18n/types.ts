@@ -288,6 +288,7 @@ export interface AdminDictionary {
       geography: string;
       orders: string;
       dictionaries: string;
+      analytics: string;
       usersAndRoles: string;
       apiDocumentation: string;
       settings: string;
@@ -445,6 +446,47 @@ export interface AdminDictionary {
       prefix: string;
       suffix: string;
     };
+  };
+  analytics: {
+    metadataTitle: string;
+    metadataDescription: string;
+    loading: string;
+    loadError: {
+      title: string;
+      description: string;
+      refreshAction: string;
+    };
+    header: {
+      kicker: string;
+      title: string;
+      description: string;
+      refreshAction: string;
+    };
+    rangeLabel: string;
+    rangeValue: string;
+    metrics: {
+      searches: { label: string; detail: string };
+      results: { label: string; detail: string };
+      success: { label: string; detail: string };
+      zeroResults: { label: string; detail: string };
+      profiles: { label: string; detail: string };
+      sources: { label: string; detail: string };
+      feedback: { label: string; detail: string };
+    };
+    funnelTitle: string;
+    funnelDescription: string;
+    table: {
+      day: string;
+      searches: string;
+      results: string;
+      success: string;
+      zeroResults: string;
+      profiles: string;
+      sources: string;
+    };
+    noData: string;
+    privacyNotice: string;
+    generatedAt: string;
   };
   review: {
     metadataTitle: string;
@@ -1778,6 +1820,7 @@ export type AdminSystemDictionary = AdminDictionary["system"];
 export type AdminApiErrorsDictionary = AdminSystemDictionary["apiErrors"];
 export type AdminLoginDictionary = Pick<AdminDictionary, "brand" | "login">;
 export type AdminDashboardDictionary = AdminDictionary["dashboard"];
+export type AdminAnalyticsDictionary = AdminDictionary["analytics"];
 export type AdminDomainDictionary = AdminDictionary["domain"];
 export type AdminReviewDictionary = AdminDictionary["review"];
 export type AdminQualityDictionary = AdminDictionary["quality"];

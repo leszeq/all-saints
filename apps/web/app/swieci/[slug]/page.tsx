@@ -24,6 +24,7 @@ import { resolveDictionaryLabel, resolveDictionaryValue } from "@/lib/i18n/label
 import { readPublicPersonContent } from "@/lib/person-content";
 import { serializeJsonLd } from "@/lib/json-ld";
 import { PersonSources } from "@/components/person-sources";
+import { PersonFeedback } from "@/components/person-feedback";
 import type { PublicPersonSource } from "@/lib/person-sources";
 import type { PersonCommemoration } from "@/lib/calendar";
 
@@ -445,6 +446,13 @@ export default async function PersonDetailPage({ params }: PageProps) {
         {publicSources.length > 0 && (
           <PersonSources sources={publicSources as PublicPersonSource[]} copy={copy.sources} />
         )}
+        <PersonFeedback
+          title={copy.feedbackTitle}
+          description={copy.feedbackDescription}
+          helpfulLabel={copy.feedbackHelpful}
+          notHelpfulLabel={copy.feedbackNotHelpful}
+          thanksLabel={copy.feedbackThanks}
+        />
       </section>
     </article>
   );

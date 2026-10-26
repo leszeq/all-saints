@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from enum import StrEnum
 from typing import Any
 
-from sqlalchemy import DateTime, Index, String, text
+from sqlalchemy import Date, DateTime, Index, Integer, String, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -109,4 +109,34 @@ class ProductEvent(UUIDMixin, Base):
         JSONB,
         nullable=True,
         comment="Allowlisted aggregate dimensions only; no query text or PII",
+    )
+
+
+class ProductEventDailyAggregate(UUIDMixin, Base):
+    """Daily aggregate rows exposed to the PM panel instead of raw events."""
+
+    __tablename__ = "product_event_daily_aggregates"
+    __table_args__ = (
+        UniqueConstraint(
+            "day",
+            "event_name",
+            "query_class",
+            name="uq_product_event_daily_aggregate_dimension",
+        ),
+        Index("ix_product_event_daily_aggregates_day", "day"),
+        {"comment": "Daily product analytics aggregates; no raw session identifiers"},
+    )
+
+    day: Mapped[date] = mapped_column(Date, nullable=False)
+    event_name: Mapped[str] = mapped_column(String(50), nullable=False)
+    query_class: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    event_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    unique_sessions: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    result_count_sum: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    zero_results_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    search_success_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    generated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("now()"),
     )

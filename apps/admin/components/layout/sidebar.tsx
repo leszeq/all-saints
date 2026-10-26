@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
   BookOpenText,
+  BarChart3,
   Bot,
   Braces,
   ChevronRight,
@@ -61,6 +62,7 @@ const sections: Array<{ titleKey: SidebarSectionKey; items: NavItem[] }> = [
     { href: "/dashboard/dictionaries", labelKey: "dictionaries", icon: Tags },
   ] },
   { titleKey: "administration", items: [
+    { href: "/dashboard/analytics", labelKey: "analytics", icon: BarChart3, requiredPermission: "persons:read" },
     { href: "/dashboard/users", labelKey: "usersAndRoles", icon: Users, requiredPermission: "users:read" },
     { href: `${API_BASE_URL}/docs`, labelKey: "apiDocumentation", icon: Braces, external: true },
     { href: "/dashboard/settings", labelKey: "settings", icon: Settings },

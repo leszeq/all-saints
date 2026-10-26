@@ -770,29 +770,29 @@ Brak danych o sukcesie wyszukiwania, zero-results i korzystaniu ze źródeł.
 
 - [x] Event ingestion (własny POST /events lub wybrany produkt) z allowlist schema, anon session_id, event/query class.
 - [x] nie zbierać domyślnie raw text i PII.
-- [ ] agregaty search success i zero-results.
+- [x] agregaty search success i zero-results.
 
 **Database**
 
 - [x] Jeśli własny collector: ProductEvent z datą/typem/małym payload i retencją, indeks time+event.
-- [ ] agregaty dzienne. Nie zapisywać pełnych danych użytkownika w domenowej Person DB.
+- [x] agregaty dzienne. Nie zapisywać pełnych danych użytkownika w domenowej Person DB.
 
 **Frontend**
 
-- [ ] Instrumentacja search submitted/results/opened, filters, source click, relation, feedback.
+- [x] Instrumentacja search submitted/results/opened, filters, source click, relation, feedback.
 - [x] session state ograniczony i opisany.
-- [ ] panel baseline dla PM.
+- [x] panel baseline dla PM.
 
 **Tests**
 
 - [x] Backend: walidacja eventów, redakcja i retencja.
 - [x] Frontend: jeden event na działanie, bez duplikacji hydration.
-- [ ] E2E: ścieżka search→profile→source składa się w poprawny funnel.
+- [x] E2E: ścieżka search→profile→source składa się w poprawny funnel.
 
 **Infrastructure**
 
-- [ ] Lekki collector/analytics.
-- [ ] limit kosztu i dostęp do agregatów, nie szerokich surowych logów.
+- [x] Lekki collector/analytics.
+- [x] limit kosztu i dostęp do agregatów, nie szerokich surowych logów.
 
 **Definition of Done**
 

@@ -24,6 +24,7 @@ import type {
   PublicationStatus,
 } from "@/lib/editorial";
 import type { ApplicationSettings, UserProfile } from "@/lib/settings";
+import type { ProductEventAggregatesResponse } from "@/lib/analytics";
 import type {
   CreateOrderMembershipPayload,
   ReligiousOrder,
@@ -372,4 +373,11 @@ export const rolesApi = {
   update: (id: string, data: UpdateRolePayload) =>
     api.patch<ManagedRole>(`/roles/${id}`, data),
   delete: (id: string) => api.delete(`/roles/${id}`),
+};
+
+export const analyticsApi = {
+  rebuild: (params?: { start_date?: string; end_date?: string }) =>
+    api.post<ProductEventAggregatesResponse>("/events/aggregates/rebuild", undefined, { params }),
+  aggregates: (params?: { start_date?: string; end_date?: string }) =>
+    api.get<ProductEventAggregatesResponse>("/events/aggregates", { params }),
 };
