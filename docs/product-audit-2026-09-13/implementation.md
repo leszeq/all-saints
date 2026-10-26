@@ -629,11 +629,11 @@ Techniczna: **4/10 (średnia)**; dane: **1/10**; utrzymanie: **3/10**. Są to ko
 
 **Acceptance Criteria**
 
-- [ ] Zero krytycznych naruszeń w objętych ekranach.
-- [ ] kompletna obsługa klawiaturą.
-- [ ] focus widoczny.
-- [ ] brak poziomego przewijania w testowanych breakpointach.
-- [ ] wynik nie znika pod drawerem.
+- [x] Zero krytycznych naruszeń w objętych ekranach.
+- [x] kompletna obsługa klawiaturą.
+- [x] focus widoczny.
+- [x] brak poziomego przewijania w testowanych breakpointach.
+- [x] wynik nie znika pod drawerem.
 
 **Backend — endpointy, serwisy, schemas, permissions**
 

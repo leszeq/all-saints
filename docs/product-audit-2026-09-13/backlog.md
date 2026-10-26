@@ -732,11 +732,11 @@ Filtry i hero opóźniają dostęp do treści; część pól ma tylko tekst obok
 
 **Definition of Done**
 
-- [ ] Zero krytycznych naruszeń w objętych ekranach.
-- [ ] kompletna obsługa klawiaturą.
-- [ ] focus widoczny.
-- [ ] brak poziomego przewijania w testowanych breakpointach.
-- [ ] wynik nie znika pod drawerem.
+- [x] Zero krytycznych naruszeń w objętych ekranach.
+- [x] kompletna obsługa klawiaturą.
+- [x] focus widoczny.
+- [x] brak poziomego przewijania w testowanych breakpointach.
+- [x] wynik nie znika pod drawerem.
 
 **Dependencies**
 

@@ -35,6 +35,8 @@ test("mobilny katalog otwiera i zamyka drawer filtrów", async ({ page }) => {
   await page.keyboard.press("Enter");
 
   const drawer = page.getByRole("dialog", { name: "Filtry katalogu" });
+  const resultsSummary = page.locator("p").filter({ hasText: "Znaleziono" }).last();
+  await expect(resultsSummary).toBeVisible();
   await expect(drawer).toBeVisible();
   await expect(drawer.getByRole("checkbox", { name: "Święty/a" })).toBeVisible();
   await expect(drawer.getByRole("button", { name: "Zamknij filtry" })).toBeFocused();
@@ -45,6 +47,7 @@ test("mobilny katalog otwiera i zamyka drawer filtrów", async ({ page }) => {
   await page.keyboard.press("Escape");
   await expect(drawer).toBeHidden();
   await expect(openFilters).toBeFocused();
+  await expect(resultsSummary).toBeVisible();
 });
 
 test("publiczny katalog zachowuje układ przy 200 procentach zoomu", async ({ page }) => {
