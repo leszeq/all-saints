@@ -768,25 +768,25 @@ Brak danych o sukcesie wyszukiwania, zero-results i korzystaniu ze źródeł.
 
 **Backend**
 
-- [ ] Event ingestion (własny POST /events lub wybrany produkt) z allowlist schema, anon session_id, event/query class.
-- [ ] nie zbierać domyślnie raw text i PII.
+- [x] Event ingestion (własny POST /events lub wybrany produkt) z allowlist schema, anon session_id, event/query class.
+- [x] nie zbierać domyślnie raw text i PII.
 - [ ] agregaty search success i zero-results.
 
 **Database**
 
-- [ ] Jeśli własny collector: ProductEvent z datą/typem/małym payload i retencją, indeks time+event.
+- [x] Jeśli własny collector: ProductEvent z datą/typem/małym payload i retencją, indeks time+event.
 - [ ] agregaty dzienne. Nie zapisywać pełnych danych użytkownika w domenowej Person DB.
 
 **Frontend**
 
 - [ ] Instrumentacja search submitted/results/opened, filters, source click, relation, feedback.
-- [ ] session state ograniczony i opisany.
+- [x] session state ograniczony i opisany.
 - [ ] panel baseline dla PM.
 
 **Tests**
 
-- [ ] Backend: walidacja eventów, redakcja i retencja.
-- [ ] Frontend: jeden event na działanie, bez duplikacji hydration.
+- [x] Backend: walidacja eventów, redakcja i retencja.
+- [x] Frontend: jeden event na działanie, bez duplikacji hydration.
 - [ ] E2E: ścieżka search→profile→source składa się w poprawny funnel.
 
 **Infrastructure**
@@ -797,7 +797,7 @@ Brak danych o sukcesie wyszukiwania, zero-results i korzystaniu ze źródeł.
 **Definition of Done**
 
 - [ ] Baseline 4 tygodnie.
-- [ ] zdarzenia udokumentowane.
+- [x] zdarzenia udokumentowane.
 - [ ] North Star rozróżnia proxy i potwierdzony sukces.
 - [ ] dane prywatne nie są wymagane do statystyk.
 

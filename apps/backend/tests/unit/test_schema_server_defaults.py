@@ -2,9 +2,15 @@
 
 from __future__ import annotations
 
+from src.domain.analytics.models import ProductEvent  # noqa: F401
 from src.domain.base import Base
 
 EXPECTED_SERVER_DEFAULTS = {
+    "product_events": {
+        "id": "gen_random_uuid()",
+        "created_at": "now()",
+        "retention_until": "now() + interval '90 days'",
+    },
     "audit_logs": {"id": "gen_random_uuid()", "created_at": "now()"},
     "bibliography": {"source_type": "'book'"},
     "categories": {"sort_order": "0"},

@@ -46,8 +46,8 @@ export function PersonSources({ sources, copy }: {
                   ) : null)}
                 </dl>
                 <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm">
-                  {url && <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 font-semibold text-burgundy-700 underline underline-offset-4 hover:text-burgundy-900">{archive ? copy.digitization : copy.open} · {new URL(url).hostname}<ExternalLink aria-hidden="true" className="h-3.5 w-3.5 shrink-0" /><span className="sr-only">{copy.newTab}</span></a>}
-                  {doiUrl && doiUrl !== url && <a href={doiUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 font-semibold text-burgundy-700 underline underline-offset-4 hover:text-burgundy-900">{copy.openDoi}<ExternalLink aria-hidden="true" className="h-3.5 w-3.5" /><span className="sr-only">{copy.newTab}</span></a>}
+                  {url && <a data-analytics-source-kind={archive ? "historical" : "bibliography"} href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 font-semibold text-burgundy-700 underline underline-offset-4 hover:text-burgundy-900">{archive ? copy.digitization : copy.open} · {new URL(url).hostname}<ExternalLink aria-hidden="true" className="h-3.5 w-3.5 shrink-0" /><span className="sr-only">{copy.newTab}</span></a>}
+                  {doiUrl && doiUrl !== url && <a data-analytics-source-kind="bibliography" href={doiUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 font-semibold text-burgundy-700 underline underline-offset-4 hover:text-burgundy-900">{copy.openDoi}<ExternalLink aria-hidden="true" className="h-3.5 w-3.5" /><span className="sr-only">{copy.newTab}</span></a>}
                   {!url && !doiUrl && <p className="text-xs text-stone-500">{copy.offline}</p>}
                 </div>
               </li>

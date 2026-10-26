@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { WebSystemCopyProvider } from "@/components/web-system-copy-context";
+import { ProductAnalytics } from "@/components/product-analytics";
 import type { WebDictionary } from "@/lib/i18n/types";
 
 export function Providers({
@@ -27,7 +28,10 @@ export function Providers({
 
   return (
     <QueryClientProvider client={queryClient}>
-      <WebSystemCopyProvider value={systemCopy}>{children}</WebSystemCopyProvider>
+      <WebSystemCopyProvider value={systemCopy}>
+        <ProductAnalytics />
+        {children}
+      </WebSystemCopyProvider>
     </QueryClientProvider>
   );
 }

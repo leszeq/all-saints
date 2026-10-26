@@ -7,6 +7,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from src.presentation.api.v1.ai import router as ai_router
+from src.presentation.api.v1.analytics import router as analytics_router
 from src.presentation.api.v1.auth.router import router as auth_router
 from src.presentation.api.v1.calendar.router import router as calendar_router
 from src.presentation.api.v1.editorial.router import router as editorial_router
@@ -39,3 +40,4 @@ router.include_router(taxonomy_router, prefix="/taxonomy", tags=["taxonomy"])
 router.include_router(users_router, prefix="/users", tags=["users"])
 router.include_router(roles_router, prefix="/roles", tags=["roles"])
 router.include_router(ai_router, prefix="/ai", tags=["ai"])
+router.include_router(analytics_router, prefix="/events", tags=["analytics"])

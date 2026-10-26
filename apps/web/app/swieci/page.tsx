@@ -541,7 +541,7 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
       )}
 
       {/* Results Counter */}
-      <p className="text-xs font-medium text-gray-500">
+      <p data-analytics-result-count={total} className="text-xs font-medium text-gray-500">
         {copy.resultsPrefix} <strong className="text-burgundy-900">{total}</strong>{" "}
         {copy.resultsSuffix}
       </p>

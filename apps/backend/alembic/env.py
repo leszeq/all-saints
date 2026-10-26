@@ -21,6 +21,7 @@ from src.core.config import settings
 from src.domain.base import Base
 
 # Import all model modules to register their tables with Base.metadata.
+from src.domain.analytics.models import ProductEvent  # noqa: F401
 from src.domain.geography.models import (  # noqa: F401
     Church,
     Country,
