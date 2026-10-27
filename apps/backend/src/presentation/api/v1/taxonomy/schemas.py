@@ -10,6 +10,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.application.commands.taxonomy import CreateCategoryCommand, CreateTagCommand
+from src.domain.hagiography.models import PersonType
 
 # ==============================================================================
 # CATEGORY SCHEMAS
@@ -89,3 +90,38 @@ class OccupationSchema(BaseModel):
     description: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PatronageConceptSchema(BaseModel):
+    """A type-qualified public patronage concept."""
+
+    slug: str
+    patronage_type: str
+    name_pl: str
+    name_en: str | None = None
+    description: str | None = None
+    person_count: int = Field(ge=0)
+
+
+class PatronageConceptPersonSchema(BaseModel):
+    """Small public person projection used on a patronage concept page."""
+
+    id: uuid.UUID
+    slug: str
+    canonical_name: str
+    canonical_name_en: str | None = None
+    person_type: PersonType
+    summary_pl: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PatronageConceptPersonsSchema(BaseModel):
+    """Paginated people assigned to one public patronage concept."""
+
+    concept: PatronageConceptSchema
+    items: list[PatronageConceptPersonSchema]
+    total: int
+    page: int
+    per_page: int
+    pages: int

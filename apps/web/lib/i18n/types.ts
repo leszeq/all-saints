@@ -359,6 +359,20 @@ export interface WebDictionary {
     relatedTitle: string;
     viewProfile: string;
   };
+  patronageDirectory: {
+    notFoundTitle: string;
+    metadataTitleSuffix: string;
+    metadataDescriptionPrefix: string;
+    backToDirectory: string;
+    typeLabel: string;
+    peopleLabel: string;
+    descriptionFallback: string;
+    peopleKicker: string;
+    peopleTitle: string;
+    peopleEmpty: string;
+    fullProfile: string;
+    personSummaryFallback: string;
+  };
   saintsDirectory: {
     title: string;
     description: string;

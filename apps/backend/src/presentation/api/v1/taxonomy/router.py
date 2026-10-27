@@ -7,6 +7,8 @@ from src.presentation.api.v1.taxonomy.editorial import router as editorial_route
 from src.presentation.api.v1.taxonomy.public import (
     list_categories,
     list_occupations,
+    list_patronage_persons,
+    list_patronages,
     list_states_of_life,
     list_tags,
 )
@@ -35,6 +37,8 @@ __all__ = [
     "create_tag",
     "list_categories",
     "list_occupations",
+    "list_patronage_persons",
+    "list_patronages",
     "list_states_of_life",
     "list_tags",
 ]

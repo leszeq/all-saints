@@ -75,6 +75,18 @@ export const fetchOccupations = async () => {
   return data;
 };
 
+export const fetchPatronages = async (params?: Record<string, unknown>) => {
+  const { data } = await publicApi.get("/taxonomy/patronages", { params });
+  return data;
+};
+
+export const fetchPatronagePersons = async (slug: string, params?: Record<string, unknown>) => {
+  const { data } = await publicApi.get(`/taxonomy/patronages/${encodeURIComponent(slug)}/persons`, {
+    params,
+  });
+  return data;
+};
+
 export const fetchOrders = async (params?: Record<string, unknown>) => {
   const { data } = await publicApi.get("/orders", { params });
   return data;

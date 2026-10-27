@@ -27,6 +27,7 @@ import { PersonSources } from "@/components/person-sources";
 import { PersonFeedback } from "@/components/person-feedback";
 import type { PublicPersonSource } from "@/lib/person-sources";
 import type { PersonCommemoration } from "@/lib/calendar";
+import { patronageConceptSlug } from "@/lib/patronages";
 
 interface PageProps {
   params: Promise<{
@@ -359,7 +360,12 @@ export default async function PersonDetailPage({ params }: PageProps) {
                   key={String(patronage.id)}
                   className="rounded-full border border-burgundy-500/15 bg-burgundy-50 px-3 py-1.5 text-xs font-medium text-burgundy-900"
                 >
-                  {String(patronage.name_pl)}
+                  <Link
+                    href={`/patronaty/${patronageConceptSlug(String(patronage.patronage_type), String(patronage.name_pl))}`}
+                    className="hover:underline"
+                  >
+                    {String(patronage.name_pl)}
+                  </Link>
                 </li>
               ))}
             </ul>

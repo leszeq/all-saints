@@ -742,8 +742,8 @@ Techniczna: **6/10 (średnia)**; dane: **7/10**; utrzymanie: **5/10**. Są to ko
 
 - [ ] Każdy migrowany patronat zachowuje tekst/ID źródłowy.
 - [ ] niewyjaśnione mapowania trafiają do review.
-- [ ] strony pojęć nie są puste.
-- [ ] filtr działa po relacji.
+- [x] strony pojęć nie są puste — słownik budowany jest wyłącznie z patronatów przypisanych do opublikowanych osób.
+- [x] filtr działa po relacji — endpoint osób używa dokładnego typu i etykiety patronatu.
 
 **Backend — endpointy, serwisy, schemas, permissions**
 
@@ -772,6 +772,20 @@ PostgreSQL; brak nowego silnika.
 **Risk**
 
 Nadmierna normalizacja i utrata lokalnej tradycji; dopuszczać kwalifikatory.
+
+**Stan implementacji (2026-10-27)**
+
+Publiczna warstwa słownika korzysta z obecnych rekordów `Patronage` bez
+scalania po samej nazwie. `GET /taxonomy/patronages` grupuje wyłącznie po
+typie i dokładnej etykiecie źródłowej, zwraca stabilny slug oraz liczbę
+opublikowanych osób, a `GET /taxonomy/patronages/{slug}/persons` ogranicza
+relację do opublikowanych profili. Strona `/patronaty/[slug]` pokazuje
+pojęcie i prowadzi do profili osób; sekcja patronatów na profilu linkuje do
+tych stron.
+
+Pozostają: osobne tabele pojęć i aliasów z workflow review, evidence przy
+przypisaniu, słownik w panelu admina oraz migracja istniejących etykiet z
+raportem nierozstrzygniętych mapowań.
 
 ## FEATURE-015 — Historyczne daty, męczeństwo i uznanie kultu
 
