@@ -9,8 +9,22 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from src.application.commands.taxonomy import CreateCategoryCommand, CreateTagCommand
-from src.domain.hagiography.models import PersonType
+from src.application.commands.taxonomy import (
+    CreateCategoryCommand,
+    CreateConceptAliasCommand,
+    CreateConceptAssignmentCommand,
+    CreatePatronageConceptCommand,
+    CreateTagCommand,
+    ReviewConceptAssignmentCommand,
+    ReviewPatronageConceptCommand,
+    UpdatePatronageConceptCommand,
+)
+from src.domain.hagiography.models import (
+    ConceptAliasKind,
+    ConceptAssignmentStatus,
+    PatronageConceptStatus,
+    PersonType,
+)
 
 # ==============================================================================
 # CATEGORY SCHEMAS
@@ -101,6 +115,84 @@ class PatronageConceptSchema(BaseModel):
     name_en: str | None = None
     description: str | None = None
     person_count: int = Field(ge=0)
+
+
+class ConceptAliasSchema(BaseModel):
+    """Editorial alias attached to a canonical patronage concept."""
+
+    id: uuid.UUID
+    concept_id: uuid.UUID
+    value: str
+    normalized_value: str
+    language_code: str
+    alias_kind: ConceptAliasKind
+    source_reference: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PatronageConceptManagementSchema(BaseModel):
+    """Admin projection of a reviewable patronage concept."""
+
+    id: uuid.UUID
+    slug: str
+    patronage_type: str
+    name_pl: str
+    name_en: str | None = None
+    description: str | None = None
+    status: PatronageConceptStatus
+    reviewed_by_id: uuid.UUID | None = None
+    reviewed_at: datetime | None = None
+    review_note: str | None = None
+    aliases: list[ConceptAliasSchema] = Field(default_factory=list)
+    assignment_count: int = Field(default=0, ge=0)
+    person_count: int = Field(default=0, ge=0)
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PatronageConceptCreateSchema(CreatePatronageConceptCommand):
+    pass
+
+
+class PatronageConceptUpdateSchema(UpdatePatronageConceptCommand):
+    pass
+
+
+class ConceptAliasCreateSchema(CreateConceptAliasCommand):
+    pass
+
+
+class ConceptAssignmentCreateSchema(CreateConceptAssignmentCommand):
+    pass
+
+
+class PatronageConceptReviewSchema(ReviewPatronageConceptCommand):
+    pass
+
+
+class ConceptAssignmentReviewSchema(ReviewConceptAssignmentCommand):
+    pass
+
+
+class PersonPatronageConceptSchema(BaseModel):
+    """Admin projection of a person-to-concept evidence assignment."""
+
+    person_id: uuid.UUID
+    concept_id: uuid.UUID
+    source_patronage_id: uuid.UUID | None = None
+    source_patronage_type: str
+    source_label: str
+    evidence_reference: str
+    status: ConceptAssignmentStatus
+    assigned_by_id: uuid.UUID | None = None
+    reviewed_by_id: uuid.UUID | None = None
+    reviewed_at: datetime | None = None
+    review_note: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PatronageConceptPersonSchema(BaseModel):

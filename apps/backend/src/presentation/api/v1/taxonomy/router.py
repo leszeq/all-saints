@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter
 
+from src.presentation.api.v1.taxonomy.concepts import router as concepts_router
 from src.presentation.api.v1.taxonomy.editorial import create_category, create_tag
 from src.presentation.api.v1.taxonomy.editorial import router as editorial_router
 from src.presentation.api.v1.taxonomy.public import (
@@ -25,6 +26,7 @@ from src.presentation.api.v1.taxonomy.schemas import (
 router = APIRouter()
 router.include_router(public_router)
 router.include_router(editorial_router)
+router.include_router(concepts_router)
 
 __all__ = [
     "CategoryCreateSchema",

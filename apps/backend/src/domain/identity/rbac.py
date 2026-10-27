@@ -45,6 +45,15 @@ PERMISSIONS: tuple[PermissionDefinition, ...] = (
         "persons", "publish", "Wycofywanie i archiwizowanie publikacji", "Workflow redakcyjny"
     ),
     PermissionDefinition("persons", "restore", "Przywracanie usuniętych osób", "Osoby i święci"),
+    PermissionDefinition("taxonomy", "read", "Przeglądanie słowników pojęć", "Słowniki i pojęcia"),
+    PermissionDefinition("taxonomy", "create", "Tworzenie pojęć i aliasów", "Słowniki i pojęcia"),
+    PermissionDefinition("taxonomy", "update", "Edycja pojęć i przypisań", "Słowniki i pojęcia"),
+    PermissionDefinition(
+        "taxonomy", "submit", "Przekazywanie pojęć do recenzji", "Workflow słowników"
+    ),
+    PermissionDefinition(
+        "taxonomy", "review", "Akceptowanie lub odrzucanie pojęć", "Workflow słowników"
+    ),
     PermissionDefinition("sources", "read", "Przeglądanie źródeł", "Źródła i media"),
     PermissionDefinition("sources", "create", "Tworzenie źródeł", "Źródła i media"),
     PermissionDefinition("sources", "update", "Edycja źródeł", "Źródła i media"),
@@ -137,6 +146,10 @@ ROLE_PERMISSIONS: dict[SystemRole, frozenset[str]] = {
             "persons:create",
             "persons:update",
             "persons:submit",
+            "taxonomy:read",
+            "taxonomy:create",
+            "taxonomy:update",
+            "taxonomy:submit",
             "sources:read",
             "sources:create",
             "sources:update",
@@ -156,6 +169,8 @@ ROLE_PERMISSIONS: dict[SystemRole, frozenset[str]] = {
         {
             "persons:read",
             "persons:review",
+            "taxonomy:read",
+            "taxonomy:review",
             "sources:read",
             "geography:read",
             "orders:read",
@@ -168,6 +183,7 @@ ROLE_PERMISSIONS: dict[SystemRole, frozenset[str]] = {
     SystemRole.TRANSLATOR: frozenset(
         {
             "persons:read",
+            "taxonomy:read",
             "translations:read",
             "translations:create",
             "translations:update",
@@ -179,6 +195,7 @@ ROLE_PERMISSIONS: dict[SystemRole, frozenset[str]] = {
     SystemRole.READER: frozenset(
         {
             "persons:read",
+            "taxonomy:read",
             "sources:read",
             "geography:read",
             "orders:read",

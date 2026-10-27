@@ -79,6 +79,32 @@ class PublicationStatus(StrEnum):
     ARCHIVED = "archived"
 
 
+class PatronageConceptStatus(StrEnum):
+    """Editorial state of a canonical patronage concept."""
+
+    DRAFT = "draft"
+    REVIEW = "review"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+class ConceptAliasKind(StrEnum):
+    """Editorial meaning of a concept alias."""
+
+    OFFICIAL = "official"
+    COMMON = "common"
+    HISTORICAL = "historical"
+    LOCAL = "local"
+
+
+class ConceptAssignmentStatus(StrEnum):
+    """Review state of one person-to-concept assignment."""
+
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
 class PersonSort(StrEnum):
     """Supported ordering modes for public person listings."""
 
@@ -469,6 +495,9 @@ class Person(BaseModel, Base):
     )
     miracles: Mapped[list[Miracle]] = relationship("Miracle", back_populates="person")
     patronages: Mapped[list[Patronage]] = relationship("Patronage", back_populates="person")
+    patronage_concept_assignments: Mapped[list[PersonPatronageConcept]] = relationship(
+        "PersonPatronageConcept", back_populates="person", cascade="all, delete-orphan"
+    )
     translations: Mapped[list[PersonTranslation]] = relationship(
         "PersonTranslation", back_populates="person", cascade="all, delete-orphan"
     )
@@ -892,6 +921,128 @@ class Patronage(BaseModel, Base):
     )
 
     person: Mapped[Person] = relationship("Person", back_populates="patronages")
+    concept_assignments: Mapped[list[PersonPatronageConcept]] = relationship(
+        "PersonPatronageConcept", back_populates="source_patronage"
+    )
+
+
+# ==============================================================================
+# PATRONAGE CONCEPTS
+# ==============================================================================
+
+
+class PatronageConcept(BaseModel, Base):
+    """Canonical, reviewable concept that groups patronage source labels."""
+
+    __tablename__ = "patronage_concepts"
+    __table_args__ = (
+        UniqueConstraint("slug", name="uq_patronage_concepts_slug"),
+        Index("ix_patronage_concepts_status", "status"),
+        Index("ix_patronage_concepts_type", "patronage_type"),
+        Index("ix_patronage_concepts_name_pl", "name_pl"),
+        {"comment": "Reviewed canonical patronage concepts"},
+    )
+
+    slug: Mapped[str] = mapped_column(String(300), nullable=False)
+    patronage_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    name_pl: Mapped[str] = mapped_column(String(500), nullable=False)
+    name_en: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default=PatronageConceptStatus.DRAFT,
+        server_default=text("'draft'"),
+    )
+    reviewed_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    review_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    aliases: Mapped[list[ConceptAlias]] = relationship(
+        "ConceptAlias", back_populates="concept", cascade="all, delete-orphan"
+    )
+    assignments: Mapped[list[PersonPatronageConcept]] = relationship(
+        "PersonPatronageConcept", back_populates="concept", cascade="all, delete-orphan"
+    )
+
+
+class ConceptAlias(BaseModel, Base):
+    """Reviewed alternate label for a canonical patronage concept."""
+
+    __tablename__ = "concept_aliases"
+    __table_args__ = (
+        UniqueConstraint(
+            "concept_id",
+            "normalized_value",
+            "language_code",
+            name="uq_concept_aliases_concept_value_language",
+        ),
+        Index("ix_concept_aliases_normalized_value", "normalized_value"),
+        {"comment": "Reviewed aliases for canonical concepts"},
+    )
+
+    concept_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("patronage_concepts.id", ondelete="CASCADE"), nullable=False
+    )
+    value: Mapped[str] = mapped_column(String(500), nullable=False)
+    normalized_value: Mapped[str] = mapped_column(String(500), nullable=False)
+    language_code: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="pl", server_default=text("'pl'")
+    )
+    alias_kind: Mapped[str] = mapped_column(
+        String(20), nullable=False, default=ConceptAliasKind.COMMON, server_default=text("'common'")
+    )
+    source_reference: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    concept: Mapped[PatronageConcept] = relationship("PatronageConcept", back_populates="aliases")
+
+
+class PersonPatronageConcept(Base):
+    """Reviewable relation between a person and a canonical patronage concept."""
+
+    __tablename__ = "person_patronage_concepts"
+    __table_args__ = (
+        Index("ix_person_patronage_concepts_status", "status"),
+        Index("ix_person_patronage_concepts_source", "source_patronage_id"),
+        {"comment": "Reviewed person-to-patronage concept assignments"},
+    )
+
+    person_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("persons.id", ondelete="CASCADE"), primary_key=True
+    )
+    concept_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("patronage_concepts.id", ondelete="CASCADE"), primary_key=True
+    )
+    source_patronage_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("patronages.id", ondelete="SET NULL"), nullable=True
+    )
+    source_patronage_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    source_label: Mapped[str] = mapped_column(String(500), nullable=False)
+    evidence_reference: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default=ConceptAssignmentStatus.PENDING,
+        server_default=text("'pending'"),
+    )
+    assigned_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    reviewed_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    review_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    person: Mapped[Person] = relationship("Person", back_populates="patronage_concept_assignments")
+    concept: Mapped[PatronageConcept] = relationship(
+        "PatronageConcept", back_populates="assignments"
+    )
+    source_patronage: Mapped[Patronage | None] = relationship(
+        "Patronage", back_populates="concept_assignments"
+    )
 
 
 # ==============================================================================

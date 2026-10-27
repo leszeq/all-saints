@@ -357,7 +357,7 @@ export const taxonomyApi = {
   occupations: (params?: Record<string, unknown>) =>
     api.get("/taxonomy/occupations", { params }),
   patronages: (params?: Record<string, unknown>) =>
-    api.get("/taxonomy/patronages", { params }),
+    api.get("/taxonomy/patronages/management", { params }),
 };
 
 export const usersApi = {

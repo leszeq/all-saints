@@ -11,3 +11,20 @@ def test_taxonomy_routes_preserve_public_and_editorial_security_boundaries() -> 
 
     for resource in ("categories", "tags"):
         assert paths[f"/api/v1/taxonomy/{resource}"]["post"]["security"] == [{"HTTPBearer": []}]
+
+    assert paths["/api/v1/taxonomy/patronages/management"]["get"]["security"] == [
+        {"HTTPBearer": []}
+    ]
+    assert paths["/api/v1/taxonomy/patronages"]["post"]["security"] == [{"HTTPBearer": []}]
+    assert paths["/api/v1/taxonomy/patronages/{concept_id}/aliases"]["post"]["security"] == [
+        {"HTTPBearer": []}
+    ]
+    assert paths["/api/v1/taxonomy/patronages/{concept_id}/assignments"]["post"]["security"] == [
+        {"HTTPBearer": []}
+    ]
+    assert paths["/api/v1/taxonomy/patronages/{concept_id}/submit"]["post"]["security"] == [
+        {"HTTPBearer": []}
+    ]
+    assert paths["/api/v1/taxonomy/patronages/{concept_id}/review"]["post"]["security"] == [
+        {"HTTPBearer": []}
+    ]
