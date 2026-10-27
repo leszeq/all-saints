@@ -356,6 +356,8 @@ export const taxonomyApi = {
   statesOfLife: () => api.get("/taxonomy/states-of-life"),
   occupations: (params?: Record<string, unknown>) =>
     api.get("/taxonomy/occupations", { params }),
+  patronages: (params?: Record<string, unknown>) =>
+    api.get("/taxonomy/patronages", { params }),
 };
 
 export const usersApi = {

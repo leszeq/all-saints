@@ -781,7 +781,9 @@ typie i dokładnej etykiecie źródłowej, zwraca stabilny slug oraz liczbę
 opublikowanych osób, a `GET /taxonomy/patronages/{slug}/persons` ogranicza
 relację do opublikowanych profili. Strona `/patronaty/[slug]` pokazuje
 pojęcie i prowadzi do profili osób; sekcja patronatów na profilu linkuje do
-tych stron.
+tych stron. Panel administracyjny `/dashboard/dictionaries` ma osobny widok
+patronatów z wyszukiwaniem, slugiem i liczbą powiązanych profili; widok jest
+celowo tylko do odczytu do czasu wprowadzenia reviewed concept tables.
 
 Pozostają: osobne tabele pojęć i aliasów z workflow review, evidence przy
 przypisaniu, słownik w panelu admina oraz migracja istniejących etykiet z

@@ -1180,6 +1180,8 @@ export interface AdminDictionary {
       latinNamesSuffix: string;
       occupations: string;
       describedSuffix: string;
+      patronages: string;
+      peopleSuffix: string;
       popes: string;
       linkedPersonsSuffix: string;
     };
@@ -1188,6 +1190,7 @@ export interface AdminDictionary {
       tags: string;
       states: string;
       occupations: string;
+      patronages: string;
       popes: string;
     };
     searchAriaLabel: string;
@@ -1204,6 +1207,9 @@ export interface AdminDictionary {
       latin: string;
       description: string;
       occupation: string;
+      patronage: string;
+      patronageType: string;
+      people: string;
       pope: string;
       pontificate: string;
       number: string;
@@ -1218,6 +1224,8 @@ export interface AdminDictionary {
       emptyStates: string;
       loadingOccupations: string;
       emptyOccupations: string;
+      loadingPatronages: string;
+      emptyPatronages: string;
       loadingPopes: string;
       emptyPopes: string;
       partialRefresh: string;

@@ -6,6 +6,7 @@ import {
   BadgeCheck,
   BriefcaseBusiness,
   Crown,
+  HeartHandshake,
   Layers3,
   RefreshCw,
   Search,
@@ -18,9 +19,9 @@ import type { AdminDictionariesDictionary } from "@/lib/i18n/types";
 import { cn } from "@/lib/utils";
 
 type ApiRecord = Record<string, unknown>;
-type DictionaryView = "categories" | "tags" | "states" | "occupations" | "popes";
+type DictionaryView = "categories" | "tags" | "states" | "occupations" | "patronages" | "popes";
 
-const VIEW_KEYS: DictionaryView[] = ["categories", "tags", "states", "occupations", "popes"];
+const VIEW_KEYS: DictionaryView[] = ["categories", "tags", "states", "occupations", "patronages", "popes"];
 
 function valueText(value: unknown, fallback = "—") {
   if (value === null || value === undefined || value === "") return fallback;
@@ -99,6 +100,10 @@ export function DictionariesClient({ copy, locale }: DictionariesClientProps) {
     queryKey: ["taxonomy", "occupations"],
     queryFn: () => taxonomyApi.occupations({ per_page: 500 }),
   });
+  const patronagesQuery = useQuery({
+    queryKey: ["taxonomy", "patronages"],
+    queryFn: () => taxonomyApi.patronages({ per_page: 500 }),
+  });
   const popesQuery = useQuery({
     queryKey: ["popes"],
     queryFn: () => popesApi.list(),
@@ -120,6 +125,10 @@ export function DictionariesClient({ copy, locale }: DictionariesClientProps) {
     () => (occupationsQuery.data?.data ?? []) as ApiRecord[],
     [occupationsQuery.data?.data],
   );
+  const patronages = useMemo(
+    () => (patronagesQuery.data?.data ?? []) as ApiRecord[],
+    [patronagesQuery.data?.data],
+  );
   const popes = useMemo(
     () => (popesQuery.data?.data ?? []) as ApiRecord[],
     [popesQuery.data?.data],
@@ -127,6 +136,9 @@ export function DictionariesClient({ copy, locale }: DictionariesClientProps) {
   const tagsTotal = Number(tagsQuery.data?.headers["x-total-count"] ?? tagsList.length);
   const occupationsTotal = Number(
     occupationsQuery.data?.headers["x-total-count"] ?? occupations.length,
+  );
+  const patronagesTotal = Number(
+    patronagesQuery.data?.headers["x-total-count"] ?? patronages.length,
   );
   const categoryNames = useMemo(
     () => new Map(categories.map((category) => [String(category.id), valueText(category.name_pl)])),
@@ -137,6 +149,7 @@ export function DictionariesClient({ copy, locale }: DictionariesClientProps) {
     tags: tagsList.filter((row) => matchesSearch(row, ["name_pl", "name_en"], search)),
     states: states.filter((row) => matchesSearch(row, ["name_pl", "name_en", "name_la", "description"], search)),
     occupations: occupations.filter((row) => matchesSearch(row, ["name_pl", "name_en", "name_la", "description"], search)),
+    patronages: patronages.filter((row) => matchesSearch(row, ["name_pl", "name_en", "patronage_type", "slug"], search)),
     popes: popes.filter((row) => matchesSearch(row, ["papal_name", "birth_name", "description"], search)),
   }[activeView];
   const isLoading =
@@ -144,6 +157,7 @@ export function DictionariesClient({ copy, locale }: DictionariesClientProps) {
     tagsQuery.isLoading ||
     statesQuery.isLoading ||
     occupationsQuery.isLoading ||
+    patronagesQuery.isLoading ||
     popesQuery.isLoading;
 
   const refreshAll = () => {
@@ -152,6 +166,7 @@ export function DictionariesClient({ copy, locale }: DictionariesClientProps) {
       tagsQuery.refetch(),
       statesQuery.refetch(),
       occupationsQuery.refetch(),
+      patronagesQuery.refetch(),
       popesQuery.refetch(),
     ]);
   };
@@ -175,7 +190,7 @@ export function DictionariesClient({ copy, locale }: DictionariesClientProps) {
         </button>
       </header>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5" aria-label={copy.summaryAriaLabel}>
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6" aria-label={copy.summaryAriaLabel}>
         <MetricCard
           label={copy.metrics.categories}
           value={categories.length}
@@ -202,6 +217,13 @@ export function DictionariesClient({ copy, locale }: DictionariesClientProps) {
           value={occupationsTotal}
           detail={`${new Intl.NumberFormat(locale).format(occupations.filter((occupation) => occupation.description).length)} ${copy.metrics.describedSuffix}`}
           icon={BriefcaseBusiness}
+          locale={locale}
+        />
+        <MetricCard
+          label={copy.metrics.patronages}
+          value={patronagesTotal}
+          detail={`${new Intl.NumberFormat(locale).format(patronages.reduce((total, patronage) => total + Number(patronage.person_count ?? 0), 0))} ${copy.metrics.peopleSuffix}`}
+          icon={HeartHandshake}
           locale={locale}
         />
         <MetricCard
@@ -378,6 +400,40 @@ export function DictionariesClient({ copy, locale }: DictionariesClientProps) {
                       </td>
                       <td className="px-4 py-3 italic text-muted-foreground">{valueText(occupation.name_la)}</td>
                       <td className="px-4 py-3 text-muted-foreground">{valueText(occupation.description)}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
+
+          {activeView === "patronages" && (
+            <table className="min-w-[920px] w-full text-sm">
+              <thead className="border-b border-border bg-muted/40 text-left text-xs font-semibold uppercase text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-3">{copy.columns.patronage}</th>
+                  <th className="px-4 py-3">{copy.columns.patronageType}</th>
+                  <th className="px-4 py-3">{copy.columns.slug}</th>
+                  <th className="px-4 py-3">{copy.columns.people}</th>
+                  <th className="px-4 py-3">{copy.columns.description}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {patronagesQuery.isLoading ? (
+                  <EmptyRow colSpan={5} label={copy.states.loadingPatronages} />
+                ) : activeRows.length === 0 ? (
+                  <EmptyRow colSpan={5} label={copy.states.emptyPatronages} />
+                ) : (
+                  activeRows.map((patronage) => (
+                    <tr key={String(patronage.slug)} className="hover:bg-muted/30">
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-foreground">{valueText(patronage.name_pl)}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{valueText(patronage.name_en)}</p>
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">{valueText(patronage.patronage_type)}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{valueText(patronage.slug)}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{valueText(patronage.person_count, "0")}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{valueText(patronage.description)}</td>
                     </tr>
                   ))
                 )}
