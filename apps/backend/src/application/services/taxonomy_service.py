@@ -7,32 +7,36 @@ from dataclasses import dataclass
 from typing import Any
 
 from slugify import slugify
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
+from sqlalchemy.engine import RowMapping
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.sql import Select
+from sqlalchemy.sql.elements import ColumnElement
 
 from src.application.commands.taxonomy import CreateCategoryCommand, CreateTagCommand
 from src.application.services.pagination import execute_page
 from src.domain.hagiography.models import (
     Category,
+    ConceptAlias,
+    ConceptAssignmentStatus,
     Occupation,
     Patronage,
+    PatronageConceptStatus,
     Person,
+    PersonPatronageConcept,
     PublicationStatus,
     StateOfLife,
     Tag,
+)
+from src.domain.hagiography.models import (
+    PatronageConcept as PatronageConceptModel,
 )
 
 
 @dataclass(frozen=True, slots=True)
 class PatronageConcept:
-    """Stable public projection of one existing patronage label.
-
-    The source row remains the authority. Until reviewed concept tables exist,
-    a concept is deliberately keyed by its type and exact source label so that
-    similarly named records are never silently merged.
-    """
+    """Stable public projection of one canonical or source-backed concept."""
 
     slug: str
     patronage_type: str
@@ -134,40 +138,93 @@ class TaxonomyService:
         page: int = 1,
         per_page: int = 100,
     ) -> tuple[list[PatronageConcept], int]:
-        """List public patronage concepts without merging source labels."""
-        statement = self._patronage_concept_statement(search=search)
-        count_statement = select(func.count()).select_from(statement.order_by(None).subquery())
-        total = int((await self.db.execute(count_statement)).scalar_one())
-        rows = (
-            await self.db.execute(statement.offset((page - 1) * per_page).limit(per_page))
-        ).mappings()
-        concepts = [
-            PatronageConcept(
-                slug=patronage_concept_slug(row["patronage_type"], row["name_pl"]),
-                patronage_type=row["patronage_type"],
-                name_pl=row["name_pl"],
-                name_en=row["name_en"],
-                description=row["description"],
-                person_count=int(row["person_count"]),
-            )
-            for row in rows
-        ]
-        return concepts, total
+        """List reviewed concepts and keep unmapped legacy labels discoverable.
+
+        Reviewed assignments become the public authority as soon as both the
+        concept and its person relation are approved. Source rows without an
+        approved mapping continue to use the previous exact-label projection,
+        which makes the migration incremental and prevents disappearing data.
+        """
+        reviewed = await self._list_approved_patronage_concepts(search=search)
+        legacy = await self._list_legacy_patronage_concepts(search=search)
+
+        merged = {(concept.patronage_type, concept.name_pl): concept for concept in legacy}
+        for concept in reviewed:
+            key = (concept.patronage_type, concept.name_pl)
+            previous = merged.get(key)
+            if previous is not None:
+                concept = PatronageConcept(
+                    slug=concept.slug,
+                    patronage_type=concept.patronage_type,
+                    name_pl=concept.name_pl,
+                    name_en=concept.name_en,
+                    description=concept.description,
+                    person_count=concept.person_count + previous.person_count,
+                )
+            merged[key] = concept
+        concepts = sorted(
+            merged.values(),
+            key=lambda concept: (concept.name_pl, concept.patronage_type, concept.slug),
+        )
+        total = len(concepts)
+        start = (page - 1) * per_page
+        return concepts[start : start + per_page], total
 
     async def get_patronage_concept(self, slug: str) -> PatronageConcept | None:
-        """Resolve one public concept by its deterministic type-qualified slug."""
-        statement = self._patronage_concept_statement()
+        """Resolve one reviewed concept, then fall back to a source label."""
+        reviewed_statement = self._approved_patronage_concept_statement()
+        reviewed_rows = (
+            await self.db.execute(reviewed_statement.where(PatronageConceptModel.slug == slug))
+        ).mappings()
+        reviewed_row = next(iter(reviewed_rows), None)
+        if reviewed_row is not None:
+            return self._concept_from_row(reviewed_row)
+
+        statement = self._legacy_patronage_concept_statement()
         rows = (await self.db.execute(statement)).mappings()
         for row in rows:
             if patronage_concept_slug(row["patronage_type"], row["name_pl"]) == slug:
-                return PatronageConcept(
-                    slug=slug,
-                    patronage_type=row["patronage_type"],
-                    name_pl=row["name_pl"],
-                    name_en=row["name_en"],
-                    description=row["description"],
-                    person_count=int(row["person_count"]),
+                return self._concept_from_row(row)
+
+        mapped_source_statement = (
+            select(
+                PatronageConceptModel.slug.label("concept_slug"),
+                Patronage.patronage_type.label("patronage_type"),
+                Patronage.name_pl.label("name_pl"),
+            )
+            .join(
+                PersonPatronageConcept,
+                PersonPatronageConcept.concept_id == PatronageConceptModel.id,
+            )
+            .join(Patronage, Patronage.id == PersonPatronageConcept.source_patronage_id)
+            .join(Person, Person.id == PersonPatronageConcept.person_id)
+            .where(
+                PatronageConceptModel.deleted_at.is_(None),
+                PatronageConceptModel.status == PatronageConceptStatus.APPROVED.value,
+                PersonPatronageConcept.status == ConceptAssignmentStatus.APPROVED.value,
+                Person.deleted_at.is_(None),
+                Person.status == PublicationStatus.PUBLISHED.value,
+                Patronage.deleted_at.is_(None),
+            )
+            .distinct()
+        )
+        mapped_source_rows = (await self.db.execute(mapped_source_statement)).mappings()
+        for mapped_source in mapped_source_rows:
+            if (
+                patronage_concept_slug(mapped_source["patronage_type"], mapped_source["name_pl"])
+                != slug
+            ):
+                continue
+            reviewed_rows = (
+                await self.db.execute(
+                    reviewed_statement.where(
+                        PatronageConceptModel.slug == mapped_source["concept_slug"]
+                    )
                 )
+            ).mappings()
+            reviewed_row = next(iter(reviewed_rows), None)
+            if reviewed_row is not None:
+                return self._concept_from_row(reviewed_row)
         return None
 
     async def list_persons_for_patronage(
@@ -177,13 +234,61 @@ class TaxonomyService:
         page: int = 1,
         per_page: int = 20,
     ) -> tuple[list[Person], int]:
-        """Return published persons assigned to one exact source concept."""
+        """Return people from reviewed assignments or exact source labels."""
+        reviewed_concept = await self._approved_concept_model_by_slug(concept.slug)
+        if reviewed_concept is not None:
+            assignment_filters = (
+                Person.deleted_at.is_(None),
+                Person.status == PublicationStatus.PUBLISHED.value,
+                PersonPatronageConcept.concept_id == reviewed_concept.id,
+                PersonPatronageConcept.status == ConceptAssignmentStatus.APPROVED.value,
+            )
+            statement = (
+                select(Person)
+                .join(PersonPatronageConcept, PersonPatronageConcept.person_id == Person.id)
+                .options(selectinload(Person.patronages))
+                .where(*assignment_filters)
+                .distinct()
+                .order_by(Person.canonical_name.asc(), Person.id.asc())
+            )
+            reviewed_persons = list((await self.db.execute(statement)).scalars().unique().all())
+
+            source_filters = (
+                Person.deleted_at.is_(None),
+                Person.status == PublicationStatus.PUBLISHED.value,
+                Patronage.deleted_at.is_(None),
+                Patronage.patronage_type == concept.patronage_type,
+                Patronage.name_pl == concept.name_pl,
+                self._unreviewed_patronage_filter(),
+            )
+            source_statement = (
+                select(Person)
+                .join(Patronage, Patronage.person_id == Person.id)
+                .options(selectinload(Person.patronages))
+                .where(*source_filters)
+                .distinct()
+                .order_by(Person.canonical_name.asc(), Person.id.asc())
+            )
+            source_persons = list(
+                (await self.db.execute(source_statement)).scalars().unique().all()
+            )
+            persons_by_id = {person.id: person for person in reviewed_persons}
+            persons_by_id.update({person.id: person for person in source_persons})
+            persons = sorted(
+                persons_by_id.values(),
+                key=lambda person: (person.canonical_name, person.id),
+            )
+            total = len(persons)
+            start = (page - 1) * per_page
+            return persons[start : start + per_page], total
+
         filters = (
             Person.deleted_at.is_(None),
             Person.status == PublicationStatus.PUBLISHED.value,
             Patronage.deleted_at.is_(None),
             Patronage.patronage_type == concept.patronage_type,
             Patronage.name_pl == concept.name_pl,
+            self._unreviewed_patronage_filter(),
         )
         count_statement = (
             select(func.count(func.distinct(Person.id)))
@@ -206,8 +311,138 @@ class TaxonomyService:
         return persons, total
 
     @staticmethod
-    def _patronage_concept_statement(*, search: str | None = None) -> Select[Any]:
-        """Build the shared grouped query for public patronage concepts."""
+    def _concept_from_row(row: RowMapping) -> PatronageConcept:
+        """Build the stable public projection from either grouped query."""
+        return PatronageConcept(
+            slug=(
+                row["slug"]
+                if "slug" in row
+                else patronage_concept_slug(row["patronage_type"], row["name_pl"])
+            ),
+            patronage_type=row["patronage_type"],
+            name_pl=row["name_pl"],
+            name_en=row["name_en"],
+            description=row["description"],
+            person_count=int(row["person_count"]),
+        )
+
+    @staticmethod
+    def _unreviewed_patronage_filter() -> ColumnElement[bool]:
+        """Exclude source rows already represented by an approved assignment."""
+        return (
+            ~select(1)
+            .select_from(PersonPatronageConcept)
+            .join(
+                PatronageConceptModel,
+                PatronageConceptModel.id == PersonPatronageConcept.concept_id,
+            )
+            .where(
+                PersonPatronageConcept.person_id == Patronage.person_id,
+                PersonPatronageConcept.source_patronage_id == Patronage.id,
+                PersonPatronageConcept.status == ConceptAssignmentStatus.APPROVED.value,
+                PatronageConceptModel.status == PatronageConceptStatus.APPROVED.value,
+                PatronageConceptModel.deleted_at.is_(None),
+            )
+            .exists()
+        )
+
+    async def _list_approved_patronage_concepts(
+        self, *, search: str | None = None
+    ) -> list[PatronageConcept]:
+        rows = (
+            await self.db.execute(self._approved_patronage_concept_statement(search=search))
+        ).mappings()
+        return [self._concept_from_row(row) for row in rows]
+
+    async def _list_legacy_patronage_concepts(
+        self, *, search: str | None = None
+    ) -> list[PatronageConcept]:
+        rows = (
+            await self.db.execute(self._legacy_patronage_concept_statement(search=search))
+        ).mappings()
+        return [self._concept_from_row(row) for row in rows]
+
+    async def _approved_concept_model_by_slug(self, slug: str) -> PatronageConceptModel | None:
+        statement = (
+            select(PatronageConceptModel)
+            .join(
+                PersonPatronageConcept,
+                PersonPatronageConcept.concept_id == PatronageConceptModel.id,
+            )
+            .join(Person, Person.id == PersonPatronageConcept.person_id)
+            .where(
+                PatronageConceptModel.slug == slug,
+                PatronageConceptModel.deleted_at.is_(None),
+                PatronageConceptModel.status == PatronageConceptStatus.APPROVED.value,
+                PersonPatronageConcept.status == ConceptAssignmentStatus.APPROVED.value,
+                Person.deleted_at.is_(None),
+                Person.status == PublicationStatus.PUBLISHED.value,
+            )
+            .limit(1)
+        )
+        result = await self.db.execute(statement)
+        return result.scalars().first()
+
+    @staticmethod
+    def _approved_patronage_concept_statement(*, search: str | None = None) -> Select[Any]:
+        """Build the grouped query for concepts visible after review."""
+        statement = (
+            select(
+                PatronageConceptModel.slug.label("slug"),
+                PatronageConceptModel.patronage_type.label("patronage_type"),
+                PatronageConceptModel.name_pl.label("name_pl"),
+                PatronageConceptModel.name_en.label("name_en"),
+                PatronageConceptModel.description.label("description"),
+                func.count(func.distinct(Person.id)).label("person_count"),
+            )
+            .join(
+                PersonPatronageConcept,
+                PersonPatronageConcept.concept_id == PatronageConceptModel.id,
+            )
+            .join(Person, Person.id == PersonPatronageConcept.person_id)
+            .where(
+                PatronageConceptModel.deleted_at.is_(None),
+                PatronageConceptModel.status == PatronageConceptStatus.APPROVED.value,
+                PersonPatronageConcept.status == ConceptAssignmentStatus.APPROVED.value,
+                Person.deleted_at.is_(None),
+                Person.status == PublicationStatus.PUBLISHED.value,
+            )
+            .group_by(
+                PatronageConceptModel.slug,
+                PatronageConceptModel.patronage_type,
+                PatronageConceptModel.name_pl,
+                PatronageConceptModel.name_en,
+                PatronageConceptModel.description,
+            )
+            .order_by(
+                PatronageConceptModel.name_pl.asc(),
+                PatronageConceptModel.patronage_type.asc(),
+            )
+        )
+        if search:
+            like_term = f"%{search.strip()}%"
+            alias_match = select(1).where(
+                ConceptAlias.concept_id == PatronageConceptModel.id,
+                ConceptAlias.deleted_at.is_(None),
+                or_(
+                    ConceptAlias.value.ilike(like_term),
+                    ConceptAlias.normalized_value.ilike(like_term),
+                ),
+            )
+            statement = statement.where(
+                or_(
+                    PatronageConceptModel.slug.ilike(like_term),
+                    PatronageConceptModel.patronage_type.ilike(like_term),
+                    PatronageConceptModel.name_pl.ilike(like_term),
+                    PatronageConceptModel.name_en.ilike(like_term),
+                    alias_match.exists(),
+                )
+            )
+        return statement
+
+    @staticmethod
+    def _legacy_patronage_concept_statement(*, search: str | None = None) -> Select[Any]:
+        """Build the grouped fallback query for source rows without review."""
         statement = (
             select(
                 Patronage.patronage_type.label("patronage_type"),
@@ -221,6 +456,7 @@ class TaxonomyService:
                 Patronage.deleted_at.is_(None),
                 Person.deleted_at.is_(None),
                 Person.status == PublicationStatus.PUBLISHED.value,
+                TaxonomyService._unreviewed_patronage_filter(),
             )
             .group_by(Patronage.patronage_type, Patronage.name_pl)
             .order_by(Patronage.name_pl.asc(), Patronage.patronage_type.asc())

@@ -773,7 +773,7 @@ PostgreSQL; brak nowego silnika.
 
 Nadmierna normalizacja i utrata lokalnej tradycji; dopuszczać kwalifikatory.
 
-**Stan implementacji (2026-10-27)**
+**Stan implementacji (2026-10-28)**
 
 Publiczna warstwa słownika korzysta z obecnych rekordów `Patronage` bez
 scalania po samej nazwie. `GET /taxonomy/patronages` grupuje wyłącznie po
@@ -793,8 +793,12 @@ obsługuje tworzenie, edycję, aliasy, przypisania z evidence reference oraz
 przejścia review; `0023_taxonomy_rbac` dodaje uprawnienia `taxonomy:*` dla
 panelu administracyjnego.
 
-Pozostają: publiczne wykorzystanie zatwierdzonych aliasów i przypisań oraz analogiczne tabele
-`AttributeConcept`/`PersonAttribute`.
+Publiczne odczyty preferują pojęcia ze statusem `approved` i przypisania ze
+statusem `approved`; liczba osób oraz strona pojęcia wynikają wtedy z relacji
+`PersonPatronageConcept`, a zatwierdzone aliasy są uwzględniane w wyszukiwaniu.
+Nieprzypisane rekordy `Patronage` pozostają widoczne przez dotychczasową
+ścieżkę źródłową, dzięki czemu migracja może przebiegać etapami bez ukrywania
+danych. Pozostają analogiczne tabele `AttributeConcept`/`PersonAttribute`.
 
 ## FEATURE-015 — Historyczne daty, męczeństwo i uznanie kultu
 
