@@ -33,6 +33,13 @@ import type {
   ReligiousOrderPayload,
 } from "@/lib/orders";
 import { useAuthStore } from "@/lib/store/auth";
+import type {
+  ConceptAlias,
+  ConceptAliasPayload,
+  PatronageConcept,
+  PatronageConceptPayload,
+  PatronageConceptReviewPayload,
+} from "@/lib/taxonomy";
 
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -357,7 +364,19 @@ export const taxonomyApi = {
   occupations: (params?: Record<string, unknown>) =>
     api.get("/taxonomy/occupations", { params }),
   patronages: (params?: Record<string, unknown>) =>
-    api.get("/taxonomy/patronages/management", { params }),
+    api.get<PatronageConcept[]>("/taxonomy/patronages/management", { params }),
+  createPatronage: (data: PatronageConceptPayload) =>
+    api.post<PatronageConcept>("/taxonomy/patronages", data),
+  updatePatronage: (id: string, data: Partial<PatronageConceptPayload>) =>
+    api.patch<PatronageConcept>(`/taxonomy/patronages/${id}`, data),
+  addPatronageAlias: (id: string, data: ConceptAliasPayload) =>
+    api.post<ConceptAlias>(`/taxonomy/patronages/${id}/aliases`, data),
+  submitPatronage: (id: string) =>
+    api.post<PatronageConcept>(`/taxonomy/patronages/${id}/submit`, {
+      target_status: "review",
+    } satisfies PatronageConceptReviewPayload),
+  reviewPatronage: (id: string, data: PatronageConceptReviewPayload) =>
+    api.post<PatronageConcept>(`/taxonomy/patronages/${id}/review`, data),
 };
 
 export const usersApi = {

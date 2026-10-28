@@ -1209,6 +1209,8 @@ export interface AdminDictionary {
       occupation: string;
       patronage: string;
       patronageType: string;
+      status: string;
+      actions: string;
       people: string;
       pope: string;
       pontificate: string;
@@ -1235,6 +1237,51 @@ export interface AdminDictionary {
       present: string;
       linkedPerson: string;
       dictionaryOnly: string;
+    };
+    conceptEditor: {
+      createTitle: string;
+      editTitle: string;
+      newAction: string;
+      description: string;
+      closeAriaLabel: string;
+      cancelAction: string;
+      createAction: string;
+      saveAction: string;
+      submitAction: string;
+      approveAction: string;
+      rejectAction: string;
+      fields: {
+        patronageType: string;
+        namePl: string;
+        nameEn: string;
+        description: string;
+        aliasValue: string;
+        aliasLanguage: string;
+        aliasKind: string;
+        aliasSource: string;
+        reviewNote: string;
+      };
+      placeholders: {
+        patronageType: string;
+        namePl: string;
+        nameEn: string;
+        description: string;
+        aliasValue: string;
+        aliasLanguage: string;
+        aliasSource: string;
+        reviewNote: string;
+      };
+      sections: {
+        identity: string;
+        aliases: string;
+        workflow: string;
+      };
+      aliasKinds: Record<"official" | "common" | "historical" | "local", string>;
+      addAliasAction: string;
+      noAliases: string;
+      statusPrefix: string;
+      assignmentsPrefix: string;
+      rejectionNoteRequired: string;
     };
   };
   geography: {

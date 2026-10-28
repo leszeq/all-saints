@@ -1,21 +1,31 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BadgeCheck,
   BriefcaseBusiness,
   Crown,
+  Edit3,
   HeartHandshake,
   Layers3,
+  Plus,
   RefreshCw,
   Search,
   Tags,
   UsersRound,
 } from "lucide-react";
-import { popesApi, taxonomyApi } from "@/lib/api";
+import { getApiErrorMessage, popesApi, taxonomyApi } from "@/lib/api";
+import { PatronageConceptDialog } from "@/components/taxonomy/patronage-concept-dialog";
 import { formatAdminDateTime } from "@/lib/i18n/format";
 import type { AdminDictionariesDictionary } from "@/lib/i18n/types";
+import type {
+  ConceptAliasPayload,
+  PatronageConcept,
+  PatronageConceptPayload,
+  PatronageConceptReviewPayload,
+} from "@/lib/taxonomy";
+import { useAuthStore } from "@/lib/store/auth";
 import { cn } from "@/lib/utils";
 
 type ApiRecord = Record<string, unknown>;
@@ -34,6 +44,23 @@ function matchesSearch(row: ApiRecord, fields: string[], search: string) {
   return fields.some((field) =>
     String(row[field] ?? "").toLowerCase().includes(normalized),
   );
+}
+
+function conceptStatusClass(status: unknown) {
+  if (status === "approved") return "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300";
+  if (status === "review") return "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300";
+  if (status === "rejected") return "bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300";
+  return "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300";
+}
+
+function conceptApiError(error: unknown) {
+  return getApiErrorMessage(error, {
+    unexpected: "Nie udało się zapisać pojęcia.",
+    invalidValue: "Nieprawidłowa wartość.",
+    invalidData: "Sprawdź dane formularza.",
+    network: "Nie udało się połączyć z API.",
+    httpError: (status) => `Operacja zakończyła się błędem (${status}).`,
+  });
 }
 
 function MetricCard({
@@ -81,8 +108,17 @@ interface DictionariesClientProps {
 }
 
 export function DictionariesClient({ copy, locale }: DictionariesClientProps) {
+  const queryClient = useQueryClient();
   const [activeView, setActiveView] = useState<DictionaryView>("categories");
   const [search, setSearch] = useState("");
+  const [conceptDialogOpen, setConceptDialogOpen] = useState(false);
+  const [editedConcept, setEditedConcept] = useState<PatronageConcept | null>(null);
+  const [conceptError, setConceptError] = useState<string | null>(null);
+  const hasPermission = useAuthStore((state) => state.hasPermission);
+  const canCreateConcept = hasPermission("taxonomy:create");
+  const canUpdateConcept = hasPermission("taxonomy:update");
+  const canSubmitConcept = hasPermission("taxonomy:submit");
+  const canReviewConcept = hasPermission("taxonomy:review");
 
   const categoriesQuery = useQuery({
     queryKey: ["taxonomy", "categories"],
@@ -126,9 +162,10 @@ export function DictionariesClient({ copy, locale }: DictionariesClientProps) {
     [occupationsQuery.data?.data],
   );
   const patronages = useMemo(
-    () => (patronagesQuery.data?.data ?? []) as ApiRecord[],
+    () => (patronagesQuery.data?.data ?? []) as unknown as ApiRecord[],
     [patronagesQuery.data?.data],
   );
+  const typedPatronages = patronages as unknown as PatronageConcept[];
   const popes = useMemo(
     () => (popesQuery.data?.data ?? []) as ApiRecord[],
     [popesQuery.data?.data],
@@ -171,6 +208,61 @@ export function DictionariesClient({ copy, locale }: DictionariesClientProps) {
     ]);
   };
 
+  const activeConcept = useMemo(
+    () => (editedConcept ? typedPatronages.find((concept) => concept.id === editedConcept.id) ?? editedConcept : null),
+    [editedConcept, typedPatronages],
+  );
+
+  const saveConceptMutation = useMutation({
+    mutationFn: (payload: PatronageConceptPayload) =>
+      editedConcept
+        ? taxonomyApi.updatePatronage(editedConcept.id, payload)
+        : taxonomyApi.createPatronage(payload),
+    onMutate: () => setConceptError(null),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["taxonomy", "patronages"] });
+      setConceptDialogOpen(false);
+      setEditedConcept(null);
+    },
+    onError: (error) => setConceptError(conceptApiError(error)),
+  });
+
+  const aliasMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: ConceptAliasPayload }) =>
+      taxonomyApi.addPatronageAlias(id, payload),
+    onMutate: () => setConceptError(null),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["taxonomy", "patronages"] });
+    },
+    onError: (error) => setConceptError(conceptApiError(error)),
+  });
+
+  const workflowMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: PatronageConceptReviewPayload }) =>
+      payload.target_status === "review"
+        ? taxonomyApi.submitPatronage(id)
+        : taxonomyApi.reviewPatronage(id, payload),
+    onMutate: () => setConceptError(null),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["taxonomy", "patronages"] });
+    },
+    onError: (error) => setConceptError(conceptApiError(error)),
+  });
+
+  const openCreateConcept = () => {
+    saveConceptMutation.reset();
+    setConceptError(null);
+    setEditedConcept(null);
+    setConceptDialogOpen(true);
+  };
+
+  const openEditConcept = (concept: PatronageConcept) => {
+    saveConceptMutation.reset();
+    setConceptError(null);
+    setEditedConcept(concept);
+    setConceptDialogOpen(true);
+  };
+
   return (
     <div className="mx-auto max-w-[1500px] space-y-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -181,13 +273,20 @@ export function DictionariesClient({ copy, locale }: DictionariesClientProps) {
             {copy.description}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={refreshAll}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border px-4 text-sm font-semibold hover:bg-accent"
-        >
-          <RefreshCw className="h-4 w-4" /> {copy.refreshAction}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={refreshAll}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border px-4 text-sm font-semibold hover:bg-accent"
+          >
+            <RefreshCw className="h-4 w-4" /> {copy.refreshAction}
+          </button>
+          {activeView === "patronages" && canCreateConcept && (
+            <button type="button" onClick={openCreateConcept} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
+              <Plus className="h-4 w-4" /> {copy.conceptEditor.newAction}
+            </button>
+          )}
+        </div>
       </header>
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6" aria-label={copy.summaryAriaLabel}>
@@ -408,21 +507,23 @@ export function DictionariesClient({ copy, locale }: DictionariesClientProps) {
           )}
 
           {activeView === "patronages" && (
-            <table className="min-w-[920px] w-full text-sm">
+            <table className="min-w-[1120px] w-full text-sm">
               <thead className="border-b border-border bg-muted/40 text-left text-xs font-semibold uppercase text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3">{copy.columns.patronage}</th>
                   <th className="px-4 py-3">{copy.columns.patronageType}</th>
                   <th className="px-4 py-3">{copy.columns.slug}</th>
+                  <th className="px-4 py-3">{copy.columns.status}</th>
                   <th className="px-4 py-3">{copy.columns.people}</th>
                   <th className="px-4 py-3">{copy.columns.description}</th>
+                  <th className="px-4 py-3">{copy.columns.actions}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {patronagesQuery.isLoading ? (
-                  <EmptyRow colSpan={5} label={copy.states.loadingPatronages} />
+                  <EmptyRow colSpan={7} label={copy.states.loadingPatronages} />
                 ) : activeRows.length === 0 ? (
-                  <EmptyRow colSpan={5} label={copy.states.emptyPatronages} />
+                  <EmptyRow colSpan={7} label={copy.states.emptyPatronages} />
                 ) : (
                   activeRows.map((patronage) => (
                     <tr key={String(patronage.slug)} className="hover:bg-muted/30">
@@ -432,8 +533,20 @@ export function DictionariesClient({ copy, locale }: DictionariesClientProps) {
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">{valueText(patronage.patronage_type)}</td>
                       <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{valueText(patronage.slug)}</td>
+                      <td className="px-4 py-3">
+                        <span className={cn("inline-flex rounded-full px-2 py-1 text-xs font-semibold", conceptStatusClass(patronage.status))}>
+                          {valueText(patronage.status)}
+                        </span>
+                      </td>
                       <td className="px-4 py-3 text-muted-foreground">{valueText(patronage.person_count, "0")}</td>
                       <td className="px-4 py-3 text-muted-foreground">{valueText(patronage.description)}</td>
+                      <td className="px-4 py-3">
+                        {canUpdateConcept && (
+                          <button type="button" onClick={() => openEditConcept(patronage as unknown as PatronageConcept)} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-2.5 text-xs font-semibold hover:bg-muted" aria-label={`${copy.columns.actions}: ${valueText(patronage.name_pl)}`}>
+                            <Edit3 className="h-3.5 w-3.5" /> {copy.conceptEditor.editTitle}
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))
                 )}
@@ -490,6 +603,31 @@ export function DictionariesClient({ copy, locale }: DictionariesClientProps) {
           )}
         </div>
       </section>
+
+      <PatronageConceptDialog
+        key={`${conceptDialogOpen ? "open" : "closed"}-${activeConcept?.id ?? "new"}`}
+        open={conceptDialogOpen}
+        concept={activeConcept}
+        pending={saveConceptMutation.isPending}
+        aliasPending={aliasMutation.isPending}
+        workflowPending={workflowMutation.isPending}
+        error={conceptError}
+        copy={copy.conceptEditor}
+        canCreateAlias={canCreateConcept}
+        canSubmit={canSubmitConcept}
+        canReview={canReviewConcept}
+        onOpenChange={(open) => {
+          setConceptDialogOpen(open);
+          if (!open) setEditedConcept(null);
+        }}
+        onSubmit={(payload) => saveConceptMutation.mutate(payload)}
+        onAddAlias={(payload) => {
+          if (activeConcept) aliasMutation.mutate({ id: activeConcept.id, payload });
+        }}
+        onTransition={(payload) => {
+          if (activeConcept) workflowMutation.mutate({ id: activeConcept.id, payload });
+        }}
+      />
 
       {isLoading && (
         <p className="text-xs text-muted-foreground">{copy.states.partialRefresh}</p>

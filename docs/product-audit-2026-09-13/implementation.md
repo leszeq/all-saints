@@ -782,7 +782,10 @@ opublikowanych osób, a `GET /taxonomy/patronages/{slug}/persons` ogranicza
 relację do opublikowanych profili. Strona `/patronaty/[slug]` pokazuje
 pojęcie i prowadzi do profili osób; sekcja patronatów na profilu linkuje do
 tych stron. Panel administracyjny `/dashboard/dictionaries` ma osobny widok
-patronatów z wyszukiwaniem, slugiem i liczbą powiązanych profili. Migracja
+patronatów z wyszukiwaniem, slugiem i liczbą powiązanych profili. Edytor
+pojęcia pozwala tworzyć i edytować rekord, dodawać aliasy oraz przekazywać
+pojęcie do review albo je zatwierdzać/odrzucać zgodnie z uprawnieniami.
+Migracja
 `0022_patronage_concepts` tworzy trwałe pojęcia, aliasy i przypisania oraz
 backfilluje każdy aktywny rekord `Patronage` do statusów `draft`/`pending`,
 z zachowaniem `source_patronage_id`, typu i oryginalnej etykiety. `ConceptService`
@@ -790,8 +793,7 @@ obsługuje tworzenie, edycję, aliasy, przypisania z evidence reference oraz
 przejścia review; `0023_taxonomy_rbac` dodaje uprawnienia `taxonomy:*` dla
 panelu administracyjnego.
 
-Pozostają: formularze zapisu i kolejka review w panelu admina, publiczne
-wykorzystanie zatwierdzonych aliasów i przypisań oraz analogiczne tabele
+Pozostają: publiczne wykorzystanie zatwierdzonych aliasów i przypisań oraz analogiczne tabele
 `AttributeConcept`/`PersonAttribute`.
 
 ## FEATURE-015 — Historyczne daty, męczeństwo i uznanie kultu
