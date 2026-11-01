@@ -17,7 +17,7 @@ import uuid
 from datetime import UTC, datetime
 
 from loguru import logger
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.config import settings
@@ -40,7 +40,13 @@ from src.domain.identity.rbac import (
     ROLE_PERMISSIONS,
     split_permission_key,
 )
-from src.domain.liturgy.models import LiturgicalCalendar
+from src.domain.liturgy.models import (
+    Feast,
+    FeastRank,
+    LiturgicalCalendar,
+    LiturgicalObservance,
+    ObservanceType,
+)
 from src.domain.sources import models as source_models  # noqa: F401
 from src.infrastructure.db.session import enable_pgvector, get_engine
 
@@ -74,6 +80,23 @@ LITURGICAL_CALENDARS: list[tuple[str, str, str, str]] = [
     ("roman_jesuit", "Kalendarz Jezuicki", "roman", "religious"),
     ("roman_benedictine", "Kalendarz Benedyktyński", "roman", "religious"),
 ]
+
+ALL_SAINTS_OBSERVANCE = {
+    "slug": "wszystkich-swietych",
+    "title_pl": "Wszystkich Świętych",
+    "title_en": "All Saints",
+    "latin_title": "Omnium Sanctorum",
+    "observance_type": ObservanceType.CHURCH.value,
+    "summary_pl": (
+        "Uroczystość Wszystkich Świętych przypada 1 listopada i upamiętnia " "wszystkich świętych."
+    ),
+    "description_pl": (
+        "Kościół oddaje cześć wszystkim świętym, zarówno znanym z imienia, "
+        "jak i tym, których świętość pozostaje znana tylko Bogu."
+    ),
+    "iconographic_attributes": "wspólnota świętych; chwała nieba; światło",
+    "is_featured": True,
+}
 
 
 # ==============================================================================
@@ -358,6 +381,85 @@ async def seed_liturgical_calendars(session: AsyncSession) -> None:
     logger.info(f"✓ Created {len(LITURGICAL_CALENDARS)} liturgical calendars")
 
 
+async def seed_all_saints_observance(session: AsyncSession) -> None:
+    """Seed the fixed All Saints solemnity in universal and Polish calendars."""
+    logger.info("Seeding the All Saints observance...")
+    observance = (
+        await session.execute(
+            select(LiturgicalObservance).where(
+                LiturgicalObservance.slug == ALL_SAINTS_OBSERVANCE["slug"]
+            )
+        )
+    ).scalar_one_or_none()
+    if observance is None:
+        observance = LiturgicalObservance(**ALL_SAINTS_OBSERVANCE)
+        session.add(observance)
+        await session.flush()
+    else:
+        for field, value in ALL_SAINTS_OBSERVANCE.items():
+            setattr(observance, field, value)
+        observance.deleted_at = None
+
+    calendars = (
+        await session.execute(
+            select(LiturgicalCalendar).where(
+                LiturgicalCalendar.code.in_(("roman_universal", "roman_pl")),
+                LiturgicalCalendar.deleted_at.is_(None),
+                LiturgicalCalendar.is_active.is_(True),
+            )
+        )
+    ).scalars()
+    calendar_list = list(calendars)
+    for calendar in calendar_list:
+        await session.execute(
+            update(Feast)
+            .where(
+                Feast.calendar_id == calendar.id,
+                Feast.month == 11,
+                Feast.day == 1,
+                Feast.deleted_at.is_(None),
+            )
+            .values(is_primary=False)
+        )
+        entry = (
+            await session.execute(
+                select(Feast).where(
+                    Feast.observance_id == observance.id,
+                    Feast.calendar_id == calendar.id,
+                    Feast.month == 11,
+                    Feast.day == 1,
+                    Feast.deleted_at.is_(None),
+                )
+            )
+        ).scalar_one_or_none()
+        values = {
+            "month": 11,
+            "day": 1,
+            "day_of_year": 305,
+            "is_moveable": False,
+            "rank": FeastRank.SOLEMNITY.value,
+            "liturgical_color": "white",
+            "is_primary": True,
+            "is_suppressed": False,
+            "source_title": "Kalendarz liturgiczny Kościoła rzymskiego",
+            "notes": "Uroczystość Wszystkich Świętych — 1 listopada.",
+        }
+        if entry is None:
+            session.add(
+                Feast(
+                    observance_id=observance.id,
+                    calendar_id=calendar.id,
+                    **values,
+                )
+            )
+        else:
+            for field, value in values.items():
+                setattr(entry, field, value)
+
+    await session.flush()
+    logger.info("✓ Seeded the All Saints observance in {} calendars", len(calendar_list))
+
+
 # ==============================================================================
 # MAIN
 # ==============================================================================
@@ -384,6 +486,7 @@ async def run_seed() -> None:
             await seed_demo_users(session, role_map)
             await seed_states_of_life(session)
             await seed_liturgical_calendars(session)
+            await seed_all_saints_observance(session)
 
             await session.commit()
             logger.info("✓ Database seed completed successfully")

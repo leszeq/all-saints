@@ -32,6 +32,7 @@ from src.domain.liturgy.models import (
     LiturgicalObservance,
     ObservanceType,
 )
+from src.infrastructure.db.seed import seed_all_saints_observance
 
 
 async def _seed_catalogue(
@@ -72,6 +73,45 @@ async def _seed_catalogue(
     db_session.add_all([*calendars.values(), published, draft])
     await db_session.commit()
     return calendars, published, draft
+
+
+@pytest.mark.asyncio
+async def test_all_saints_observance_is_seeded_idempotently_in_public_calendars(
+    db_session: AsyncSession,
+) -> None:
+    calendars, _, _ = await _seed_catalogue(db_session)
+
+    await seed_all_saints_observance(db_session)
+    await db_session.commit()
+    await seed_all_saints_observance(db_session)
+    await db_session.commit()
+
+    observance = await db_session.scalar(
+        select(LiturgicalObservance).where(LiturgicalObservance.slug == "wszystkich-swietych")
+    )
+    assert observance is not None
+    entries = list(
+        (await db_session.execute(select(Feast).where(Feast.observance_id == observance.id)))
+        .scalars()
+        .all()
+    )
+    assert len(entries) == 2
+    assert {entry.calendar_id for entry in entries} == {
+        calendars["roman_universal"].id,
+        calendars["roman_pl"].id,
+    }
+    assert {(entry.month, entry.day) for entry in entries} == {(11, 1)}
+    assert {entry.rank for entry in entries} == {FeastRank.SOLEMNITY.value}
+    assert all(entry.is_primary for entry in entries)
+
+    _, day_entries = await CalendarService(db_session).get_day(
+        date(2026, 11, 1),
+        include_martyrology=False,
+    )
+    assert len(day_entries) == 1
+    assert day_entries[0].observance_id == observance.id
+    assert day_entries[0].observance is not None
+    assert day_entries[0].observance.title_pl == "Wszystkich Świętych"
 
 
 @pytest.mark.asyncio

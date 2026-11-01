@@ -552,6 +552,14 @@ Cache per calendar/date i wersja danych; bez silnika reguł w tym przyroście.
 
 Odbiorca może nadal traktować listę jako ordo; test z użytkownikiem liturgicznym.
 
+**Stan implementacji (2026-11-01)**
+
+Dodano nieosobowy obchód `wszystkich-swietych` jako Uroczystość
+Wszystkich Świętych przypadającą 1 listopada. Migracja `0024` oraz seed
+utrzymują wpis w Ogólnym Kalendarzu Rzymskim i Kalendarzu Polskim, z rangą
+`solemnity`, białym kolorem liturgicznym i jednym głównym wpisem po scaleniu
+tych kalendarzy w publicznym widoku dnia.
+
 ## FEATURE-011 — Budżety wydajności, paginacja i cache
 
 **Grupa:** Platform. **Faza:** 1. **Priorytet:** P1. **Priority Score:** 39.89.
