@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, BookOpen, CalendarDays, Church, Sparkles } from "lucide-react";
@@ -18,14 +19,14 @@ interface PageProps {
 }
 
 
-async function loadObservance(slug: string): Promise<LiturgicalObservance | null> {
+const loadObservance = cache(async (slug: string): Promise<LiturgicalObservance | null> => {
   try {
     return (await fetchLiturgicalObservance(slug)) as LiturgicalObservance;
   } catch (error) {
     if (isApiNotFound(error)) return null;
     throw error;
   }
-}
+});
 
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {

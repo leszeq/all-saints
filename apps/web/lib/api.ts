@@ -1,6 +1,9 @@
 import axios from "axios";
 import { DEFAULT_WEB_UI_LOCALE, type WebUiLocale } from "@/lib/i18n/config";
 
+const PUBLIC_READ_TIMEOUT_MS = 10_000;
+const PUBLIC_READ_RETRY_DELAY_MS = 150;
+
 const API_BASE_URL =
   typeof window === "undefined"
     ? process.env.INTERNAL_API_URL ||
@@ -26,10 +29,24 @@ const serializeParams = (params: Record<string, unknown>) => {
 export const publicApi = axios.create({
   baseURL: `${API_BASE_URL}/api/v1`,
   headers: { "Content-Type": "application/json" },
+  timeout: PUBLIC_READ_TIMEOUT_MS,
   paramsSerializer: {
     serialize: serializeParams,
   },
 });
+
+function isTransientPublicReadError(error: unknown): boolean {
+  if (!axios.isAxiosError(error) || error.response || axios.isCancel(error)) return false;
+  return new Set(["ECONNABORTED", "ECONNRESET", "ETIMEDOUT", "ERR_NETWORK"]).has(
+    error.code ?? "",
+  );
+}
+
+async function waitForPublicReadRetry(attempt: number): Promise<void> {
+  await new Promise((resolve) =>
+    setTimeout(resolve, PUBLIC_READ_RETRY_DELAY_MS * 2 ** attempt),
+  );
+}
 
 export function isApiNotFound(error: unknown): boolean {
   return axios.isAxiosError(error) && error.response?.status === 404;
@@ -150,6 +167,14 @@ export const fetchLiturgicalCalendars = async () => {
 };
 
 export const fetchLiturgicalObservance = async (slug: string) => {
-  const { data } = await publicApi.get(`/calendar/observances/by-slug/${slug}`);
-  return data;
+  const path = `/calendar/observances/by-slug/${encodeURIComponent(slug)}`;
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      const { data } = await publicApi.get(path);
+      return data;
+    } catch (error) {
+      if (attempt >= 1 || !isTransientPublicReadError(error)) throw error;
+      await waitForPublicReadRetry(attempt);
+    }
+  }
 };
