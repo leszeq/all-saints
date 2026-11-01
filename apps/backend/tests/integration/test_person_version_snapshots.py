@@ -7,6 +7,7 @@ import uuid
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.application.services.person_query_service import PersonQueryService
 from src.application.services.person_snapshot import (
     SNAPSHOT_SCHEMA_VERSION,
     serialize_person_snapshot,
@@ -21,6 +22,7 @@ from src.domain.hagiography.models import (
     PersonName,
     PersonOrder,
     PersonType,
+    PersonVersion,
     PublicationStatus,
 )
 from src.domain.sources.models import Bibliography, Image, PersonSource
@@ -122,3 +124,41 @@ async def test_snapshot_contains_editable_person_relations(db_session: AsyncSess
     ]
     assert snapshot["beatification"]["beatification_year"] == 2001
     assert snapshot["canonization"]["canonization_year"] == 2005
+
+
+@pytest.mark.asyncio
+async def test_person_version_history_is_bounded_and_keeps_total_count(
+    db_session: AsyncSession,
+) -> None:
+    person = Person(
+        id=uuid.uuid4(),
+        slug="sw-wersje-paginacja",
+        canonical_name="Św. Wersje Paginacja",
+        person_type=PersonType.SAINT.value,
+        status=PublicationStatus.DRAFT.value,
+        gender=Gender.UNKNOWN.value,
+    )
+    db_session.add(person)
+    await db_session.flush()
+    db_session.add_all(
+        [
+            PersonVersion(
+                person_id=person.id,
+                version_number=version,
+                snapshot={"version": version},
+            )
+            for version in range(1, 6)
+        ]
+    )
+    await db_session.commit()
+
+    page = await PersonQueryService(db_session).get_person_versions_page(
+        person.id,
+        page=2,
+        per_page=2,
+    )
+
+    assert page.total == 5
+    assert page.page == 2
+    assert page.per_page == 2
+    assert [version.version_number for version in page.versions] == [3, 2]

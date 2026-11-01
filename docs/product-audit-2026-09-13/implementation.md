@@ -636,6 +636,10 @@ zwraca maksymalnie jedną stronę źródeł oraz niezależne agregaty całego zb
 (`total`, `primary`, `with_online_link`). Publiczny profil udostępnia nawigację
 między stronami, zachowując dotychczasowy kontrakt pojedynczego źródła.
 
+Historia wersji osoby w panelu administracyjnym również jest pobierana stronami:
+`GET /persons/{id}/versions` zwraca maksymalnie 100 snapshotów wraz z metadanymi
+strony, a panel udostępnia nawigację historii bez ładowania całego audytu.
+
 ## FEATURE-012 — Dostępność i mobilne wykonanie zadań
 
 **Grupa:** UX. **Faza:** 1. **Priorytet:** P1. **Priority Score:** 49.03.

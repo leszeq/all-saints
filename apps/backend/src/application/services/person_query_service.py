@@ -8,7 +8,7 @@ import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import cast
+from typing import NamedTuple, cast
 
 from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -53,6 +53,15 @@ class PublicIndexPage:
 
     items: list[PublicIndexItem]
     next_cursor: str | None
+
+
+class PersonVersionsPage(NamedTuple):
+    """Bounded version history for the editorial person view."""
+
+    versions: list[PersonVersion]
+    total: int
+    page: int
+    per_page: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -790,12 +799,44 @@ class PersonQueryService:
         rows = cast(Sequence[tuple[uuid.UUID, User]], result.all())
         return dict(rows)
 
-    async def get_person_versions(self, person_id: uuid.UUID) -> list[PersonVersion]:
-        """Fetch version history for a person."""
+    async def get_person_versions_page(
+        self,
+        person_id: uuid.UUID,
+        *,
+        page: int = 1,
+        per_page: int = 20,
+    ) -> PersonVersionsPage:
+        """Fetch one bounded page of version history for a person."""
+        if page < 1:
+            raise ValueError("Numer strony musi być większy lub równy 1")
+        if per_page < 1:
+            raise ValueError("Rozmiar strony musi być większy lub równy 1")
+
+        total = int(
+            await self.db.scalar(
+                select(func.count())
+                .select_from(PersonVersion)
+                .where(PersonVersion.person_id == person_id)
+            )
+            or 0
+        )
+        pages = max(1, -(-total // per_page))
+        page = min(page, pages)
         statement = (
             select(PersonVersion)
             .where(PersonVersion.person_id == person_id)
             .order_by(PersonVersion.version_number.desc())
+            .offset((page - 1) * per_page)
+            .limit(per_page)
         )
         result = await self.db.execute(statement)
+        return PersonVersionsPage(list(result.scalars().all()), total, page, per_page)
+
+    async def get_person_versions(self, person_id: uuid.UUID) -> list[PersonVersion]:
+        """Fetch the complete version history for internal compatibility callers."""
+        result = await self.db.execute(
+            select(PersonVersion)
+            .where(PersonVersion.person_id == person_id)
+            .order_by(PersonVersion.version_number.desc())
+        )
         return list(result.scalars().all())

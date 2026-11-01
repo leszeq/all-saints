@@ -1976,6 +1976,9 @@ const dictionary = {
       titlePrefix: "Historia zmian",
       empty: "Brak zarejestrowanych wersji.",
       defaultChange: "Modyfikacja danych",
+      previousPage: "Poprzednia strona",
+      nextPage: "Następna strona",
+      pageIndicator: "Strona",
     },
   },
 } satisfies AdminDictionary;

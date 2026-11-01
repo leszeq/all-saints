@@ -297,3 +297,13 @@ class PersonVersionSchema(BaseModel):
     change_summary: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PersonVersionListResponseSchema(BaseModel):
+    """Paginated version history response for the editorial panel."""
+
+    items: list[PersonVersionSchema]
+    total: int
+    page: int
+    per_page: int
+    pages: int

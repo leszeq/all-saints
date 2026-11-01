@@ -216,7 +216,8 @@ export const personsApi = {
   update: (id: string, data: unknown) => api.patch(`/persons/${id}`, data),
   delete: (id: string) => api.delete(`/persons/${id}`),
   restore: (id: string) => api.post(`/persons/${id}/restore`),
-  versions: (id: string) => api.get(`/persons/${id}/versions`),
+  versions: (id: string, params?: { page?: number; per_page?: number }) =>
+    api.get(`/persons/${id}/versions`, { params }),
   exportProfile: (id: string) => api.get(`/persons/admin/${id}/export`),
   validateProfileImport: (data: unknown, params?: { overwrite_person_id: string; expected_version: number }) =>
     api.post("/persons/import/validate", data, { params }),

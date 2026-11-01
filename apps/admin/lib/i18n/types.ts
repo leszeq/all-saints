@@ -1865,6 +1865,9 @@ export interface AdminDictionary {
       titlePrefix: string;
       empty: string;
       defaultChange: string;
+      previousPage: string;
+      nextPage: string;
+      pageIndicator: string;
     };
   };
 }

@@ -85,6 +85,8 @@ export function PersonDetailClient({
   const canExport = useAuthStore((state) => state.hasPermission("export:read"));
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [versionsPage, setVersionsPage] = useState(1);
+  const versionsPerPage = 20;
 
   const { data: personData, isLoading } = useQuery({
     queryKey: ["person", id],
@@ -92,8 +94,8 @@ export function PersonDetailClient({
   });
 
   const { data: versionsData } = useQuery({
-    queryKey: ["person-versions", id],
-    queryFn: () => personsApi.versions(id),
+    queryKey: ["person-versions", id, versionsPage],
+    queryFn: () => personsApi.versions(id, { page: versionsPage, per_page: versionsPerPage }),
   });
 
   const { data: sourcesData } = useQuery({
@@ -107,7 +109,14 @@ export function PersonDetailClient({
   });
 
   const person = personData?.data;
-  const versions = versionsData?.data ?? [];
+  const versionsPayload = versionsData?.data;
+  const versions = Array.isArray(versionsPayload) ? versionsPayload : versionsPayload?.items ?? [];
+  const versionPage = Number(
+    Array.isArray(versionsPayload) ? versionsPage : versionsPayload?.page ?? versionsPage,
+  );
+  const versionPages = Number(
+    Array.isArray(versionsPayload) ? 1 : versionsPayload?.pages ?? 1,
+  );
   const personSources = sourcesData?.data ?? [];
   const feastEntries = (feastData?.data ?? []) as PersonFeastEntry[];
   const primaryFeast =
@@ -486,6 +495,29 @@ export function PersonDetailClient({
                   </li>
                 ))}
               </ol>
+            )}
+            {versionPages > 1 && (
+              <nav aria-label={copy.history.titlePrefix} className="mt-5 flex items-center justify-between gap-3 border-t border-border pt-4 text-xs">
+                {versionPage > 1 ? (
+                  <button
+                    type="button"
+                    onClick={() => setVersionsPage(versionPage - 1)}
+                    className="font-medium text-primary underline underline-offset-4"
+                  >
+                    ← {copy.history.previousPage}
+                  </button>
+                ) : <span />}
+                <span className="text-muted-foreground">{copy.history.pageIndicator} {versionPage} / {versionPages}</span>
+                {versionPage < versionPages ? (
+                  <button
+                    type="button"
+                    onClick={() => setVersionsPage(versionPage + 1)}
+                    className="font-medium text-primary underline underline-offset-4"
+                  >
+                    {copy.history.nextPage} →
+                  </button>
+                ) : <span />}
+              </nav>
             )}
           </div>
         </div>
