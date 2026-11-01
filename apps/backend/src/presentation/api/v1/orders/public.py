@@ -45,17 +45,29 @@ async def list_orders(
 )
 async def get_order(
     id_or_slug: str,
+    members_page: int = Query(1, ge=1, description="Numer strony członków"),
+    members_per_page: int = Query(24, ge=1, le=100, description="Liczba członków na stronie"),
     db: AsyncSession = Depends(get_db_session),
 ) -> ReligiousOrderDetailSchema:
-    """Return history, mission, provenance, and linked catalogue people."""
+    """Return history, mission, provenance, and one bounded page of catalogue people."""
     try:
-        order, memberships = await OrderQueryService(db).get_order(id_or_slug)
+        page = await OrderQueryService(db).get_order_members_page(
+            id_or_slug,
+            page=members_page,
+            per_page=members_per_page,
+        )
     except OrderNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    base = order_response(order, len(memberships))
+    pages = max(1, -(-page.total // page.per_page))
+    base = order_response(page.order, page.total)
     return ReligiousOrderDetailSchema(
         **base.model_dump(),
         members=[
-            ReligiousOrderMembershipSchema.model_validate(membership) for membership in memberships
+            ReligiousOrderMembershipSchema.model_validate(membership)
+            for membership in page.memberships
         ],
+        members_total=page.total,
+        members_page=page.page,
+        members_per_page=page.per_page,
+        members_pages=pages,
     )

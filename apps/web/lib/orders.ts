@@ -46,6 +46,10 @@ export interface OrderMember {
 
 export interface ReligiousOrderDetail extends ReligiousOrder {
   members: OrderMember[];
+  members_total: number;
+  members_page: number;
+  members_per_page: number;
+  members_pages: number;
 }
 
 export function orderMonogram(order: Pick<ReligiousOrder, "abbreviation" | "name">): string {

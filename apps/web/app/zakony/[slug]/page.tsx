@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import {
@@ -28,7 +29,22 @@ export const revalidate = 300;
 
 interface PageProps {
   params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ members_page?: string | string[] }>;
 }
+
+const MEMBERS_PER_PAGE = 24;
+
+function parseMembersPage(value?: string | string[]): number {
+  const candidate = Number(Array.isArray(value) ? value[0] : value);
+  return Number.isInteger(candidate) && candidate > 0 ? candidate : 1;
+}
+
+const loadOrder = cache(async (slug: string, membersPage: number): Promise<ReligiousOrderDetail> => {
+  return (await fetchOrderDetail(slug, {
+    members_page: membersPage,
+    members_per_page: MEMBERS_PER_PAGE,
+  })) as ReligiousOrderDetail;
+});
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const [{ slug }, dictionary] = await Promise.all([
@@ -37,7 +53,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   ]);
   const copy = dictionary.orderProfile;
   try {
-    const order = (await fetchOrderDetail(slug)) as ReligiousOrderDetail;
+    const order = await loadOrder(slug, 1);
     return {
       title: `${order.name}${copy.metadataTitleSuffix}`,
       alternates: { canonical: `/zakony/${encodeURIComponent(order.slug)}` },
@@ -60,17 +76,21 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 }
 
-export default async function OrderDetailPage({ params }: PageProps) {
-  const [{ slug }, dictionary] = await Promise.all([
+export default async function OrderDetailPage({ params, searchParams }: PageProps) {
+  const [{ slug }, dictionary, query] = await Promise.all([
     params,
     getWebDictionary(DEFAULT_WEB_UI_LOCALE),
+    // Next provides searchParams for routed requests; the fallback keeps this
+    // page compatible with direct server calls and metadata generation.
+    searchParams ?? Promise.resolve({} as { members_page?: string | string[] }),
   ]);
   const domain = dictionary.domain;
   const labels = domain.religiousCommunities;
   const copy = dictionary.orderProfile;
+  const membersPage = parseMembersPage(query.members_page);
   let order: ReligiousOrderDetail;
   try {
-    order = (await fetchOrderDetail(slug)) as ReligiousOrderDetail;
+    order = await loadOrder(slug, membersPage);
   } catch (error) {
     if (isApiNotFound(error)) notFound();
     throw error;
@@ -206,6 +226,29 @@ export default async function OrderDetailPage({ params }: PageProps) {
             </div>
           ) : (
             <div className="mt-8 rounded-2xl border border-dashed border-[#ded8cd] bg-white p-10 text-center text-sm text-stone-500">{copy.membersEmpty}</div>
+          )}
+          {order.members_pages > 1 && (
+            <nav className="mt-8 flex flex-wrap items-center justify-center gap-3 text-sm" aria-label={copy.membersTitle}>
+              {order.members_page > 1 && (
+                <Link
+                  href={`/zakony/${encodeURIComponent(order.slug)}?members_page=${order.members_page - 1}`}
+                  className="rounded-lg border border-[#ded8cd] bg-white px-4 py-2 font-semibold text-burgundy-700 hover:border-gold-400"
+                >
+                  {copy.membersPrevious}
+                </Link>
+              )}
+              <span className="px-2 text-stone-500">
+                {copy.membersPage} {order.members_page} / {order.members_pages}
+              </span>
+              {order.members_page < order.members_pages && (
+                <Link
+                  href={`/zakony/${encodeURIComponent(order.slug)}?members_page=${order.members_page + 1}`}
+                  className="rounded-lg border border-[#ded8cd] bg-white px-4 py-2 font-semibold text-burgundy-700 hover:border-gold-400"
+                >
+                  {copy.membersNext}
+                </Link>
+              )}
+            </nav>
           )}
         </div>
       </section>

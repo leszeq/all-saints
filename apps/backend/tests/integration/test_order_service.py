@@ -170,6 +170,11 @@ async def test_order_memberships_hide_drafts_and_reject_duplicates(
         CreateReligiousOrderCommand(slug="wspolnota-test", name="Wspólnota Testowa")
     )
     published = await _person(db_session, "sw-opublikowany", PublicationStatus.PUBLISHED)
+    published_two = await _person(
+        db_session,
+        "sw-opublikowany-drugi",
+        PublicationStatus.PUBLISHED,
+    )
     draft = await _person(db_session, "szkic-czlonka", PublicationStatus.DRAFT)
 
     with pytest.raises(PublishedContentChangeError, match="persons:publish"):
@@ -195,6 +200,14 @@ async def test_order_memberships_hide_drafts_and_reject_duplicates(
             membership_type=OrderMembershipType.MEMBER,
         ),
     )
+    await service.add_membership(
+        order.slug,
+        AddReligiousOrderMembershipCommand(
+            person_id=published_two.id,
+            membership_type=OrderMembershipType.MEMBER,
+        ),
+        allow_published_update=True,
+    )
     await db_session.refresh(published)
     membership_version = (
         await db_session.execute(
@@ -207,11 +220,22 @@ async def test_order_memberships_hide_drafts_and_reject_duplicates(
     assert membership_version.snapshot["orders"][0]["order_id"] == str(order.id)
 
     rows = await service.list_orders()
-    assert rows[0][1] == 1
+    assert rows[0][1] == 2
     _, public_members = await service.get_order(order.slug)
-    assert [membership.person_id for membership in public_members] == [published.id]
+    assert {membership.person_id for membership in public_members} == {
+        published.id,
+        published_two.id,
+    }
     _, all_members = await service.get_order(order.slug, public_members_only=False)
-    assert {membership.person_id for membership in all_members} == {published.id, draft.id}
+    assert {membership.person_id for membership in all_members} == {
+        published.id,
+        published_two.id,
+        draft.id,
+    }
+    page = await service.get_order_members_page(order.slug, page=2, per_page=1)
+    assert page.total == 2
+    assert len(page.memberships) == 1
+    assert page.memberships[0].person_id in {published.id, published_two.id}
     assert published_membership.person.canonical_name == published.canonical_name
 
     with pytest.raises(OrderConflictError):

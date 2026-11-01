@@ -615,6 +615,15 @@ HTTP/CDN cache; oddzielny cache Redis od brokera gdy trwałość jobów wymagana
 
 Przedwczesna optymalizacja; cache leak między admin i public.
 
+**Stan implementacji (2026-11-01, etap częściowy)**
+
+Publiczny profil wspólnoty nie pobiera już całej listy członków w jednym
+payloadzie. Endpoint `GET /orders/{id_or_slug}` przyjmuje `members_page` i
+`members_per_page` (maksymalnie 100), zwraca stabilne metadane paginacji oraz
+utrzymuje sortowanie po założycielu, roku urodzenia i nazwie. Portal pokazuje
+24 osoby na stronę i udostępnia nawigację między stronami. Pozostają do
+opracowania analogiczne limity dla innych szerokich kolekcji oraz pomiar SLO.
+
 ## FEATURE-012 — Dostępność i mobilne wykonanie zadań
 
 **Grupa:** UX. **Faza:** 1. **Priorytet:** P1. **Priority Score:** 49.03.

@@ -81,6 +81,10 @@ class ReligiousOrderDetailSchema(ReligiousOrderSchema):
     """Complete public order profile with linked people."""
 
     members: list[ReligiousOrderMembershipSchema] = Field(default_factory=list)
+    members_total: int = 0
+    members_page: int = 1
+    members_per_page: int = 24
+    members_pages: int = 1
 
 
 class ReligiousOrderMembershipCreateSchema(AddReligiousOrderMembershipCommand):

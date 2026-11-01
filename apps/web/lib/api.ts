@@ -109,8 +109,11 @@ export const fetchOrders = async (params?: Record<string, unknown>) => {
   return data;
 };
 
-export const fetchOrderDetail = async (idOrSlug: string) => {
-  const { data } = await publicApi.get(`/orders/${idOrSlug}`);
+export const fetchOrderDetail = async (
+  idOrSlug: string,
+  params?: { members_page?: number; members_per_page?: number },
+) => {
+  const { data } = await publicApi.get(`/orders/${encodeURIComponent(idOrSlug)}`, { params });
   return data;
 };
 

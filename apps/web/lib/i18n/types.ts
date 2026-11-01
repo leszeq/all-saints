@@ -355,6 +355,9 @@ export interface WebDictionary {
     memberProfileFallback: string;
     fullProfile: string;
     membersEmpty: string;
+    membersPrevious: string;
+    membersNext: string;
+    membersPage: string;
     relatedKicker: string;
     relatedTitle: string;
     viewProfile: string;

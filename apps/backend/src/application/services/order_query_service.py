@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from typing import NamedTuple
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +15,16 @@ from src.domain.hagiography.models import Person, PersonOrder, PublicationStatus
 
 class OrderNotFoundError(ValueError):
     """Raised when an active religious community cannot be found."""
+
+
+class OrderMembersPage(NamedTuple):
+    """Typed result for a bounded public member listing."""
+
+    order: ReligiousOrder
+    memberships: list[PersonOrder]
+    total: int
+    page: int
+    per_page: int
 
 
 class OrderQueryService:
@@ -122,3 +133,66 @@ class OrderQueryService:
             )
         memberships = list((await self.db.execute(memberships_query)).scalars().unique().all())
         return order, memberships
+
+    async def get_order_members_page(
+        self,
+        identifier: str,
+        *,
+        page: int = 1,
+        per_page: int = 24,
+        public_members_only: bool = True,
+        include_suppressed: bool = False,
+    ) -> OrderMembersPage:
+        """Fetch one bounded page of members and the matching total count."""
+        if page < 1:
+            raise ValueError("Numer strony musi być większy lub równy 1")
+        if per_page < 1:
+            raise ValueError("Rozmiar strony musi być większy lub równy 1")
+
+        query = select(ReligiousOrder).where(
+            ReligiousOrder.deleted_at.is_(None),
+        )
+        if not include_suppressed:
+            query = query.where(ReligiousOrder.is_suppressed.is_(False))
+        try:
+            query = query.where(ReligiousOrder.id == uuid.UUID(identifier))
+        except ValueError:
+            query = query.where(ReligiousOrder.slug == identifier)
+
+        order = (await self.db.execute(query)).scalar_one_or_none()
+        if order is None:
+            raise OrderNotFoundError("Wspólnota nie istnieje")
+
+        membership_filters = [
+            PersonOrder.order_id == order.id,
+            Person.deleted_at.is_(None),
+        ]
+        if public_members_only:
+            membership_filters.append(Person.status == PublicationStatus.PUBLISHED.value)
+
+        total = int(
+            await self.db.scalar(
+                select(func.count())
+                .select_from(PersonOrder)
+                .join(PersonOrder.person)
+                .where(*membership_filters)
+            )
+            or 0
+        )
+        pages = max(1, -(-total // per_page))
+        page = min(page, pages)
+        memberships_query = (
+            select(PersonOrder)
+            .join(PersonOrder.person)
+            .where(*membership_filters)
+            .options(selectinload(PersonOrder.person).selectinload(Person.images))
+            .order_by(
+                PersonOrder.is_founder.desc(),
+                Person.birth_year.asc().nullslast(),
+                Person.canonical_name.asc(),
+            )
+            .offset((page - 1) * per_page)
+            .limit(per_page)
+        )
+        memberships = list((await self.db.execute(memberships_query)).scalars().unique().all())
+        return OrderMembersPage(order, memberships, total, page, per_page)
