@@ -72,8 +72,11 @@ export const fetchPublicPersonIndex = async (params?: Record<string, unknown>) =
 export const fetchPersonDetail = async (
   idOrSlug: string,
   locale: WebUiLocale = DEFAULT_WEB_UI_LOCALE,
+  params?: { sources_page?: number; sources_per_page?: number },
 ) => {
-  const { data } = await publicApi.get(`/persons/${idOrSlug}`, { params: { locale } });
+  const { data } = await publicApi.get(`/persons/${idOrSlug}`, {
+    params: { locale, ...params },
+  });
   return data;
 };
 

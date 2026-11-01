@@ -603,6 +603,9 @@ const dictionary = {
       openDoi: "Otwórz przez DOI",
       newTab: " (nowa karta)",
       offline: "Brak odsyłacza online. Źródło można odszukać na podstawie opisu bibliograficznego.",
+      previousPage: "Poprzednia strona źródeł",
+      nextPage: "Następna strona źródeł",
+      pageIndicator: "Strona",
     },
   },
 } satisfies WebDictionary;

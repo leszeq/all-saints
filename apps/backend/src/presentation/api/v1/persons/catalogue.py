@@ -61,25 +61,21 @@ def _public_profile(
     person: Person,
     locale: str,
     sources: list[PublicPersonSourceSchema],
+    *,
+    source_total: int,
+    source_primary: int,
+    source_online: int,
+    sources_page: int,
+    sources_per_page: int,
+    sources_pages: int,
 ) -> PersonPublicProfileSchema:
     """Build a public projection from application data, never from raw relations."""
     detail = _localized_detail(person, locale)
     content = detail.localized_content
     source_summary = PersonPublicSourceSummarySchema(
-        total=len(sources),
-        primary=sum(1 for source in sources if source.is_primary),
-        with_online_link=sum(
-            1
-            for source in sources
-            if (
-                source.bibliography is not None
-                and bool(source.bibliography.url or source.bibliography.doi)
-            )
-            or (
-                source.historical_source is not None
-                and bool(source.historical_source.digitization_url)
-            )
-        ),
+        total=source_total,
+        primary=source_primary,
+        with_online_link=source_online,
     )
     quality_summary = PersonPublicQualitySummarySchema(
         has_summary=bool(content and content.summary),
@@ -93,6 +89,9 @@ def _public_profile(
             "sources": sources,
             "quality_summary": quality_summary,
             "source_summary": source_summary,
+            "sources_page": sources_page,
+            "sources_per_page": sources_per_page,
+            "sources_pages": sources_pages,
         }
     )
 
@@ -240,8 +239,10 @@ async def list_person_facets(
 async def get_person(
     id_or_slug: str,
     locale: Annotated[str, LOCALE_QUERY] = "pl",
+    sources_page: Annotated[int, Query(ge=1)] = 1,
+    sources_per_page: Annotated[int, Query(ge=1, le=100)] = 24,
     db: AsyncSession = Depends(get_db_session),
-) -> PersonDetailSchema | RedirectResponse:
+) -> PersonPublicProfileSchema | RedirectResponse:
     """Fetch a published person with localized content."""
     person = await PersonQueryService(db).get_by_id_or_slug(
         id_or_slug,
@@ -264,6 +265,21 @@ async def get_person(
             url=f"/api/v1/persons/{person.slug}",
             status_code=status.HTTP_301_MOVED_PERMANENTLY,
         )
-    links = await PersonSourceService(db).list_sources(person.id)
-    sources = [PublicPersonSourceSchema.from_link(link) for link in links]
-    return _public_profile(person, locale, sources)
+    source_page = await PersonSourceService(db).list_public_sources_page(
+        person.id,
+        page=sources_page,
+        per_page=sources_per_page,
+    )
+    sources = [PublicPersonSourceSchema.from_link(link) for link in source_page.sources]
+    source_pages = max(1, -(-source_page.total // source_page.per_page))
+    return _public_profile(
+        person,
+        locale,
+        sources,
+        source_total=source_page.total,
+        source_primary=source_page.primary,
+        source_online=source_page.with_online_link,
+        sources_page=source_page.page,
+        sources_per_page=source_page.per_page,
+        sources_pages=source_pages,
+    )

@@ -82,6 +82,9 @@ async def test_public_citations_include_verifiable_facts_without_editorial_data(
         "primary": 1,
         "with_online_link": 2,
     }
+    assert response.json()["sources_page"] == 1
+    assert response.json()["sources_per_page"] == 24
+    assert response.json()["sources_pages"] == 1
     assert response.json()["quality_summary"] == {
         "has_summary": False,
         "has_biography": False,
@@ -143,3 +146,45 @@ async def test_published_profile_without_sources_returns_empty_list(
     response = await async_client.get(f"/api/v1/persons/{person.slug}")
     assert response.status_code == 200
     assert response.json()["sources"] == []
+
+
+@pytest.mark.asyncio
+async def test_public_profile_sources_are_paginated_without_changing_aggregates(
+    db_session: AsyncSession,
+    async_client: AsyncClient,
+) -> None:
+    person = await PersonService(db_session).create_person(
+        PersonCreateSchema(canonical_name="Profil z paginowanymi źródłami")
+    )
+    person.status = "published"
+    sources = [
+        Bibliography(title="Źródło pierwsze", url="https://example.org/one"),
+        Bibliography(title="Źródło drugie", doi="10.1234/two"),
+        Bibliography(title="Źródło trzecie"),
+    ]
+    db_session.add_all(sources)
+    await db_session.flush()
+    db_session.add_all(
+        [
+            PersonSource(person_id=person.id, bibliography_id=sources[0].id, is_primary=True),
+            PersonSource(person_id=person.id, bibliography_id=sources[1].id),
+            PersonSource(person_id=person.id, bibliography_id=sources[2].id),
+        ]
+    )
+    await db_session.commit()
+
+    response = await async_client.get(
+        f"/api/v1/persons/{person.slug}",
+        params={"sources_page": 2, "sources_per_page": 1},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert [source["bibliography"]["title"] for source in payload["sources"]] == ["Źródło drugie"]
+    assert payload["sources_page"] == 2
+    assert payload["sources_per_page"] == 1
+    assert payload["sources_pages"] == 3
+    assert payload["source_summary"] == {
+        "total": 3,
+        "primary": 1,
+        "with_online_link": 2,
+    }

@@ -218,6 +218,9 @@ class PersonPublicProfileSchema(PersonDetailSchema):
 
     quality_summary: PersonPublicQualitySummarySchema
     source_summary: PersonPublicSourceSummarySchema
+    sources_page: int = 1
+    sources_per_page: int = 24
+    sources_pages: int = 1
 
 
 class PersonListResponseSchema(BaseModel):

@@ -495,6 +495,9 @@ export interface WebDictionary {
       openDoi: string;
       newTab: string;
       offline: string;
+      previousPage: string;
+      nextPage: string;
+      pageIndicator: string;
     };
   };
 }

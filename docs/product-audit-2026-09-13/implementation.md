@@ -630,6 +630,12 @@ utrzymuje sortowanie po założycielu, roku urodzenia i nazwie. Portal pokazuje
 24 osoby na stronę i udostępnia nawigację między stronami. Pozostają do
 opracowania analogiczne limity dla innych szerokich kolekcji oraz pomiar SLO.
 
+W kolejnym kroku ograniczono również źródła bibliograficzne profilu osoby.
+`GET /persons/{id_or_slug}` przyjmuje `sources_page` i `sources_per_page`,
+zwraca maksymalnie jedną stronę źródeł oraz niezależne agregaty całego zbioru
+(`total`, `primary`, `with_online_link`). Publiczny profil udostępnia nawigację
+między stronami, zachowując dotychczasowy kontrakt pojedynczego źródła.
+
 ## FEATURE-012 — Dostępność i mobilne wykonanie zadań
 
 **Grupa:** UX. **Faza:** 1. **Priorytet:** P1. **Priority Score:** 49.03.

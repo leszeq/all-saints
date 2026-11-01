@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
+from typing import NamedTuple
 
-from sqlalchemy import or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -40,6 +41,17 @@ class PersonSourceConflictError(ValueError):
     """Raised when a source is already assigned to the person."""
 
 
+class PersonSourcesPage(NamedTuple):
+    """Bounded public source assignments and aggregate metadata."""
+
+    sources: list[PersonSource]
+    total: int
+    primary: int
+    with_online_link: int
+    page: int
+    per_page: int
+
+
 class PersonSourceService:
     """Read and mutate source assignments inside a caller-owned transaction."""
 
@@ -62,9 +74,87 @@ class PersonSourceService:
                     PersonSource.historical_source.has(HistoricalSource.deleted_at.is_(None)),
                 ),
             )
-            .order_by(PersonSource.is_primary.desc(), PersonSource.created_at.asc())
+            .order_by(
+                PersonSource.is_primary.desc(),
+                PersonSource.created_at.asc(),
+                PersonSource.id.asc(),
+            )
         )
         return list(result.scalars().all())
+
+    async def list_public_sources_page(
+        self,
+        person_id: uuid.UUID,
+        *,
+        page: int = 1,
+        per_page: int = 24,
+    ) -> PersonSourcesPage:
+        """Return one bounded public page without loading the full bibliography."""
+        if page < 1:
+            raise ValueError("Numer strony musi być większy lub równy 1")
+        if per_page < 1:
+            raise ValueError("Rozmiar strony musi być większy lub równy 1")
+
+        source_filters = [
+            PersonSource.person_id == person_id,
+            PersonSource.deleted_at.is_(None),
+            or_(
+                PersonSource.bibliography.has(Bibliography.deleted_at.is_(None)),
+                PersonSource.historical_source.has(HistoricalSource.deleted_at.is_(None)),
+            ),
+        ]
+        online_link = or_(
+            and_(
+                Bibliography.deleted_at.is_(None),
+                or_(Bibliography.url.is_not(None), Bibliography.doi.is_not(None)),
+            ),
+            and_(
+                HistoricalSource.deleted_at.is_(None),
+                HistoricalSource.digitization_url.is_not(None),
+            ),
+        )
+        aggregate = await self.db.execute(
+            select(
+                func.count(PersonSource.id),
+                func.count(PersonSource.id).filter(PersonSource.is_primary.is_(True)),
+                func.count(PersonSource.id).filter(online_link),
+            )
+            .select_from(PersonSource)
+            .outerjoin(Bibliography, Bibliography.id == PersonSource.bibliography_id)
+            .outerjoin(
+                HistoricalSource,
+                HistoricalSource.id == PersonSource.historical_source_id,
+            )
+            .where(*source_filters)
+        )
+        total, primary, with_online_link = aggregate.one()
+        total = int(total or 0)
+        pages = max(1, -(-total // per_page))
+        page = min(page, pages)
+
+        result = await self.db.execute(
+            select(PersonSource)
+            .options(
+                selectinload(PersonSource.bibliography),
+                selectinload(PersonSource.historical_source),
+            )
+            .where(*source_filters)
+            .order_by(
+                PersonSource.is_primary.desc(),
+                PersonSource.created_at.asc(),
+                PersonSource.id.asc(),
+            )
+            .offset((page - 1) * per_page)
+            .limit(per_page)
+        )
+        return PersonSourcesPage(
+            sources=list(result.scalars().all()),
+            total=total,
+            primary=int(primary or 0),
+            with_online_link=int(with_online_link or 0),
+            page=page,
+            per_page=per_page,
+        )
 
     async def create_source(
         self,

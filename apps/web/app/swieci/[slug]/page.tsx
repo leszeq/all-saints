@@ -33,6 +33,14 @@ interface PageProps {
   params: Promise<{
     slug: string;
   }>;
+  searchParams?: Promise<{ sources_page?: string | string[] }>;
+}
+
+const SOURCES_PER_PAGE = 24;
+
+function parseSourcesPage(value?: string | string[]): number {
+  const candidate = Number(Array.isArray(value) ? value[0] : value);
+  return Number.isInteger(candidate) && candidate > 0 ? candidate : 1;
 }
 
 function formatRecognitionDate(
@@ -89,17 +97,22 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 }
 
-export default async function PersonDetailPage({ params }: PageProps) {
-  const [{ slug }, dictionary] = await Promise.all([
+export default async function PersonDetailPage({ params, searchParams }: PageProps) {
+  const [{ slug }, dictionary, query] = await Promise.all([
     params,
     getWebDictionary(DEFAULT_WEB_UI_LOCALE),
+    searchParams ?? Promise.resolve({} as { sources_page?: string | string[] }),
   ]);
   const copy = dictionary.personProfile;
   const domain = dictionary.domain;
+  const sourcesPage = parseSourcesPage(query.sources_page);
   let person: Record<string, unknown> | null = null;
 
   try {
-    person = await fetchPersonDetail(slug, DEFAULT_WEB_UI_LOCALE);
+    person = await fetchPersonDetail(slug, DEFAULT_WEB_UI_LOCALE, {
+      sources_page: sourcesPage,
+      sources_per_page: SOURCES_PER_PAGE,
+    });
   } catch (error) {
     if (isApiNotFound(error)) notFound();
     throw error;
@@ -170,6 +183,10 @@ export default async function PersonDetailPage({ params }: PageProps) {
   const hasPrayer = Boolean(content.prayers);
   const hasIconography = Boolean(content.iconographicAttributes);
   const publicSources = Array.isArray(person.sources) ? person.sources : [];
+  const sourceSummary = (person.source_summary as Record<string, unknown> | undefined) ?? {};
+  const sourcesTotal = Number(sourceSummary.total ?? publicSources.length);
+  const sourcePage = Number(person.sources_page ?? sourcesPage);
+  const sourcePages = Number(person.sources_pages ?? 1);
   const tocItems: PersonTableOfContentsItem[] = [
     ...(hasFacts ? [{ id: "fakty", label: copy.factsTitle }] : []),
     ...(hasSummary ? [{ id: "streszczenie", label: copy.summarySection }] : []),
@@ -180,7 +197,7 @@ export default async function PersonDetailPage({ params }: PageProps) {
     ...(commemorationsLoaded ? [{ id: "wspomnienia", label: copy.commemorations.title }] : []),
     ...(hasPrayer ? [{ id: "modlitwa", label: copy.prayerSection }] : []),
     ...(hasIconography ? [{ id: "ikonografia", label: copy.iconographySection }] : []),
-    ...(publicSources.length ? [{ id: "bibliografia", label: copy.sourcesSection }] : []),
+    ...(sourcesTotal ? [{ id: "bibliografia", label: copy.sourcesSection }] : []),
   ];
 
   return (
@@ -449,8 +466,14 @@ export default async function PersonDetailPage({ params }: PageProps) {
           }
         </div>
         }
-        {publicSources.length > 0 && (
-          <PersonSources sources={publicSources as PublicPersonSource[]} copy={copy.sources} />
+        {sourcesTotal > 0 && (
+          <PersonSources
+            sources={publicSources as PublicPersonSource[]}
+            copy={copy.sources}
+            page={sourcePage}
+            pages={sourcePages}
+            profilePath={`/swieci/${encodeURIComponent(String(person.slug))}`}
+          />
         )}
         <PersonFeedback
           title={copy.feedbackTitle}

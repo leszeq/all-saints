@@ -1,10 +1,14 @@
+import Link from "next/link";
 import { BookOpen, ExternalLink } from "lucide-react";
 import type { WebDictionary } from "@/lib/i18n/types";
 import { sourceDoiUrl, sourceHttpUrl, type PublicPersonSource } from "@/lib/person-sources";
 
-export function PersonSources({ sources, copy }: {
+export function PersonSources({ sources, copy, page, pages, profilePath }: {
   sources: PublicPersonSource[];
   copy: WebDictionary["personProfile"]["sources"];
+  page: number;
+  pages: number;
+  profilePath: string;
 }) {
   return (
     <section id="bibliografia" aria-labelledby="person-sources-heading" className="scroll-mt-24 rounded-2xl border border-gold-500/20 bg-white p-6 shadow-sm sm:p-8">
@@ -54,6 +58,27 @@ export function PersonSources({ sources, copy }: {
             );
           })}
         </ol>
+      )}
+      {pages > 1 && (
+        <nav aria-label={copy.title} className="mt-7 flex items-center justify-between gap-4 border-t border-stone-100 pt-5 text-sm">
+          {page > 1 ? (
+            <Link
+              href={`${profilePath}?sources_page=${page - 1}`}
+              className="font-semibold text-burgundy-700 underline underline-offset-4 hover:text-burgundy-900"
+            >
+              ← {copy.previousPage}
+            </Link>
+          ) : <span />}
+          <span className="text-stone-500">{copy.pageIndicator} {page} / {pages}</span>
+          {page < pages ? (
+            <Link
+              href={`${profilePath}?sources_page=${page + 1}`}
+              className="font-semibold text-burgundy-700 underline underline-offset-4 hover:text-burgundy-900"
+            >
+              {copy.nextPage} →
+            </Link>
+          ) : <span />}
+        </nav>
       )}
     </section>
   );
