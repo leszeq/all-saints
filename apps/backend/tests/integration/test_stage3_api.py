@@ -16,10 +16,14 @@ async def test_geography_countries_endpoint(async_client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_orders_endpoint(async_client: AsyncClient):
-    response = await async_client.get("/api/v1/orders")
+    response = await async_client.get("/api/v1/orders", params={"page": 1, "per_page": 1})
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
+    assert response.headers["x-total-count"].isdigit()
+    assert response.headers["x-page"] == "1"
+    assert response.headers["x-per-page"] == "1"
+    assert response.headers["x-total-pages"].isdigit()
 
 
 @pytest.mark.asyncio

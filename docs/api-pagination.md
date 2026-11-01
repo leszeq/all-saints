@@ -33,7 +33,7 @@ X-Total-Pages: 3
 [{ ... }]
 ```
 
-Kontrakt obejmuje miejsca, diecezje, kościoły, bibliografię, źródła historyczne,
+Kontrakt obejmuje wspólnoty, miejsca, diecezje, kościoły, bibliografię, źródła historyczne,
 obrazy, dokumenty, tagi i zawody. Małe, zamknięte słowniki — państwa, kategorie
 i stany życia — nadal zwracają pełną listę.
 

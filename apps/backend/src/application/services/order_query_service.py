@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from typing import NamedTuple
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import Select, and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -22,6 +22,15 @@ class OrderMembersPage(NamedTuple):
 
     order: ReligiousOrder
     memberships: list[PersonOrder]
+    total: int
+    page: int
+    per_page: int
+
+
+class OrderListPage(NamedTuple):
+    """Typed result for a bounded public community listing."""
+
+    rows: list[tuple[ReligiousOrder, int]]
     total: int
     page: int
     per_page: int
@@ -45,6 +54,76 @@ class OrderQueryService:
         public_members_only: bool = True,
     ) -> list[tuple[ReligiousOrder, int]]:
         """Return communities with a context-appropriate member count."""
+        query = self._orders_query(
+            search=search,
+            charism=charism,
+            spiritual_family=spiritual_family,
+            community_type=community_type,
+            featured=featured,
+            include_suppressed=include_suppressed,
+            public_members_only=public_members_only,
+        ).order_by(
+            ReligiousOrder.sort_order.asc(),
+            ReligiousOrder.founded_year.asc().nullslast(),
+            ReligiousOrder.name.asc(),
+            ReligiousOrder.id.asc(),
+        )
+        result = await self.db.execute(query)
+        return [(order, int(member_count)) for order, member_count in result.all()]
+
+    async def list_orders_page(
+        self,
+        *,
+        page: int = 1,
+        per_page: int = 100,
+        search: str | None = None,
+        charism: str | None = None,
+        spiritual_family: str | None = None,
+        community_type: str | None = None,
+        featured: bool | None = None,
+        include_suppressed: bool = False,
+        public_members_only: bool = True,
+    ) -> OrderListPage:
+        """Return one bounded community page and its matching total count."""
+        if page < 1:
+            raise ValueError("Numer strony musi być większy lub równy 1")
+        if per_page < 1:
+            raise ValueError("Rozmiar strony musi być większy lub równy 1")
+
+        query = self._orders_query(
+            search=search,
+            charism=charism,
+            spiritual_family=spiritual_family,
+            community_type=community_type,
+            featured=featured,
+            include_suppressed=include_suppressed,
+            public_members_only=public_members_only,
+        ).order_by(
+            ReligiousOrder.sort_order.asc(),
+            ReligiousOrder.founded_year.asc().nullslast(),
+            ReligiousOrder.name.asc(),
+            ReligiousOrder.id.asc(),
+        )
+        count_query = select(func.count()).select_from(query.order_by(None).subquery())
+        total = int((await self.db.execute(count_query)).scalar_one())
+        pages = max(1, -(-total // per_page))
+        page = min(page, pages)
+        result = await self.db.execute(query.offset((page - 1) * per_page).limit(per_page))
+        rows = [(order, int(member_count)) for order, member_count in result.all()]
+        return OrderListPage(rows, total, page, per_page)
+
+    def _orders_query(
+        self,
+        *,
+        search: str | None,
+        charism: str | None,
+        spiritual_family: str | None,
+        community_type: str | None,
+        featured: bool | None,
+        include_suppressed: bool,
+        public_members_only: bool,
+    ) -> Select[tuple[ReligiousOrder, int]]:
+        """Build the grouped order query shared by full and paged reads."""
         member_person = and_(
             Person.id == PersonOrder.person_id,
             Person.deleted_at.is_(None),
@@ -82,14 +161,7 @@ class OrderQueryService:
             query = query.where(ReligiousOrder.community_type == community_type)
         if featured is not None:
             query = query.where(ReligiousOrder.is_featured == featured)
-
-        query = query.order_by(
-            ReligiousOrder.sort_order.asc(),
-            ReligiousOrder.founded_year.asc().nullslast(),
-            ReligiousOrder.name.asc(),
-        )
-        result = await self.db.execute(query)
-        return [(order, int(member_count)) for order, member_count in result.all()]
+        return query
 
     async def get_order(
         self,

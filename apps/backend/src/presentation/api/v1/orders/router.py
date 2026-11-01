@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, status
 
+from src.presentation.api.pagination import PAGINATION_RESPONSE_DOCS
 from src.presentation.api.v1.orders.editorial import (
     add_order_member,
     create_order,
@@ -55,6 +56,7 @@ router.add_api_route(
     list_orders,
     methods=["GET"],
     response_model=list[ReligiousOrderSchema],
+    responses=PAGINATION_RESPONSE_DOCS,
     summary="List religious communities",
 )
 router.add_api_route(

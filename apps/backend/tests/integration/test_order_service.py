@@ -13,6 +13,7 @@ from src.application.commands.religious_orders import (
     CreateReligiousOrderCommand,
     UpdateReligiousOrderCommand,
 )
+from src.application.services.order_query_service import OrderQueryService
 from src.application.services.order_service import (
     OrderConflictError,
     OrderNotFoundError,
@@ -290,3 +291,37 @@ async def test_order_memberships_hide_drafts_and_reject_duplicates(
         )
     with pytest.raises(OrderNotFoundError, match="Wspólnota"):
         await service.get_order("nieistniejaca-wspolnota")
+
+
+@pytest.mark.asyncio
+async def test_order_catalogue_page_is_bounded_and_stably_sorted(
+    db_session: AsyncSession,
+) -> None:
+    service = OrderService(db_session)
+    first = await service.create_order(
+        CreateReligiousOrderCommand(
+            slug="katalog-paginacja-pierwszy",
+            name="Katalog Paginacja Pierwszy",
+            founded_year=1200,
+        )
+    )
+    second = await service.create_order(
+        CreateReligiousOrderCommand(
+            slug="katalog-paginacja-drugi",
+            name="Katalog Paginacja Drugi",
+            founded_year=1300,
+        )
+    )
+
+    result = await OrderQueryService(db_session).list_orders_page(
+        search="Katalog Paginacja",
+        page=2,
+        per_page=1,
+    )
+
+    assert result.total == 2
+    assert result.page == 2
+    assert result.per_page == 1
+    assert len(result.rows) == 1
+    assert result.rows[0][0].id == second.id
+    assert first.id != second.id

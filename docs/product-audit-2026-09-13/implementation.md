@@ -640,6 +640,13 @@ Historia wersji osoby w panelu administracyjnym również jest pobierana stronam
 `GET /persons/{id}/versions` zwraca maksymalnie 100 snapshotów wraz z metadanymi
 strony, a panel udostępnia nawigację historii bez ładowania całego audytu.
 
+Katalog wspólnot korzysta teraz z tego samego kontraktu. `GET /orders` domyślnie
+zwraca maksymalnie 100 rekordów, przyjmuje `page` i `per_page`, a metadane strony
+przekazuje w nagłówkach `X-Total-Count`, `X-Page`, `X-Per-Page` i
+`X-Total-Pages`. Ciało pozostaje tablicą JSON dla istniejących klientów; zapytanie
+wykonuje count na podzapytaniu i pobiera wyłącznie bieżącą stronę, z sortowaniem po
+`sort_order`, `founded_year`, nazwie i identyfikatorze.
+
 ## FEATURE-012 — Dostępność i mobilne wykonanie zadań
 
 **Grupa:** UX. **Faza:** 1. **Priorytet:** P1. **Priority Score:** 49.03.
