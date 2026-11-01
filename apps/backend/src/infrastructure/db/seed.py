@@ -98,6 +98,24 @@ ALL_SAINTS_OBSERVANCE = {
     "is_featured": True,
 }
 
+ALL_SOULS_OBSERVANCE = {
+    "slug": "wszystkich-wiernych-zmarlych",
+    "title_pl": "Wszystkich Wiernych Zmarłych",
+    "title_en": "All Souls",
+    "latin_title": "Commemoratio Omnium Fidelium Defunctorum",
+    "observance_type": ObservanceType.CHURCH.value,
+    "summary_pl": (
+        "Wspomnienie Wszystkich Wiernych Zmarłych przypada 2 listopada "
+        "i jest dniem modlitwy za zmarłych."
+    ),
+    "description_pl": (
+        "Kościół wspomina wszystkich wiernych zmarłych i modli się za tych, "
+        "którzy oczekują pełni życia w Bogu."
+    ),
+    "iconographic_attributes": "modlitwa za zmarłych; pamięć; nadzieja zmartwychwstania",
+    "is_featured": True,
+}
+
 
 # ==============================================================================
 # SEED FUNCTIONS
@@ -460,6 +478,85 @@ async def seed_all_saints_observance(session: AsyncSession) -> None:
     logger.info("✓ Seeded the All Saints observance in {} calendars", len(calendar_list))
 
 
+async def seed_all_souls_observance(session: AsyncSession) -> None:
+    """Seed the fixed All Souls memorial in universal and Polish calendars."""
+    logger.info("Seeding the All Souls observance...")
+    observance = (
+        await session.execute(
+            select(LiturgicalObservance).where(
+                LiturgicalObservance.slug == ALL_SOULS_OBSERVANCE["slug"]
+            )
+        )
+    ).scalar_one_or_none()
+    if observance is None:
+        observance = LiturgicalObservance(**ALL_SOULS_OBSERVANCE)
+        session.add(observance)
+        await session.flush()
+    else:
+        for field, value in ALL_SOULS_OBSERVANCE.items():
+            setattr(observance, field, value)
+        observance.deleted_at = None
+
+    calendars = (
+        await session.execute(
+            select(LiturgicalCalendar).where(
+                LiturgicalCalendar.code.in_(("roman_universal", "roman_pl")),
+                LiturgicalCalendar.deleted_at.is_(None),
+                LiturgicalCalendar.is_active.is_(True),
+            )
+        )
+    ).scalars()
+    calendar_list = list(calendars)
+    for calendar in calendar_list:
+        await session.execute(
+            update(Feast)
+            .where(
+                Feast.calendar_id == calendar.id,
+                Feast.month == 11,
+                Feast.day == 2,
+                Feast.deleted_at.is_(None),
+            )
+            .values(is_primary=False)
+        )
+        entry = (
+            await session.execute(
+                select(Feast).where(
+                    Feast.observance_id == observance.id,
+                    Feast.calendar_id == calendar.id,
+                    Feast.month == 11,
+                    Feast.day == 2,
+                    Feast.deleted_at.is_(None),
+                )
+            )
+        ).scalar_one_or_none()
+        values = {
+            "month": 11,
+            "day": 2,
+            "day_of_year": 306,
+            "is_moveable": False,
+            "rank": FeastRank.MEMORIAL.value,
+            "liturgical_color": "violet",
+            "is_primary": True,
+            "is_suppressed": False,
+            "source_title": "Kalendarz liturgiczny Kościoła rzymskiego",
+            "notes": "Wspomnienie Wszystkich Wiernych Zmarłych — 2 listopada.",
+        }
+        if entry is None:
+            session.add(
+                Feast(
+                    observance_id=observance.id,
+                    calendar_id=calendar.id,
+                    **values,
+                )
+            )
+        else:
+            for field, value in values.items():
+                setattr(entry, field, value)
+
+    await session.flush()
+    logger.info("✓ Seeded the All Souls observance in {} calendars", len(calendar_list))
+
+
 # ==============================================================================
 # MAIN
 # ==============================================================================
@@ -487,6 +584,7 @@ async def run_seed() -> None:
             await seed_states_of_life(session)
             await seed_liturgical_calendars(session)
             await seed_all_saints_observance(session)
+            await seed_all_souls_observance(session)
 
             await session.commit()
             logger.info("✓ Database seed completed successfully")

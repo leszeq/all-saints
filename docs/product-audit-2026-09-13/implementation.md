@@ -560,6 +560,12 @@ utrzymują wpis w Ogólnym Kalendarzu Rzymskim i Kalendarzu Polskim, z rangą
 `solemnity`, białym kolorem liturgicznym i jednym głównym wpisem po scaleniu
 tych kalendarzy w publicznym widoku dnia.
 
+Dodano również nieosobowy obchód `wszystkich-wiernych-zmarlych` jako
+Wspomnienie Wszystkich Wiernych Zmarłych przypadające 2 listopada. Migracja
+`0025` oraz seed utrzymują wpis w tych samych kalendarzach, z rangą `memorial`,
+fioletowym kolorem liturgicznym i jednym głównym wpisem po scaleniu kalendarzy
+w publicznym widoku dnia.
+
 ## FEATURE-011 — Budżety wydajności, paginacja i cache
 
 **Grupa:** Platform. **Faza:** 1. **Priorytet:** P1. **Priority Score:** 39.89.
