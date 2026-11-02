@@ -1,0 +1,408 @@
+{
+  "schema_version": 1,
+  "exported_at": "2026-11-02T00:00:00Z",
+  "source_person_id": null,
+  "source_slug": "sw-marcin-de-porres",
+  "source_status": "draft",
+  "profile": {
+    "person_type": "saint",
+    "canonical_name": "Św. Marcin de Porres",
+    "canonical_name_en": "St. Martin de Porres",
+    "latin_name": "Sanctus Martinus de Porres",
+    "original_name": "Martín de Porres Velázquez",
+    "surnames": "de Porres Velázquez",
+    "religious_name": "brat Marcin de Porres",
+    "epithets": [
+      "Fray Escoba",
+      "Martín de la Caridad",
+      "Święty Marcin z Limy"
+    ],
+    "gender": "male",
+    "era": "early_modern",
+    "century": 16,
+    "birth_date": "9 grudnia 1579",
+    "birth_year": 1579,
+    "death_date": "3 listopada 1639",
+    "death_year": 1639,
+    "birth_place_id": null,
+    "death_place_id": null,
+    "birth_country_id": null,
+    "death_country_id": null,
+    "nationality_id": null,
+    "state_of_life_id": null,
+    "summary_pl": "Św. Marcin de Porres (1579–1639) był peruwiańskim dominikańskim bratem współpracownikiem, opiekunem chorych i ubogich oraz praktykiem ówczesnego lecznictwa. W Limie służył ludziom niezależnie od ich pochodzenia i statusu, dlatego tradycja nadała mu przydomek Marcin Miłosierdzia. Został beatyfikowany w 1837 r., kanonizowany przez Jana XXIII 6 maja 1962 r.; jego wspomnienie liturgiczne przypada 3 listopada.",
+    "biography_pl": "Marcin de Porres Velázquez urodził się 9 grudnia 1579 r. w Limie, wicekrólestwie Peru, i został ochrzczony w parafii św. Sebastiana. Był synem hiszpańskiego hidalga Juana de Porres oraz Any Velázquez, kobiety pochodzenia afrykańskiego; jego ojciec uznał go dopiero po kilku latach. Dzieciństwo Marcina przypadło na społeczeństwo kolonialne naznaczone hierarchią pochodzenia i ubóstwem. Przy opisie tego okresu należy unikać bezkrytycznego powtarzania dawnych etykiet rasowych i odróżniać język źródeł epoki od współczesnego opisu osoby.\n\nOkoło dwunastego roku życia rozpoczął naukę u balwierza i chirurga. Zdobył umiejętności pielęgnacyjne, stomatologiczne i farmaceutyczne, a także znajomość stosowanych wówczas środków naturalnych. Wykorzystywał je, pomagając ubogim mieszkańcom Limy. W 1594 r. związał się z dominikańskim klasztorem Matki Bożej Różańcowej w Limie. Początkowo był przyjęty jako tercjarz i donado, czyli pomocnik wykonujący najprostsze prace wspólnoty. Sprzątał, usługiwał w kuchni i opiekował się chorymi. Współczesne źródła dominikańskie przypominają, że jego pochodzenie sprawiło, iż droga do pełnego przyjęcia do wspólnoty była utrudniona przez ówczesne normy społeczne.\n\n2 czerwca 1603 r. złożył profesję jako brat współpracownik Zakonu Kaznodziejskiego. Nie był kapłanem. W klasztornej infirmerii łączył praktyczne umiejętności medyczne z troską o godność chorego. Pomagał współbraciom, ludności rdzennej, osobom czarnym i metyskim, ubogim, niewolnikom oraz ludziom zamożnym. Rozdawał żywność, odzież i lekarstwa, a potrzebującym zapewniał także wsparcie duchowe. Jan XXIII nazwał go podczas kanonizacji „Marcinem Miłosierdzia” i podkreślił jego szczególną miłość do Eucharystii, Matki Bożej i bliźniego.\n\nŻycie Marcina było kształtowane przez dominikańską modlitwę, Eucharystię, pokutę, ubóstwo, czystość i posłuszeństwo. Jego służba nie ograniczała się do jednej grupy społecznej: traktował opiekę nad chorymi i ubogimi jako praktyczną formę głoszenia Ewangelii. Przydomki „Fray Escoba” (Brat Miotła) i „Martín de la Caridad” (Marcin Miłosierdzia) streszczają dwa wymiary jego pamięci: pokorne wykonywanie codziennych obowiązków oraz wielkoduszną pomoc. Opowieści o cudach, darach mistycznych i niezwykłej więzi ze zwierzętami należą do tradycji hagiograficznej i powinny być w redakcji wyraźnie odróżniane od faktów potwierdzonych dokumentami.\n\nMarcin zmarł 3 listopada 1639 r. w Limie. Został pochowany w bazylice i klasztorze św. Dominika w Limie. Papież Grzegorz XVI beatyfikował go 29 października 1837 r., a papież Jan XXIII kanonizował go 6 maja 1962 r. w bazylice watykańskiej. Stolica Apostolska wskazuje 3 listopada jako dzień jego wspomnienia; w kalendarzu rzymskim jest ono wspomnieniem dowolnym. Tradycja i źródła dominikańskie łączą jego patronat między innymi ze sprawiedliwością społeczną, pokojem, ubogimi, fryzjerami i golibrodami, farmaceutami, pielęgniarzami, służbami oczyszczania miasta, Caritas oraz dominikańskimi braćmi współpracownikami.",
+    "summary_en": "St. Martin de Porres (1579–1639) was a Peruvian Dominican cooperator brother, caregiver of the sick and poor, and practitioner of the medicine of his time. In Lima he served people regardless of origin or social status, which earned him the traditional title Martin of Charity. He was beatified in 1837 and canonized by John XXIII on 6 May 1962; his liturgical memorial is 3 November.",
+    "biography_en": "Martin de Porres Velázquez was born on 9 December 1579 in Lima, in the Viceroyalty of Peru, and was baptized at the parish of St. Sebastian. He was the son of the Spanish hidalgo Juan de Porres and Ana Velázquez, a woman of African ancestry; his father acknowledged him only after several years. Martin's childhood unfolded within a colonial society marked by ancestry-based hierarchy and poverty. Descriptions of this period should avoid uncritically repeating historical racial labels and should distinguish the language of period sources from a contemporary description of the person.\n\nAt about twelve he began an apprenticeship with a barber-surgeon. He acquired practical skills in nursing, dentistry, pharmacy and the natural remedies used at the time, and applied them while helping Lima's poor. In 1594 he joined the Dominican convent of Our Lady of the Rosary in Lima. He was first received as a tertiary and donado, a helper assigned the community's most humble tasks. He cleaned, served in the kitchen and cared for the sick. Modern Dominican sources note that his ancestry made full admission to the community more difficult under the social norms of his time.\n\nOn 2 June 1603 he professed as a cooperator brother of the Order of Preachers. He was not a priest. In the convent infirmary he combined practical medical knowledge with care for the dignity of each patient. He helped friars, Indigenous people, Black and mixed-race people, the poor, enslaved people and the wealthy. He distributed food, clothing and medicines and offered spiritual counsel. During the canonization, John XXIII called him Martin of Charity and highlighted his love for the Eucharist, the Virgin Mary and his neighbour.\n\nMartin's life was shaped by Dominican prayer, the Eucharist, penance, poverty, chastity and obedience. His service was not limited to one social group: he treated care for the sick and poor as a practical form of proclaiming the Gospel. The titles Fray Escoba (Brother Broom) and Martín de la Caridad (Martin of Charity) summarize two dimensions of his memory: humble daily work and generous assistance. Accounts of miracles, mystical gifts and an extraordinary relationship with animals belong to hagiographic tradition and should be clearly distinguished in editorial work from facts documented by historical sources.\n\nMartin died in Lima on 3 November 1639 and was buried at the Basilica and Convent of Santo Domingo in Lima. Pope Gregory XVI beatified him on 29 October 1837, and Pope John XXIII canonized him in St. Peter's Basilica on 6 May 1962. The Holy See gives 3 November as his memorial; in the Roman calendar it is an optional memorial. Tradition and Dominican sources associate his patronage with social justice, peace, the poor, barbers and hairdressers, pharmacists, nurses, public-cleaning workers, Caritas and Dominican cooperator brothers.",
+    "iconographic_attributes": "Habit dominikański z białą tuniką i czarnym kapturem, krucyfiks, różaniec, miotła, kosz z chlebem oraz narzędzia związane z opieką nad chorymi. W części tradycyjnych przedstawień pojawiają się pies, kot i mysz jako znaki troski o stworzenie; obecność tych motywów należy weryfikować względem konkretnego dzieła.",
+    "prayers": "Modlitwa redakcyjna inspirowana życiem świętego (nie jest tekstem oficjalnego formularza): Boże, który w świętym Marcinie de Porres dałeś Kościołowi świadka pokornej służby, naucz nas rozpoznawać Ciebie w chorych, ubogich i odrzuconych. Przez jego wstawiennictwo umocnij w nas miłosierdzie, sprawiedliwość i odwagę codziennej pomocy. Przez Chrystusa, Pana naszego. Amen.",
+    "works": "Nie zachował się uznany korpus dzieł pisanych św. Marcina de Porres. Jego dziedzictwem są przede wszystkim praktykowane uczynki miłosierdzia, opieka nad chorymi oraz świadectwo życia zakonnego. Późniejsze opowieści hagiograficzne nie powinny być przedstawiane jako jego własne dzieła literackie.",
+    "liturgical_color": "white",
+    "is_featured": true,
+    "external_ids": {
+      "wikidata_qid": "Q313293",
+      "viaf": "89221600",
+      "isni": "0000000108308104",
+      "vatican_library_vcba": "495/33227",
+      "gnd": "118578294",
+      "snac_ark": "w6vq3g2n"
+    },
+    "avatar": {
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/San%20Martin%20de%20Porres%20huaycan.jpg",
+      "thumbnail_url": null,
+      "title": "San Martín de Porres, pintura anónima del siglo XVII",
+      "license": "unknown",
+      "photographer": null,
+      "source_url": "https://commons.wikimedia.org/wiki/File:San_Martin_de_Porres_huaycan.jpg",
+      "storage_key": null,
+      "width_px": null,
+      "height_px": null,
+      "file_size_bytes": null,
+      "mime_type": "image/jpeg"
+    },
+    "aliases": [
+      {
+        "value": "Martín de Porres Velázquez",
+        "language_code": "es",
+        "kind": "birth_name"
+      },
+      {
+        "value": "San Martín de Porres",
+        "language_code": "es",
+        "kind": "alias"
+      },
+      {
+        "value": "Saint Martin de Porres",
+        "language_code": "en",
+        "kind": "alias"
+      },
+      {
+        "value": "Sanctus Martinus de Porres",
+        "language_code": "la",
+        "kind": "transliteration"
+      },
+      {
+        "value": "Martín de la Caridad",
+        "language_code": "es",
+        "kind": "alias"
+      },
+      {
+        "value": "Fray Escoba",
+        "language_code": "es",
+        "kind": "alias"
+      },
+      {
+        "value": "Martinho de Porres",
+        "language_code": "pt",
+        "kind": "transliteration"
+      },
+      {
+        "value": "Martino de Porres",
+        "language_code": "it",
+        "kind": "transliteration"
+      }
+    ],
+    "patronages": [
+      {
+        "patronage_type": "social_justice",
+        "name_pl": "sprawiedliwość społeczna",
+        "name_en": "social justice",
+        "description": "Patronat wskazywany przez źródła dominikańskie, związany z jego służbą ubogim i osobom marginalizowanym.",
+        "is_official": true
+      },
+      {
+        "patronage_type": "peace",
+        "name_pl": "pokój",
+        "name_en": "peace",
+        "description": "Tradycyjny patronat związany z jego pojednawczą posługą i troską o wspólnotę.",
+        "is_official": true
+      },
+      {
+        "patronage_type": "poor",
+        "name_pl": "ubodzy",
+        "name_en": "the poor",
+        "description": "Marcin rozdawał żywność, odzież i lekarstwa oraz otaczał ubogich opieką.",
+        "is_official": true
+      },
+      {
+        "patronage_type": "barbers",
+        "name_pl": "fryzjerzy i golibrodzi",
+        "name_en": "barbers and hairdressers",
+        "description": "Patronat nawiązujący do jego młodzieńczego przygotowania w zawodzie balwierza i chirurga.",
+        "is_official": true
+      },
+      {
+        "patronage_type": "pharmacists",
+        "name_pl": "farmaceuci",
+        "name_en": "pharmacists",
+        "description": "Związany z przygotowywaniem i rozdawaniem lekarstw oraz praktyką leczniczą w limskiej infirmerii.",
+        "is_official": true
+      },
+      {
+        "patronage_type": "nurses",
+        "name_pl": "pielęgniarze i pielęgniarki",
+        "name_en": "nurses",
+        "description": "Współczesne określenie patronatu wynikające z jego opieki nad chorymi.",
+        "is_official": true
+      },
+      {
+        "patronage_type": "public_cleaning",
+        "name_pl": "pracownicy służb oczyszczania miasta",
+        "name_en": "public-cleaning workers",
+        "description": "Patronat związany z przydomkiem Fray Escoba i jego gotowością do wykonywania najprostszych prac.",
+        "is_official": true
+      },
+      {
+        "patronage_type": "caritas",
+        "name_pl": "Caritas",
+        "name_en": "Caritas organizations",
+        "description": "Źródła dominikańskie wskazują go jako patrona dzieł miłosierdzia.",
+        "is_official": true
+      },
+      {
+        "patronage_type": "dominican_cooperator_brothers",
+        "name_pl": "dominikańscy bracia współpracownicy",
+        "name_en": "Dominican cooperator brothers",
+        "description": "Szczególny patronat wynikający z jego powołania jako brata współpracownika Zakonu Kaznodziejskiego.",
+        "is_official": true
+      },
+      {
+        "patronage_type": "mixed_race_people",
+        "name_pl": "osoby o pochodzeniu mieszanym",
+        "name_en": "people of mixed-race backgrounds",
+        "description": "Współczesne przypisanie kulturowe związane z jego pochodzeniem i świadectwem przekraczania podziałów społecznych; wymaga opisu z poszanowaniem aktualnego języka.",
+        "is_official": false
+      }
+    ],
+    "beatification": {
+      "beatification_date": "29 października 1837",
+      "beatification_year": 1837
+    },
+    "canonization": {
+      "canonization_date": "6 maja 1962",
+      "canonization_year": 1962
+    },
+    "status": "draft"
+  },
+  "orders": [
+    {
+      "order_slug": "dominikanie",
+      "entry_date": "1594",
+      "exit_date": null,
+      "is_founder": false,
+      "membership_type": "friar",
+      "notes": "Początkowo przyjęty przy klasztorze jako tercjarz i donado; 2 czerwca 1603 r. złożył profesję jako brat współpracownik Zakonu Kaznodziejskiego. Nie był kapłanem."
+    }
+  ],
+  "feasts": [
+    {
+      "calendar_code": "roman_universal",
+      "month": 11,
+      "day": 3,
+      "rank": "opt_memorial",
+      "liturgical_color": "white",
+      "is_primary": true,
+      "is_suppressed": false,
+      "notes": "Wspomnienie dowolne św. Marcina de Porres w kalendarzu rzymskim; Stolica Apostolska wskazuje 3 listopada jako dzień wspomnienia.",
+      "source_title": "Dicastero delle Cause dei Santi — Martino de Porres",
+      "source_url": "https://www.causesanti.va/it/santi-e-beati/martino-de-porres.html"
+    },
+    {
+      "calendar_code": "roman_pl",
+      "month": 11,
+      "day": 3,
+      "rank": "opt_memorial",
+      "liturgical_color": "white",
+      "is_primary": false,
+      "is_suppressed": false,
+      "notes": "Wpis pomocniczy dla polskiej prezentacji kalendarza; pierwszeństwo i stopień należy potwierdzić względem aktualnego kalendarza krajowego.",
+      "source_title": "Dicastero delle Cause dei Santi — Martino de Porres",
+      "source_url": "https://www.causesanti.va/it/santi-e-beati/martino-de-porres.html"
+    }
+  ],
+  "sources": [
+    {
+      "kind": "bibliography",
+      "bibliography": {
+        "source_type": "website",
+        "title": "Martino de Porres",
+        "subtitle": "Santi e Beati",
+        "authors": "Dicastero delle Cause dei Santi",
+        "editor": null,
+        "publisher": "Santa Sede",
+        "place_of_publication": "Watykan",
+        "year": null,
+        "edition": null,
+        "volume": null,
+        "pages": null,
+        "isbn": null,
+        "issn": null,
+        "doi": null,
+        "url": "https://www.causesanti.va/it/santi-e-beati/martino-de-porres.html",
+        "language": "it",
+        "abstract": "Oficjalny biogram Stolicy Apostolskiej obejmujący pochodzenie, posługę, śmierć, beatyfikację, kanonizację i dzień wspomnienia.",
+        "reliability_score": 5,
+        "notes": "Źródło podstawowe dla dat i statusu kanonizacyjnego."
+      },
+      "historical_source": null,
+      "link": {
+        "page_reference": "cały biogram",
+        "quote": null,
+        "relevance_score": 5,
+        "is_primary": true,
+        "notes": "Weryfikacja faktów kanonizacyjnych i liturgicznych."
+      }
+    },
+    {
+      "kind": "bibliography",
+      "bibliography": {
+        "source_type": "website",
+        "title": "Homilia podczas kanonizacji bł. Marcina de Porres",
+        "subtitle": "6 maja 1962 r.",
+        "authors": "Jan XXIII",
+        "editor": null,
+        "publisher": "Stolica Apostolska",
+        "place_of_publication": "Watykan",
+        "year": 1962,
+        "edition": null,
+        "volume": null,
+        "pages": null,
+        "isbn": null,
+        "issn": null,
+        "doi": null,
+        "url": "https://www.vatican.va/content/john-xxiii/es/homilies/1962/documents/hf_j-xxiii_hom_19620506_martino-porres.html",
+        "language": "es",
+        "abstract": "Tekst homilii kanonizacyjnej opisujący miłość Marcina do Eucharystii, Maryi i bliźnich oraz jego służbę chorym, ubogim i osobom marginalizowanym.",
+        "reliability_score": 5,
+        "notes": "Pierwotne źródło papieskie; cytaty w publikacji należy sprawdzać względem pełnego tekstu."
+      },
+      "historical_source": null,
+      "link": {
+        "page_reference": "cały tekst homilii",
+        "quote": null,
+        "relevance_score": 5,
+        "is_primary": true,
+        "notes": "Źródło dla opisu cnót, działalności charytatywnej i tytułu Martín de la Caridad."
+      }
+    },
+    {
+      "kind": "bibliography",
+      "bibliography": {
+        "source_type": "website",
+        "title": "San Martín de Porres: patrono de la Justicia Social",
+        "subtitle": null,
+        "authors": "Orden de Predicadores (Dominicos)",
+        "editor": null,
+        "publisher": "Dominicos",
+        "place_of_publication": "Madryt",
+        "year": null,
+        "edition": null,
+        "volume": null,
+        "pages": null,
+        "isbn": null,
+        "issn": null,
+        "doi": null,
+        "url": "https://www.dominicos.org/quienes-somos/grandes-figuras/san-martin-de-porres/",
+        "language": "es",
+        "abstract": "Biogram zakonu dominikańskiego z osią czasu, opisem posługi balwierza i opiekuna chorych, profesją zakonną oraz listą tradycyjnych patronatów.",
+        "reliability_score": 5,
+        "notes": "Źródło instytucjonalne zakonu; datę urodzenia przyjęto zgodnie ze Stolicą Apostolską, ponieważ strona zawiera niespójność w jednym miejscu osi czasu."
+      },
+      "historical_source": null,
+      "link": {
+        "page_reference": "oś czasu i sekcje biograficzne",
+        "quote": null,
+        "relevance_score": 5,
+        "is_primary": false,
+        "notes": "Źródło dla daty profesji, przydomka Fray Escoba i patronatów dominikańskich."
+      }
+    },
+    {
+      "kind": "bibliography",
+      "bibliography": {
+        "source_type": "website",
+        "title": "St. Martin de Porres, Dominican",
+        "subtitle": null,
+        "authors": "Vatican News",
+        "editor": null,
+        "publisher": "Vatican News",
+        "place_of_publication": "Watykan",
+        "year": null,
+        "edition": null,
+        "volume": null,
+        "pages": null,
+        "isbn": null,
+        "issn": null,
+        "doi": null,
+        "url": "https://www.vaticannews.va/en/saints/11/03/st--martin-de-porres--dominican.html",
+        "language": "en",
+        "abstract": "Popularnonaukowy biogram Vatican News opisujący dzieciństwo, praktykę balwierza i chirurga, przyjęcie do wspólnoty oraz posługę w infirmerii.",
+        "reliability_score": 4,
+        "notes": "Źródło pomocnicze do narracji biograficznej; daty i status kanonizacyjny należy priorytetowo porównywać ze źródłami Stolicy Apostolskiej."
+      },
+      "historical_source": null,
+      "link": {
+        "page_reference": "cały biogram",
+        "quote": null,
+        "relevance_score": 4,
+        "is_primary": false,
+        "notes": "Źródło pomocnicze dla opisu nauki zawodu i pracy w infirmerii."
+      }
+    },
+    {
+      "kind": "bibliography",
+      "bibliography": {
+        "source_type": "website",
+        "title": "Martin de Porres (Q313293)",
+        "subtitle": null,
+        "authors": "Wikimedia Foundation i współtwórcy Wikidata",
+        "editor": null,
+        "publisher": "Wikidata",
+        "place_of_publication": null,
+        "year": null,
+        "edition": null,
+        "volume": null,
+        "pages": null,
+        "isbn": null,
+        "issn": null,
+        "doi": null,
+        "url": "https://www.wikidata.org/wiki/Q313293",
+        "language": "mul",
+        "abstract": "Rejestr identyfikatorów zewnętrznych i podstawowych danych biograficznych używany do kontroli tożsamości rekordu, nie jako jedyne źródło faktów.",
+        "reliability_score": 3,
+        "notes": "Źródło wtórne; każdy identyfikator i data wymagają potwierdzenia w źródle instytucjonalnym."
+      },
+      "historical_source": null,
+      "link": {
+        "page_reference": "identyfikatory i dane podstawowe",
+        "quote": null,
+        "relevance_score": 3,
+        "is_primary": false,
+        "notes": "Użyte do mapowania VIAF, ISNI, GND, SNAC i QID."
+      }
+    },
+    {
+      "kind": "historical",
+      "bibliography": null,
+      "historical_source": {
+        "title": "Acta Apostolicae Sedis, vol. 54 (1962), nr 6, s. 306–309",
+        "original_title": "Acta Apostolicae Sedis 54 (1962), n. 6, pp. 306–309",
+        "source_type": "document",
+        "repository": "Acta Apostolicae Sedis",
+        "call_number": null,
+        "date_range": "1962",
+        "language": "la",
+        "description": "Publikacja aktów związanych z kanonizacją Marcina de Porres; zakres stron jest przywoływany przy tekście homilii kanonizacyjnej.",
+        "digitization_url": "https://www.vatican.va/content/john-xxiii/es/homilies/1962/documents/hf_j-xxiii_hom_19620506_martino-porres.html",
+        "is_digitized": true
+      },
+      "link": {
+        "page_reference": "s. 306–309",
+        "quote": null,
+        "relevance_score": 5,
+        "is_primary": true,
+        "notes": "Wpis wzorcowy dla historycznego źródła urzędowego; przed publikacją należy uzupełnić sygnaturę i dokładny skan, jeśli redakcja ma do niego dostęp."
+      }
+    }
+  ]
+}
