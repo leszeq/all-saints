@@ -647,6 +647,11 @@ przekazuje w nagłówkach `X-Total-Count`, `X-Page`, `X-Per-Page` i
 wykonuje count na podzapytaniu i pobiera wyłącznie bieżącą stronę, z sortowaniem po
 `sort_order`, `founded_year`, nazwie i identyfikatorze.
 
+Publiczna lista obchodów osoby również ma ograniczenie payloadu. Endpoint
+`GET /persons/{id_or_slug}/commemorations` przyjmuje `page` i `per_page` oraz
+zwraca metadane w nagłówkach wspólnego kontraktu, zachowując tablicę JSON dla
+dotychczasowych klientów.
+
 Dodano powtarzalny benchmark `make order-catalogue-benchmark`. Mierzy on p50/p95/p99,
 liczbę instrukcji SQL na odczyt i zapisuje plany `EXPLAIN (ANALYZE, BUFFERS)` dla
 strony oraz count. Wynik lokalny z 2 listopada 2026 znajduje się w

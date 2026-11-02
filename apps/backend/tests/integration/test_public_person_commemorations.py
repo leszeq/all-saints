@@ -86,10 +86,15 @@ async def test_public_person_commemorations_filter_visibility_and_expose_coverag
     await db_session.commit()
 
     response = await async_client.get(
-        f"/api/v1/persons/{person.slug}/commemorations"
+        f"/api/v1/persons/{person.slug}/commemorations",
+        params={"page": 1, "per_page": 1},
     )
 
     assert response.status_code == 200
+    assert response.headers["x-total-count"] == "1"
+    assert response.headers["x-page"] == "1"
+    assert response.headers["x-per-page"] == "1"
+    assert response.headers["x-total-pages"] == "1"
     payload = response.json()
     assert len(payload) == 1
     assert payload[0]["month"] == 5

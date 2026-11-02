@@ -33,8 +33,9 @@ X-Total-Pages: 3
 [{ ... }]
 ```
 
-Kontrakt obejmuje wspólnoty, miejsca, diecezje, kościoły, bibliografię, źródła historyczne,
-obrazy, dokumenty, tagi i zawody. Małe, zamknięte słowniki — państwa, kategorie
+Kontrakt obejmuje wspólnoty, obchody przypisane do profilu osoby, miejsca, diecezje,
+kościoły, bibliografię, źródła historyczne, obrazy, dokumenty, tagi i zawody.
+Małe, zamknięte słowniki — państwa, kategorie
 i stany życia — nadal zwracają pełną listę.
 
 Endpoint obrazów przejściowo akceptuje również starszy parametr `limit`. Jest on

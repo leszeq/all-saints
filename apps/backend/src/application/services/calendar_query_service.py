@@ -7,10 +7,11 @@ import uuid
 from collections import defaultdict
 from datetime import date
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import Select, and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
+from src.application.services.pagination import execute_page
 from src.domain.hagiography.models import Person
 from src.domain.liturgy.models import (
     Feast,
@@ -303,7 +304,30 @@ class CalendarQueryService:
 
     async def list_public_person_entries(self, person_id: uuid.UUID) -> list[Feast]:
         """Return published person's active fixed commemorations for public profiles."""
-        result = await self.db.execute(
+        result = await self.db.execute(self._public_person_entries_query(person_id))
+        return list(result.scalars().unique().all())
+
+    async def list_public_person_entries_page(
+        self,
+        person_id: uuid.UUID,
+        *,
+        page: int = 1,
+        per_page: int = 100,
+    ) -> tuple[list[Feast], int]:
+        """Return one bounded page of published person's fixed commemorations."""
+        return await execute_page(
+            self.db,
+            self._public_person_entries_query(person_id),
+            page=page,
+            per_page=per_page,
+        )
+
+    @staticmethod
+    def _public_person_entries_query(
+        person_id: uuid.UUID,
+    ) -> Select[tuple[Feast]]:
+        """Build the public fixed-commemoration query shared by list methods."""
+        return (
             select(Feast)
             .join(Feast.calendar)
             .join(Feast.person)
@@ -325,6 +349,6 @@ class CalendarQueryService:
                 LiturgicalCalendar.name.asc(),
                 Feast.month.asc(),
                 Feast.day.asc(),
+                Feast.id.asc(),
             )
         )
-        return list(result.scalars().unique().all())
