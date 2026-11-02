@@ -12,7 +12,7 @@ from typing import NamedTuple, cast
 
 from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import InstrumentedAttribute, selectinload
+from sqlalchemy.orm import InstrumentedAttribute, load_only, selectinload
 from sqlalchemy.sql.elements import ColumnElement
 
 from src.domain.geography.models import ReligiousOrder
@@ -183,6 +183,34 @@ PATRONAGE_GROUP_TYPES: dict[PatronageGroup, tuple[str, ...]] = {
     PatronageGroup.WORK: ("profession", "work"),
     PatronageGroup.TRAVEL: ("travel",),
 }
+
+# Keep catalogue reads narrow without changing the ``Person`` entity returned by
+# the application service.  These are the fields consumed by the public and
+# editorial list schemas, localization fallback, and search explanations.  A
+# detail read still uses the complete entity projection in ``get_by_id_or_slug``.
+PERSON_LIST_COLUMNS = (
+    Person.id,
+    Person.slug,
+    Person.canonical_name,
+    Person.canonical_name_en,
+    Person.latin_name,
+    Person.person_type,
+    Person.status,
+    Person.gender,
+    Person.era,
+    Person.birth_year,
+    Person.death_year,
+    Person.summary_pl,
+    Person.summary_en,
+    Person.biography_pl,
+    Person.biography_en,
+    Person.iconographic_attributes,
+    Person.prayers,
+    Person.liturgical_color,
+    Person.is_featured,
+    Person.created_at,
+    Person.updated_at,
+)
 
 
 def _enum_values(
@@ -411,7 +439,11 @@ class PersonQueryService:
         include_translations: bool = False,
     ) -> tuple[list[Person], int]:
         """List persons with full-text search, filtering, and pagination."""
-        load_options = [selectinload(Person.images), selectinload(Person.patronages)]
+        load_options = [
+            load_only(*PERSON_LIST_COLUMNS),
+            selectinload(Person.images),
+            selectinload(Person.patronages),
+        ]
         search_term = SearchPolicy.normalize_query(search)
         if search_term:
             load_options.append(selectinload(Person.aliases))
