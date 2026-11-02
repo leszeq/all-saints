@@ -588,8 +588,8 @@ Techniczna: **6/10 (średnia)**; dane: **2/10**; utrzymanie: **5/10**. Są to ko
 
 **Acceptance Criteria**
 
-- [ ] Wynik load testu i EXPLAIN zapisany.
-- [ ] brak wzrostu liczby SQL per karta.
+- [x] Wynik load testu i EXPLAIN zapisany dla katalogu wspólnot.
+- [x] brak wzrostu liczby SQL per karta w odczycie katalogu wspólnot.
 - [ ] bounded lists.
 - [ ] stare publiczne dane odświeżone w zadanym budżecie po publikacji.
 
@@ -646,6 +646,13 @@ przekazuje w nagłówkach `X-Total-Count`, `X-Page`, `X-Per-Page` i
 `X-Total-Pages`. Ciało pozostaje tablicą JSON dla istniejących klientów; zapytanie
 wykonuje count na podzapytaniu i pobiera wyłącznie bieżącą stronę, z sortowaniem po
 `sort_order`, `founded_year`, nazwie i identyfikatorze.
+
+Dodano powtarzalny benchmark `make order-catalogue-benchmark`. Mierzy on p50/p95/p99,
+liczbę instrukcji SQL na odczyt i zapisuje plany `EXPLAIN (ANALYZE, BUFFERS)` dla
+strony oraz count. Wynik lokalny z 2 listopada 2026 znajduje się w
+[`order-catalogue-benchmark.json`](./order-catalogue-benchmark.json); dla 20 iteracji
+odczyt użył stabilnie dwóch instrukcji SQL, a p95 wyniósł 1,656 ms przy 20 aktywnych
+wspólnotach. Jest to pomiar lokalnej bazy developerskiej, nie SLO produkcyjne.
 
 ## FEATURE-012 — Dostępność i mobilne wykonanie zadań
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import event, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.application.commands.religious_orders import (
@@ -325,3 +325,36 @@ async def test_order_catalogue_page_is_bounded_and_stably_sorted(
     assert len(result.rows) == 1
     assert result.rows[0][0].id == second.id
     assert first.id != second.id
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("per_page", [1, 20, 100])
+async def test_order_catalogue_page_uses_fixed_sql_budget(
+    db_session: AsyncSession,
+    test_engine,
+    per_page: int,
+) -> None:
+    await OrderService(db_session).create_order(
+        CreateReligiousOrderCommand(
+            slug=f"katalog-sql-budzet-{per_page}",
+            name="Katalog SQL Budżet",
+        )
+    )
+    statements: list[str] = []
+
+    def capture_statement(*args: object, **kwargs: object) -> None:
+        del kwargs
+        statements.append(str(args[2]))
+
+    event.listen(test_engine.sync_engine, "before_cursor_execute", capture_statement)
+    try:
+        result = await OrderQueryService(db_session).list_orders_page(
+            search="Katalog SQL Budżet",
+            per_page=per_page,
+        )
+    finally:
+        event.remove(test_engine.sync_engine, "before_cursor_execute", capture_statement)
+
+    assert result.total == 1
+    assert len(result.rows) == 1
+    assert len(statements) == 2

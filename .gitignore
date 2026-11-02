@@ -136,6 +136,7 @@ ssl/
 
 # MinIO data
 data/minio/
+apps/backend/data/performance/
 
 # Grafana
 infrastructure/monitoring/grafana/data/

@@ -16,6 +16,7 @@ Na początku zastano zmodyfikowany `apps/admin/components/persons/person-form-mo
 | DB migration head | 0018_person_translation_search | Lokalna baza |
 | UI | Homepage desktop, profil Jana Chryzostoma i katalog 390×844, panel i formularz tworzenia desktop | Inspekcja wizualna i accessibility tree, bez zapisu danych |
 | GET API | health 200, osoby 200, kalendarz today 200, sources/stats 200 | Kilka pojedynczych próbek, bez load testu |
+| Katalog wspólnot — benchmark | 20 iteracji, p50 0,967 ms, p95 1,656 ms, 2 instrukcje SQL na odczyt; plan strony i count zapisany w [order-catalogue-benchmark.json](./order-catalogue-benchmark.json) | Lokalna baza developerska: 20 aktywnych wspólnot; nie jest to pomiar produkcyjnego SLO |
 
 ## Lokalny zbiór danych
 

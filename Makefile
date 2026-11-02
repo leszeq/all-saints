@@ -4,7 +4,7 @@
 	lint-backend lint-frontend format format-check type-check type-check-backend \
 	type-check-frontend audit logs logs-backend logs-db ps shell-backend shell-db clean \
 	build export-xlsx export-pdf openapi-export backup-db translations-backfill-check \
-	translations-backfill \
+	translations-backfill order-catalogue-benchmark \
 	prod-backup prod-restore-check
 
 # ==============================================================================
@@ -150,6 +150,12 @@ search-benchmark-db: ## Export and evaluate the benchmark against published dev 
 		--fixture data/search/search_gold_v1.json \
 		--output "$(SEARCH_RESULTS)"
 	$(MAKE) search-benchmark SEARCH_RESULTS="$(SEARCH_RESULTS)"
+
+order-catalogue-benchmark: ## Measure order catalogue latency, SQL count, and EXPLAIN
+	$(BACKEND_RUN) .venv/bin/python -m src.infrastructure.db.run_order_catalogue_benchmark \
+		--output data/performance/order-catalogue-benchmark.json
+	cp apps/backend/data/performance/order-catalogue-benchmark.json \
+		docs/product-audit-2026-09-13/order-catalogue-benchmark.json
 
 test-e2e: ## Run Playwright smoke tests against the local development stack
 	$(COMPOSE_DEV) up -d --wait db redis minio backend
