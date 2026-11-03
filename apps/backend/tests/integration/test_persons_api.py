@@ -246,3 +246,10 @@ async def test_public_catalogue_relational_filters_and_facets_exclude_drafts(
     assert facet_data["occupations"] == [{"id": str(occupation.id), "count": 1}]
     assert facet_data["birth_countries"] == [{"id": str(country.id), "count": 1}]
     assert facet_data["nationalities"] == [{"id": str(country.id), "count": 1}]
+
+    searched_facets = await async_client.get(
+        "/api/v1/persons/facets",
+        params={"search": "Pasująca"},
+    )
+    assert searched_facets.status_code == 200
+    assert searched_facets.json()["total"] == 1

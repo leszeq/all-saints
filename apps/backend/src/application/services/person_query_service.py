@@ -322,6 +322,53 @@ def _person_catalogue_filters(
     return filters
 
 
+def _person_search_predicate(term: str) -> ColumnElement[bool]:
+    """Build the shared public search predicate for people and their relations."""
+    like_term = f"%{term}%"
+    normalized_term = normalize_person_name(term)
+    text_query = func.websearch_to_tsquery("simple", func.unaccent(term))
+    return or_(
+        Person.search_vector.op("@@")(text_query),
+        Person.canonical_name.ilike(like_term),
+        Person.canonical_name_en.ilike(like_term),
+        Person.latin_name.ilike(like_term),
+        Person.canonical_name.op("%")(term),
+        Person.canonical_name_en.op("%")(term),
+        Person.latin_name.op("%")(term),
+        Person.aliases.any(
+            and_(
+                PersonName.deleted_at.is_(None),
+                or_(
+                    PersonName.normalized_value == normalized_term,
+                    PersonName.value.ilike(like_term),
+                    PersonName.value.op("%")(term),
+                ),
+            )
+        ),
+        Person.translations.any(
+            and_(
+                PersonTranslation.deleted_at.is_(None),
+                or_(
+                    PersonTranslation.search_vector.op("@@")(text_query),
+                    PersonTranslation.canonical_name.ilike(like_term),
+                    PersonTranslation.canonical_name.op("%")(term),
+                ),
+            )
+        ),
+        Person.patronages.any(
+            and_(
+                Patronage.deleted_at.is_(None),
+                or_(
+                    Patronage.name_pl.ilike(like_term),
+                    Patronage.name_en.ilike(like_term),
+                    Patronage.description.ilike(like_term),
+                    Patronage.patronage_type.ilike(like_term),
+                ),
+            )
+        ),
+    )
+
+
 class PersonQueryService:
     """Serve person reads without exposing mutation responsibilities."""
 
@@ -479,7 +526,6 @@ class PersonQueryService:
         search_score = None
         if search_term:
             term = search_term
-            like_term = f"%{term}%"
             normalized_term = normalize_person_name(term)
             text_query = func.websearch_to_tsquery("simple", func.unaccent(term))
             full_text_rank = func.coalesce(
@@ -570,48 +616,7 @@ class PersonQueryService:
                     else_=0.0,
                 )
             )
-            query = query.where(
-                or_(
-                    Person.search_vector.op("@@")(text_query),
-                    Person.canonical_name.ilike(like_term),
-                    Person.canonical_name_en.ilike(like_term),
-                    Person.latin_name.ilike(like_term),
-                    Person.canonical_name.op("%")(term),
-                    Person.canonical_name_en.op("%")(term),
-                    Person.latin_name.op("%")(term),
-                    Person.aliases.any(
-                        and_(
-                            PersonName.deleted_at.is_(None),
-                            or_(
-                                PersonName.normalized_value == normalized_term,
-                                PersonName.value.ilike(like_term),
-                                PersonName.value.op("%")(term),
-                            ),
-                        )
-                    ),
-                    Person.translations.any(
-                        and_(
-                            PersonTranslation.deleted_at.is_(None),
-                            or_(
-                                PersonTranslation.search_vector.op("@@")(text_query),
-                                PersonTranslation.canonical_name.ilike(like_term),
-                                PersonTranslation.canonical_name.op("%")(term),
-                            ),
-                        )
-                    ),
-                    Person.patronages.any(
-                        and_(
-                            Patronage.deleted_at.is_(None),
-                            or_(
-                                Patronage.name_pl.ilike(like_term),
-                                Patronage.name_en.ilike(like_term),
-                                Patronage.description.ilike(like_term),
-                                Patronage.patronage_type.ilike(like_term),
-                            ),
-                        )
-                    ),
-                )
-            )
+            query = query.where(_person_search_predicate(term))
 
         count_statement = select(func.count()).select_from(query.subquery())
         total = int((await self.db.execute(count_statement)).scalar_one())
@@ -689,53 +694,9 @@ class PersonQueryService:
                 is_featured=is_featured,
             )
         )
-        if search and search.strip():
-            term = search.strip()
-            like_term = f"%{term}%"
-            normalized_term = normalize_person_name(term)
-            text_query = func.websearch_to_tsquery("simple", func.unaccent(term))
-            query = query.where(
-                or_(
-                    Person.search_vector.op("@@")(text_query),
-                    Person.canonical_name.ilike(like_term),
-                    Person.canonical_name_en.ilike(like_term),
-                    Person.latin_name.ilike(like_term),
-                    Person.canonical_name.op("%")(term),
-                    Person.canonical_name_en.op("%")(term),
-                    Person.latin_name.op("%")(term),
-                    Person.aliases.any(
-                        and_(
-                            PersonName.deleted_at.is_(None),
-                            or_(
-                                PersonName.normalized_value == normalized_term,
-                                PersonName.value.ilike(like_term),
-                                PersonName.value.op("%")(term),
-                            ),
-                        )
-                    ),
-                    Person.translations.any(
-                        and_(
-                            PersonTranslation.deleted_at.is_(None),
-                            or_(
-                                PersonTranslation.search_vector.op("@@")(text_query),
-                                PersonTranslation.canonical_name.ilike(like_term),
-                                PersonTranslation.canonical_name.op("%")(term),
-                            ),
-                        )
-                    ),
-                    Person.patronages.any(
-                        and_(
-                            Patronage.deleted_at.is_(None),
-                            or_(
-                                Patronage.name_pl.ilike(like_term),
-                                Patronage.name_en.ilike(like_term),
-                                Patronage.description.ilike(like_term),
-                                Patronage.patronage_type.ilike(like_term),
-                            ),
-                        )
-                    ),
-                )
-            )
+        search_term = SearchPolicy.normalize_query(search)
+        if search_term:
+            query = query.where(_person_search_predicate(search_term))
 
         selected = query.subquery()
         person_ids = select(selected.c.id)
