@@ -322,51 +322,58 @@ def _person_catalogue_filters(
     return filters
 
 
-def _person_search_predicate(term: str) -> ColumnElement[bool]:
-    """Build the shared public search predicate for people and their relations."""
+def _person_search_predicate(
+    term: str,
+    *,
+    person_visibility: Sequence[ColumnElement[bool]] = (),
+) -> ColumnElement[bool]:
+    """Build an indexed person-ID predicate for the public search query."""
     like_term = f"%{term}%"
     normalized_term = normalize_person_name(term)
     text_query = func.websearch_to_tsquery("simple", func.unaccent(term))
-    return or_(
-        Person.search_vector.op("@@")(text_query),
-        Person.canonical_name.ilike(like_term),
-        Person.canonical_name_en.ilike(like_term),
-        Person.latin_name.ilike(like_term),
-        Person.canonical_name.op("%")(term),
-        Person.canonical_name_en.op("%")(term),
-        Person.latin_name.op("%")(term),
-        Person.aliases.any(
-            and_(
-                PersonName.deleted_at.is_(None),
-                or_(
-                    PersonName.normalized_value == normalized_term,
-                    PersonName.value.ilike(like_term),
-                    PersonName.value.op("%")(term),
-                ),
-            )
-        ),
-        Person.translations.any(
-            and_(
-                PersonTranslation.deleted_at.is_(None),
-                or_(
-                    PersonTranslation.search_vector.op("@@")(text_query),
-                    PersonTranslation.canonical_name.ilike(like_term),
-                    PersonTranslation.canonical_name.op("%")(term),
-                ),
-            )
-        ),
-        Person.patronages.any(
-            and_(
-                Patronage.deleted_at.is_(None),
-                or_(
-                    Patronage.name_pl.ilike(like_term),
-                    Patronage.name_en.ilike(like_term),
-                    Patronage.description.ilike(like_term),
-                    Patronage.patronage_type.ilike(like_term),
-                ),
-            )
+    person_matches = select(Person.id).where(
+        *person_visibility,
+        or_(
+            Person.search_vector.op("@@")(text_query),
+            Person.canonical_name.ilike(like_term),
+            Person.canonical_name_en.ilike(like_term),
+            Person.latin_name.ilike(like_term),
+            Person.canonical_name.op("%")(term),
+            Person.canonical_name_en.op("%")(term),
+            Person.latin_name.op("%")(term),
+        )
+    )
+    alias_matches = select(PersonName.person_id).where(
+        PersonName.deleted_at.is_(None),
+        or_(
+            PersonName.normalized_value == normalized_term,
+            PersonName.value.ilike(like_term),
+            PersonName.value.op("%")(term),
         ),
     )
+    translation_matches = select(PersonTranslation.person_id).where(
+        PersonTranslation.deleted_at.is_(None),
+        or_(
+            PersonTranslation.search_vector.op("@@")(text_query),
+            PersonTranslation.canonical_name.ilike(like_term),
+            PersonTranslation.canonical_name.op("%")(term),
+        ),
+    )
+    patronage_matches = select(Patronage.person_id).where(
+        Patronage.deleted_at.is_(None),
+        or_(
+            Patronage.name_pl.ilike(like_term),
+            Patronage.name_en.ilike(like_term),
+            Patronage.description.ilike(like_term),
+            Patronage.patronage_type.ilike(like_term),
+        ),
+    )
+    matching_person_ids = person_matches.union(
+        alias_matches,
+        translation_matches,
+        patronage_matches,
+    )
+    return Person.id.in_(matching_person_ids)
 
 
 class PersonQueryService:
@@ -616,7 +623,12 @@ class PersonQueryService:
                     else_=0.0,
                 )
             )
-            query = query.where(_person_search_predicate(term))
+            visibility: list[ColumnElement[bool]] = [Person.deleted_at.is_(None)]
+            if published_only:
+                visibility.append(Person.status == PublicationStatus.PUBLISHED.value)
+            elif status:
+                visibility.append(Person.status == status.value)
+            query = query.where(_person_search_predicate(term, person_visibility=visibility))
 
         count_statement = select(func.count()).select_from(query.subquery())
         total = int((await self.db.execute(count_statement)).scalar_one())
@@ -696,7 +708,15 @@ class PersonQueryService:
         )
         search_term = SearchPolicy.normalize_query(search)
         if search_term:
-            query = query.where(_person_search_predicate(search_term))
+            query = query.where(
+                _person_search_predicate(
+                    search_term,
+                    person_visibility=(
+                        Person.deleted_at.is_(None),
+                        Person.status == PublicationStatus.PUBLISHED.value,
+                    ),
+                )
+            )
 
         selected = query.subquery()
         person_ids = select(selected.c.id)

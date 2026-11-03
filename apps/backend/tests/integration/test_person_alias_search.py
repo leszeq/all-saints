@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.commands.persons import PersonCreateSchema
 from src.application.services.person_service import PersonService
-from src.domain.hagiography.models import PersonTranslation, PublicationStatus
+from src.domain.hagiography.models import Patronage, PersonTranslation, PublicationStatus
 
 
 @pytest.mark.asyncio
@@ -92,3 +92,48 @@ async def test_catalogue_search_prioritizes_exact_canonical_name(
     assert results[0].id == exact.id
     assert results[0].search_reason == "canonical_exact"
     assert results[0].search_match == "Jan Paweł"
+
+
+@pytest.mark.asyncio
+async def test_catalogue_search_finds_active_patronage_without_deleted_hits(
+    db_session: AsyncSession,
+) -> None:
+    service = PersonService(db_session)
+    person = await service.create_person(
+        PersonCreateSchema(
+            canonical_name="Św. Patronat Aktywny",
+            person_type="saint",
+            gender="unknown",
+        )
+    )
+    person.status = PublicationStatus.PUBLISHED.value
+    db_session.add_all(
+        [
+            Patronage(
+                person_id=person.id,
+                patronage_type="profession",
+                name_pl="Opiekun lekarzy",
+            ),
+            Patronage(
+                person_id=person.id,
+                patronage_type="profession",
+                name_pl="Usunięty termin medyczny",
+                deleted_at=person.updated_at,
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    active_results, active_total = await service.list_persons(
+        search="lekarzy",
+        published_only=True,
+    )
+    assert active_total == 1
+    assert [result.id for result in active_results] == [person.id]
+
+    deleted_results, deleted_total = await service.list_persons(
+        search="medyczny",
+        published_only=True,
+    )
+    assert deleted_total == 0
+    assert deleted_results == []
