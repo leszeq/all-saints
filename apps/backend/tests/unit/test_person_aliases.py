@@ -6,7 +6,7 @@ from pathlib import Path
 
 from alembic.config import Config
 from alembic.script import ScriptDirectory
-from src.domain.hagiography.models import PersonName
+from src.domain.hagiography.models import Patronage, Person, PersonName, PersonTranslation
 from src.domain.hagiography.person_names import normalize_person_name
 
 MIGRATION = Path(__file__).parents[2] / "alembic" / "versions" / "0016_person_names.py"
@@ -24,6 +24,28 @@ def test_person_name_model_enforces_normalized_uniqueness_and_search_indexes() -
     assert "uq_person_name_normalized" in constraints
     assert "ix_person_names_normalized_value" in indexes
     assert "ix_person_names_value_trgm" in indexes
+
+
+def test_active_search_indexes_cover_public_catalogue_relations() -> None:
+    person_indexes = {index.name for index in Person.__table__.indexes}
+    translation_indexes = {index.name for index in PersonTranslation.__table__.indexes}
+    alias_indexes = {index.name for index in PersonName.__table__.indexes}
+    patronage_indexes = {index.name for index in Patronage.__table__.indexes}
+
+    assert "ix_persons_public_canonical_name" in person_indexes
+    assert "ix_person_translations_person_id_active" in translation_indexes
+    assert {
+        "ix_person_names_person_id_active",
+        "ix_person_names_normalized_value_active",
+        "ix_person_names_value_trgm_active",
+    }.issubset(alias_indexes)
+    assert {
+        "ix_patronages_person_id_active",
+        "ix_patronages_name_pl_trgm_active",
+        "ix_patronages_name_en_trgm_active",
+        "ix_patronages_description_trgm_active",
+        "ix_patronages_type_trgm",
+    }.issubset(patronage_indexes)
 
 
 def test_alias_migration_extends_the_single_history_and_backfills_names() -> None:

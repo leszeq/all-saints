@@ -310,6 +310,12 @@ class Person(BaseModel, Base):
             postgresql_using="gin",
             postgresql_ops={"latin_name": "gin_trgm_ops"},
         ),
+        Index(
+            "ix_persons_public_canonical_name",
+            "canonical_name",
+            "id",
+            postgresql_where=text("status = 'published' AND deleted_at IS NULL"),
+        ),
         {"comment": "All persons in the hagiographic catalogue"},
     )
 
@@ -606,6 +612,11 @@ class PersonTranslation(BaseModel, Base):
             postgresql_using="gin",
             postgresql_where=text("deleted_at IS NULL"),
         ),
+        Index(
+            "ix_person_translations_person_id_active",
+            "person_id",
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
         {"comment": "Multilingual content for persons"},
     )
 
@@ -658,6 +669,23 @@ class PersonName(BaseModel, Base):
             "value",
             postgresql_using="gin",
             postgresql_ops={"value": "gin_trgm_ops"},
+        ),
+        Index(
+            "ix_person_names_person_id_active",
+            "person_id",
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+        Index(
+            "ix_person_names_normalized_value_active",
+            "normalized_value",
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+        Index(
+            "ix_person_names_value_trgm_active",
+            "value",
+            postgresql_using="gin",
+            postgresql_ops={"value": "gin_trgm_ops"},
+            postgresql_where=text("deleted_at IS NULL"),
         ),
         {"comment": "Searchable alternative names for hagiographic persons"},
     )
@@ -887,6 +915,39 @@ class Patronage(BaseModel, Base):
             "description",
             postgresql_using="gin",
             postgresql_ops={"description": "gin_trgm_ops"},
+        ),
+        Index(
+            "ix_patronages_person_id_active",
+            "person_id",
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+        Index(
+            "ix_patronages_name_pl_trgm_active",
+            "name_pl",
+            postgresql_using="gin",
+            postgresql_ops={"name_pl": "gin_trgm_ops"},
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+        Index(
+            "ix_patronages_name_en_trgm_active",
+            "name_en",
+            postgresql_using="gin",
+            postgresql_ops={"name_en": "gin_trgm_ops"},
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+        Index(
+            "ix_patronages_description_trgm_active",
+            "description",
+            postgresql_using="gin",
+            postgresql_ops={"description": "gin_trgm_ops"},
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+        Index(
+            "ix_patronages_type_trgm",
+            "patronage_type",
+            postgresql_using="gin",
+            postgresql_ops={"patronage_type": "gin_trgm_ops"},
+            postgresql_where=text("deleted_at IS NULL"),
         ),
         {"comment": "Patronages attributed to persons"},
     )
