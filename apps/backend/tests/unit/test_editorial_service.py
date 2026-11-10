@@ -13,6 +13,7 @@ from src.application.services.editorial_workflow_service import (
     EditorialTransitionError,
     EditorialWorkflowService,
 )
+from src.application.services.publication_policy import PublicationPolicy
 from src.domain.hagiography.models import PublicationStatus
 
 
@@ -89,6 +90,23 @@ def test_publication_blockers_require_an_active_source():
     )
 
     assert [issue.code for issue in blockers] == ["missing_sources"]
+
+
+def test_publication_policy_orders_blockers_and_exposes_one_actionable_message():
+    issues = [
+        SimpleNamespace(code="unknown_image_license", label="Nieznana licencja obrazu"),
+        SimpleNamespace(code="missing_sources", label="Brak przypisanych źródeł"),
+        SimpleNamespace(code="missing_summary", label="Brak streszczenia"),
+        SimpleNamespace(code="missing_image", label="Brak obrazu"),
+    ]
+
+    blockers = PublicationPolicy.blockers(issues)
+
+    assert [issue.code for issue in blockers] == ["missing_summary", "missing_sources", "unknown_image_license"]
+    assert PublicationPolicy.rejection_message(blockers) == (
+        "Publikacja wymaga uzupełnienia: brak streszczenia, "
+        "brak przypisanych źródeł, nieznana licencja obrazu"
+    )
 
 
 def test_duplicate_key_normalizes_hagiographic_prefixes_and_diacritics():

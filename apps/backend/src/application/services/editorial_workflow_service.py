@@ -13,6 +13,7 @@ from src.application.services.audit_service import AuditContext
 from src.application.services.editorial_quality import EditorialQualityPolicy
 from src.application.services.person_query_service import PersonQueryService
 from src.application.services.person_service import PersonService
+from src.application.services.publication_policy import PublicationPolicy
 from src.domain.hagiography.models import Person, PublicationStatus
 from src.domain.sources.models import ImageLicense
 
@@ -104,19 +105,18 @@ class EditorialWorkflowService:
                 or 0
             )
             active_images = [image for image in person.images if image.deleted_at is None]
-            blockers = EditorialQualityPolicy.publication_blockers(
-                person,
-                source_count=source_count,
-                image_count=len(active_images),
-                unknown_license_count=sum(
-                    image.license == ImageLicense.UNKNOWN.value for image in active_images
-                ),
+            blockers = PublicationPolicy.blockers(
+                EditorialQualityPolicy.issues(
+                    person,
+                    source_count=source_count,
+                    image_count=len(active_images),
+                    unknown_license_count=sum(
+                        image.license == ImageLicense.UNKNOWN.value for image in active_images
+                    ),
+                )
             )
             if blockers:
-                raise EditorialTransitionError(
-                    "Publikacja wymaga uzupełnienia: "
-                    + ", ".join(issue.label.lower() for issue in blockers)
-                )
+                raise EditorialTransitionError(PublicationPolicy.rejection_message(blockers))
         summary = normalized_note or f"Workflow redakcyjny: {previous} → {target_status.value}"
         person = await PersonService(self.db).update_person(
             person,

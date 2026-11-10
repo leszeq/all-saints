@@ -208,10 +208,10 @@ Publikacja wymaga tekstów i licencji, ale nie wymaga źródła; can_publish ma 
 
 **Backend**
 
-- [ ] Wydzielić PublicationPolicy używaną przez EditorialWorkflowService i EditorialQualityPolicy.
-- [ ] sprawdzać aktywne źródło oraz treść/licencję.
+- [x] Wydzielić PublicationPolicy używaną przez EditorialWorkflowService i EditorialQualityPolicy.
+- [x] sprawdzać aktywne źródło oraz treść/licencję.
 - [ ] POST /editorial/queue/{id}/transition zwraca typed blockers. Weryfikować także alternatywne ścieżki import/AI.
-- [ ] permission review/publish zgodnie z istniejącą macierzą.
+- [x] permission review/publish zgodnie z istniejącą macierzą.
 
 **Database**
 

@@ -21,6 +21,7 @@ from src.application.editorial_models import (
     EditorialQueueItemSchema,
 )
 from src.application.person_models import PersonAvatarSchema, PersonLastEditorSchema
+from src.application.services.publication_policy import PublicationPolicy
 from src.domain.hagiography.models import Person, PublicationStatus
 from src.domain.identity.models import User
 from src.domain.sources.models import (
@@ -37,9 +38,9 @@ PersonQualityRow = Row[tuple[Person, int, int, int, int, int]]
 class EditorialQualityPolicy:
     """Build consistent quality metrics and response records for a person."""
 
-    PUBLICATION_BLOCKER_CODES = frozenset(
-        {"missing_biography", "missing_summary", "missing_sources", "unknown_image_license"}
-    )
+    # Kept as a compatibility alias for callers that used the quality policy
+    # as the source of publication blocker codes.
+    PUBLICATION_BLOCKER_CODES = PublicationPolicy.BLOCKER_CODES
 
     @staticmethod
     def has_text(column: InstrumentedAttribute[str | None]) -> ColumnElement[bool]:
@@ -281,23 +282,14 @@ class EditorialQualityPolicy:
         unknown_license_count: int,
     ) -> list[EditorialIssueSchema]:
         """Return the quality issues that must block publication."""
-        order = {
-            "missing_summary": 0,
-            "missing_biography": 1,
-            "missing_sources": 2,
-            "unknown_image_license": 3,
-        }
-        blockers = [
-            issue
-            for issue in cls.issues(
+        return PublicationPolicy.blockers(
+            cls.issues(
                 person,
                 source_count=source_count,
                 image_count=image_count,
                 unknown_license_count=unknown_license_count,
             )
-            if issue.code in cls.PUBLICATION_BLOCKER_CODES
-        ]
-        return sorted(blockers, key=lambda issue: order[issue.code])
+        )
 
     @classmethod
     def queue_item(
