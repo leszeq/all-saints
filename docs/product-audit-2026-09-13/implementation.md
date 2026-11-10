@@ -143,7 +143,7 @@ Techniczna: **4/10 (średnia)**; dane: **5/10**; utrzymanie: **3/10**. Są to ko
 
 **Backend — endpointy, serwisy, schemas, permissions**
 
-Wydzielono `PublicationPolicy` używaną przez `EditorialWorkflowService` i `EditorialQualityPolicy`; wspólna bramka sprawdza aktywne źródło oraz treść/licencję, a macierz `review/publish` pozostaje egzekwowana. Typed blockers w odpowiedzi przejścia oraz weryfikacja wszystkich alternatywnych ścieżek pozostają otwarte.
+Wydzielono `PublicationPolicy` używaną przez `EditorialWorkflowService` i `EditorialQualityPolicy`; wspólna bramka sprawdza aktywne źródło oraz treść/licencję, a macierz `review/publish` pozostaje egzekwowana. Odpowiedź przejścia publikuje typed blockers w `detail.code`, `detail.blockers` i `details`; alternatywne ścieżki importu/AI pozostają do weryfikacji.
 
 **Database — tabele, relacje, indeksy, migracje**
 

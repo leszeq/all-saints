@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.commands.persons import PersonUpdateSchema
-from src.application.editorial_models import EditorialTransitionResponseSchema
+from src.application.editorial_models import EditorialIssueSchema, EditorialTransitionResponseSchema
 from src.application.services.audit_service import AuditContext
 from src.application.services.editorial_quality import EditorialQualityPolicy
 from src.application.services.person_query_service import PersonQueryService
@@ -24,6 +25,15 @@ class EditorialNotFoundError(ValueError):
 
 class EditorialTransitionError(ValueError):
     """Raised when a publication transition is not allowed."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        blockers: Sequence[EditorialIssueSchema] = (),
+    ) -> None:
+        super().__init__(message)
+        self.blockers = list(blockers)
 
 
 class EditorialAuthorizationError(ValueError):
@@ -116,7 +126,10 @@ class EditorialWorkflowService:
                 )
             )
             if blockers:
-                raise EditorialTransitionError(PublicationPolicy.rejection_message(blockers))
+                raise EditorialTransitionError(
+                    PublicationPolicy.rejection_message(blockers),
+                    blockers=blockers,
+                )
         summary = normalized_note or f"Workflow redakcyjny: {previous} → {target_status.value}"
         person = await PersonService(self.db).update_person(
             person,

@@ -59,8 +59,10 @@ interface ApiErrorPayload {
 }
 
 export interface ApiErrorDetail {
+  code?: string;
   field?: string;
   message?: string;
+  severity?: string;
   type?: string;
 }
 
@@ -113,10 +115,8 @@ export function getApiErrorMessage(
   const localizedCodeMessage = payload?.error
     ? options.messagesByCode?.[payload.error]
     : undefined;
-  if (localizedCodeMessage) return localizedCodeMessage;
-
   if (payload?.details?.length) {
-    return payload.details
+    const structuredMessage = payload.details
       .map((value) => {
         const detail = normalizeApiErrorDetail(value);
         if (!detail) return null;
@@ -127,7 +127,12 @@ export function getApiErrorMessage(
       })
       .filter((message): message is string => Boolean(message))
       .join(" · ");
+    if (structuredMessage) {
+      return [localizedCodeMessage, structuredMessage].filter(Boolean).join(" · ");
+    }
   }
+
+  if (localizedCodeMessage) return localizedCodeMessage;
 
   if (payload?.message) return payload.message;
   if (typeof payload?.detail === "string") return payload.detail;
@@ -162,10 +167,13 @@ function normalizeApiErrorDetail(value: unknown): ApiErrorDetail | null {
   if (!value || typeof value !== "object") return null;
 
   const entry = value as {
+    code?: unknown;
     field?: unknown;
     loc?: unknown;
+    label?: unknown;
     message?: unknown;
     msg?: unknown;
+    severity?: unknown;
     type?: unknown;
   };
   const location = Array.isArray(entry.loc)
@@ -176,11 +184,18 @@ function normalizeApiErrorDetail(value: unknown): ApiErrorDetail | null {
     ? entry.message
     : typeof entry.msg === "string"
       ? entry.msg
+      : typeof entry.label === "string"
+        ? entry.label
       : undefined;
-  const type = typeof entry.type === "string" ? entry.type : undefined;
+  const type = typeof entry.type === "string"
+    ? entry.type
+    : typeof entry.code === "string"
+      ? entry.code
+      : undefined;
+  const severity = typeof entry.severity === "string" ? entry.severity : undefined;
 
   if (!field && !message && !type) return null;
-  return { field, message, type };
+  return { code: typeof entry.code === "string" ? entry.code : undefined, field, message, severity, type };
 }
 
 /** Extract structured validation entries without exposing Axios internals to UI components. */

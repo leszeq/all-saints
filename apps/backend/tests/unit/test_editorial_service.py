@@ -15,6 +15,7 @@ from src.application.services.editorial_workflow_service import (
 )
 from src.application.services.publication_policy import PublicationPolicy
 from src.domain.hagiography.models import PublicationStatus
+from src.presentation.api.v1.editorial.router import _transition_error_detail
 
 
 def make_person(**overrides):
@@ -107,6 +108,28 @@ def test_publication_policy_orders_blockers_and_exposes_one_actionable_message()
         "Publikacja wymaga uzupełnienia: brak streszczenia, "
         "brak przypisanych źródeł, nieznana licencja obrazu"
     )
+
+
+def test_editorial_transition_error_exposes_typed_publication_blockers():
+    issues = EditorialQualityPolicy.issues(
+        make_person(),
+        source_count=0,
+        image_count=0,
+        unknown_license_count=0,
+    )
+    blockers = [issue for issue in issues if issue.code == "missing_sources"]
+    error = EditorialTransitionError(
+        "Publikacja wymaga uzupełnienia: brak przypisanych źródeł",
+        blockers=blockers,
+    )
+
+    detail = _transition_error_detail(error)
+
+    assert detail["code"] == "publication_blocked"
+    assert detail["details"] == detail["blockers"]
+    assert detail["blockers"] == [
+        {"code": "missing_sources", "label": "Brak przypisanych źródeł", "severity": "warning"}
+    ]
 
 
 def test_duplicate_key_normalizes_hagiographic_prefixes_and_diacritics():

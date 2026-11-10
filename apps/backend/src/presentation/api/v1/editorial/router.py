@@ -33,6 +33,17 @@ from src.presentation.audit import audit_context_from_request
 router = APIRouter()
 
 
+def _transition_error_detail(exc: EditorialTransitionError) -> dict[str, object]:
+    """Serialize publication blockers while retaining the legacy message."""
+    blockers = [item.model_dump(mode="json") for item in exc.blockers]
+    return {
+        "message": str(exc),
+        "code": "publication_blocked" if blockers else "transition_not_allowed",
+        "blockers": blockers,
+        "details": blockers or None,
+    }
+
+
 @router.get(
     "/dashboard",
     response_model=EditorialDashboardSchema,
@@ -114,7 +125,10 @@ async def transition_editorial_record(
     except EditorialNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except EditorialTransitionError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=_transition_error_detail(exc),
+        ) from exc
     except PersonVersionConflictError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

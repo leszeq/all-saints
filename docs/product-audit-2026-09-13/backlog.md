@@ -210,7 +210,7 @@ Publikacja wymaga tekstów i licencji, ale nie wymaga źródła; can_publish ma 
 
 - [x] Wydzielić PublicationPolicy używaną przez EditorialWorkflowService i EditorialQualityPolicy.
 - [x] sprawdzać aktywne źródło oraz treść/licencję.
-- [ ] POST /editorial/queue/{id}/transition zwraca typed blockers. Weryfikować także alternatywne ścieżki import/AI.
+- [x] POST /editorial/queue/{id}/transition zwraca typed blockers. Weryfikować także alternatywne ścieżki import/AI.
 - [x] permission review/publish zgodnie z istniejącą macierzą.
 
 **Database**
@@ -228,7 +228,7 @@ Publikacja wymaga tekstów i licencji, ale nie wymaga źródła; can_publish ma 
 
 - [ ] Backend: publikacja bez aktywnego źródła odrzucona.
 - [ ] usunięty link nie spełnia bramki.
-- [ ] Frontend: can_publish i API zgodne.
+- [x] Frontend: can_publish i API zgodne.
 - [ ] E2E: draft→source→review→published.
 
 **Infrastructure**
