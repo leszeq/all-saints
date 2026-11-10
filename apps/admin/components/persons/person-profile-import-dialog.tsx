@@ -6,7 +6,12 @@ import { AlertCircle, CheckCircle2, FileJson, Loader2, Upload, X } from "lucide-
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAdminSystemCopy } from "@/components/admin-system-copy-context";
-import { personsApi } from "@/lib/api";
+import {
+  formatApiErrorField,
+  getApiErrorDetails,
+  personsApi,
+  type ApiErrorDetail,
+} from "@/lib/api";
 import { formatAdminApiError } from "@/lib/i18n/api-errors";
 import { focusFirstDialogControl } from "@/lib/focus";
 import type {
@@ -41,6 +46,60 @@ interface ValidationResult {
 }
 
 type OverwriteTarget = { overwrite_person_id: string; expected_version: number };
+
+function validationDetailMessage(
+  detail: ApiErrorDetail,
+  copy: AdminPersonsDictionary["importDialog"]["validationDetails"],
+): string {
+  if (detail.type === "extra_forbidden") return copy.extraForbidden;
+  if (detail.type === "missing") return copy.missing;
+  return detail.message ?? copy.invalidValue;
+}
+
+function ValidationErrorDetails({
+  error,
+  copy,
+}: {
+  error: unknown;
+  copy: AdminPersonsDictionary["importDialog"];
+}) {
+  const details = getApiErrorDetails(error);
+  if (!details.length) return null;
+
+  return (
+    <details className="mt-3 rounded-lg border border-rose-300/70 bg-white/60 p-3 dark:border-rose-800/70 dark:bg-rose-950/20">
+      <summary className="cursor-pointer font-semibold underline-offset-4 hover:underline">
+        {copy.validationDetails.toggle} ({details.length})
+      </summary>
+      <ol className="mt-3 space-y-2">
+        {details.map((detail, index) => (
+          <li
+            key={`${detail.field ?? "document"}-${detail.type ?? "error"}-${index}`}
+            className="rounded-md border border-rose-200/80 bg-rose-50/70 p-3 dark:border-rose-900/60 dark:bg-rose-950/30"
+          >
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <span className="font-semibold">{copy.validationDetails.fieldLabel}:</span>
+              <code className="break-all rounded bg-rose-100 px-1.5 py-0.5 text-xs dark:bg-rose-900/50">
+                {detail.field
+                  ? formatApiErrorField(detail.field)
+                  : copy.validationDetails.generalField}
+              </code>
+            </div>
+            <p className="mt-2">
+              <span className="font-semibold">{copy.validationDetails.fixLabel}:</span>{" "}
+              {validationDetailMessage(detail, copy.validationDetails)}
+            </p>
+            {detail.type && (
+              <p className="mt-1 text-xs text-rose-700/80 dark:text-rose-300/80">
+                {copy.validationDetails.technicalTypePrefix}: {detail.type}
+              </p>
+            )}
+          </li>
+        ))}
+      </ol>
+    </details>
+  );
+}
 
 export function PersonProfileImportDialog({
   open,
@@ -157,7 +216,15 @@ export function PersonProfileImportDialog({
           <input ref={inputRef} type="file" accept="application/json,.json" className="sr-only" onChange={(event) => { void readFile(event.target.files?.[0]); }} />
 
           {(validateMutation.isPending) && <div className="mt-5 flex items-center gap-2 rounded-lg border border-border bg-muted/30 p-4 text-sm"><Loader2 className="h-4 w-4 animate-spin text-primary" /> {copy.validating}</div>}
-          {(fileError || validateMutation.isError) && <div role="alert" className="mt-5 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /><span>{fileError ?? formatAdminApiError(validateMutation.error, apiErrors, { invalidData: copy.invalidFormat })}</span></div>}
+          {(fileError || validateMutation.isError) && (
+            <div role="alert" className="mt-5 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p>{fileError ?? formatAdminApiError(validateMutation.error, apiErrors, { invalidData: copy.invalidFormat })}</p>
+                {!fileError && <ValidationErrorDetails error={validateMutation.error} copy={copy} />}
+              </div>
+            </div>
+          )}
 
           {validation && document && (
             <div className="mt-5 space-y-4">
@@ -200,7 +267,15 @@ export function PersonProfileImportDialog({
             </div>
           )}
 
-          {importMutation.isError && <p role="alert" className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">{formatAdminApiError(importMutation.error, apiErrors)}</p>}
+          {importMutation.isError && (
+            <div role="alert" className="mt-4 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p>{formatAdminApiError(importMutation.error, apiErrors)}</p>
+                <ValidationErrorDetails error={importMutation.error} copy={copy} />
+              </div>
+            </div>
+          )}
           <div className="mt-6 flex justify-end gap-3 border-t border-border pt-4">
             <Dialog.Close className="h-10 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted">{copy.cancelAction}</Dialog.Close>
             <button type="button" disabled={!validation?.can_import || validateMutation.isPending || validateMutation.isError || importMutation.isPending} onClick={() => importMutation.mutate()} className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">

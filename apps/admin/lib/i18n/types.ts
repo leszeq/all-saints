@@ -1540,6 +1540,16 @@ export interface AdminDictionary {
         feasts: string;
         sources: string;
       };
+      validationDetails: {
+        toggle: string;
+        fieldLabel: string;
+        fixLabel: string;
+        technicalTypePrefix: string;
+        generalField: string;
+        extraForbidden: string;
+        missing: string;
+        invalidValue: string;
+      };
       overwriteDescription: string;
       overwritePublishedWarning: string;
       overwriteConfirm: string;

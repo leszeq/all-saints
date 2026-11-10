@@ -1651,6 +1651,17 @@ const dictionary = {
         feasts: "Wspomnienia",
         sources: "Źródła",
       },
+      validationDetails: {
+        toggle: "Pokaż szczegóły błędu",
+        fieldLabel: "Miejsce w pliku",
+        fixLabel: "Co poprawić",
+        technicalTypePrefix: "Typ walidacji",
+        generalField: "Dokument",
+        extraForbidden:
+          "To pole nie jest obsługiwane w tym miejscu formatu importu. Usuń je albo użyj pola przewidzianego w tej sekcji.",
+        missing: "To pole jest wymagane.",
+        invalidValue: "Wartość nie spełnia wymagań formatu.",
+      },
       warningsTitle: "Uwagi walidacji",
       errorsTitle: "Profil wymaga poprawy",
       ready: "Profil jest gotowy do zapisania jako szkic.",

@@ -52,10 +52,16 @@ export const api = axios.create({
 
 interface ApiErrorPayload {
   error?: string;
-  detail?: string | { message?: string; errors?: string[] } | Array<unknown>;
+  detail?: string | { message?: string; errors?: unknown[] } | Array<unknown>;
   message?: string;
-  details?: Array<{ field?: string; message?: string }>;
+  details?: unknown[];
   request_id?: string | null;
+}
+
+export interface ApiErrorDetail {
+  field?: string;
+  message?: string;
+  type?: string;
 }
 
 interface TokenResponse {
@@ -111,13 +117,15 @@ export function getApiErrorMessage(
 
   if (payload?.details?.length) {
     return payload.details
-      .map(({ field, message }) => {
-        const fieldName = field?.replace(/^body\./, "");
+      .map((value) => {
+        const detail = normalizeApiErrorDetail(value);
+        if (!detail) return null;
+        const fieldName = detail.field ? formatApiErrorField(detail.field) : undefined;
         return fieldName
-          ? `${fieldName}: ${message ?? options.invalidValue}`
-          : message;
+          ? `${fieldName}: ${detail.message ?? options.invalidValue}`
+          : detail.message;
       })
-      .filter(Boolean)
+      .filter((message): message is string => Boolean(message))
       .join(" · ");
   }
 
@@ -147,6 +155,68 @@ export function getApiErrorMessage(
     return options.network;
   }
   return options.httpError(error.response.status);
+}
+
+function normalizeApiErrorDetail(value: unknown): ApiErrorDetail | null {
+  if (typeof value === "string" && value) return { message: value };
+  if (!value || typeof value !== "object") return null;
+
+  const entry = value as {
+    field?: unknown;
+    loc?: unknown;
+    message?: unknown;
+    msg?: unknown;
+    type?: unknown;
+  };
+  const location = Array.isArray(entry.loc)
+    ? entry.loc.map((part) => String(part)).join(".")
+    : undefined;
+  const field = typeof entry.field === "string" ? entry.field : location;
+  const message = typeof entry.message === "string"
+    ? entry.message
+    : typeof entry.msg === "string"
+      ? entry.msg
+      : undefined;
+  const type = typeof entry.type === "string" ? entry.type : undefined;
+
+  if (!field && !message && !type) return null;
+  return { field, message, type };
+}
+
+/** Extract structured validation entries without exposing Axios internals to UI components. */
+export function getApiErrorDetails(error: unknown): ApiErrorDetail[] {
+  if (!axios.isAxiosError<ApiErrorPayload>(error)) return [];
+  const payload = error.response?.data;
+  if (!payload) return [];
+
+  let rawDetails: unknown[] = [];
+  if (Array.isArray(payload.details)) {
+    rawDetails = payload.details;
+  } else if (Array.isArray(payload.detail)) {
+    rawDetails = payload.detail;
+  } else if (
+    payload.detail &&
+    typeof payload.detail === "object" &&
+    !Array.isArray(payload.detail) &&
+    Array.isArray(payload.detail.errors)
+  ) {
+    rawDetails = payload.detail.errors;
+  }
+
+  return rawDetails
+    .map(normalizeApiErrorDetail)
+    .filter((detail): detail is ApiErrorDetail => detail !== null);
+}
+
+/** Turn Pydantic's dotted location into a path a person can find in the JSON file. */
+export function formatApiErrorField(field: string): string {
+  return field
+    .replace(/^(body|query|path)\./, "")
+    .split(".")
+    .reduce((formatted, part) => {
+      if (/^\d+$/.test(part)) return `${formatted}[${part}]`;
+      return formatted ? `${formatted}.${part}` : part;
+    }, "");
 }
 
 // Access token lives only in memory. The persistent session is the HttpOnly cookie.
