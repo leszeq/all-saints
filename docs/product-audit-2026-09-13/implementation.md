@@ -247,9 +247,9 @@ Techniczna: **2/10 (niska)**; dane: **1/10**; utrzymanie: **1/10**. Są to koszt
 
 **Acceptance Criteria**
 
-- [ ] Serializator poprawnie obsługuje niebezpieczny fragment i zwykłe nazwy.
-- [ ] JSON po odczycie zachowuje oryginalną wartość.
-- [ ] żadna ścieżka nie osadza surowego JSON.stringify.
+- [x] Serializator poprawnie obsługuje niebezpieczny fragment i zwykłe nazwy.
+- [x] JSON po odczycie zachowuje oryginalną wartość.
+- [x] żadna ścieżka nie osadza surowego JSON.stringify.
 
 **Backend — endpointy, serwisy, schemas, permissions**
 
@@ -261,7 +261,7 @@ Brak migracji ani masowej zmiany danych.
 
 **Frontend — strony, komponenty, stan, integracja API**
 
-Profil swieci/[slug]: wspólny serializeJsonLd neutralizujący < do sekwencji Unicode; zastosować do każdego JSON-LD; utrzymać poprawny JSON i odczyt przez parser danych strukturalnych.
+Profil swieci/[slug]: wspólny serializeJsonLd neutralizujący < do sekwencji Unicode; zastosować do każdego JSON-LD; utrzymać poprawny JSON i odczyt przez parser danych strukturalnych. Profile świętego i wspólnoty publikują dodatkowo BreadcrumbList w tym samym bezpiecznie serializowanym `@graph`.
 
 **Tests — backend, frontend, E2E**
 
@@ -316,7 +316,7 @@ V1 bez nowych tabel; v2 PersonSlugRedirect(old_slug UNIQUE,person_id,created_at)
 
 **Frontend — strony, komponenty, stan, integracja API**
 
-web metadataBase z env; canonical i OG; sitemap.ts / robots.ts; 301 UUID/old_slug; BreadcrumbList; noindex wyszukiwania, kontrola stron tematycznych i paginacji; state URL.
+web metadataBase z env; canonical i OG; sitemap.ts / robots.ts; BreadcrumbList; 301 UUID/old_slug; noindex wyszukiwania, kontrola stron tematycznych i paginacji; state URL. W tej iteracji zamknięto metadataBase, canonical/OG, sitemap/robots oraz BreadcrumbList; redirecty i polityka indeksowania faset pozostają otwarte.
 
 **Tests — backend, frontend, E2E**
 

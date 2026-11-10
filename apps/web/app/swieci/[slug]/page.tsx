@@ -22,12 +22,13 @@ import { DEFAULT_WEB_UI_LOCALE } from "@/lib/i18n/config";
 import { getWebDictionary } from "@/lib/i18n/dictionaries";
 import { resolveDictionaryLabel, resolveDictionaryValue } from "@/lib/i18n/labels";
 import { readPublicPersonContent } from "@/lib/person-content";
-import { serializeJsonLd } from "@/lib/json-ld";
+import { createBreadcrumbListJsonLd, serializeJsonLd } from "@/lib/json-ld";
 import { PersonSources } from "@/components/person-sources";
 import { PersonFeedback } from "@/components/person-feedback";
 import type { PublicPersonSource } from "@/lib/person-sources";
 import type { PersonCommemoration } from "@/lib/calendar";
 import { patronageConceptSlug } from "@/lib/patronages";
+import { absoluteSiteUrl } from "@/lib/site-url";
 
 interface PageProps {
   params: Promise<{
@@ -146,16 +147,32 @@ export default async function PersonDetailPage({ params, searchParams }: PagePro
     ].filter(Boolean)),
   );
 
-  // Schema.org Person JSON-LD for Google SEO
+  const profilePath = `/swieci/${encodeURIComponent(String(person.slug))}`;
+  const profileUrl = absoluteSiteUrl(profilePath);
+
+  // Schema.org Person and BreadcrumbList JSON-LD for search engines.
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "Person",
-    name: content.canonicalName,
-    alternateName: alternateNames.length > 0 ? alternateNames : undefined,
-    description: content.summary,
-    birthDate: person.birth_year ? String(person.birth_year) : undefined,
-    deathDate: person.death_year ? String(person.death_year) : undefined,
-    image: (person.avatar as SaintAvatarData | null)?.url || undefined,
+    "@graph": [
+      {
+        "@type": "Person",
+        "@id": `${profileUrl}#person`,
+        url: profileUrl,
+        name: content.canonicalName,
+        alternateName: alternateNames.length > 0 ? alternateNames : undefined,
+        description: content.summary,
+        birthDate: person.birth_year ? String(person.birth_year) : undefined,
+        deathDate: person.death_year ? String(person.death_year) : undefined,
+        image: (person.avatar as SaintAvatarData | null)?.url || undefined,
+      },
+      createBreadcrumbListJsonLd(
+        [
+          { name: dictionary.saintsDirectory.title, url: absoluteSiteUrl("/swieci") },
+          { name: content.canonicalName, url: profileUrl },
+        ],
+        `${profileUrl}#breadcrumb`,
+      ),
+    ],
   };
   const beatification = person.beatification as Record<string, unknown> | null;
   const canonization = person.canonization as Record<string, unknown> | null;

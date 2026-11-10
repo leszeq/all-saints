@@ -29,9 +29,9 @@ JSON.stringify w script dangerouslySetInnerHTML nie neutralizuje zamknięcia zna
 
 **Frontend**
 
-- [ ] Profil swieci/[slug]: wspólny serializeJsonLd neutralizujący < do sekwencji Unicode.
-- [ ] zastosować do każdego JSON-LD.
-- [ ] utrzymać poprawny JSON i odczyt przez parser danych strukturalnych.
+- [x] Profil swieci/[slug]: wspólny serializeJsonLd neutralizujący < do sekwencji Unicode.
+- [x] zastosować do każdego JSON-LD.
+- [x] utrzymać poprawny JSON i odczyt przez parser danych strukturalnych.
 
 **Tests**
 
@@ -353,11 +353,11 @@ Brak kompletnego canonical/sitemap/robots; profil może działać pod slug i UUI
 
 **Frontend**
 
-- [ ] web metadataBase z env.
-- [ ] canonical i OG.
-- [ ] sitemap.ts / robots.ts.
+- [x] web metadataBase z env.
+- [x] canonical i OG.
+- [x] sitemap.ts / robots.ts.
 - [ ] 301 UUID/old_slug.
-- [ ] BreadcrumbList.
+- [x] BreadcrumbList.
 - [ ] noindex wyszukiwania, kontrola stron tematycznych i paginacji.
 - [ ] state URL.
 

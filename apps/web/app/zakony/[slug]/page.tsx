@@ -23,7 +23,8 @@ import {
 import { DEFAULT_WEB_UI_LOCALE } from "@/lib/i18n/config";
 import { getWebDictionary } from "@/lib/i18n/dictionaries";
 import { resolveDictionaryLabel, resolveDictionaryValue } from "@/lib/i18n/labels";
-import { serializeJsonLd } from "@/lib/json-ld";
+import { createBreadcrumbListJsonLd, serializeJsonLd } from "@/lib/json-ld";
+import { absoluteSiteUrl } from "@/lib/site-url";
 
 export const revalidate = 300;
 
@@ -111,14 +112,28 @@ export default async function OrderDetailPage({ params, searchParams }: PageProp
     }
   }
 
+  const profilePath = `/zakony/${encodeURIComponent(order.slug)}`;
+  const profileUrl = absoluteSiteUrl(profilePath);
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "Organization",
-    name: order.name,
-    alternateName: order.name_la || order.abbreviation,
-    foundingDate: order.founded_year ? String(order.founded_year) : undefined,
-    description: order.description,
-    url: order.website_url,
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": `${profileUrl}#organization`,
+        name: order.name,
+        alternateName: order.name_la || order.abbreviation,
+        foundingDate: order.founded_year ? String(order.founded_year) : undefined,
+        description: order.description,
+        url: order.website_url || profileUrl,
+      },
+      createBreadcrumbListJsonLd(
+        [
+          { name: dictionary.ordersDirectory.title, url: absoluteSiteUrl("/zakony") },
+          { name: order.name, url: profileUrl },
+        ],
+        `${profileUrl}#breadcrumb`,
+      ),
+    ],
   };
 
   return (
