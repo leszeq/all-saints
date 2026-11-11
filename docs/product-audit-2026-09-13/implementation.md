@@ -143,7 +143,7 @@ Techniczna: **4/10 (średnia)**; dane: **5/10**; utrzymanie: **3/10**. Są to ko
 
 **Backend — endpointy, serwisy, schemas, permissions**
 
-Wydzielono `PublicationPolicy` używaną przez `EditorialWorkflowService` i `EditorialQualityPolicy`; wspólna bramka sprawdza aktywne źródło oraz treść/licencję, a macierz `review/publish` pozostaje egzekwowana. Odpowiedź przejścia publikuje typed blockers w `detail.code`, `detail.blockers` i `details`; alternatywne ścieżki importu/AI pozostają do weryfikacji.
+Wydzielono `PublicationPolicy` używaną przez `EditorialWorkflowService` i `EditorialQualityPolicy`; wspólna bramka sprawdza aktywne źródło oraz treść/licencję, a macierz `review/publish` pozostaje egzekwowana. Odpowiedź przejścia publikuje typed blockers w `detail.code`, `detail.blockers` i `details`. Ścieżki importu i decyzji AI zostały sprawdzone: obie używają wspólnego `require_published_change_permission`, import zachowuje status rekordu, a akceptacja AI wymaga jawnego `persons:publish` dla profilu opublikowanego.
 
 **Database — tabele, relacje, indeksy, migracje**
 
@@ -155,7 +155,7 @@ Kolejka i detail: ten sam zestaw blockerów, odnośnik do sekcji Źródła; Reac
 
 **Tests — backend, frontend, E2E**
 
-Backend: publikacja bez aktywnego źródła odrzucona; usunięty link nie spełnia bramki; Frontend: can_publish i API zgodne; E2E: draft→source→review→published.
+Backend: publikacja bez aktywnego źródła odrzucona; usunięty link nie spełnia bramki; import nadpisujący i akceptacja AI respektują wspólny guard profilu opublikowanego; Frontend: can_publish i API zgodne; E2E: draft→source→review→published.
 
 **Infrastructure**
 

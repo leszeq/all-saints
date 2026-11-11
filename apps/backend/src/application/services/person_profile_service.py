@@ -32,6 +32,9 @@ from src.application.services.person_snapshot import (
     append_relation_version,
     serialize_person_snapshot,
 )
+from src.application.services.published_content_guard import (
+    require_published_change_permission,
+)
 from src.domain.geography.models import ReligiousOrder
 from src.domain.hagiography.models import Person, PersonOrder, PublicationStatus
 from src.domain.identity.models import AuditAction
@@ -82,12 +85,12 @@ class PersonProfileService(PersonProfileImportValidator, PersonProfileExportServ
             permissions = granted_permissions or set()
             if "persons:update" not in permissions:
                 raise PermissionError("Nadpisanie profilu wymaga uprawnienia persons:update")
-            if (
-                validation.existing_person is not None
-                and validation.existing_person.status == PublicationStatus.PUBLISHED.value
-                and "persons:publish" not in permissions
-            ):
-                raise PermissionError("Nadpisanie opublikowanego profilu wymaga persons:publish")
+            if validation.existing_person is not None:
+                require_published_change_permission(
+                    validation.existing_person,
+                    allow_published_update="persons:publish" in permissions,
+                    error_message="Nadpisanie opublikowanego profilu wymaga persons:publish",
+                )
         normalized = validation.normalized_document
         if overwrite_person_id is not None:
             return await self._overwrite_profile(

@@ -103,6 +103,8 @@ async def test_overwrite_api_permissions_and_preserved_status(
         assert stored.summary_pl == "Nowa treść"
         assert stored.version > version
     else:
+        if status == "published":
+            assert "persons:publish" in result.json()["detail"]
         assert stored.summary_pl == "Stare streszczenie"
         assert stored.version == version
     assert await db_session.scalar(select(func.count()).select_from(Person)) == person_count

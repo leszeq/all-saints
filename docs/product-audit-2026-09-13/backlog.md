@@ -228,6 +228,7 @@ Publikacja wymaga tekstów i licencji, ale nie wymaga źródła; can_publish ma 
 
 - [ ] Backend: publikacja bez aktywnego źródła odrzucona.
 - [ ] usunięty link nie spełnia bramki.
+- [x] Import nadpisujący i akceptacja AI respektują wspólny guard dla profilu opublikowanego.
 - [x] Frontend: can_publish i API zgodne.
 - [ ] E2E: draft→source→review→published.
 
