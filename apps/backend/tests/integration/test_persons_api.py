@@ -143,6 +143,7 @@ async def test_legacy_admin_edit_keeps_primary_translation_current(
             summary_pl="Streszczenie po edycji administratora",
             expected_version=person.version,
         ),
+        allow_published_update=True,
     )
     await db_session.commit()
 

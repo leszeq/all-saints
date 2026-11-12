@@ -140,6 +140,7 @@ class EditorialWorkflowService:
             ),
             user_id=user_id,
             allow_status_change=True,
+            allow_published_update=True,
             audit_context=audit_context,
         )
         return EditorialTransitionResponseSchema(

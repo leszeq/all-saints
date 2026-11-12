@@ -15,6 +15,7 @@ from src.application.services.person_service import (
     PersonStatusChangeError,
     PersonVersionConflictError,
 )
+from src.application.services.published_content_guard import PublishedContentChangeError
 from src.domain.hagiography.models import (
     Era,
     EraPeriod,
@@ -355,6 +356,32 @@ async def test_person_service_rejects_status_change_outside_workflow() -> None:
             PersonUpdateSchema(status=PublicationStatus.PUBLISHED),
             uuid.uuid4(),
         )
+
+
+@pytest.mark.asyncio
+async def test_person_service_rejects_published_update_without_explicit_permission() -> None:
+    person = Person(
+        id=uuid.uuid4(),
+        slug="sw-jan-pawel-ii",
+        canonical_name="Św. Jan Paweł II",
+        person_type=PersonType.SAINT.value,
+        status=PublicationStatus.PUBLISHED.value,
+        gender=Gender.MALE.value,
+        version=1,
+    )
+    db = MagicMock()
+    db.refresh = AsyncMock()
+    db.flush = AsyncMock()
+
+    with pytest.raises(PublishedContentChangeError, match="persons:publish"):
+        await PersonService(db).update_person(
+            person,
+            PersonUpdateSchema(summary_pl="Zmiana poza rewizją"),
+            uuid.uuid4(),
+        )
+
+    assert person.summary_pl is None
+    db.flush.assert_not_awaited()
 
 
 @pytest.mark.asyncio

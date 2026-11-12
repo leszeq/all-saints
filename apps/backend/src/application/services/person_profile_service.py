@@ -81,14 +81,16 @@ class PersonProfileService(PersonProfileImportValidator, PersonProfileExportServ
         )
         if not validation.can_import:
             raise PersonProfileImportError(validation)
+        allow_published_update = False
         if overwrite_person_id is not None:
             permissions = granted_permissions or set()
+            allow_published_update = "persons:publish" in permissions
             if "persons:update" not in permissions:
                 raise PermissionError("Nadpisanie profilu wymaga uprawnienia persons:update")
             if validation.existing_person is not None:
                 require_published_change_permission(
                     validation.existing_person,
-                    allow_published_update="persons:publish" in permissions,
+                    allow_published_update=allow_published_update,
                     error_message="Nadpisanie opublikowanego profilu wymaga persons:publish",
                 )
         normalized = validation.normalized_document
@@ -99,6 +101,7 @@ class PersonProfileService(PersonProfileImportValidator, PersonProfileExportServ
                 expected_version=expected_version,
                 user_id=user_id,
                 audit_context=audit_context,
+                allow_published_update=allow_published_update,
             )
         person = await PersonService(self.db).create_person(
             PersonCreateSchema.model_validate(
@@ -150,6 +153,7 @@ class PersonProfileService(PersonProfileImportValidator, PersonProfileExportServ
         expected_version: int | None,
         user_id: uuid.UUID | None,
         audit_context: AuditContext,
+        allow_published_update: bool,
     ) -> Person:
         person = await PersonQueryService(self.db).get_by_id_or_slug(str(person_id))
         assert person is not None
@@ -168,6 +172,7 @@ class PersonProfileService(PersonProfileImportValidator, PersonProfileExportServ
                 }
             ),
             user_id=user_id,
+            allow_published_update=allow_published_update,
             audit_context=audit_context,
         )
         await self.db.execute(delete(PersonOrder).where(PersonOrder.person_id == person.id))

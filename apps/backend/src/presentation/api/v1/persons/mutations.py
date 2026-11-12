@@ -12,6 +12,7 @@ from src.application.services.person_service import (
     PersonStatusChangeError,
     PersonVersionConflictError,
 )
+from src.application.services.published_content_guard import PublishedContentChangeError
 from src.domain.hagiography.models import PublicationStatus
 from src.domain.identity.models import User
 from src.infrastructure.db.session import get_db_session
@@ -78,10 +79,13 @@ async def update_person(
             person,
             data,
             user_id=current_user.id,
+            allow_published_update=current_user.has_permission("persons", "publish"),
             audit_context=audit_context_from_request(request, current_user),
         )
     except PersonStatusChangeError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except PublishedContentChangeError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     except PersonVersionConflictError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

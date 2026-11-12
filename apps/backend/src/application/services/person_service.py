@@ -31,6 +31,9 @@ from src.application.services.person_relation_synchronizer import (
     PersonRelationSynchronizer,
 )
 from src.application.services.person_snapshot import serialize_person_snapshot
+from src.application.services.published_content_guard import (
+    require_published_change_permission,
+)
 from src.domain.hagiography.models import (
     Person,
     PersonOrder,
@@ -203,6 +206,7 @@ class PersonService(PersonQueryService):
         user_id: uuid.UUID | None = None,
         *,
         allow_status_change: bool = False,
+        allow_published_update: bool = False,
         audit_context: AuditContext | None = None,
     ) -> Person:
         """Update person record and create version snapshot."""
@@ -225,8 +229,12 @@ class PersonService(PersonQueryService):
         loaded_version = person.version
         await self.db.refresh(
             person,
-            attribute_names=["version"],
+            attribute_names=["version", "status"],
             with_for_update=True,
+        )
+        require_published_change_permission(
+            person,
+            allow_published_update=allow_published_update,
         )
         expected_version = (
             data.expected_version if data.expected_version is not None else loaded_version

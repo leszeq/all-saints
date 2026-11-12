@@ -63,6 +63,7 @@ async def test_renamed_published_person_keeps_a_permanent_slug_redirect(
             canonical_name="Św. Nowy Adres",
             expected_version=person.version,
         ),
+        allow_published_update=True,
     )
     await db_session.commit()
     new_slug = person.slug
