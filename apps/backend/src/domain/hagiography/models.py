@@ -88,6 +88,15 @@ class PatronageConceptStatus(StrEnum):
     REJECTED = "rejected"
 
 
+class PublicationRevisionStatus(StrEnum):
+    """Lifecycle state of an isolated person-content revision."""
+
+    DRAFT = "draft"
+    REVIEW = "review"
+    PUBLISHED = "published"
+    REJECTED = "rejected"
+
+
 class ConceptAliasKind(StrEnum):
     """Editorial meaning of a concept alias."""
 
@@ -512,6 +521,12 @@ class Person(BaseModel, Base):
     )
     versions: Mapped[list[PersonVersion]] = relationship(
         "PersonVersion", back_populates="person", order_by="PersonVersion.version_number"
+    )
+    revisions: Mapped[list[PublicationRevision]] = relationship(
+        "PublicationRevision",
+        back_populates="person",
+        order_by="PublicationRevision.revision_number",
+        cascade="all, delete-orphan",
     )
     occupations: Mapped[list[PersonOccupation]] = relationship(
         "PersonOccupation", back_populates="person"
@@ -1272,6 +1287,63 @@ class PersonVersion(Base):
     change_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     person: Mapped[Person] = relationship("Person", back_populates="versions")
+
+
+# ==============================================================================
+# PUBLICATION REVISION (isolated editorial draft)
+# ==============================================================================
+
+
+class PublicationRevision(BaseModel, Base):
+    """Editable snapshot based on one immutable person version.
+
+    A revision is intentionally separate from ``Person`` so creating a draft
+    cannot change the public row. Later workflow steps can edit and publish the
+    payload atomically.
+    """
+
+    __tablename__ = "publication_revisions"
+    __table_args__ = (
+        UniqueConstraint("person_id", "revision_number", name="uq_publication_revision_number"),
+        Index("ix_publication_revisions_person_status", "person_id", "status"),
+        {"comment": "Isolated editorial snapshots for published person content"},
+    )
+
+    person_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("persons.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    revision_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default=PublicationRevisionStatus.DRAFT,
+        server_default=text("'draft'"),
+    )
+    base_version: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        comment="Person.version from which this revision was created",
+    )
+    base_revision_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("publication_revisions.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    payload: Mapped[dict[str, Any]] = mapped_column(
+        JSONB,
+        nullable=False,
+        comment="Versioned editorial payload, never read by public queries directly",
+    )
+    author_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    change_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    person: Mapped[Person] = relationship("Person", back_populates="revisions")
 
 
 # ==============================================================================

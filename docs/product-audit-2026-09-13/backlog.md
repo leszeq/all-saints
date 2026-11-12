@@ -273,17 +273,18 @@ PATCH treści osoby published może zmienić live bez ponownej recenzji; tłumac
 
 **Backend**
 
-- [ ] Minimum: blokada niedozwolonych zapisów do published i audyt wszystkich writerów. Docelowo RevisionService, POST /persons/{id}/revisions, PATCH /revisions/{id}, POST /revisions/{id}/submit i /publish.
-- [ ] RevisionCommand z expected_version.
+- [ ] Minimum: blokada niedozwolonych zapisów do published i audyt wszystkich writerów. Docelowo RevisionService, PATCH /revisions/{id}, POST /revisions/{id}/submit i /publish.
+- [x] Pierwszy etap RevisionService: `POST /persons/{id}/revisions` tworzy trwały snapshot draftu z `base_version` i nie zmienia danych live.
+- [x] RevisionCommand z `expected_version` dla rozpoczęcia rewizji.
 - [ ] public query czyta published_revision_id. Ta sama reguła dla sources/orders/AI.
 
 **Database**
 
-- [ ] PublicationRevision(id,person_id,revision_number,status,payload,base_revision_id,author_id,created_at).
+- [x] PublicationRevision(id,person_id,revision_number,status,payload,base_revision_id,author_id,created_at) oraz migracja `0027_publication_revisions`.
 - [ ] Person.published_revision_id FK.
-- [ ] UNIQUE(person_id,revision_number), indeks kolejki.
+- [x] UNIQUE(person_id,revision_number), indeks kolejki i blokada jednego aktywnego draftu na poziomie serwisu.
 - [ ] backfill opublikowanych rekordów do pierwszej rewizji, parity test projekcji. Typed relacje rewizji dla źródeł.
-- [ ] payload ma wersję schema.
+- [x] Payload korzysta z istniejącego `_snapshot_schema_version` serializera osoby.
 
 **Frontend**
 
@@ -298,6 +299,7 @@ PATCH treści osoby published może zmienić live bez ponownej recenzji; tłumac
 - [x] `PersonService.update_person` blokuje zapis profilu `published` bez jawnego zezwolenia po odświeżeniu statusu na granicy serwisu.
 - [x] `CalendarService` blokuje tworzenie, edycję i usuwanie przypisań kalendarzowych osoby `published` bez `persons:publish`.
 - [x] Zatwierdzenie przypisania patronatu do osoby `published` wymaga `persons:publish`; przypisania oczekujące pozostają pracą redakcyjną.
+- [x] Utworzenie rewizji zapisuje snapshot i audyt bez modyfikowania aktywnego `Person`.
 - [ ] wszystkie write paths respektują granicę.
 - [ ] Frontend: konflikt zachowuje formularz.
 - [ ] E2E: dwie osoby edytują, tylko jedna publikuje zatwierdzoną rewizję.

@@ -310,3 +310,17 @@ class PersonUpdateSchema(BaseModel):
         aliases: list[PersonAliasInputSchema] | None,
     ) -> list[PersonAliasInputSchema] | None:
         return _ensure_unique_aliases(aliases) if aliases is not None else None
+
+
+class CreatePersonRevisionCommand(BaseModel):
+    """Start an isolated draft from one known live person version."""
+
+    expected_version: int = Field(
+        ge=1,
+        description="Live Person.version used as the immutable revision base",
+    )
+    change_summary: str | None = Field(
+        default=None,
+        max_length=500,
+        description="Optional editorial intent recorded with the draft",
+    )

@@ -16,6 +16,7 @@ from src.domain.hagiography.models import (
     LiturgicalColor,
     PersonNameKind,
     PersonType,
+    PublicationRevisionStatus,
     PublicationStatus,
 )
 from src.presentation.api.v1.sources.public_schemas import PublicPersonSourceSchema
@@ -30,6 +31,7 @@ PersonCanonizationInputSchema = person_commands.PersonCanonizationInputSchema
 PersonCreateSchema = person_commands.PersonCreateSchema
 PersonPatronageInputSchema = person_commands.PersonPatronageInputSchema
 PersonUpdateSchema = person_commands.PersonUpdateSchema
+CreatePersonRevisionCommand = person_commands.CreatePersonRevisionCommand
 PersonAvatarSchema = person_models.PersonAvatarSchema
 PersonLastEditorSchema = person_models.PersonLastEditorSchema
 PersonLocalizedContentSchema = person_models.PersonLocalizedContentSchema
@@ -307,3 +309,22 @@ class PersonVersionListResponseSchema(BaseModel):
     page: int
     per_page: int
     pages: int
+
+
+class PersonRevisionSchema(BaseModel):
+    """Isolated editorial revision snapshot."""
+
+    id: uuid.UUID
+    person_id: uuid.UUID
+    revision_number: int
+    status: PublicationRevisionStatus
+    base_version: int
+    base_revision_id: uuid.UUID | None = None
+    payload: dict[str, Any]
+    author_id: uuid.UUID | None = None
+    change_summary: str | None = None
+    version: int
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

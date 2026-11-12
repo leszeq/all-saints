@@ -30,6 +30,8 @@ from src.presentation.api.v1.persons.profile_portability import (
 from src.presentation.api.v1.persons.profile_portability import (
     router as profile_portability_router,
 )
+from src.presentation.api.v1.persons.revisions import create_person_revision
+from src.presentation.api.v1.persons.revisions import router as revisions_router
 from src.presentation.api.v1.persons.schemas import (
     PersonDetailSchema,
     PersonListResponseSchema,
@@ -46,6 +48,7 @@ __all__ = [
     "get_person",
     "get_person_for_admin",
     "get_person_versions",
+    "create_person_revision",
     "import_person_profile",
     "list_persons",
     "list_public_person_commemorations",
@@ -88,6 +91,7 @@ router.add_api_route(
 )
 router.include_router(mutations_router)
 router.include_router(versions_router)
+router.include_router(revisions_router)
 
 
 # Keep the public catch-all slug route after all static editorial routes.

@@ -199,11 +199,11 @@ Techniczna: **8/10 (wysoka)**; dane: **6/10**; utrzymanie: **5/10**. Są to kosz
 
 **Backend — endpointy, serwisy, schemas, permissions**
 
-Pierwszy etap granicy zapisu jest wdrożony w `PersonService.update_person`: po odświeżeniu i zablokowaniu rekordu serwis wymaga jawnego `allow_published_update`, a endpoint mapuje naruszenie na 403. Workflow redakcyjny oraz import przekazują zgodę jawnie; istniejące guardy źródeł, zakonów, decyzji AI, przypisań kalendarzowych i zatwierdzania przypisań taksonomicznych pozostają spójne. Kalendarz blokuje już mutacje wpisów osoby `published`, a zatwierdzenie przypisania patronatu do takiej osoby wymaga `persons:publish`; pełne wersjonowanie i audyt relacji pozostają otwarte. Docelowo RevisionService, POST /persons/{id}/revisions, PATCH /revisions/{id}, POST /revisions/{id}/submit i /publish; RevisionCommand z expected_version; public query czyta published_revision_id. Ta sama reguła dla sources/orders/AI.
+Pierwszy etap granicy zapisu jest wdrożony w `PersonService.update_person`: po odświeżeniu i zablokowaniu rekordu serwis wymaga jawnego `allow_published_update`, a endpoint mapuje naruszenie na 403. Workflow redakcyjny oraz import przekazują zgodę jawnie; istniejące guardy źródeł, zakonów, decyzji AI, przypisań kalendarzowych i zatwierdzania przypisań taksonomicznych pozostają spójne. Kalendarz blokuje już mutacje wpisów osoby `published`, a zatwierdzenie przypisania patronatu do takiej osoby wymaga `persons:publish`. Kolejny etap dodaje `PublicationRevision`, migrację `0027_publication_revisions` oraz `POST /persons/{id}/revisions`: endpoint blokuje rekord, sprawdza `expected_version`, tworzy snapshot draftu z `base_version` i zapisuje audyt, nie modyfikując aktywnego `Person`. Pełne wersjonowanie i audyt relacji, edycja payloadu, submit/publish oraz publiczna projekcja `published_revision_id` pozostają otwarte. Ta sama reguła nadal obowiązuje dla sources/orders/AI.
 
 **Database — tabele, relacje, indeksy, migracje**
 
-PublicationRevision(id,person_id,revision_number,status,payload,base_revision_id,author_id,created_at); Person.published_revision_id FK; UNIQUE(person_id,revision_number), indeks kolejki; backfill opublikowanych rekordów do pierwszej rewizji, parity test projekcji. Typed relacje rewizji dla źródeł; payload ma wersję schema.
+`PublicationRevision` jest wdrożona jako izolowany snapshot (`id`, `person_id`, `revision_number`, `status`, `payload`, `base_revision_id`, `author_id`, `base_version`, znaczniki czasu i optimistic `version`) w migracji `0027_publication_revisions`. Obowiązuje `UNIQUE(person_id,revision_number)` oraz indeks kolejki po osobie i statusie; payload zachowuje `_snapshot_schema_version` istniejącego serializera. `Person.published_revision_id`, backfill, parity projekcji i typed relacje rewizji dla źródeł pozostają kolejnymi etapami.
 
 **Frontend — strony, komponenty, stan, integracja API**
 
@@ -211,7 +211,7 @@ EditPersonClient: draft revision, ostrzeżenie o wersji bazowej; podgląd i diff
 
 **Tests — backend, frontend, E2E**
 
-Backend: publiczne read nie zmienia się po zapisie draftu; wszystkie write paths respektują granicę; Frontend: konflikt zachowuje formularz; E2E: dwie osoby edytują, tylko jedna publikuje zatwierdzoną rewizję.
+Backend: snapshot draftu nie zmienia aktywnego `Person`, konflikt wersji i duplikat aktywnego draftu są obsłużone, a utworzenie jest audytowane; publiczne read nie zmienia się po zapisie draftu; wszystkie write paths respektują granicę; Frontend: konflikt zachowuje formularz; E2E: dwie osoby edytują, tylko jedna publikuje zatwierdzoną rewizję.
 
 **Infrastructure**
 
