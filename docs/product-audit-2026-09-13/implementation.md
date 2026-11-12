@@ -199,7 +199,7 @@ Techniczna: **8/10 (wysoka)**; dane: **6/10**; utrzymanie: **5/10**. Są to kosz
 
 **Backend — endpointy, serwisy, schemas, permissions**
 
-Pierwszy etap granicy zapisu jest wdrożony w `PersonService.update_person`: po odświeżeniu i zablokowaniu rekordu serwis wymaga jawnego `allow_published_update`, a endpoint mapuje naruszenie na 403. Workflow redakcyjny oraz import przekazują zgodę jawnie; istniejące guardy źródeł, zakonów, decyzji AI i przypisań kalendarzowych pozostają spójne. Kalendarz blokuje już mutacje wpisów osoby `published`, ale pełne wersjonowanie i audyt relacji pozostają otwarte. Docelowo RevisionService, POST /persons/{id}/revisions, PATCH /revisions/{id}, POST /revisions/{id}/submit i /publish; RevisionCommand z expected_version; public query czyta published_revision_id. Ta sama reguła dla sources/orders/AI.
+Pierwszy etap granicy zapisu jest wdrożony w `PersonService.update_person`: po odświeżeniu i zablokowaniu rekordu serwis wymaga jawnego `allow_published_update`, a endpoint mapuje naruszenie na 403. Workflow redakcyjny oraz import przekazują zgodę jawnie; istniejące guardy źródeł, zakonów, decyzji AI, przypisań kalendarzowych i zatwierdzania przypisań taksonomicznych pozostają spójne. Kalendarz blokuje już mutacje wpisów osoby `published`, a zatwierdzenie przypisania patronatu do takiej osoby wymaga `persons:publish`; pełne wersjonowanie i audyt relacji pozostają otwarte. Docelowo RevisionService, POST /persons/{id}/revisions, PATCH /revisions/{id}, POST /revisions/{id}/submit i /publish; RevisionCommand z expected_version; public query czyta published_revision_id. Ta sama reguła dla sources/orders/AI.
 
 **Database — tabele, relacje, indeksy, migracje**
 

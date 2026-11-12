@@ -13,6 +13,7 @@ from src.application.services.concept_service import (
     ConceptNotFoundError,
     ConceptService,
 )
+from src.application.services.published_content_guard import PublishedContentChangeError
 from src.domain.hagiography.models import PatronageConcept, PatronageConceptStatus
 from src.domain.identity.models import User
 from src.infrastructure.db.session import get_db_session
@@ -225,7 +226,10 @@ async def review_concept_assignment(
             person_id,
             data,
             user_id=user.id,
+            allow_published_update=user.has_permission("persons", "publish"),
         )
+    except PublishedContentChangeError as error:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(error)) from error
     except ValueError as error:
         _raise_service_error(error)
     return PersonPatronageConceptSchema.model_validate(assignment)

@@ -13,6 +13,7 @@ from src.application.commands.taxonomy import (
     ReviewPatronageConceptCommand,
 )
 from src.application.services.concept_service import ConceptService
+from src.application.services.published_content_guard import PublishedContentChangeError
 from src.domain.hagiography.models import (
     ConceptAliasKind,
     ConceptAssignmentStatus,
@@ -97,11 +98,19 @@ async def test_concept_workflow_preserves_source_label_and_evidence(
         ReviewPatronageConceptCommand(target_status=PatronageConceptStatus.APPROVED),
         user_id=user.id,
     )
+    with pytest.raises(PublishedContentChangeError, match="persons:publish"):
+        await service.transition_assignment(
+            concept.id,
+            person.id,
+            ReviewConceptAssignmentCommand(target_status=ConceptAssignmentStatus.APPROVED),
+            user_id=user.id,
+        )
     assignment = await service.transition_assignment(
         concept.id,
         person.id,
         ReviewConceptAssignmentCommand(target_status=ConceptAssignmentStatus.APPROVED),
         user_id=user.id,
+        allow_published_update=True,
     )
 
     assert concept.status == PatronageConceptStatus.APPROVED.value

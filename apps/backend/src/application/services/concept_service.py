@@ -19,6 +19,10 @@ from src.application.commands.taxonomy import (
     UpdatePatronageConceptCommand,
 )
 from src.application.services.pagination import execute_page
+from src.application.services.person_snapshot import lock_person_for_snapshot
+from src.application.services.published_content_guard import (
+    require_published_change_permission,
+)
 from src.domain.hagiography.models import (
     ConceptAlias,
     ConceptAssignmentStatus,
@@ -294,6 +298,7 @@ class ConceptService:
         data: ReviewConceptAssignmentCommand,
         *,
         user_id: uuid.UUID,
+        allow_published_update: bool = False,
     ) -> PersonPatronageConcept:
         """Apply one allowed assignment transition with concept gating."""
         concept = await self._require_concept(concept_identifier)
@@ -313,6 +318,14 @@ class ConceptService:
             PatronageConceptStatus.APPROVED.value
         ):
             raise ConceptTransitionError("Najpierw zatwierdź pojęcie")
+        if target == ConceptAssignmentStatus.APPROVED.value:
+            person = await lock_person_for_snapshot(self.db, person_id)
+            if person is None:
+                raise ConceptAssignmentError("Osoba nie istnieje lub jest usunięta")
+            require_published_change_permission(
+                person,
+                allow_published_update=allow_published_update,
+            )
         note = data.note.strip() if data.note else None
         if target == ConceptAssignmentStatus.REJECTED.value and not note:
             raise ConceptTransitionError("Odrzucenie przypisania wymaga komentarza")

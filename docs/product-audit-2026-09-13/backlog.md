@@ -297,6 +297,7 @@ PATCH treści osoby published może zmienić live bez ponownej recenzji; tłumac
 - [ ] Backend: publiczne read nie zmienia się po zapisie draftu.
 - [x] `PersonService.update_person` blokuje zapis profilu `published` bez jawnego zezwolenia po odświeżeniu statusu na granicy serwisu.
 - [x] `CalendarService` blokuje tworzenie, edycję i usuwanie przypisań kalendarzowych osoby `published` bez `persons:publish`.
+- [x] Zatwierdzenie przypisania patronatu do osoby `published` wymaga `persons:publish`; przypisania oczekujące pozostają pracą redakcyjną.
 - [ ] wszystkie write paths respektują granicę.
 - [ ] Frontend: konflikt zachowuje formularz.
 - [ ] E2E: dwie osoby edytują, tylko jedna publikuje zatwierdzoną rewizję.
