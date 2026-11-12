@@ -16,6 +16,7 @@ from src.application.services.calendar_service import (
     ObservanceConflictError,
     ObservanceNotFoundError,
 )
+from src.application.services.published_content_guard import PublishedContentChangeError
 from src.domain.identity.models import User
 from src.infrastructure.db.session import get_db_session
 from src.presentation.api.v1.auth.router import require_permission
@@ -117,15 +118,20 @@ async def delete_observance(
 async def create_entry(
     data: FeastEntryCreateSchema,
     db: AsyncSession = Depends(get_db_session),
-    _user: User = Depends(require_permission("calendar", "create")),
+    current_user: User = Depends(require_permission("calendar", "create")),
 ) -> FeastEntrySchema:
     service = CalendarService(db)
     try:
-        entry = await service.create_entry(data)
+        entry = await service.create_entry(
+            data,
+            allow_published_update=current_user.has_permission("persons", "publish"),
+        )
     except CalendarNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except FeastNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PublishedContentChangeError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     except FeastConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     return FeastEntrySchema.model_validate(entry)
@@ -140,13 +146,19 @@ async def update_entry(
     entry_id: uuid.UUID,
     data: FeastEntryUpdateSchema,
     db: AsyncSession = Depends(get_db_session),
-    _user: User = Depends(require_permission("calendar", "update")),
+    current_user: User = Depends(require_permission("calendar", "update")),
 ) -> FeastEntrySchema:
     service = CalendarService(db)
     try:
-        entry = await service.update_entry(entry_id, data)
+        entry = await service.update_entry(
+            entry_id,
+            data,
+            allow_published_update=current_user.has_permission("persons", "publish"),
+        )
     except (CalendarNotFoundError, FeastNotFoundError) as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PublishedContentChangeError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     except (FeastConflictError, ValueError) as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     return FeastEntrySchema.model_validate(entry)
@@ -160,11 +172,16 @@ async def update_entry(
 async def delete_entry(
     entry_id: uuid.UUID,
     db: AsyncSession = Depends(get_db_session),
-    _user: User = Depends(require_permission("calendar", "delete")),
+    current_user: User = Depends(require_permission("calendar", "delete")),
 ) -> Response:
     service = CalendarService(db)
     try:
-        await service.delete_entry(entry_id)
+        await service.delete_entry(
+            entry_id,
+            allow_published_update=current_user.has_permission("persons", "publish"),
+        )
     except FeastNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PublishedContentChangeError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)

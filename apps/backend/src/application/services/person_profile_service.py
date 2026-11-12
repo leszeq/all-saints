@@ -194,7 +194,11 @@ class PersonProfileService(PersonProfileImportValidator, PersonProfileExportServ
             .values(deleted_at=now, updated_at=now, is_primary=False)
         )
         await self._import_orders(person.id, document.orders)
-        await self._import_feasts(person.id, document.feasts)
+        await self._import_feasts(
+            person.id,
+            document.feasts,
+            allow_published_update=allow_published_update,
+        )
         await self._import_sources(person.id, document.sources)
         previous_snapshot, current_snapshot = await append_relation_version(
             self.db,
@@ -251,7 +255,13 @@ class PersonProfileService(PersonProfileImportValidator, PersonProfileExportServ
                 )
             )
 
-    async def _import_feasts(self, person_id: uuid.UUID, entries: list[PortableFeastEntry]) -> None:
+    async def _import_feasts(
+        self,
+        person_id: uuid.UUID,
+        entries: list[PortableFeastEntry],
+        *,
+        allow_published_update: bool = False,
+    ) -> None:
         calendar_service = CalendarService(self.db)
         for entry in entries:
             await calendar_service.create_entry(
@@ -260,7 +270,8 @@ class PersonProfileService(PersonProfileImportValidator, PersonProfileExportServ
                         **entry.model_dump(mode="json"),
                         "person_id": person_id,
                     }
-                )
+                ),
+                allow_published_update=allow_published_update,
             )
 
     async def _import_sources(

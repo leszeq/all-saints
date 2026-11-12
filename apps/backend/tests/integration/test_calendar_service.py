@@ -23,6 +23,7 @@ from src.application.services.calendar_service import (
     ObservanceConflictError,
     ObservanceNotFoundError,
 )
+from src.application.services.published_content_guard import PublishedContentChangeError
 from src.domain.hagiography.models import Gender, Person, PersonType, PublicationStatus
 from src.domain.liturgy.models import (
     CalendarScope,
@@ -257,7 +258,8 @@ async def test_calendar_entries_merge_public_targets_and_maintain_primary(
             rank=FeastRank.MEMORIAL,
             source_title="Źródło testowe",
             source_url="https://example.com/calendar",
-        )
+        ),
+        allow_published_update=True,
     )
     draft_entry = await service.create_entry(
         CreateFeastEntryCommand(
@@ -301,7 +303,8 @@ async def test_calendar_entries_merge_public_targets_and_maintain_primary(
                 calendar_code="roman_universal",
                 month=8,
                 day=29,
-            )
+            ),
+            allow_published_update=True,
         )
 
     changed = await service.update_entry(
@@ -314,15 +317,39 @@ async def test_calendar_entries_merge_public_targets_and_maintain_primary(
             is_primary=True,
             notes="Przeniesione",
         ),
+        allow_published_update=True,
     )
     assert changed.calendar_id == calendars["roman_pl"].id
     assert (changed.month, changed.day, changed.day_of_year) == (8, 30, 243)
     assert changed.rank == FeastRank.FEAST.value
     assert changed.is_primary is True
 
-    await service.delete_entry(changed.id)
+    await service.delete_entry(changed.id, allow_published_update=True)
     with pytest.raises(FeastNotFoundError):
         await service.get_entry(changed.id)
+
+
+@pytest.mark.asyncio
+async def test_calendar_service_rejects_published_person_mutations_without_publish_permission(
+    db_session: AsyncSession,
+) -> None:
+    _, published, _ = await _seed_catalogue(db_session)
+    service = CalendarService(db_session)
+
+    command = CreateFeastEntryCommand(
+        person_id=published.id,
+        calendar_code="roman_pl",
+        month=9,
+        day=1,
+    )
+    with pytest.raises(PublishedContentChangeError, match="persons:publish"):
+        await service.create_entry(command)
+
+    entry = await service.create_entry(command, allow_published_update=True)
+    with pytest.raises(PublishedContentChangeError, match="persons:publish"):
+        await service.update_entry(entry.id, UpdateFeastEntryCommand(day=2))
+    with pytest.raises(PublishedContentChangeError, match="persons:publish"):
+        await service.delete_entry(entry.id)
 
 
 @pytest.mark.asyncio
@@ -359,10 +386,15 @@ async def test_calendar_service_rejects_missing_targets_and_invalid_updates(
             calendar_code="roman_pl",
             month=1,
             day=2,
-        )
+        ),
+        allow_published_update=True,
     )
     with pytest.raises(ValueError, match="miesiąca i dnia"):
-        await service.update_entry(entry.id, UpdateFeastEntryCommand(month=None))
+        await service.update_entry(
+            entry.id,
+            UpdateFeastEntryCommand(month=None),
+            allow_published_update=True,
+        )
     with pytest.raises(ValueError):
         await service.get_month(year=2026, month=13)
 

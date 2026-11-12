@@ -20,6 +20,10 @@ from src.application.services.calendar_query_service import (
     FeastNotFoundError,
     ObservanceNotFoundError,
 )
+from src.application.services.person_snapshot import lock_person_for_snapshot
+from src.application.services.published_content_guard import (
+    require_published_change_permission,
+)
 from src.domain.hagiography.models import Person
 from src.domain.liturgy.models import Feast, LiturgicalObservance
 
@@ -143,15 +147,24 @@ class CalendarService(CalendarQueryService):
         if (await self.db.execute(query)).scalar_one_or_none() is not None:
             raise FeastConflictError("Ten cel jest już przypisany do tej daty i kalendarza")
 
-    async def create_entry(self, data: CreateFeastEntryCommand) -> Feast:
+    async def create_entry(
+        self,
+        data: CreateFeastEntryCommand,
+        *,
+        allow_published_update: bool = False,
+    ) -> Feast:
         """Create a fixed commemoration and maintain the one-primary invariant."""
         selected = await self.get_calendar(data.calendar_code)
         person: Person | None = None
         observance: LiturgicalObservance | None = None
         if data.person_id is not None:
-            person = await self.db.get(Person, data.person_id)
-            if person is None or person.deleted_at is not None:
+            person = await lock_person_for_snapshot(self.db, data.person_id)
+            if person is None:
                 raise FeastNotFoundError("Osoba nie istnieje")
+            require_published_change_permission(
+                person,
+                allow_published_update=allow_published_update,
+            )
         elif data.observance_id is not None:
             try:
                 observance = await self.get_observance(data.observance_id)
@@ -188,9 +201,23 @@ class CalendarService(CalendarQueryService):
         await self.db.flush()
         return await self.get_entry(entry.id)
 
-    async def update_entry(self, entry_id: uuid.UUID, data: UpdateFeastEntryCommand) -> Feast:
+    async def update_entry(
+        self,
+        entry_id: uuid.UUID,
+        data: UpdateFeastEntryCommand,
+        *,
+        allow_published_update: bool = False,
+    ) -> Feast:
         """Update one commemoration and re-check its date-level invariants."""
         entry = await self.get_entry(entry_id)
+        if entry.person_id is not None:
+            person = await lock_person_for_snapshot(self.db, entry.person_id)
+            if person is None:
+                raise FeastNotFoundError("Osoba nie istnieje")
+            require_published_change_permission(
+                person,
+                allow_published_update=allow_published_update,
+            )
         changes = data.model_dump(exclude_unset=True, mode="json")
 
         calendar_code = changes.pop("calendar_code", None)
@@ -221,9 +248,22 @@ class CalendarService(CalendarQueryService):
         await self.db.flush()
         return await self.get_entry(entry.id)
 
-    async def delete_entry(self, entry_id: uuid.UUID) -> None:
+    async def delete_entry(
+        self,
+        entry_id: uuid.UUID,
+        *,
+        allow_published_update: bool = False,
+    ) -> None:
         """Soft-delete a commemoration."""
         entry = await self.get_entry(entry_id)
+        if entry.person_id is not None:
+            person = await lock_person_for_snapshot(self.db, entry.person_id)
+            if person is None:
+                raise FeastNotFoundError("Osoba nie istnieje")
+            require_published_change_permission(
+                person,
+                allow_published_update=allow_published_update,
+            )
         entry.is_primary = False
         entry.deleted_at = datetime.now(UTC)
         await self.db.flush()
