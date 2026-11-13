@@ -308,6 +308,44 @@ export const personsApi = {
     api.post("/persons/import/validate", data, { params }),
   importProfile: (data: unknown, params?: { overwrite_person_id: string; expected_version: number }) =>
     api.post("/persons/import", data, { params }),
+  activeRevision: (personId: string) =>
+    api.get<PublicationRevision | null>(`/persons/${personId}/revisions/active`),
+  createRevision: (
+    personId: string,
+    data: { expected_version: number; change_summary?: string | null },
+  ) => api.post<PublicationRevision>(`/persons/${personId}/revisions`, data),
+};
+
+export type PublicationRevisionStatus = "draft" | "review" | "published" | "rejected";
+
+export interface PublicationRevision {
+  id: string;
+  person_id: string;
+  revision_number: number;
+  status: PublicationRevisionStatus;
+  base_version: number;
+  base_revision_id: string | null;
+  payload: Record<string, unknown>;
+  author_id: string | null;
+  change_summary: string | null;
+  version: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export const publicationRevisionsApi = {
+  update: (
+    revisionId: string,
+    data: {
+      expected_version: number;
+      changes: Record<string, unknown>;
+      change_summary?: string | null;
+    },
+  ) => api.patch<PublicationRevision>(`/revisions/${revisionId}`, data),
+  submit: (
+    revisionId: string,
+    data: { expected_version: number; note?: string | null },
+  ) => api.post<PublicationRevision>(`/revisions/${revisionId}/submit`, data),
 };
 
 export const editorialApi = {

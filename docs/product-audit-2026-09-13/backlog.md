@@ -281,6 +281,7 @@ PATCH treści osoby published może zmienić live bez ponownej recenzji; tłumac
 - [x] `POST /revisions/{id}/return` zwraca rewizję do draftu z obowiązkowym komentarzem, a `POST /revisions/{id}/reject` zachowuje odrzucony snapshot.
 - [x] `PATCH /revisions/{id}` obsługuje również aliasy, patronaty, avatar oraz dane beatyfikacji i kanonizacji; zmiany relacji pozostają w draftcie i są synchronizowane dopiero przy publikacji.
 - [x] public detail i katalog nakładają scalarne pola z `published_revision_id` z fallbackiem legacy, a publiczne cytowania źródeł, członkostwa zakonów, aliasy, patronaty, uznanie, avatar/media i nazwy używane w wyszukiwaniu czytają odpowiednie sekcje snapshotu; wyszukiwanie aliasów i patronatów, filtry scalarne, grupy patronatu i zakonu oraz facet counts respektują tę samą granicę.
+- [x] `GET /persons/{id}/revisions/active` zwraca najnowszy draft lub rewizję w recenzji; rozpoczęcie kolejnego draftu jest blokowane, gdy rewizja jest już aktywna.
 
 **Database**
 
@@ -292,9 +293,10 @@ PATCH treści osoby published może zmienić live bez ponownej recenzji; tłumac
 
 **Frontend**
 
-- [ ] EditPersonClient: draft revision, ostrzeżenie o wersji bazowej.
+- [x] EditPersonClient: opublikowany profil zapisuje zmiany do izolowanego draftu, wznawia aktywny draft po ponownym wejściu i pokazuje ostrzeżenie o izolacji zapisu.
+- [ ] ostrzeżenie o wersji bazowej i pełna obsługa konfliktu 409 w formularzu.
 - [ ] podgląd i diff.
-- [ ] stan RHF lokalny, React Query według revision_id.
+- [x] stan RHF lokalny, React Query według `person-revision/{personId}`; źródła, zakony i kalendarz pozostają poza zapisem rewizji do czasu osobnej projekcji.
 - [ ] UI 409 nie kasuje wpisanych zmian.
 
 **Tests**
@@ -307,6 +309,7 @@ PATCH treści osoby published może zmienić live bez ponownej recenzji; tłumac
 - [x] Edycja draftu ma optimistic locking po `PublicationRevision.version`; konflikt zwraca szczegółowy kod i wersje.
 - [x] Publikacja sprawdza `base_version`, aktualizuje scalarne pola `Person` oraz obsługiwane relacje atomowo i zapisuje audyt publikacji rewizji.
 - [x] Decyzje recenzenta mają optimistic locking, wymagają komentarza i zapisują zmianę statusu w audycie.
+- [x] Odczyt aktywnego draftu oraz rewizji w recenzji ma test regresyjny; formularz nie synchronizuje w tym trybie wpisu kalendarzowego ani relacji źródeł/zakonów z live.
 - [ ] wszystkie write paths respektują granicę.
 - [ ] Frontend: konflikt zachowuje formularz.
 - [ ] E2E: dwie osoby edytują, tylko jedna publikuje zatwierdzoną rewizję.

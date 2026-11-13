@@ -7,7 +7,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, BookOpenText, Loader2, Save, ShieldCheck } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAdminSystemCopy } from "@/components/admin-system-copy-context";
-import { calendarApi, geographyApi, personsApi, sourcesApi, taxonomyApi } from "@/lib/api";
+import {
+  calendarApi,
+  geographyApi,
+  personsApi,
+  publicationRevisionsApi,
+  sourcesApi,
+  taxonomyApi,
+  type PublicationRevision,
+} from "@/lib/api";
 import { formatAdminApiError } from "@/lib/i18n/api-errors";
 import { personFieldId } from "./person-form-styles";
 import type { AdminDomainDictionary, AdminPersonEditorDictionary } from "@/lib/i18n/types";
@@ -107,6 +115,8 @@ interface PersonFormProps {
   defaultValues?: Partial<PersonFormData>;
   isEdit?: boolean;
   expectedVersion?: number;
+  revisionMode?: boolean;
+  activeRevision?: PublicationRevision | null;
 }
 
 async function preparePersonPayload(
@@ -164,6 +174,8 @@ export function PersonForm({
   defaultValues,
   isEdit = false,
   expectedVersion,
+  revisionMode = false,
+  activeRevision = null,
 }: PersonFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -172,6 +184,7 @@ export function PersonForm({
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFileError, setAvatarFileError] = useState<string | null>(null);
+  const [currentRevision, setCurrentRevision] = useState<PublicationRevision | null>(activeRevision);
   const hydratedFeastPersonIdRef = useRef<string | null>(null);
   const formSchema = useMemo(() => createPersonSchema(copy.validation), [copy.validation]);
 
@@ -259,23 +272,54 @@ export function PersonForm({
 
   const updateMutation = useMutation({
     mutationFn: async (data: PersonFormData) => {
-      const response = await personsApi.update(personId!, {
-        ...(await preparePersonPayload(data, true, avatarFile)),
-        expected_version: expectedVersion,
+      const payload = await preparePersonPayload(data, true, avatarFile);
+      if (!revisionMode) {
+        const response = await personsApi.update(personId!, {
+          ...payload,
+          expected_version: expectedVersion,
+        });
+        await syncPersonFeast(personId!, data, activeFeastEntry?.id ?? null);
+        return { response, revision: null };
+      }
+
+      const changes = { ...(payload as Record<string, unknown>) };
+      const changeSummary = changes.change_summary;
+      delete changes.status;
+      delete changes.change_summary;
+      let revision = currentRevision;
+      if (!revision) {
+        revision = (
+          await personsApi.createRevision(personId!, {
+            expected_version: expectedVersion!,
+            change_summary: typeof changeSummary === "string" ? changeSummary : null,
+          })
+        ).data;
+        setCurrentRevision(revision);
+      }
+
+      const response = await publicationRevisionsApi.update(revision.id, {
+        expected_version: revision.version,
+        changes,
+        change_summary: typeof changeSummary === "string" ? changeSummary : null,
       });
-      await syncPersonFeast(personId!, data, activeFeastEntry?.id ?? null);
-      return response;
+      return { response, revision: response.data };
     },
-    onSuccess: async () => {
+    onSuccess: async (result) => {
+      if (result.revision) setCurrentRevision(result.revision);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["persons"] }),
         queryClient.invalidateQueries({ queryKey: ["person", personId] }),
         queryClient.invalidateQueries({ queryKey: ["person-versions", personId] }),
+        queryClient.invalidateQueries({ queryKey: ["person-revision", personId] }),
         queryClient.invalidateQueries({ queryKey: ["editorial"] }),
-        queryClient.invalidateQueries({ queryKey: ["calendar"] }),
-        queryClient.invalidateQueries({ queryKey: ["calendar", "person-feasts", personId] }),
+        ...(revisionMode
+          ? []
+          : [
+              queryClient.invalidateQueries({ queryKey: ["calendar"] }),
+              queryClient.invalidateQueries({ queryKey: ["calendar", "person-feasts", personId] }),
+            ]),
       ]);
-      router.push(`/dashboard/persons/${personId}`);
+      if (!revisionMode) router.push(`/dashboard/persons/${personId}`);
     },
   });
 
@@ -371,6 +415,11 @@ export function PersonForm({
 
   return (
     <form onSubmit={handleSubmit((data) => mutation.mutate(data), focusFirstInvalidField)} className="space-y-6">
+      {revisionMode && (
+        <div className="rounded-lg border border-primary/25 bg-primary/5 px-4 py-3 text-sm text-primary" role="status">
+          {copy.workflow.draftNotice}
+        </div>
+      )}
       <div className="flex w-fit max-w-full flex-wrap gap-1 rounded-lg border border-border bg-muted/40 p-1">
         {TAB_IDS.map((tabId) => (
           <button
@@ -445,7 +494,14 @@ export function PersonForm({
       {activeTab === "devotion" && <PersonDevotionSection copy={copy.devotion} register={register} />}
 
       {activeTab === "orders" && (
-        isEdit && personId ? (
+        revisionMode ? (
+          <div className="rounded-xl border border-dashed border-border bg-muted/20 p-8 text-center">
+            <ShieldCheck className="mx-auto h-7 w-7 text-primary" />
+            <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-muted-foreground">
+              {copy.workflow.relationsNotice}
+            </p>
+          </div>
+        ) : isEdit && personId ? (
           <PersonOrdersEditor
             copy={copy.orders}
             domainCopy={domainCopy}
@@ -464,7 +520,14 @@ export function PersonForm({
       )}
 
       {activeTab === "sources" && (
-        isEdit && personId ? (
+        revisionMode ? (
+          <div className="rounded-xl border border-dashed border-border bg-muted/20 p-8 text-center">
+            <BookOpenText className="mx-auto h-7 w-7 text-primary" />
+            <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-muted-foreground">
+              {copy.workflow.relationsNotice}
+            </p>
+          </div>
+        ) : isEdit && personId ? (
           <PersonSourcesEditor copy={copy.sources} locale={locale} personId={personId} />
         ) : (
           <div className="rounded-xl border border-dashed border-border bg-muted/20 p-8 text-center">
@@ -509,7 +572,7 @@ export function PersonForm({
           className="flex items-center gap-2 rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          {isEdit ? copy.actions.saveChanges : copy.actions.createPerson}
+          {isEdit ? (revisionMode ? copy.workflow.saveDraft : copy.actions.saveChanges) : copy.actions.createPerson}
         </button>
       </div>
 

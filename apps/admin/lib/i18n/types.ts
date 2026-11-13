@@ -1583,6 +1583,12 @@ export interface AdminDictionary {
       editTitlePrefix: string;
       editDescription: string;
     };
+    workflow: {
+      draftNotice: string;
+      reviewNotice: string;
+      relationsNotice: string;
+      saveDraft: string;
+    };
     tabs: {
       basic: string;
       aliases: string;

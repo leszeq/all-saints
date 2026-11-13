@@ -146,6 +146,29 @@ class PublicationRevisionService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
+    async def get_active_revision(
+        self,
+        person_id: uuid.UUID,
+    ) -> PublicationRevision | None:
+        """Return the newest draft or review revision for an editor to resume."""
+        return await self.db.scalar(
+            select(PublicationRevision)
+            .where(
+                PublicationRevision.person_id == person_id,
+                PublicationRevision.status.in_(
+                    [
+                        PublicationRevisionStatus.DRAFT.value,
+                        PublicationRevisionStatus.REVIEW.value,
+                    ]
+                ),
+                PublicationRevision.deleted_at.is_(None),
+            )
+            .order_by(
+                PublicationRevision.updated_at.desc(),
+                PublicationRevision.revision_number.desc(),
+            )
+        )
+
     async def create_draft(
         self,
         person_id: uuid.UUID,
@@ -167,16 +190,21 @@ class PublicationRevisionService:
                 "Izolowaną rewizję można rozpocząć tylko dla opublikowanego profilu"
             )
 
-        active_draft = await self.db.scalar(
+        active_revision = await self.db.scalar(
             select(PublicationRevision).where(
                 PublicationRevision.person_id == person.id,
-                PublicationRevision.status == PublicationRevisionStatus.DRAFT.value,
+                PublicationRevision.status.in_(
+                    [
+                        PublicationRevisionStatus.DRAFT.value,
+                        PublicationRevisionStatus.REVIEW.value,
+                    ]
+                ),
                 PublicationRevision.deleted_at.is_(None),
             )
         )
-        if active_draft is not None:
+        if active_revision is not None:
             raise PublicationRevisionConflictError(
-                "Profil ma już otwartą rewizję w stanie draft"
+                "Profil ma już aktywną rewizję w toku"
             )
 
         last_number = await self.db.scalar(

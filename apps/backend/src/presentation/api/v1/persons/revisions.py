@@ -26,6 +26,25 @@ from src.presentation.audit import audit_context_from_request
 router = APIRouter()
 
 
+@router.get(
+    "/{person_id}/revisions/active",
+    response_model=PersonRevisionSchema | None,
+    summary="Get the active person revision",
+    description=(
+        "Return the newest draft or review revision so an editor can resume the isolated workflow."
+    ),
+)
+async def get_active_person_revision(
+    person_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(require_permission("persons", "update")),
+) -> PersonRevisionSchema | None:
+    """Load the active isolated revision without touching the live profile."""
+    del current_user
+    revision = await PublicationRevisionService(db).get_active_revision(person_id)
+    return PersonRevisionSchema.model_validate(revision) if revision is not None else None
+
+
 @router.post(
     "/{person_id}/revisions",
     response_model=PersonRevisionSchema,

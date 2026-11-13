@@ -1695,6 +1695,12 @@ const dictionary = {
       editTitlePrefix: "Edycja:",
       editDescription: "Wprowadź zmiany w informacjach o tej postaci.",
     },
+    workflow: {
+      draftNotice: "Edytujesz opublikowany profil w izolowanym szkicu. Zapis nie zmieni jeszcze treści publicznej.",
+      reviewNotice: "Ten profil ma już rewizję przekazaną do recenzji. Zaczekaj na decyzję recenzenta przed rozpoczęciem kolejnych zmian.",
+      relationsNotice: "Powiązania zakonów i źródeł są na razie tylko do odczytu w szkicu rewizji. Zostaną objęte osobnym etapem workflow.",
+      saveDraft: "Zapisz szkic rewizji",
+    },
     tabs: {
       basic: "Dane podstawowe",
       aliases: "Nazwy i aliasy",

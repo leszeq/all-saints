@@ -90,6 +90,34 @@ async def test_create_draft_revision_keeps_live_person_unchanged(
 
 
 @pytest.mark.asyncio
+async def test_get_active_revision_returns_draft_and_then_review_revision(
+    db_session: AsyncSession,
+) -> None:
+    person = await _published_person(db_session)
+    service = PublicationRevisionService(db_session)
+    revision = await service.create_draft(
+        person.id,
+        expected_version=person.version,
+        author_id=None,
+    )
+
+    active = await service.get_active_revision(person.id)
+    assert active is not None
+    assert active.id == revision.id
+    assert active.status == PublicationRevisionStatus.DRAFT.value
+
+    submitted = await service.submit_for_review(
+        revision.id,
+        expected_version=revision.version,
+        author_id=None,
+    )
+    active = await service.get_active_revision(person.id)
+    assert active is not None
+    assert active.id == submitted.id
+    assert active.status == PublicationRevisionStatus.REVIEW.value
+
+
+@pytest.mark.asyncio
 async def test_create_draft_revision_rejects_stale_version_and_duplicate_draft(
     db_session: AsyncSession,
 ) -> None:

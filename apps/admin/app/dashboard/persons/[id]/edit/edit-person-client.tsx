@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import { PersonForm } from "@/components/persons/person-form";
-import { personsApi } from "@/lib/api";
+import { personsApi, type PublicationRevision } from "@/lib/api";
 import type { AdminDomainDictionary, AdminPersonEditorDictionary } from "@/lib/i18n/types";
 import { useAuthStore } from "@/lib/store/auth";
 
@@ -26,6 +26,12 @@ export function EditPersonClient({ copy, domainCopy, locale }: EditPersonClientP
   });
 
   const person = personData?.data;
+  const { data: revisionData, isLoading: isRevisionLoading } = useQuery({
+    queryKey: ["person-revision", id],
+    queryFn: () => personsApi.activeRevision(id),
+    enabled: canEdit && person?.status === "published",
+  });
+  const activeRevision = (revisionData?.data ?? null) as PublicationRevision | null;
 
   if (!canEdit) {
     return (
@@ -38,7 +44,7 @@ export function EditPersonClient({ copy, domainCopy, locale }: EditPersonClientP
     );
   }
 
-  if (isLoading) {
+  if (isLoading || (person?.status === "published" && isRevisionLoading)) {
     return (
       <div className="space-y-4 animate-pulse">
         <div className="h-8 w-64 rounded bg-muted" />
@@ -62,6 +68,26 @@ export function EditPersonClient({ copy, domainCopy, locale }: EditPersonClientP
     );
   }
 
+  if (person.status === "published" && activeRevision?.status === "review") {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">
+            {copy.header.editTitlePrefix} {person.canonical_name}
+          </h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">{copy.header.editDescription}</p>
+        </div>
+        <div className="rounded-xl border border-primary/25 bg-primary/5 p-6 text-sm text-primary" role="status">
+          {copy.workflow.reviewNotice}
+        </div>
+      </div>
+    );
+  }
+
+  const draftPerson = activeRevision?.status === "draft"
+    ? { ...person, ...activeRevision.payload }
+    : person;
+
   return (
     <div className="space-y-6">
       <div>
@@ -81,29 +107,31 @@ export function EditPersonClient({ copy, domainCopy, locale }: EditPersonClientP
           personId={id}
           isEdit
           expectedVersion={person.version}
+          revisionMode={person.status === "published"}
+          activeRevision={activeRevision?.status === "draft" ? activeRevision : null}
           defaultValues={{
-            canonical_name: person.canonical_name ?? "",
-            canonical_name_en: person.canonical_name_en ?? "",
-            latin_name: person.latin_name ?? "",
-            person_type: person.person_type ?? "saint",
-            status: person.status ?? "draft",
-            gender: person.gender ?? "unknown",
-            era: person.era ?? "",
-            birth_year: person.birth_year ?? null,
-            death_year: person.death_year ?? null,
-            beatification_date: person.beatification?.beatification_date ?? "",
-            beatification_year: person.beatification?.beatification_year ?? null,
-            canonization_date: person.canonization?.canonization_date ?? "",
-            canonization_year: person.canonization?.canonization_year ?? null,
-            birth_country_id: person.birth_country_id ?? null,
-            death_country_id: person.death_country_id ?? null,
-            state_of_life_id: person.state_of_life_id ?? null,
-            summary_pl: person.summary_pl ?? "",
-            biography_pl: person.biography_pl ?? "",
-            prayers: person.prayers ?? "",
-            iconographic_attributes: person.iconographic_attributes ?? "",
-            aliases: Array.isArray(person.aliases)
-              ? person.aliases.map((alias: Record<string, unknown>) => ({
+            canonical_name: draftPerson.canonical_name ?? "",
+            canonical_name_en: draftPerson.canonical_name_en ?? "",
+            latin_name: draftPerson.latin_name ?? "",
+            person_type: draftPerson.person_type ?? "saint",
+            status: draftPerson.status ?? "draft",
+            gender: draftPerson.gender ?? "unknown",
+            era: draftPerson.era ?? "",
+            birth_year: draftPerson.birth_year ?? null,
+            death_year: draftPerson.death_year ?? null,
+            beatification_date: draftPerson.beatification?.beatification_date ?? "",
+            beatification_year: draftPerson.beatification?.beatification_year ?? null,
+            canonization_date: draftPerson.canonization?.canonization_date ?? "",
+            canonization_year: draftPerson.canonization?.canonization_year ?? null,
+            birth_country_id: draftPerson.birth_country_id ?? null,
+            death_country_id: draftPerson.death_country_id ?? null,
+            state_of_life_id: draftPerson.state_of_life_id ?? null,
+            summary_pl: draftPerson.summary_pl ?? "",
+            biography_pl: draftPerson.biography_pl ?? "",
+            prayers: draftPerson.prayers ?? "",
+            iconographic_attributes: draftPerson.iconographic_attributes ?? "",
+            aliases: Array.isArray(draftPerson.aliases)
+              ? draftPerson.aliases.map((alias: Record<string, unknown>) => ({
                   value: String(alias.value ?? ""),
                   language_code: String(alias.language_code ?? "pl"),
                   kind: String(alias.kind ?? "alias") as
@@ -114,8 +142,8 @@ export function EditPersonClient({ copy, domainCopy, locale }: EditPersonClientP
                     | "transliteration",
                 }))
               : [],
-            patronages: Array.isArray(person.patronages)
-              ? person.patronages.map((patronage: Record<string, unknown>) => ({
+            patronages: Array.isArray(draftPerson.patronages)
+              ? draftPerson.patronages.map((patronage: Record<string, unknown>) => ({
                   patronage_type: String(patronage.patronage_type ?? "other"),
                   name_pl: String(patronage.name_pl ?? ""),
                   name_en: String(patronage.name_en ?? ""),
@@ -123,13 +151,13 @@ export function EditPersonClient({ copy, domainCopy, locale }: EditPersonClientP
                   is_official: Boolean(patronage.is_official),
                 }))
               : [],
-            is_featured: person.is_featured ?? false,
-            avatar_url: person.avatar?.url ?? "",
-            avatar_thumbnail_url: person.avatar?.thumbnail_url ?? "",
-            avatar_title: person.avatar?.title ?? "",
-            avatar_license: person.avatar?.license ?? "unknown",
-            avatar_photographer: person.avatar?.photographer ?? "",
-            avatar_source_url: person.avatar?.source_url ?? "",
+            is_featured: draftPerson.is_featured ?? false,
+            avatar_url: draftPerson.avatar?.url ?? "",
+            avatar_thumbnail_url: draftPerson.avatar?.thumbnail_url ?? "",
+            avatar_title: draftPerson.avatar?.title ?? "",
+            avatar_license: draftPerson.avatar?.license ?? "unknown",
+            avatar_photographer: draftPerson.avatar?.photographer ?? "",
+            avatar_source_url: draftPerson.avatar?.source_url ?? "",
           }}
         />
       </div>
