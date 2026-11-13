@@ -1,6 +1,7 @@
 """Public citations expose only active assignments on published profiles."""
 
-from datetime import UTC, datetime
+import uuid
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from httpx import AsyncClient
@@ -8,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.commands.persons import PersonCreateSchema
 from src.application.services.person_service import PersonService
+from src.domain.hagiography.models import PublicationRevision, PublicationRevisionStatus
 from src.domain.sources.models import Bibliography, HistoricalSource, PersonSource
 
 
@@ -106,6 +108,61 @@ async def test_public_citations_include_verifiable_facts_without_editorial_data(
 
 
 @pytest.mark.asyncio
+async def test_public_citations_follow_selected_revision_snapshot(
+    db_session: AsyncSession,
+    async_client: AsyncClient,
+) -> None:
+    person = await PersonService(db_session).create_person(
+        PersonCreateSchema(canonical_name="Św. Źródła z rewizji")
+    )
+    person.status = "published"
+    selected = Bibliography(
+        title="Źródło wybrane przez rewizję",
+        url="https://example.org/revision-source",
+    )
+    live = Bibliography(title="Źródło z pól live")
+    db_session.add_all([selected, live])
+    await db_session.flush()
+    db_session.add(PersonSource(person_id=person.id, bibliography_id=live.id))
+    revision = PublicationRevision(
+        person_id=person.id,
+        revision_number=1,
+        status=PublicationRevisionStatus.PUBLISHED.value,
+        base_version=person.version,
+        payload={
+            "sources": [
+                {
+                    "id": str(uuid.uuid4()),
+                    "bibliography_id": str(selected.id),
+                    "page_reference": "s. 44",
+                    "is_primary": True,
+                }
+            ]
+        },
+    )
+    db_session.add(revision)
+    await db_session.flush()
+    person.published_revision_id = revision.id
+    await db_session.commit()
+
+    response = await async_client.get(f"/api/v1/persons/{person.slug}")
+
+    assert response.status_code == 200
+    sources = response.json()["sources"]
+    assert len(sources) == 1
+    assert sources[0]["page_reference"] == "s. 44"
+    assert sources[0]["is_primary"] is True
+    assert sources[0]["bibliography"]["title"] == "Źródło wybrane przez rewizję"
+    assert sources[0]["bibliography"]["url"] == "https://example.org/revision-source"
+    assert "Źródło z pól live" not in response.text
+    assert response.json()["source_summary"] == {
+        "total": 1,
+        "primary": 1,
+        "with_online_link": 1,
+    }
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "status,deleted",
     [("draft", False), ("review", False), ("archived", False), ("published", True)],
@@ -164,11 +221,25 @@ async def test_public_profile_sources_are_paginated_without_changing_aggregates(
     ]
     db_session.add_all(sources)
     await db_session.flush()
+    created_at = datetime(2020, 1, 1, tzinfo=UTC)
     db_session.add_all(
         [
-            PersonSource(person_id=person.id, bibliography_id=sources[0].id, is_primary=True),
-            PersonSource(person_id=person.id, bibliography_id=sources[1].id),
-            PersonSource(person_id=person.id, bibliography_id=sources[2].id),
+            PersonSource(
+                person_id=person.id,
+                bibliography_id=sources[0].id,
+                is_primary=True,
+                created_at=created_at,
+            ),
+            PersonSource(
+                person_id=person.id,
+                bibliography_id=sources[1].id,
+                created_at=created_at + timedelta(seconds=1),
+            ),
+            PersonSource(
+                person_id=person.id,
+                bibliography_id=sources[2].id,
+                created_at=created_at + timedelta(seconds=2),
+            ),
         ]
     )
     await db_session.commit()

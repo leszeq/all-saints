@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -52,6 +53,17 @@ class PersonSourcesPage(NamedTuple):
     per_page: int
 
 
+@dataclass(frozen=True, slots=True)
+class _PublicSourceSnapshotLink:
+    """Transient source link reconstructed from a published revision payload."""
+
+    id: uuid.UUID
+    page_reference: str | None
+    is_primary: bool
+    bibliography: Bibliography | None
+    historical_source: HistoricalSource | None
+
+
 class PersonSourceService:
     """Read and mutate source assignments inside a caller-owned transaction."""
 
@@ -88,12 +100,19 @@ class PersonSourceService:
         *,
         page: int = 1,
         per_page: int = 24,
+        revision_payload: dict[str, Any] | None = None,
     ) -> PersonSourcesPage:
         """Return one bounded public page without loading the full bibliography."""
         if page < 1:
             raise ValueError("Numer strony musi być większy lub równy 1")
         if per_page < 1:
             raise ValueError("Rozmiar strony musi być większy lub równy 1")
+        if revision_payload is not None and isinstance(revision_payload.get("sources"), list):
+            return await self._list_public_sources_from_revision(
+                revision_payload["sources"],
+                page=page,
+                per_page=per_page,
+            )
 
         source_filters = [
             PersonSource.person_id == person_id,
@@ -155,6 +174,110 @@ class PersonSourceService:
             page=page,
             per_page=per_page,
         )
+
+    async def _list_public_sources_from_revision(
+        self,
+        raw_sources: list[object],
+        *,
+        page: int,
+        per_page: int,
+    ) -> PersonSourcesPage:
+        """Rebuild public links from a revision while resolving current source metadata."""
+        snapshots = [item for item in raw_sources if isinstance(item, dict)]
+        bibliography_ids = {
+            self._snapshot_uuid(item.get("bibliography_id"))
+            for item in snapshots
+            if item.get("bibliography_id") is not None
+        }
+        historical_ids = {
+            self._snapshot_uuid(item.get("historical_source_id"))
+            for item in snapshots
+            if item.get("historical_source_id") is not None
+        }
+        bibliography_ids.discard(None)
+        historical_ids.discard(None)
+
+        bibliographies = {
+            source.id: source
+            for source in (
+                await self.db.scalars(
+                    select(Bibliography).where(
+                        Bibliography.id.in_(bibliography_ids),
+                        Bibliography.deleted_at.is_(None),
+                    )
+                )
+            ).all()
+        }
+        historical_sources = {
+            source.id: source
+            for source in (
+                await self.db.scalars(
+                    select(HistoricalSource).where(
+                        HistoricalSource.id.in_(historical_ids),
+                        HistoricalSource.deleted_at.is_(None),
+                    )
+                )
+            ).all()
+        }
+
+        links: list[_PublicSourceSnapshotLink] = []
+        for item in snapshots:
+            link_id = self._snapshot_uuid(item.get("id"))
+            bibliography_id = self._snapshot_uuid(item.get("bibliography_id"))
+            historical_source_id = self._snapshot_uuid(item.get("historical_source_id"))
+            if link_id is None:
+                continue
+            bibliography = bibliographies.get(bibliography_id)
+            historical_source = historical_sources.get(historical_source_id)
+            if bibliography is None and historical_source is None:
+                continue
+            links.append(
+                _PublicSourceSnapshotLink(
+                    id=link_id,
+                    page_reference=item.get("page_reference"),
+                    is_primary=bool(item.get("is_primary", False)),
+                    bibliography=bibliography,
+                    historical_source=historical_source,
+                )
+            )
+
+        links = [
+            link
+            for _, link in sorted(
+                enumerate(links),
+                key=lambda indexed: (not indexed[1].is_primary, indexed[0]),
+            )
+        ]
+        total = len(links)
+        primary = sum(link.is_primary for link in links)
+        with_online_link = sum(
+            bool(
+                (link.bibliography and (link.bibliography.url or link.bibliography.doi))
+                or (link.historical_source and link.historical_source.digitization_url)
+            )
+            for link in links
+        )
+        pages = max(1, -(-total // per_page))
+        page = min(page, pages)
+        start = (page - 1) * per_page
+        return PersonSourcesPage(
+            sources=links[start : start + per_page],
+            total=total,
+            primary=primary,
+            with_online_link=with_online_link,
+            page=page,
+            per_page=per_page,
+        )
+
+    @staticmethod
+    def _snapshot_uuid(value: object) -> uuid.UUID | None:
+        """Parse a snapshot identifier without allowing malformed payloads to leak."""
+        if value is None:
+            return None
+        try:
+            return value if isinstance(value, uuid.UUID) else uuid.UUID(str(value))
+        except (TypeError, ValueError, AttributeError):
+            return None
 
     async def create_source(
         self,

@@ -8,7 +8,7 @@ import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import NamedTuple, cast
+from typing import Any, NamedTuple, cast
 
 from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -277,6 +277,13 @@ def _public_person_projection(person: Person) -> Person:
     if revision.deleted_at is not None or revision.status != PublicationRevisionStatus.PUBLISHED.value:
         return person
     return cast(Person, PublishedPersonProjection(person, revision))
+
+
+def public_revision_payload(person: Person) -> dict[str, Any] | None:
+    """Return the selected revision payload for public relation projections."""
+    if isinstance(person, PublishedPersonProjection):
+        return person.revision.payload
+    return None
 
 
 def _enum_values(

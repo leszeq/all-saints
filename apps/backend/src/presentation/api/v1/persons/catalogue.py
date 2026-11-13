@@ -10,7 +10,10 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.services.person_localization import resolve_person_content
-from src.application.services.person_query_service import PersonQueryService
+from src.application.services.person_query_service import (
+    PersonQueryService,
+    public_revision_payload,
+)
 from src.application.services.person_source_service import PersonSourceService
 from src.domain.hagiography.models import (
     Era,
@@ -269,6 +272,7 @@ async def get_person(
         person.id,
         page=sources_page,
         per_page=sources_per_page,
+        revision_payload=public_revision_payload(person),
     )
     sources = [PublicPersonSourceSchema.from_link(link) for link in source_page.sources]
     source_pages = max(1, -(-source_page.total // source_page.per_page))

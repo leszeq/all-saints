@@ -279,14 +279,14 @@ PATCH treści osoby published może zmienić live bez ponownej recenzji; tłumac
 - [x] `PATCH /revisions/{id}` aktualizuje walidowane pola profilu w draftcie, zwiększa wersję rewizji i zapisuje audyt.
 - [x] `POST /revisions/{id}/submit` i `POST /revisions/{id}/publish` egzekwują kolejno uprawnienia `persons:submit` i `persons:review`.
 - [x] `POST /revisions/{id}/return` zwraca rewizję do draftu z obowiązkowym komentarzem, a `POST /revisions/{id}/reject` zachowuje odrzucony snapshot.
-- [x] public detail i katalog nakładają scalarne pola z `published_revision_id` z fallbackiem legacy; ta sama reguła dla sources/orders/AI pozostaje otwarta.
+- [x] public detail i katalog nakładają scalarne pola z `published_revision_id` z fallbackiem legacy, a publiczne cytowania źródeł czytają sekcję `sources` snapshotu; orders/media/search-joiny pozostają otwarte.
 
 **Database**
 
 - [x] PublicationRevision(id,person_id,revision_number,status,payload,base_revision_id,author_id,created_at) oraz migracja `0027_publication_revisions`.
 - [x] Nullable `Person.published_revision_id` FK i indeks dodane w migracji `0028_published_revision_pointer`; publikacja rewizji ustawia wskaźnik, a starsza bezpośrednia edycja profilu go czyści.
 - [x] UNIQUE(person_id,revision_number), indeks kolejki i blokada jednego aktywnego draftu na poziomie serwisu.
-- [x] migracja `0029_backfill_published_revision_pointer` tworzy idempotentną pierwszą rewizję scalarnej projekcji dla opublikowanych rekordów bez historii; test sprawdza ponowne wykonanie. Typed relacje rewizji dla źródeł pozostają otwarte.
+- [x] migracja `0029_backfill_published_revision_pointer` tworzy idempotentną pierwszą rewizję scalarnej projekcji dla opublikowanych rekordów bez historii; test sprawdza ponowne wykonanie. Publiczna projekcja źródeł korzysta z payloadu, ale typed relacje rewizji dla źródeł pozostają otwarte.
 - [x] Payload korzysta z istniejącego `_snapshot_schema_version` serializera osoby.
 
 **Frontend**
