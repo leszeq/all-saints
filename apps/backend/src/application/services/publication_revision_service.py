@@ -346,6 +346,109 @@ class PublicationRevisionService:
         await self.db.refresh(revision)
         return revision
 
+    async def return_to_draft(
+        self,
+        revision_id: uuid.UUID,
+        *,
+        expected_version: int,
+        note: str,
+        author_id: uuid.UUID | None,
+        audit_context: AuditContext | None = None,
+    ) -> PublicationRevision:
+        """Return a reviewed revision to the editor with a required note."""
+        return await self._review_decision(
+            revision_id,
+            expected_version=expected_version,
+            target_status=PublicationRevisionStatus.DRAFT,
+            note=note,
+            author_id=author_id,
+            audit_context=audit_context,
+        )
+
+    async def reject(
+        self,
+        revision_id: uuid.UUID,
+        *,
+        expected_version: int,
+        note: str,
+        author_id: uuid.UUID | None,
+        audit_context: AuditContext | None = None,
+    ) -> PublicationRevision:
+        """Reject a reviewed revision while retaining its immutable history."""
+        return await self._review_decision(
+            revision_id,
+            expected_version=expected_version,
+            target_status=PublicationRevisionStatus.REJECTED,
+            note=note,
+            author_id=author_id,
+            audit_context=audit_context,
+        )
+
+    async def _review_decision(
+        self,
+        revision_id: uuid.UUID,
+        *,
+        expected_version: int,
+        target_status: PublicationRevisionStatus,
+        note: str,
+        author_id: uuid.UUID | None,
+        audit_context: AuditContext | None = None,
+    ) -> PublicationRevision:
+        """Persist one reviewer decision from the review state."""
+        revision = await self.db.scalar(
+            select(PublicationRevision)
+            .where(
+                PublicationRevision.id == revision_id,
+                PublicationRevision.deleted_at.is_(None),
+            )
+            .with_for_update()
+        )
+        if revision is None:
+            raise PublicationRevisionNotFoundError("Rewizja nie istnieje")
+        if revision.version != expected_version:
+            raise PublicationRevisionVersionConflictError(expected_version, revision.version)
+        if revision.status != PublicationRevisionStatus.REVIEW.value:
+            raise PublicationRevisionStateError(
+                "Decyzja recenzenta wymaga rewizji w stanie review"
+            )
+        normalized_note = note.strip()
+        if not normalized_note:
+            raise PublicationRevisionPayloadError(
+                [
+                    {
+                        "field": "note",
+                        "message": "Komentarz recenzenta nie może być pusty",
+                        "type": "required",
+                    }
+                ]
+            )
+
+        previous_version = revision.version
+        previous_status = revision.status
+        revision.status = target_status.value
+        revision.version = previous_version + 1
+        revision.updated_at = datetime.now(UTC)
+        revision.change_summary = normalized_note
+
+        await self.db.flush()
+        add_audit_log(
+            self.db,
+            context=audit_context or AuditContext.for_user(author_id),
+            action=AuditAction.UPDATE,
+            resource_type="person_revisions",
+            resource_id=revision.id,
+            old_value={"status": previous_status, "version": previous_version},
+            new_value={
+                "status": revision.status,
+                "version": revision.version,
+                "note": normalized_note,
+            },
+            extra_metadata={"operation": f"{target_status.value}_person_revision"},
+        )
+        await self.db.flush()
+        await self.db.refresh(revision)
+        return revision
+
     async def publish(
         self,
         revision_id: uuid.UUID,

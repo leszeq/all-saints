@@ -278,6 +278,7 @@ PATCH treści osoby published może zmienić live bez ponownej recenzji; tłumac
 - [x] RevisionCommand z `expected_version` dla rozpoczęcia rewizji.
 - [x] `PATCH /revisions/{id}` aktualizuje walidowane pola profilu w draftcie, zwiększa wersję rewizji i zapisuje audyt.
 - [x] `POST /revisions/{id}/submit` i `POST /revisions/{id}/publish` egzekwują kolejno uprawnienia `persons:submit` i `persons:review`.
+- [x] `POST /revisions/{id}/return` zwraca rewizję do draftu z obowiązkowym komentarzem, a `POST /revisions/{id}/reject` zachowuje odrzucony snapshot.
 - [ ] public query czyta published_revision_id. Ta sama reguła dla sources/orders/AI.
 
 **Database**
@@ -304,6 +305,7 @@ PATCH treści osoby published może zmienić live bez ponownej recenzji; tłumac
 - [x] Utworzenie rewizji zapisuje snapshot i audyt bez modyfikowania aktywnego `Person`.
 - [x] Edycja draftu ma optimistic locking po `PublicationRevision.version`; konflikt zwraca szczegółowy kod i wersje.
 - [x] Publikacja sprawdza `base_version`, aktualizuje scalarne pola `Person` atomowo i zapisuje audyt publikacji rewizji.
+- [x] Decyzje recenzenta mają optimistic locking, wymagają komentarza i zapisują zmianę statusu w audycie.
 - [ ] wszystkie write paths respektują granicę.
 - [ ] Frontend: konflikt zachowuje formularz.
 - [ ] E2E: dwie osoby edytują, tylko jedna publikuje zatwierdzoną rewizję.

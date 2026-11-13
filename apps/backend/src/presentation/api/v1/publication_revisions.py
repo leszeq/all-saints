@@ -19,6 +19,7 @@ from src.domain.identity.models import User
 from src.infrastructure.db.session import get_db_session
 from src.presentation.api.v1.auth.router import require_permission
 from src.presentation.api.v1.persons.schemas import (
+    PersonRevisionReviewDecisionCommand,
     PersonRevisionSchema,
     PersonRevisionWorkflowCommand,
     UpdatePersonRevisionCommand,
@@ -100,6 +101,92 @@ async def submit_person_revision(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except PublicationRevisionStateError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except PublicationRevisionVersionConflictError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "message": str(exc),
+                "code": "publication_revision_version_conflict",
+                "expected_version": exc.expected_version,
+                "current_version": exc.current_version,
+            },
+        ) from exc
+    return PersonRevisionSchema.model_validate(revision)
+
+
+@router.post(
+    "/{revision_id}/return",
+    response_model=PersonRevisionSchema,
+    summary="Return a person revision to the editor",
+)
+async def return_person_revision(
+    revision_id: uuid.UUID,
+    data: PersonRevisionReviewDecisionCommand,
+    request: Request,
+    db: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(require_permission("persons", "review")),
+) -> PersonRevisionSchema:
+    """Return a review revision to draft with an explanation for the editor."""
+    try:
+        revision = await PublicationRevisionService(db).return_to_draft(
+            revision_id,
+            expected_version=data.expected_version,
+            note=data.note,
+            author_id=current_user.id,
+            audit_context=audit_context_from_request(request, current_user),
+        )
+    except PublicationRevisionNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PublicationRevisionStateError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except PublicationRevisionPayloadError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"message": str(exc), "details": exc.details},
+        ) from exc
+    except PublicationRevisionVersionConflictError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "message": str(exc),
+                "code": "publication_revision_version_conflict",
+                "expected_version": exc.expected_version,
+                "current_version": exc.current_version,
+            },
+        ) from exc
+    return PersonRevisionSchema.model_validate(revision)
+
+
+@router.post(
+    "/{revision_id}/reject",
+    response_model=PersonRevisionSchema,
+    summary="Reject a person revision",
+)
+async def reject_person_revision(
+    revision_id: uuid.UUID,
+    data: PersonRevisionReviewDecisionCommand,
+    request: Request,
+    db: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(require_permission("persons", "review")),
+) -> PersonRevisionSchema:
+    """Reject a review revision while retaining its audit history."""
+    try:
+        revision = await PublicationRevisionService(db).reject(
+            revision_id,
+            expected_version=data.expected_version,
+            note=data.note,
+            author_id=current_user.id,
+            audit_context=audit_context_from_request(request, current_user),
+        )
+    except PublicationRevisionNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PublicationRevisionStateError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except PublicationRevisionPayloadError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"message": str(exc), "details": exc.details},
+        ) from exc
     except PublicationRevisionVersionConflictError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

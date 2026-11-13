@@ -291,3 +291,76 @@ async def test_publish_revision_rejects_changed_live_person(
             expected_version=2,
             author_id=None,
         )
+
+
+@pytest.mark.asyncio
+async def test_review_can_return_revision_to_draft_with_required_note(
+    db_session: AsyncSession,
+) -> None:
+    person = await _published_person(db_session)
+    service = PublicationRevisionService(db_session)
+    revision = await service.create_draft(
+        person.id,
+        expected_version=person.version,
+        author_id=None,
+    )
+    submitted = await service.submit_for_review(
+        revision.id,
+        expected_version=revision.version,
+        author_id=None,
+    )
+
+    returned = await service.return_to_draft(
+        revision.id,
+        expected_version=submitted.version,
+        note="Uzupełnij źródło dla daty śmierci",
+        author_id=None,
+        audit_context=AuditContext(),
+    )
+
+    assert returned.status == PublicationRevisionStatus.DRAFT.value
+    assert returned.version == 3
+    assert returned.change_summary == "Uzupełnij źródło dla daty śmierci"
+    assert person.summary_pl == "Aktualny opis publiczny"
+
+
+@pytest.mark.asyncio
+async def test_rejected_revision_is_retained_and_cannot_be_edited(
+    db_session: AsyncSession,
+) -> None:
+    person = await _published_person(db_session)
+    service = PublicationRevisionService(db_session)
+    revision = await service.create_draft(
+        person.id,
+        expected_version=person.version,
+        author_id=None,
+    )
+    submitted = await service.submit_for_review(
+        revision.id,
+        expected_version=revision.version,
+        author_id=None,
+    )
+
+    rejected = await service.reject(
+        revision.id,
+        expected_version=submitted.version,
+        note="Brak wystarczającego źródła biograficznego",
+        author_id=None,
+    )
+
+    assert rejected.status == PublicationRevisionStatus.REJECTED.value
+    assert rejected.version == 3
+    with pytest.raises(PublicationRevisionStateError):
+        await service.update_draft(
+            revision.id,
+            expected_version=rejected.version,
+            changes={"summary_pl": "Nie powinno zostać zapisane"},
+            author_id=None,
+        )
+
+    new_revision = await service.create_draft(
+        person.id,
+        expected_version=person.version,
+        author_id=None,
+    )
+    assert new_revision.revision_number == 2

@@ -363,3 +363,19 @@ class PersonRevisionWorkflowCommand(BaseModel):
     )
 
     model_config = ConfigDict(extra="forbid")
+
+
+class PersonRevisionReviewDecisionCommand(BaseModel):
+    """Record a required reviewer note when returning or rejecting a revision."""
+
+    expected_version: int = Field(
+        ge=1,
+        description="Revision.version loaded by the reviewer; stale values return HTTP 409",
+    )
+    note: str = Field(
+        min_length=1,
+        max_length=500,
+        description="Reviewer explanation for the return or rejection",
+    )
+
+    model_config = ConfigDict(extra="forbid")
