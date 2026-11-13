@@ -5,14 +5,16 @@ from __future__ import annotations
 import base64
 import binascii
 import uuid
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, NamedTuple, cast
 
-from sqlalchemy import and_, case, func, or_, select
+from sqlalchemy import and_, case, func, or_, select, true
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute, load_only, selectinload
+from sqlalchemy.sql import Select
 from sqlalchemy.sql.elements import ColumnElement
 
 from src.domain.geography.models import ReligiousOrder
@@ -127,7 +129,8 @@ class SearchPolicy:
             (
                 alias
                 for alias in person.aliases
-                if alias.deleted_at is None and alias.normalized_value == normalized_term
+                if getattr(alias, "deleted_at", None) is None
+                and alias.normalized_value == normalized_term
             ),
             None,
         )
@@ -489,6 +492,40 @@ def _published_revision_text(field_name: str) -> ColumnElement[str | None]:
     )
 
 
+def _published_revision_payload_has_field(field_name: str) -> ColumnElement[bool]:
+    """Return whether the selected published revision owns one relation section."""
+    return select(PublicationRevision.id).where(
+        PublicationRevision.id == Person.published_revision_id,
+        PublicationRevision.status == PublicationRevisionStatus.PUBLISHED.value,
+        PublicationRevision.deleted_at.is_(None),
+        PublicationRevision.payload.op("?")(field_name),
+    ).correlate(Person).exists()
+
+
+def _published_revision_relation_matches(
+    field_name: str,
+    predicate_factory: Callable[[ColumnElement[object]], Sequence[ColumnElement[bool]]],
+) -> Select:
+    """Return person IDs whose selected revision relation item matches predicates."""
+    items = (
+        func.jsonb_array_elements(PublicationRevision.payload[field_name])
+        .table_valued("value")
+        .alias(f"revision_{field_name}_items")
+    )
+    item_json = items.c.value.cast(JSONB)
+    return (
+        select(PublicationRevision.person_id)
+        .select_from(PublicationRevision)
+        .join(Person, Person.published_revision_id == PublicationRevision.id)
+        .join(items, true())
+        .where(
+            PublicationRevision.status == PublicationRevisionStatus.PUBLISHED.value,
+            PublicationRevision.deleted_at.is_(None),
+            *predicate_factory(item_json),
+        )
+    )
+
+
 def _person_search_predicate(
     term: str,
     *,
@@ -519,13 +556,27 @@ def _person_search_predicate(
             revision_latin_name.op("%")(term),
         )
     )
-    alias_matches = select(PersonName.person_id).where(
+    live_alias_matches = select(Person.id).join(
+        PersonName,
+        PersonName.person_id == Person.id,
+    ).where(
         PersonName.deleted_at.is_(None),
+        ~_published_revision_payload_has_field("aliases"),
         or_(
             PersonName.normalized_value == normalized_term,
             PersonName.value.ilike(like_term),
             PersonName.value.op("%")(term),
         ),
+    )
+    revision_alias_matches = _published_revision_relation_matches(
+        "aliases",
+        lambda item: [
+            or_(
+                item["normalized_value"].astext == normalized_term,
+                item["value"].astext.ilike(like_term),
+                item["value"].astext.op("%")(term),
+            )
+        ],
     )
     translation_matches = select(PersonTranslation.person_id).where(
         PersonTranslation.deleted_at.is_(None),
@@ -535,8 +586,12 @@ def _person_search_predicate(
             PersonTranslation.canonical_name.op("%")(term),
         ),
     )
-    patronage_matches = select(Patronage.person_id).where(
+    live_patronage_matches = select(Person.id).join(
+        Patronage,
+        Patronage.person_id == Person.id,
+    ).where(
         Patronage.deleted_at.is_(None),
+        ~_published_revision_payload_has_field("patronages"),
         or_(
             Patronage.name_pl.ilike(like_term),
             Patronage.name_en.ilike(like_term),
@@ -544,10 +599,23 @@ def _person_search_predicate(
             Patronage.patronage_type.ilike(like_term),
         ),
     )
+    revision_patronage_matches = _published_revision_relation_matches(
+        "patronages",
+        lambda item: [
+            or_(
+                item["name_pl"].astext.ilike(like_term),
+                item["name_en"].astext.ilike(like_term),
+                item["description"].astext.ilike(like_term),
+                item["patronage_type"].astext.ilike(like_term),
+            )
+        ],
+    )
     matching_person_ids = person_matches.union(
-        alias_matches,
+        live_alias_matches,
+        revision_alias_matches,
         translation_matches,
-        patronage_matches,
+        live_patronage_matches,
+        revision_patronage_matches,
     )
     return Person.id.in_(matching_person_ids)
 
@@ -943,6 +1011,38 @@ class PersonQueryService:
                 .correlate(Person)
                 .scalar_subquery()
             )
+            revision_alias_items = (
+                func.jsonb_array_elements(PublicationRevision.payload["aliases"])
+                .table_valued("value")
+                .alias("revision_alias_rank_items")
+            )
+            revision_alias_value = revision_alias_items.c.value.cast(JSONB)["value"].astext
+            revision_alias_similarity = (
+                select(func.max(func.similarity(revision_alias_value, term)))
+                .select_from(PublicationRevision)
+                .join(revision_alias_items, true())
+                .where(
+                    PublicationRevision.id == Person.published_revision_id,
+                    PublicationRevision.status == PublicationRevisionStatus.PUBLISHED.value,
+                    PublicationRevision.deleted_at.is_(None),
+                )
+                .correlate(Person)
+                .scalar_subquery()
+            )
+            revision_alias_exact = (
+                select(PublicationRevision.id)
+                .select_from(PublicationRevision)
+                .join(revision_alias_items, true())
+                .where(
+                    PublicationRevision.id == Person.published_revision_id,
+                    PublicationRevision.status == PublicationRevisionStatus.PUBLISHED.value,
+                    PublicationRevision.deleted_at.is_(None),
+                    revision_alias_items.c.value.cast(JSONB)["normalized_value"].astext
+                    == normalized_term,
+                )
+                .correlate(Person)
+                .exists()
+            )
             translation_similarity = (
                 select(
                     func.max(
@@ -967,6 +1067,7 @@ class PersonQueryService:
                 func.similarity(func.coalesce(revision_canonical_name_en, ""), term),
                 func.similarity(func.coalesce(revision_latin_name, ""), term),
                 func.coalesce(alias_similarity, 0.0),
+                func.coalesce(revision_alias_similarity, 0.0),
                 func.coalesce(translation_similarity, 0.0),
             )
             search_score = func.greatest(
@@ -1024,11 +1125,17 @@ class PersonQueryService:
                 )
                 + case(
                     (
-                        Person.aliases.any(
+                        or_(
+                            revision_alias_exact,
                             and_(
-                                PersonName.deleted_at.is_(None),
-                                PersonName.normalized_value == normalized_term,
-                            )
+                                ~_published_revision_payload_has_field("aliases"),
+                                Person.aliases.any(
+                                    and_(
+                                        PersonName.deleted_at.is_(None),
+                                        PersonName.normalized_value == normalized_term,
+                                    )
+                                ),
+                            ),
                         ),
                         8.0,
                     ),

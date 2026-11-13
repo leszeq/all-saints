@@ -351,6 +351,27 @@ async def test_public_person_reads_typed_relations_from_selected_revision(
     )
     assert "Miasta live" not in detail_response.text
 
+    alias_search = await async_client.get(
+        "/api/v1/persons", params={"search": "Alias z rewizji"}
+    )
+    patronage_search = await async_client.get(
+        "/api/v1/persons", params={"search": "Zawodu z rewizji"}
+    )
+    stale_alias_search = await async_client.get(
+        "/api/v1/persons", params={"search": "Alias live"}
+    )
+    stale_patronage_search = await async_client.get(
+        "/api/v1/persons", params={"search": "Miasta live"}
+    )
+    assert alias_search.status_code == 200
+    assert alias_search.json()["total"] == 1
+    assert patronage_search.status_code == 200
+    assert patronage_search.json()["total"] == 1
+    assert stale_alias_search.status_code == 200
+    assert stale_alias_search.json()["total"] == 0
+    assert stale_patronage_search.status_code == 200
+    assert stale_patronage_search.json()["total"] == 0
+
 
 @pytest.mark.asyncio
 async def test_legacy_admin_edit_keeps_primary_translation_current(
