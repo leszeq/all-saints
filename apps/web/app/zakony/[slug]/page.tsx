@@ -25,6 +25,7 @@ import { getWebDictionary } from "@/lib/i18n/dictionaries";
 import { resolveDictionaryLabel, resolveDictionaryValue } from "@/lib/i18n/labels";
 import { createBreadcrumbListJsonLd, serializeJsonLd } from "@/lib/json-ld";
 import { absoluteSiteUrl } from "@/lib/site-url";
+import { stripMarkdown } from "@/components/markdown-content";
 
 export const revalidate = 300;
 
@@ -233,7 +234,7 @@ export default async function OrderDetailPage({ params, searchParams }: PageProp
                   <div className="mt-auto pt-10">
                     <p className="text-[10px] font-bold uppercase tracking-wide text-stone-500">{resolveDictionaryValue(domain.personTypes, membership.person.person_type)?.label ?? membership.person.person_type} · {membership.person.birth_year || "?"}–{membership.person.death_year || "?"}</p>
                     <h3 className="mt-2 font-serif text-2xl font-semibold text-charcoal group-hover:text-burgundy-700">{membership.person.canonical_name}</h3>
-                    <p className="mt-3 line-clamp-2 text-sm leading-6 text-stone-600">{membership.notes || membership.person.summary_pl || copy.memberProfileFallback}</p>
+                    <p className="mt-3 line-clamp-2 text-sm leading-6 text-stone-600">{membership.notes || (membership.person.summary_pl ? stripMarkdown(membership.person.summary_pl) : null) || copy.memberProfileFallback}</p>
                     <span className="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-burgundy-700">{copy.fullProfile} <ArrowRight className="h-4 w-4" /></span>
                   </div>
                 </Link>

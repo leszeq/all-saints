@@ -1684,8 +1684,10 @@ export interface AdminDictionary {
     biography: {
       summary: string;
       summaryPlaceholder: string;
+      summaryMarkdownHint: string;
       biography: string;
       biographyPlaceholder: string;
+      biographyMarkdownHint: string;
       changeSummary: string;
       changeSummaryPlaceholder: string;
     };

@@ -16,6 +16,7 @@ import { readPublicPersonContent } from "@/lib/person-content";
 import { LEGACY_ERA_PERIODS, LEGACY_SEARCH_PATRONAGES } from "@/lib/person-filters";
 import { highlightSearchText } from "@/lib/search-highlight";
 import type { ReligiousOrder } from "@/lib/orders";
+import { stripMarkdown } from "@/components/markdown-content";
 
 export const revalidate = 30;
 
@@ -653,7 +654,7 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
                   )}
 
                   <p className="mt-3 line-clamp-3 text-xs leading-relaxed text-gray-600">
-                    {content.summary || copy.summaryFallback}
+                    {content.summary ? stripMarkdown(content.summary) : copy.summaryFallback}
                   </p>
 
                   {highlightedPatronages.length > 0 && (

@@ -22,6 +22,7 @@ export function PersonBiographySection({ copy, register, isEdit }: PersonBiograp
           className={cn(PERSON_FORM_INPUT_CLASS, "resize-none")}
           placeholder={copy.summaryPlaceholder}
         />
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">{copy.summaryMarkdownHint}</p>
       </div>
       <div>
         <label htmlFor={personFieldId("biography_pl")} className={PERSON_FORM_LABEL_CLASS}>{copy.biography}</label>
@@ -32,6 +33,7 @@ export function PersonBiographySection({ copy, register, isEdit }: PersonBiograp
           className={cn(PERSON_FORM_INPUT_CLASS, "resize-y")}
           placeholder={copy.biographyPlaceholder}
         />
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">{copy.biographyMarkdownHint}</p>
       </div>
       {isEdit && (
         <div>

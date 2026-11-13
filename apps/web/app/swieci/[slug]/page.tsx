@@ -29,6 +29,7 @@ import type { PublicPersonSource } from "@/lib/person-sources";
 import type { PersonCommemoration } from "@/lib/calendar";
 import { patronageConceptSlug } from "@/lib/patronages";
 import { absoluteSiteUrl } from "@/lib/site-url";
+import { MarkdownContent, stripMarkdown } from "@/components/markdown-content";
 
 interface PageProps {
   params: Promise<{
@@ -74,12 +75,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       title: `${content.canonicalName}${copy.metadataTitleSuffix}`,
       alternates: { canonical: `/swieci/${encodeURIComponent(String(person.slug))}` },
       description:
-        content.summary || `${copy.metadataDescriptionPrefix}${content.canonicalName}.`,
+        stripMarkdown(content.summary ?? "") || `${copy.metadataDescriptionPrefix}${content.canonicalName}.`,
       openGraph: {
         title: content.canonicalName,
         url: `/swieci/${encodeURIComponent(String(person.slug))}`,
         description:
-          content.summary || `${copy.metadataBiographyPrefix}${content.canonicalName}`,
+          stripMarkdown(content.summary ?? "") || `${copy.metadataBiographyPrefix}${content.canonicalName}`,
         images: person.avatar?.url
           ? [
               {
@@ -160,7 +161,7 @@ export default async function PersonDetailPage({ params, searchParams }: PagePro
         url: profileUrl,
         name: content.canonicalName,
         alternateName: alternateNames.length > 0 ? alternateNames : undefined,
-        description: content.summary,
+        description: content.summary ? stripMarkdown(content.summary) : null,
         birthDate: person.birth_year ? String(person.birth_year) : undefined,
         deathDate: person.death_year ? String(person.death_year) : undefined,
         image: (person.avatar as SaintAvatarData | null)?.url || undefined,
@@ -319,9 +320,10 @@ export default async function PersonDetailPage({ params, searchParams }: PagePro
               <Sparkles className="h-4 w-4 text-gold-600" />
               {copy.summary}
             </h2>
-            <p className="font-serif text-base sm:text-lg text-burgundy-950 leading-relaxed italic">
-              {content.summary}
-            </p>
+            <MarkdownContent
+              value={content.summary ?? ""}
+              className="font-serif text-base italic text-burgundy-950 sm:text-lg [&_p]:m-0"
+            />
           </div>
         )}
 
@@ -375,9 +377,10 @@ export default async function PersonDetailPage({ params, searchParams }: PagePro
             <BookOpen className="h-5 w-5 text-gold-600" />
             {copy.biographyTitle}
           </h2>
-          <div className="prose prose-burgundy max-w-none text-base text-gray-800 leading-relaxed whitespace-pre-line">
-            {content.biography}
-          </div>
+          <MarkdownContent
+            value={content.biography ?? ""}
+            className="prose prose-burgundy max-w-none text-base text-gray-800 [&_p]:my-4 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
+          />
         </div>
         )}
 

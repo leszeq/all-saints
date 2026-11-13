@@ -480,7 +480,7 @@ V1 brak migracji; późniejsza struktura bloków biografii związana z 016 i rew
 
 **Frontend — strony, komponenty, stan, integracja API**
 
-web/swieci/[slug]: TableOfContents, FactsPanel, SourcesSection, collapsible aliases, linki do kalendarza/zakonu, przycisk cytowania; SSR z małymi client islands; stan anchor w URL.
+web/swieci/[slug]: TableOfContents, FactsPanel, SourcesSection, collapsible aliases, linki do kalendarza/zakonu, przycisk cytowania oraz bezpieczny renderer Markdown dla streszczenia i biografii; skróty katalogowe i metadata używają tekstu bez znaczników; SSR z małymi client islands; stan anchor w URL.
 
 **Tests — backend, frontend, E2E**
 

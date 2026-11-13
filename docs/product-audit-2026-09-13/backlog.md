@@ -438,6 +438,7 @@ Długie aliasy i teksty utrudniają znalezienie daty, wspomnienia lub źródła.
 
 - [x] web/swieci/[slug]: TableOfContents, FactsPanel, SourcesSection, collapsible aliases i przycisk cytowania.
 - [x] web/swieci/[slug]: linki do kalendarza i zakonu.
+- [x] web/swieci/[slug]: bezpieczne renderowanie Markdown w streszczeniu i biografii; katalogowe skróty usuwają znaczniki Markdown.
 - [x] SSR z małą wyspą client dla cytowania.
 - [x] stan anchor w URL.
 

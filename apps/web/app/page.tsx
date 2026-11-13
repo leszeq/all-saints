@@ -26,6 +26,7 @@ import { DEFAULT_WEB_UI_LOCALE } from "@/lib/i18n/config";
 import { getWebDictionary } from "@/lib/i18n/dictionaries";
 import { resolveDictionaryLabel } from "@/lib/i18n/labels";
 import { readPublicPersonContent } from "@/lib/person-content";
+import { stripMarkdown } from "@/components/markdown-content";
 
 export const revalidate = 60;
 
@@ -83,7 +84,7 @@ export default async function HomePage() {
       slug: String(person.slug),
       name: content.canonicalName,
       years: formatLifeYears(person.birth_year, person.death_year, copy.datesPending),
-      summary: content.summary || copy.profilePending,
+      summary: content.summary ? stripMarkdown(content.summary) : copy.profilePending,
       avatar: (person.avatar as SaintAvatarData | null) ?? null,
     };
   });

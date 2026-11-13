@@ -10,6 +10,7 @@ import {
 import { DEFAULT_WEB_UI_LOCALE } from "@/lib/i18n/config";
 import { getWebDictionary } from "@/lib/i18n/dictionaries";
 import { resolveDictionaryLabel, resolveDictionaryValue } from "@/lib/i18n/labels";
+import { stripMarkdown } from "@/components/markdown-content";
 
 export const revalidate = 300;
 
@@ -131,7 +132,7 @@ export default async function PatronageDetailPage({ params }: PageProps) {
                     {person.canonical_name}
                   </h3>
                   <p className="mt-3 line-clamp-3 text-sm leading-6 text-stone-600">
-                    {person.summary_pl || copy.personSummaryFallback}
+                    {person.summary_pl ? stripMarkdown(person.summary_pl) : copy.personSummaryFallback}
                   </p>
                   <span className="mt-auto inline-flex items-center gap-1 pt-5 text-sm font-semibold text-burgundy-700">
                     {copy.fullProfile} <ArrowRight className="h-4 w-4" />

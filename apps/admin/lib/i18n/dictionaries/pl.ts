@@ -1796,8 +1796,10 @@ const dictionary = {
     biography: {
       summary: "Streszczenie (PL)",
       summaryPlaceholder: "Krótkie streszczenie…",
+      summaryMarkdownHint: "Obsługiwany Markdown: **pogrubienie**, *kursywa*, linki i listy.",
       biography: "Biografia (PL)",
       biographyPlaceholder: "Pełny biogram…",
+      biographyMarkdownHint: "Możesz używać Markdown, np. nagłówków, list, cytatów, linków i bloków kodu.",
       changeSummary: "Opis zmian (dla historii wersji)",
       changeSummaryPlaceholder: "np. Uzupełniono biogram…",
     },
