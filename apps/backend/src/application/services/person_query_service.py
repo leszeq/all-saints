@@ -435,6 +435,20 @@ def _person_catalogue_filters(
     return filters
 
 
+def _published_revision_text(field_name: str) -> ColumnElement[str | None]:
+    """Return one selected revision text field correlated to the current person."""
+    return (
+        select(PublicationRevision.payload[field_name].astext)
+        .where(
+            PublicationRevision.id == Person.published_revision_id,
+            PublicationRevision.status == PublicationRevisionStatus.PUBLISHED.value,
+            PublicationRevision.deleted_at.is_(None),
+        )
+        .correlate(Person)
+        .scalar_subquery()
+    )
+
+
 def _person_search_predicate(
     term: str,
     *,
@@ -444,6 +458,9 @@ def _person_search_predicate(
     like_term = f"%{term}%"
     normalized_term = normalize_person_name(term)
     text_query = func.websearch_to_tsquery("simple", func.unaccent(term))
+    revision_canonical_name = _published_revision_text("canonical_name")
+    revision_canonical_name_en = _published_revision_text("canonical_name_en")
+    revision_latin_name = _published_revision_text("latin_name")
     person_matches = select(Person.id).where(
         *person_visibility,
         or_(
@@ -454,6 +471,12 @@ def _person_search_predicate(
             Person.canonical_name.op("%")(term),
             Person.canonical_name_en.op("%")(term),
             Person.latin_name.op("%")(term),
+            revision_canonical_name.ilike(like_term),
+            revision_canonical_name_en.ilike(like_term),
+            revision_latin_name.ilike(like_term),
+            revision_canonical_name.op("%")(term),
+            revision_canonical_name_en.op("%")(term),
+            revision_latin_name.op("%")(term),
         )
     )
     alias_matches = select(PersonName.person_id).where(
@@ -735,6 +758,9 @@ class PersonQueryService:
             term = search_term
             normalized_term = normalize_person_name(term)
             text_query = func.websearch_to_tsquery("simple", func.unaccent(term))
+            revision_canonical_name = _published_revision_text("canonical_name")
+            revision_canonical_name_en = _published_revision_text("canonical_name_en")
+            revision_latin_name = _published_revision_text("latin_name")
             full_text_rank = func.coalesce(
                 func.ts_rank_cd(Person.search_vector, text_query),
                 0.0,
@@ -778,6 +804,9 @@ class PersonQueryService:
                 func.similarity(Person.canonical_name, term),
                 func.similarity(func.coalesce(Person.canonical_name_en, ""), term),
                 func.similarity(func.coalesce(Person.latin_name, ""), term),
+                func.similarity(func.coalesce(revision_canonical_name, ""), term),
+                func.similarity(func.coalesce(revision_canonical_name_en, ""), term),
+                func.similarity(func.coalesce(revision_latin_name, ""), term),
                 func.coalesce(alias_similarity, 0.0),
                 func.coalesce(translation_similarity, 0.0),
             )
@@ -805,6 +834,30 @@ class PersonQueryService:
                 + case(
                     (
                         func.lower(func.unaccent(func.coalesce(Person.latin_name, "")))
+                        == normalized_term,
+                        7.0,
+                    ),
+                    else_=0.0,
+                )
+                + case(
+                    (
+                        func.lower(func.unaccent(func.coalesce(revision_canonical_name, "")))
+                        == normalized_term,
+                        10.0,
+                    ),
+                    else_=0.0,
+                )
+                + case(
+                    (
+                        func.lower(func.unaccent(func.coalesce(revision_canonical_name_en, "")))
+                        == normalized_term,
+                        8.0,
+                    ),
+                    else_=0.0,
+                )
+                + case(
+                    (
+                        func.lower(func.unaccent(func.coalesce(revision_latin_name, "")))
                         == normalized_term,
                         7.0,
                     ),

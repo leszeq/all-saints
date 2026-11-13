@@ -153,6 +153,15 @@ async def test_public_person_reads_use_selected_revision_scalars_with_legacy_fal
     assert list_response.status_code == 200
     assert list_response.json()["items"][0]["canonical_name"] == "Św. Nazwa z rewizji"
     assert list_response.json()["items"][0]["summary_pl"] == "Opis z wybranej rewizji"
+    revision_search_response = await async_client.get(
+        "/api/v1/persons",
+        params={"search": "Św. Nazwa z rewizji"},
+    )
+    assert revision_search_response.status_code == 200
+    assert revision_search_response.json()["total"] == 1
+    assert revision_search_response.json()["items"][0]["canonical_name"] == (
+        "Św. Nazwa z rewizji"
+    )
 
 
 @pytest.mark.asyncio
