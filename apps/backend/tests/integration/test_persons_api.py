@@ -135,6 +135,11 @@ async def test_public_person_reads_use_selected_revision_scalars_with_legacy_fal
         payload={
             "canonical_name": "Św. Nazwa z rewizji",
             "summary_pl": "Opis z wybranej rewizji",
+            "person_type": "blessed",
+            "gender": "female",
+            "era": "modern",
+            "birth_year": 1900,
+            "is_featured": True,
         },
     )
     db_session.add(revision)
@@ -153,6 +158,19 @@ async def test_public_person_reads_use_selected_revision_scalars_with_legacy_fal
     assert list_response.status_code == 200
     assert list_response.json()["items"][0]["canonical_name"] == "Św. Nazwa z rewizji"
     assert list_response.json()["items"][0]["summary_pl"] == "Opis z wybranej rewizji"
+    assert list_response.json()["items"][0]["person_type"] == "blessed"
+    assert (
+        await async_client.get("/api/v1/persons", params={"person_type": "blessed"})
+    ).json()["total"] == 1
+    assert (
+        await async_client.get("/api/v1/persons", params={"person_type": "saint"})
+    ).json()["total"] == 0
+    assert (
+        await async_client.get("/api/v1/persons", params={"gender": "female"})
+    ).json()["total"] == 1
+    assert (
+        await async_client.get("/api/v1/persons", params={"is_featured": "true"})
+    ).json()["total"] == 1
     revision_search_response = await async_client.get(
         "/api/v1/persons",
         params={"search": "Św. Nazwa z rewizji"},

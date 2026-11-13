@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, NamedTuple, cast
 
-from sqlalchemy import and_, case, func, or_, select, true
+from sqlalchemy import Integer, and_, case, func, or_, select, true
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute, load_only, selectinload
@@ -407,12 +407,35 @@ def _person_catalogue_filters(
 ) -> list[ColumnElement[bool]]:
     """Build the relational predicates shared by list and facet queries."""
     filters: list[ColumnElement[bool]] = []
+
+    def revision_or_live(
+        field_name: str,
+        live_predicate: ColumnElement[bool],
+        revision_predicate: ColumnElement[bool],
+    ) -> ColumnElement[bool]:
+        return or_(
+            and_(~_published_revision_payload_has_field(field_name), live_predicate),
+            revision_predicate,
+        )
+
     person_type_values = _enum_values(person_type)
     if person_type_values:
-        filters.append(Person.person_type.in_(person_type_values))
+        filters.append(
+            revision_or_live(
+                "person_type",
+                Person.person_type.in_(person_type_values),
+                _published_revision_text("person_type").in_(person_type_values),
+            )
+        )
     gender_values = _enum_values(gender)
     if gender_values:
-        filters.append(Person.gender.in_(gender_values))
+        filters.append(
+            revision_or_live(
+                "gender",
+                Person.gender.in_(gender_values),
+                _published_revision_text("gender").in_(gender_values),
+            )
+        )
     period_values = _enum_values(period)
     era_values = _enum_values(era)
     if period_values:
@@ -421,9 +444,21 @@ def _person_catalogue_filters(
             period_eras.update(
                 period_era.value for period_era in ERA_PERIOD_ERAS[EraPeriod(period_value)]
             )
-        filters.append(Person.era.in_(sorted(period_eras)))
+        filters.append(
+            revision_or_live(
+                "era",
+                Person.era.in_(sorted(period_eras)),
+                _published_revision_text("era").in_(sorted(period_eras)),
+            )
+        )
     elif era_values:
-        filters.append(Person.era.in_(era_values))
+        filters.append(
+            revision_or_live(
+                "era",
+                Person.era.in_(era_values),
+                _published_revision_text("era").in_(era_values),
+            )
+        )
     patronage_values = _enum_values(patronage)
     if patronage_values:
         patronage_types: set[str] = set()
@@ -449,14 +484,43 @@ def _person_catalogue_filters(
         )
     if country_id:
         filters.append(
-            or_(Person.birth_country_id == country_id, Person.death_country_id == country_id)
+            or_(
+                revision_or_live(
+                    "birth_country_id",
+                    Person.birth_country_id == country_id,
+                    _published_revision_text("birth_country_id") == str(country_id),
+                ),
+                revision_or_live(
+                    "death_country_id",
+                    Person.death_country_id == country_id,
+                    _published_revision_text("death_country_id") == str(country_id),
+                ),
+            )
         )
     if birth_country_id:
-        filters.append(Person.birth_country_id == birth_country_id)
+        filters.append(
+            revision_or_live(
+                "birth_country_id",
+                Person.birth_country_id == birth_country_id,
+                _published_revision_text("birth_country_id") == str(birth_country_id),
+            )
+        )
     if death_country_id:
-        filters.append(Person.death_country_id == death_country_id)
+        filters.append(
+            revision_or_live(
+                "death_country_id",
+                Person.death_country_id == death_country_id,
+                _published_revision_text("death_country_id") == str(death_country_id),
+            )
+        )
     if nationality_id:
-        filters.append(Person.nationality_id == nationality_id)
+        filters.append(
+            revision_or_live(
+                "nationality_id",
+                Person.nationality_id == nationality_id,
+                _published_revision_text("nationality_id") == str(nationality_id),
+            )
+        )
     if order_id:
         live_order_match = and_(
             ~_published_revision_payload_has_field("orders"),
@@ -492,15 +556,45 @@ def _person_catalogue_filters(
             )
         )
     if birth_year_from is not None:
-        filters.append(Person.birth_year >= birth_year_from)
+        filters.append(
+            revision_or_live(
+                "birth_year",
+                Person.birth_year >= birth_year_from,
+                _published_revision_text("birth_year").cast(Integer) >= birth_year_from,
+            )
+        )
     if birth_year_to is not None:
-        filters.append(Person.birth_year <= birth_year_to)
+        filters.append(
+            revision_or_live(
+                "birth_year",
+                Person.birth_year <= birth_year_to,
+                _published_revision_text("birth_year").cast(Integer) <= birth_year_to,
+            )
+        )
     if death_year_from is not None:
-        filters.append(Person.death_year >= death_year_from)
+        filters.append(
+            revision_or_live(
+                "death_year",
+                Person.death_year >= death_year_from,
+                _published_revision_text("death_year").cast(Integer) >= death_year_from,
+            )
+        )
     if death_year_to is not None:
-        filters.append(Person.death_year <= death_year_to)
+        filters.append(
+            revision_or_live(
+                "death_year",
+                Person.death_year <= death_year_to,
+                _published_revision_text("death_year").cast(Integer) <= death_year_to,
+            )
+        )
     if is_featured is not None:
-        filters.append(Person.is_featured == is_featured)
+        filters.append(
+            revision_or_live(
+                "is_featured",
+                Person.is_featured == is_featured,
+                _published_revision_text("is_featured") == str(is_featured).lower(),
+            )
+        )
     return filters
 
 
