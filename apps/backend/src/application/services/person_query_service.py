@@ -458,14 +458,30 @@ def _person_catalogue_filters(
     if nationality_id:
         filters.append(Person.nationality_id == nationality_id)
     if order_id:
-        filters.append(
+        live_order_match = and_(
+            ~_published_revision_payload_has_field("orders"),
             Person.orders.any(
                 and_(
                     PersonOrder.order_id == order_id,
                     PersonOrder.order.has(ReligiousOrder.deleted_at.is_(None)),
                 )
-            )
+            ),
         )
+        revision_order_match = and_(
+            select(ReligiousOrder.id)
+            .where(
+                ReligiousOrder.id == order_id,
+                ReligiousOrder.deleted_at.is_(None),
+            )
+            .exists(),
+            Person.id.in_(
+                _published_revision_relation_matches(
+                    "orders",
+                    lambda item: [item["order_id"].astext == str(order_id)],
+                )
+            ),
+        )
+        filters.append(or_(live_order_match, revision_order_match))
     if occupation_id:
         filters.append(
             Person.occupations.any(

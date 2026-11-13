@@ -280,7 +280,7 @@ PATCH treści osoby published może zmienić live bez ponownej recenzji; tłumac
 - [x] `POST /revisions/{id}/submit` i `POST /revisions/{id}/publish` egzekwują kolejno uprawnienia `persons:submit` i `persons:review`.
 - [x] `POST /revisions/{id}/return` zwraca rewizję do draftu z obowiązkowym komentarzem, a `POST /revisions/{id}/reject` zachowuje odrzucony snapshot.
 - [x] `PATCH /revisions/{id}` obsługuje również aliasy, patronaty, avatar oraz dane beatyfikacji i kanonizacji; zmiany relacji pozostają w draftcie i są synchronizowane dopiero przy publikacji.
-- [x] public detail i katalog nakładają scalarne pola z `published_revision_id` z fallbackiem legacy, a publiczne cytowania źródeł, członkostwa zakonów, aliasy, patronaty, uznanie, avatar/media i nazwy używane w wyszukiwaniu czytają odpowiednie sekcje snapshotu; wyszukiwanie aliasów i patronatów oraz filtr grupy patronatu respektują tę samą granicę.
+- [x] public detail i katalog nakładają scalarne pola z `published_revision_id` z fallbackiem legacy, a publiczne cytowania źródeł, członkostwa zakonów, aliasy, patronaty, uznanie, avatar/media i nazwy używane w wyszukiwaniu czytają odpowiednie sekcje snapshotu; wyszukiwanie aliasów i patronatów oraz filtry grupy patronatu i zakonu respektują tę samą granicę.
 
 **Database**
 

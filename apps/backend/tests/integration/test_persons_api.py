@@ -219,6 +219,17 @@ async def test_public_person_reads_order_memberships_from_selected_revision(
     assert orders[0]["is_founder"] is True
     assert "Zakon z pól live" not in response.text
 
+    selected_order_filter = await async_client.get(
+        "/api/v1/persons", params={"order_id": str(selected_order.id)}
+    )
+    live_order_filter = await async_client.get(
+        "/api/v1/persons", params={"order_id": str(live_order.id)}
+    )
+    assert selected_order_filter.status_code == 200
+    assert selected_order_filter.json()["total"] == 1
+    assert live_order_filter.status_code == 200
+    assert live_order_filter.json()["total"] == 0
+
 
 @pytest.mark.asyncio
 async def test_public_person_reads_avatar_from_selected_revision_images(
