@@ -324,3 +324,26 @@ class CreatePersonRevisionCommand(BaseModel):
         max_length=500,
         description="Optional editorial intent recorded with the draft",
     )
+
+
+class UpdatePersonRevisionCommand(BaseModel):
+    """Patch editable scalar fields in one isolated person revision."""
+
+    expected_version: int = Field(
+        ge=1,
+        description="Revision.version loaded by the editor; stale values return HTTP 409",
+    )
+    changes: dict[str, Any] = Field(
+        min_length=1,
+        description=(
+            "Partial profile fields to merge into the isolated snapshot. "
+            "Workflow and relation fields are managed separately."
+        ),
+    )
+    change_summary: str | None = Field(
+        default=None,
+        max_length=500,
+        description="Optional updated description of the editorial change",
+    )
+
+    model_config = ConfigDict(extra="forbid")

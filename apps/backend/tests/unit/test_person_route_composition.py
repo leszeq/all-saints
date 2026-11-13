@@ -26,6 +26,10 @@ def test_person_mutation_and_history_routes_survive_router_composition() -> None
     assert str(app.url_path_for("create_person_revision", person_id=person_id)) == (
         f"/api/v1/persons/{person_id}/revisions"
     )
+    revision_id = uuid.uuid4()
+    assert str(app.url_path_for("update_person_revision", revision_id=revision_id)) == (
+        f"/api/v1/revisions/{revision_id}"
+    )
 
 
 def test_person_editorial_operations_remain_protected() -> None:
@@ -37,5 +41,8 @@ def test_person_editorial_operations_remain_protected() -> None:
     assert paths["/api/v1/persons/{person_id}/restore"]["post"]["security"] == [{"HTTPBearer": []}]
     assert paths["/api/v1/persons/{person_id}/versions"]["get"]["security"] == [{"HTTPBearer": []}]
     assert paths["/api/v1/persons/{person_id}/revisions"]["post"]["security"] == [
+        {"HTTPBearer": []}
+    ]
+    assert paths["/api/v1/revisions/{revision_id}"]["patch"]["security"] == [
         {"HTTPBearer": []}
     ]

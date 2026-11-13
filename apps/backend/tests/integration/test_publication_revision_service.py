@@ -9,8 +9,10 @@ from src.application.services.audit_service import AuditContext
 from src.application.services.person_service import PersonService, PersonVersionConflictError
 from src.application.services.publication_revision_service import (
     PublicationRevisionConflictError,
+    PublicationRevisionPayloadError,
     PublicationRevisionService,
     PublicationRevisionStateError,
+    PublicationRevisionVersionConflictError,
 )
 from src.domain.hagiography.models import (
     Person,
@@ -126,3 +128,82 @@ async def test_create_draft_revision_requires_published_person(
             expected_version=person.version,
             author_id=None,
         )
+
+
+@pytest.mark.asyncio
+async def test_update_draft_revision_versions_scalar_changes_and_audits_them(
+    db_session: AsyncSession,
+) -> None:
+    person = await _published_person(db_session)
+    service = PublicationRevisionService(db_session)
+    revision = await service.create_draft(
+        person.id,
+        expected_version=person.version,
+        author_id=None,
+    )
+
+    updated = await service.update_draft(
+        revision.id,
+        expected_version=revision.version,
+        changes={"summary_pl": "Nowy opis w izolowanym draftcie"},
+        author_id=None,
+        audit_context=AuditContext(),
+        change_summary="Korekta streszczenia",
+    )
+
+    assert updated.version == 2
+    assert updated.payload["summary_pl"] == "Nowy opis w izolowanym draftcie"
+    assert updated.change_summary == "Korekta streszczenia"
+    assert person.summary_pl == "Aktualny opis publiczny"
+    assert person.version == 1
+
+    audit_log = await db_session.scalar(
+        select(AuditLog).where(
+            AuditLog.resource_type == "person_revisions",
+            AuditLog.resource_id == revision.id,
+            AuditLog.action == "update",
+        )
+    )
+    assert audit_log is not None
+    assert audit_log.old_value["version"] == 1
+    assert audit_log.new_value["version"] == 2
+    assert audit_log.new_value["changes"]["summary_pl"] == (
+        "Nowy opis w izolowanym draftcie"
+    )
+
+    with pytest.raises(PublicationRevisionVersionConflictError):
+        await service.update_draft(
+            revision.id,
+            expected_version=1,
+            changes={"summary_pl": "Próba na starej wersji"},
+            author_id=None,
+        )
+
+
+@pytest.mark.asyncio
+async def test_update_draft_revision_exposes_field_validation_details(
+    db_session: AsyncSession,
+) -> None:
+    person = await _published_person(db_session)
+    service = PublicationRevisionService(db_session)
+    revision = await service.create_draft(
+        person.id,
+        expected_version=person.version,
+        author_id=None,
+    )
+
+    with pytest.raises(PublicationRevisionPayloadError) as error:
+        await service.update_draft(
+            revision.id,
+            expected_version=revision.version,
+            changes={"status": "published"},
+            author_id=None,
+        )
+
+    assert error.value.details == [
+        {
+            "field": "changes.status",
+            "message": "Pole jest zarządzane przez workflow rewizji",
+            "type": "revision_field_forbidden",
+        }
+    ]

@@ -3,10 +3,15 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
+from typing import Any
 
+from fastapi.encoders import jsonable_encoder
+from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.application.commands.persons import PersonUpdateSchema
 from src.application.services.audit_service import AuditContext, add_audit_log
 from src.application.services.person_service import PersonVersionConflictError
 from src.application.services.person_snapshot import (
@@ -19,9 +24,65 @@ from src.domain.identity.models import AuditAction
 __all__ = [
     "PublicationRevisionConflictError",
     "PublicationRevisionNotFoundError",
+    "PublicationRevisionPayloadError",
     "PublicationRevisionService",
     "PublicationRevisionStateError",
+    "PublicationRevisionVersionConflictError",
 ]
+
+
+REVISION_EDITABLE_FIELDS = frozenset(
+    {
+        "person_type",
+        "canonical_name",
+        "canonical_name_en",
+        "latin_name",
+        "original_name",
+        "surnames",
+        "religious_name",
+        "epithets",
+        "gender",
+        "era",
+        "century",
+        "birth_date",
+        "birth_year",
+        "death_date",
+        "death_year",
+        "birth_place_id",
+        "death_place_id",
+        "birth_country_id",
+        "death_country_id",
+        "nationality_id",
+        "state_of_life_id",
+        "summary_pl",
+        "biography_pl",
+        "summary_en",
+        "biography_en",
+        "iconographic_attributes",
+        "prayers",
+        "works",
+        "liturgical_color",
+        "is_featured",
+        "external_ids",
+    }
+)
+
+REVISION_WORKFLOW_FIELDS = frozenset(
+    {
+        "status",
+        "change_summary",
+        "expected_version",
+        "id",
+        "slug",
+        "created_at",
+        "updated_at",
+        "deleted_at",
+        "version",
+        "search_vector",
+        "sort_name",
+        "_snapshot_schema_version",
+    }
+)
 
 
 class PublicationRevisionNotFoundError(ValueError):
@@ -33,7 +94,27 @@ class PublicationRevisionConflictError(ValueError):
 
 
 class PublicationRevisionStateError(ValueError):
-    """Raised when a revision cannot be created for the current person state."""
+    """Raised when a revision operation is invalid for the current workflow state."""
+
+
+class PublicationRevisionVersionConflictError(RuntimeError):
+    """Raised when an editor patches a stale revision snapshot."""
+
+    def __init__(self, expected_version: int, current_version: int) -> None:
+        self.expected_version = expected_version
+        self.current_version = current_version
+        super().__init__(
+            f"Rewizja ma już wersję {current_version}, a formularz wersję "
+            f"{expected_version}. Odśwież rewizję i ponów zmiany."
+        )
+
+
+class PublicationRevisionPayloadError(ValueError):
+    """Raised when a revision patch contains unsupported or invalid fields."""
+
+    def __init__(self, details: list[dict[str, str]]) -> None:
+        self.details = details
+        super().__init__("Dane rewizji zawierają błędy walidacji")
 
 
 class PublicationRevisionService:
@@ -104,6 +185,108 @@ class PublicationRevisionService:
                 "status": revision.status,
             },
             extra_metadata={"operation": "create_person_revision"},
+        )
+        await self.db.flush()
+        await self.db.refresh(revision)
+        return revision
+
+    async def update_draft(
+        self,
+        revision_id: uuid.UUID,
+        *,
+        expected_version: int,
+        changes: dict[str, Any],
+        author_id: uuid.UUID | None,
+        audit_context: AuditContext | None = None,
+        change_summary: str | None = None,
+    ) -> PublicationRevision:
+        """Merge validated scalar profile changes into a draft snapshot."""
+        revision = await self.db.scalar(
+            select(PublicationRevision)
+            .where(
+                PublicationRevision.id == revision_id,
+                PublicationRevision.deleted_at.is_(None),
+            )
+            .with_for_update()
+        )
+        if revision is None:
+            raise PublicationRevisionNotFoundError("Rewizja nie istnieje")
+        if revision.version != expected_version:
+            raise PublicationRevisionVersionConflictError(expected_version, revision.version)
+        if revision.status != PublicationRevisionStatus.DRAFT.value:
+            raise PublicationRevisionStateError(
+                "Edycja jest możliwa wyłącznie dla rewizji w stanie draft"
+            )
+
+        forbidden_fields = sorted(set(changes) & REVISION_WORKFLOW_FIELDS)
+        unknown_fields = sorted(set(changes) - REVISION_EDITABLE_FIELDS - REVISION_WORKFLOW_FIELDS)
+        if forbidden_fields or unknown_fields:
+            details = [
+                {
+                    "field": f"changes.{field}",
+                    "message": "Pole jest zarządzane przez workflow rewizji",
+                    "type": "revision_field_forbidden",
+                }
+                for field in forbidden_fields
+            ] + [
+                {
+                    "field": f"changes.{field}",
+                    "message": "Pole nie jest obsługiwane w tym etapie edycji rewizji",
+                    "type": "extra_forbidden",
+                }
+                for field in unknown_fields
+            ]
+            raise PublicationRevisionPayloadError(details)
+
+        try:
+            validated = PersonUpdateSchema.model_validate(changes)
+        except ValidationError as exc:
+            details = [
+                {
+                    "field": "changes." + ".".join(str(part) for part in error["loc"]),
+                    "message": str(error["msg"]),
+                    "type": str(error["type"]),
+                }
+                for error in exc.errors()
+            ]
+            raise PublicationRevisionPayloadError(details) from exc
+
+        normalized_changes = validated.model_dump(mode="json", exclude_unset=True)
+        if not normalized_changes:
+            raise PublicationRevisionPayloadError(
+                [
+                    {
+                        "field": "changes",
+                        "message": "Podaj co najmniej jedno pole do zmiany",
+                        "type": "empty_patch",
+                    }
+                ]
+            )
+
+        previous_version = revision.version
+        previous_payload = dict(revision.payload)
+        revision.payload = {**previous_payload, **jsonable_encoder(normalized_changes)}
+        revision.version = previous_version + 1
+        revision.updated_at = datetime.now(UTC)
+        if change_summary is not None:
+            revision.change_summary = change_summary.strip() or None
+
+        await self.db.flush()
+        add_audit_log(
+            self.db,
+            context=audit_context or AuditContext.for_user(author_id),
+            action=AuditAction.UPDATE,
+            resource_type="person_revisions",
+            resource_id=revision.id,
+            old_value={
+                "version": previous_version,
+                "changes": {field: previous_payload.get(field) for field in normalized_changes},
+            },
+            new_value={
+                "version": revision.version,
+                "changes": jsonable_encoder(normalized_changes),
+            },
+            extra_metadata={"operation": "update_person_revision"},
         )
         await self.db.flush()
         await self.db.refresh(revision)

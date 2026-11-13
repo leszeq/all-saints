@@ -276,6 +276,7 @@ PATCH treści osoby published może zmienić live bez ponownej recenzji; tłumac
 - [ ] Minimum: blokada niedozwolonych zapisów do published i audyt wszystkich writerów. Docelowo RevisionService, PATCH /revisions/{id}, POST /revisions/{id}/submit i /publish.
 - [x] Pierwszy etap RevisionService: `POST /persons/{id}/revisions` tworzy trwały snapshot draftu z `base_version` i nie zmienia danych live.
 - [x] RevisionCommand z `expected_version` dla rozpoczęcia rewizji.
+- [x] `PATCH /revisions/{id}` aktualizuje walidowane pola profilu w draftcie, zwiększa wersję rewizji i zapisuje audyt.
 - [ ] public query czyta published_revision_id. Ta sama reguła dla sources/orders/AI.
 
 **Database**
@@ -300,6 +301,7 @@ PATCH treści osoby published może zmienić live bez ponownej recenzji; tłumac
 - [x] `CalendarService` blokuje tworzenie, edycję i usuwanie przypisań kalendarzowych osoby `published` bez `persons:publish`.
 - [x] Zatwierdzenie przypisania patronatu do osoby `published` wymaga `persons:publish`; przypisania oczekujące pozostają pracą redakcyjną.
 - [x] Utworzenie rewizji zapisuje snapshot i audyt bez modyfikowania aktywnego `Person`.
+- [x] Edycja draftu ma optimistic locking po `PublicationRevision.version`; konflikt zwraca szczegółowy kod i wersje.
 - [ ] wszystkie write paths respektują granicę.
 - [ ] Frontend: konflikt zachowuje formularz.
 - [ ] E2E: dwie osoby edytują, tylko jedna publikuje zatwierdzoną rewizję.
