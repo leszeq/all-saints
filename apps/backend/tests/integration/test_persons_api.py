@@ -19,6 +19,8 @@ from src.domain.hagiography.models import (
     PersonOrder,
     PersonTranslation,
     PersonType,
+    PublicationRevision,
+    PublicationRevisionStatus,
     PublicationStatus,
 )
 
@@ -108,6 +110,48 @@ async def test_public_person_endpoints_expose_explicit_localization_projection(
     assert search_response.status_code == 200
     assert search_response.json()["items"][0]["search_reason"] == "translation_exact"
     assert search_response.json()["items"][0]["search_match"] == "San Giovanni di Test"
+
+
+@pytest.mark.asyncio
+async def test_public_person_reads_use_selected_revision_scalars_with_legacy_fallback(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    person = await PersonService(db_session).create_person(
+        PersonCreateSchema(
+            canonical_name="Św. Nazwa Live",
+            summary_pl="Opis z pól live",
+            person_type="saint",
+            gender="male",
+        )
+    )
+    person.status = PublicationStatus.PUBLISHED.value
+    revision = PublicationRevision(
+        person_id=person.id,
+        revision_number=1,
+        status=PublicationRevisionStatus.PUBLISHED.value,
+        base_version=person.version,
+        payload={
+            "canonical_name": "Św. Nazwa z rewizji",
+            "summary_pl": "Opis z wybranej rewizji",
+        },
+    )
+    db_session.add(revision)
+    await db_session.flush()
+    person.published_revision_id = revision.id
+    await db_session.commit()
+
+    detail_response = await async_client.get(f"/api/v1/persons/{person.slug}")
+    list_response = await async_client.get("/api/v1/persons")
+
+    assert detail_response.status_code == 200
+    detail = detail_response.json()
+    assert detail["canonical_name"] == "Św. Nazwa z rewizji"
+    assert detail["summary_pl"] == "Opis z wybranej rewizji"
+    assert detail["localized_content"]["summary"] == "Opis z wybranej rewizji"
+    assert list_response.status_code == 200
+    assert list_response.json()["items"][0]["canonical_name"] == "Św. Nazwa z rewizji"
+    assert list_response.json()["items"][0]["summary_pl"] == "Opis z wybranej rewizji"
 
 
 @pytest.mark.asyncio

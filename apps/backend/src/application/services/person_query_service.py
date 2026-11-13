@@ -32,6 +32,8 @@ from src.domain.hagiography.models import (
     PersonTranslation,
     PersonType,
     PersonVersion,
+    PublicationRevision,
+    PublicationRevisionStatus,
     PublicationStatus,
 )
 from src.domain.hagiography.person_names import normalize_person_name
@@ -210,7 +212,71 @@ PERSON_LIST_COLUMNS = (
     Person.is_featured,
     Person.created_at,
     Person.updated_at,
+    Person.published_revision_id,
 )
+
+# Revision snapshots currently project scalar profile fields only. Relational
+# payloads stay on the live entity until the relation-specific revision stage
+# is implemented, so sources/orders/search joins cannot accidentally mix two
+# different representations of a profile.
+PUBLIC_REVISION_SCALAR_FIELDS = frozenset(
+    {
+        "person_type",
+        "canonical_name",
+        "canonical_name_en",
+        "latin_name",
+        "original_name",
+        "surnames",
+        "religious_name",
+        "epithets",
+        "gender",
+        "era",
+        "century",
+        "birth_date",
+        "birth_year",
+        "death_date",
+        "death_year",
+        "birth_place_id",
+        "death_place_id",
+        "birth_country_id",
+        "death_country_id",
+        "nationality_id",
+        "state_of_life_id",
+        "summary_pl",
+        "biography_pl",
+        "summary_en",
+        "biography_en",
+        "iconographic_attributes",
+        "prayers",
+        "works",
+        "liturgical_color",
+        "is_featured",
+        "external_ids",
+    }
+)
+
+
+@dataclass(frozen=True)
+class PublishedPersonProjection:
+    """Read-only scalar overlay for a person selected by a published revision."""
+
+    live: Person
+    revision: PublicationRevision
+
+    def __getattr__(self, name: str) -> object:
+        if name in PUBLIC_REVISION_SCALAR_FIELDS and name in self.revision.payload:
+            return self.revision.payload[name]
+        return getattr(self.live, name)
+
+
+def _public_person_projection(person: Person) -> Person:
+    """Overlay a valid published revision while retaining legacy fallback."""
+    revision = person.published_revision
+    if revision is None:
+        return person
+    if revision.deleted_at is not None or revision.status != PublicationRevisionStatus.PUBLISHED.value:
+        return person
+    return cast(Person, PublishedPersonProjection(person, revision))
 
 
 def _enum_values(
@@ -398,6 +464,7 @@ class PersonQueryService:
             selectinload(Person.orders).selectinload(PersonOrder.order),
             selectinload(Person.beatification),
             selectinload(Person.canonization),
+            selectinload(Person.published_revision),
         ]
         if include_translations:
             load_options.append(selectinload(Person.translations))
@@ -416,7 +483,8 @@ class PersonQueryService:
             statement = statement.where(Person.slug == identifier)
 
         result = await self.db.execute(statement)
-        return result.scalar_one_or_none()
+        person = result.scalar_one_or_none()
+        return _public_person_projection(person) if published_only and person is not None else person
 
     async def get_public_slug_redirect(self, old_slug: str) -> Person | None:
         """Resolve a historical slug only when its target is still public."""
@@ -497,6 +565,7 @@ class PersonQueryService:
             load_only(*PERSON_LIST_COLUMNS),
             selectinload(Person.images),
             selectinload(Person.patronages),
+            selectinload(Person.published_revision),
         ]
         search_term = SearchPolicy.normalize_query(search)
         if search_term:
@@ -646,6 +715,8 @@ class PersonQueryService:
         query = query.offset((page - 1) * per_page).limit(per_page)
         result = await self.db.execute(query)
         persons = list(result.scalars().all())
+        if published_only:
+            persons = [_public_person_projection(person) for person in persons]
         if search_term:
             for person in persons:
                 object.__setattr__(
