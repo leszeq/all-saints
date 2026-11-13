@@ -203,7 +203,7 @@ Pierwszy etap granicy zapisu jest wdrożony w `PersonService.update_person`: po 
 
 **Database — tabele, relacje, indeksy, migracje**
 
-`PublicationRevision` jest wdrożona jako izolowany snapshot (`id`, `person_id`, `revision_number`, `status`, `payload`, `base_revision_id`, `author_id`, `base_version`, znaczniki czasu i optimistic `version`) w migracji `0027_publication_revisions`. Obowiązuje `UNIQUE(person_id,revision_number)` oraz indeks kolejki po osobie i statusie; payload zachowuje `_snapshot_schema_version` istniejącego serializera. Migracja `0028_published_revision_pointer` dodaje nullable FK i indeks `Person.published_revision_id`; wskaźnik jest ustawiany przy udanej publikacji, bez ryzykownego backfillu starszych rekordów. Backfill, parity projekcji i typed relacje rewizji dla źródeł pozostają kolejnymi etapami.
+`PublicationRevision` jest wdrożona jako izolowany snapshot (`id`, `person_id`, `revision_number`, `status`, `payload`, `base_revision_id`, `author_id`, `base_version`, znaczniki czasu i optimistic `version`) w migracji `0027_publication_revisions`. Obowiązuje `UNIQUE(person_id,revision_number)` oraz indeks kolejki po osobie i statusie; payload zachowuje `_snapshot_schema_version` istniejącego serializera. Migracja `0028_published_revision_pointer` dodaje nullable FK i indeks `Person.published_revision_id`; wskaźnik jest ustawiany przy udanej publikacji. Migracja `0029_backfill_published_revision_pointer` tworzy idempotentną pierwszą rewizję scalarnej projekcji dla opublikowanych rekordów bez historii i ustawia wskaźnik, nie dotykając profili z istniejącą historią ani celowo wyzerowanych pointerów; relacyjne snapshoty pozostają osobnym etapem.
 
 **Frontend — strony, komponenty, stan, integracja API**
 
@@ -211,7 +211,7 @@ EditPersonClient: draft revision, ostrzeżenie o wersji bazowej; podgląd i diff
 
 **Tests — backend, frontend, E2E**
 
-Backend: snapshot draftu nie zmienia aktywnego `Person`, konflikt wersji i duplikat aktywnego draftu są obsłużone, utworzenie, edycja, submit, decyzje recenzenta i publish są audytowane, a błędy pól zwracają szczegóły; publikacja odrzuca nieaktualny `base_version`, ustawia `published_revision_id`, a starsza ścieżka bezpośredniej edycji czyści wskaźnik; publiczny detail i katalog używają scalarnej projekcji wybranej rewizji z fallbackiem legacy, przy czym relacje i search-joiny nadal są live; wszystkie write paths respektują granicę; Frontend: konflikt zachowuje formularz; E2E: dwie osoby edytują, tylko jedna publikuje zatwierdzoną rewizję.
+Backend: snapshot draftu nie zmienia aktywnego `Person`, konflikt wersji i duplikat aktywnego draftu są obsłużone, utworzenie, edycja, submit, decyzje recenzenta i publish są audytowane, a błędy pól zwracają szczegóły; publikacja odrzuca nieaktualny `base_version`, ustawia `published_revision_id`, a starsza ścieżka bezpośredniej edycji czyści wskaźnik; migracja backfillu tworzy pierwszą scalarną rewizję legacy i jest idempotentna; publiczny detail i katalog używają scalarnej projekcji wybranej rewizji z fallbackiem legacy, przy czym relacje i search-joiny nadal są live; wszystkie write paths respektują granicę; Frontend: konflikt zachowuje formularz; E2E: dwie osoby edytują, tylko jedna publikuje zatwierdzoną rewizję.
 
 **Infrastructure**
 

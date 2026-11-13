@@ -1,7 +1,10 @@
 """Integration coverage for isolated publication revision drafts."""
 
+import runpy
+from pathlib import Path
+
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.commands.persons import PersonCreateSchema, PersonUpdateSchema
@@ -21,6 +24,10 @@ from src.domain.hagiography.models import (
     PublicationStatus,
 )
 from src.domain.identity.models import AuditLog
+
+_BACKFILL_MIGRATION = runpy.run_path(
+    str(Path(__file__).parents[2] / "alembic/versions/0029_backfill_published_revision_pointer.py")
+)
 
 
 async def _published_person(db_session: AsyncSession) -> Person:
@@ -297,6 +304,53 @@ async def test_legacy_published_update_clears_selected_revision_pointer(
         allow_published_update=True,
     )
 
+    await db_session.refresh(person)
+    assert person.published_revision_id is None
+
+
+@pytest.mark.asyncio
+async def test_legacy_published_revision_backfill_is_idempotent(
+    db_session: AsyncSession,
+) -> None:
+    person = await _published_person(db_session)
+
+    for statement_name in (
+        "BACKFILL_LEGACY_PUBLISHED_REVISIONS_SQL",
+        "SET_BACKFILLED_POINTERS_SQL",
+    ):
+        await db_session.execute(text(_BACKFILL_MIGRATION[statement_name]))
+    await db_session.commit()
+    await db_session.refresh(person)
+
+    revision = await db_session.scalar(
+        select(PublicationRevision).where(PublicationRevision.person_id == person.id)
+    )
+    assert revision is not None
+    assert revision.status == PublicationRevisionStatus.PUBLISHED.value
+    assert revision.revision_number == 1
+    assert person.published_revision_id == revision.id
+    assert revision.payload["_snapshot_schema_version"] == 2
+    assert revision.payload["canonical_name"] == person.canonical_name
+    assert revision.payload["summary_pl"] == person.summary_pl
+
+    for statement_name in (
+        "BACKFILL_LEGACY_PUBLISHED_REVISIONS_SQL",
+        "SET_BACKFILLED_POINTERS_SQL",
+    ):
+        await db_session.execute(text(_BACKFILL_MIGRATION[statement_name]))
+    await db_session.commit()
+    assert len(
+        (
+            await db_session.scalars(
+                select(PublicationRevision).where(PublicationRevision.person_id == person.id)
+            )
+        ).all()
+    ) == 1
+
+    person.published_revision_id = None
+    person.version += 1
+    await db_session.flush()
+    await db_session.execute(text(_BACKFILL_MIGRATION["SET_BACKFILLED_POINTERS_SQL"]))
     await db_session.refresh(person)
     assert person.published_revision_id is None
 

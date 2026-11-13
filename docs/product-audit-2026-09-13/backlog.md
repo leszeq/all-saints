@@ -286,7 +286,7 @@ PATCH treści osoby published może zmienić live bez ponownej recenzji; tłumac
 - [x] PublicationRevision(id,person_id,revision_number,status,payload,base_revision_id,author_id,created_at) oraz migracja `0027_publication_revisions`.
 - [x] Nullable `Person.published_revision_id` FK i indeks dodane w migracji `0028_published_revision_pointer`; publikacja rewizji ustawia wskaźnik, a starsza bezpośrednia edycja profilu go czyści.
 - [x] UNIQUE(person_id,revision_number), indeks kolejki i blokada jednego aktywnego draftu na poziomie serwisu.
-- [ ] backfill opublikowanych rekordów do pierwszej rewizji, parity test projekcji. Typed relacje rewizji dla źródeł.
+- [x] migracja `0029_backfill_published_revision_pointer` tworzy idempotentną pierwszą rewizję scalarnej projekcji dla opublikowanych rekordów bez historii; test sprawdza ponowne wykonanie. Typed relacje rewizji dla źródeł pozostają otwarte.
 - [x] Payload korzysta z istniejącego `_snapshot_schema_version` serializera osoby.
 
 **Frontend**
