@@ -372,6 +372,12 @@ async def test_public_person_reads_typed_relations_from_selected_revision(
     assert stale_patronage_search.status_code == 200
     assert stale_patronage_search.json()["total"] == 0
 
+    revision_patronage_filter = await async_client.get(
+        "/api/v1/persons", params={"patronage": "work"}
+    )
+    assert revision_patronage_filter.status_code == 200
+    assert revision_patronage_filter.json()["total"] == 1
+
 
 @pytest.mark.asyncio
 async def test_legacy_admin_edit_keeps_primary_translation_current(

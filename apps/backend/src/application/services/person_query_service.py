@@ -429,13 +429,23 @@ def _person_catalogue_filters(
         patronage_types: set[str] = set()
         for patronage_value in patronage_values:
             patronage_types.update(PATRONAGE_GROUP_TYPES[PatronageGroup(patronage_value)])
-        filters.append(
+        live_patronage_match = and_(
+            ~_published_revision_payload_has_field("patronages"),
             Person.patronages.any(
                 and_(
                     Patronage.deleted_at.is_(None),
                     Patronage.patronage_type.in_(sorted(patronage_types)),
                 )
+            ),
+        )
+        revision_patronage_match = Person.id.in_(
+            _published_revision_relation_matches(
+                "patronages",
+                lambda item: [item["patronage_type"].astext.in_(sorted(patronage_types))],
             )
+        )
+        filters.append(
+            or_(live_patronage_match, revision_patronage_match)
         )
     if country_id:
         filters.append(
