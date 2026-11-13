@@ -1585,9 +1585,20 @@ export interface AdminDictionary {
     };
     workflow: {
       draftNotice: string;
+      baseVersionNotice: string;
       reviewNotice: string;
       relationsNotice: string;
       saveDraft: string;
+      conflictTitle: string;
+      conflictDescription: string;
+      conflictVersionNotice: string;
+      conflictDetailsAction: string;
+      conflictHideDetails: string;
+      conflictLoading: string;
+      conflictUnavailable: string;
+      conflictLocalValue: string;
+      conflictServerValue: string;
+      conflictNoChanges: string;
     };
     tabs: {
       basic: string;

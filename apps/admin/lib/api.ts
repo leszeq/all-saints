@@ -66,6 +66,12 @@ export interface ApiErrorDetail {
   type?: string;
 }
 
+export interface ApiConflictDetails {
+  code?: string;
+  expectedVersion?: number;
+  currentVersion?: number;
+}
+
 interface TokenResponse {
   access_token: string;
   token_type: string;
@@ -221,6 +227,31 @@ export function getApiErrorDetails(error: unknown): ApiErrorDetail[] {
   return rawDetails
     .map(normalizeApiErrorDetail)
     .filter((detail): detail is ApiErrorDetail => detail !== null);
+}
+
+/** Read optimistic-lock metadata from a 409 response without coupling UI to Axios. */
+export function getApiConflictDetails(error: unknown): ApiConflictDetails | null {
+  if (!axios.isAxiosError<ApiErrorPayload>(error) || error.response?.status !== 409) {
+    return null;
+  }
+
+  const payload = error.response.data;
+  const detail = payload?.detail && typeof payload.detail === "object" && !Array.isArray(payload.detail)
+    ? payload.detail as Record<string, unknown>
+    : null;
+  const source = detail ?? (payload as Record<string, unknown> | undefined);
+  if (!source) return null;
+
+  const asVersion = (value: unknown) => {
+    const version = Number(value);
+    return Number.isInteger(version) && version > 0 ? version : undefined;
+  };
+
+  const code = typeof source.code === "string" ? source.code : undefined;
+  const expectedVersion = asVersion(source.expected_version);
+  const currentVersion = asVersion(source.current_version);
+  if (!code && expectedVersion === undefined && currentVersion === undefined) return null;
+  return { code, expectedVersion, currentVersion };
 }
 
 /** Turn Pydantic's dotted location into a path a person can find in the JSON file. */

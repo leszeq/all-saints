@@ -294,10 +294,10 @@ PATCH treści osoby published może zmienić live bez ponownej recenzji; tłumac
 **Frontend**
 
 - [x] EditPersonClient: opublikowany profil zapisuje zmiany do izolowanego draftu, wznawia aktywny draft po ponownym wejściu i pokazuje ostrzeżenie o izolacji zapisu.
-- [ ] ostrzeżenie o wersji bazowej i pełna obsługa konfliktu 409 w formularzu.
-- [ ] podgląd i diff.
+- [x] ostrzeżenie o wersji bazowej i pełna obsługa konfliktu 409 w formularzu.
+- [x] podgląd i diff.
 - [x] stan RHF lokalny, React Query według `person-revision/{personId}`; źródła, zakony i kalendarz pozostają poza zapisem rewizji do czasu osobnej projekcji.
-- [ ] UI 409 nie kasuje wpisanych zmian.
+- [x] UI 409 nie kasuje wpisanych zmian.
 
 **Tests**
 
@@ -311,7 +311,7 @@ PATCH treści osoby published może zmienić live bez ponownej recenzji; tłumac
 - [x] Decyzje recenzenta mają optimistic locking, wymagają komentarza i zapisują zmianę statusu w audycie.
 - [x] Odczyt aktywnego draftu oraz rewizji w recenzji ma test regresyjny; formularz nie synchronizuje w tym trybie wpisu kalendarzowego ani relacji źródeł/zakonów z live.
 - [ ] wszystkie write paths respektują granicę.
-- [ ] Frontend: konflikt zachowuje formularz.
+- [x] Frontend: konflikt zachowuje formularz i pokazuje porównanie wartości lokalnych z aktualnym snapshotem.
 - [ ] E2E: dwie osoby edytują, tylko jedna publikuje zatwierdzoną rewizję.
 
 **Infrastructure**

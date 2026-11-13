@@ -10,12 +10,14 @@ import { useAdminSystemCopy } from "@/components/admin-system-copy-context";
 import {
   calendarApi,
   geographyApi,
+  getApiConflictDetails,
   personsApi,
   publicationRevisionsApi,
   sourcesApi,
   taxonomyApi,
   type PublicationRevision,
 } from "@/lib/api";
+import type { ApiConflictDetails } from "@/lib/api";
 import { formatAdminApiError } from "@/lib/i18n/api-errors";
 import { personFieldId } from "./person-form-styles";
 import type { AdminDomainDictionary, AdminPersonEditorDictionary } from "@/lib/i18n/types";
@@ -166,6 +168,62 @@ async function syncPersonFeast(
   return null;
 }
 
+const CONFLICT_FIELDS = [
+  "canonical_name",
+  "canonical_name_en",
+  "latin_name",
+  "person_type",
+  "gender",
+  "era",
+  "birth_year",
+  "death_year",
+  "birth_country_id",
+  "death_country_id",
+  "state_of_life_id",
+  "summary_pl",
+  "biography_pl",
+  "prayers",
+  "iconographic_attributes",
+  "aliases",
+  "patronages",
+  "avatar",
+  "beatification",
+  "canonization",
+] as const;
+
+type ConflictSnapshot = Record<string, unknown>;
+
+interface ConflictState {
+  expectedVersion?: number;
+  currentVersion?: number;
+  localSnapshot: ConflictSnapshot;
+  serverSnapshot: ConflictSnapshot | null;
+  isLoading: boolean;
+  showDetails: boolean;
+}
+
+function conflictValue(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "—";
+  if (typeof value === "string") return value;
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
+function conflictDiff(local: ConflictSnapshot, server: ConflictSnapshot): Array<{
+  field: string;
+  local: string;
+  server: string;
+}> {
+  return CONFLICT_FIELDS.flatMap((field) => {
+    const localValue = conflictValue(local[field]);
+    const serverValue = conflictValue(server[field]);
+    return localValue === serverValue ? [] : [{ field, local: localValue, server: serverValue }];
+  });
+}
+
 export function PersonForm({
   copy,
   domainCopy,
@@ -185,6 +243,7 @@ export function PersonForm({
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFileError, setAvatarFileError] = useState<string | null>(null);
   const [currentRevision, setCurrentRevision] = useState<PublicationRevision | null>(activeRevision);
+  const [conflictState, setConflictState] = useState<ConflictState | null>(null);
   const hydratedFeastPersonIdRef = useRef<string | null>(null);
   const formSchema = useMemo(() => createPersonSchema(copy.validation), [copy.validation]);
 
@@ -229,6 +288,7 @@ export function PersonForm({
     register,
     handleSubmit,
     control,
+    getValues,
     setValue,
     formState: { errors, isDirty },
   } = useForm<PersonFormData>({
@@ -253,6 +313,46 @@ export function PersonForm({
       ...defaultValues,
     },
   });
+
+  const loadConflictSnapshot = async (details: ApiConflictDetails) => {
+    const localSnapshot = normalizePersonPayload(getValues(), true) as ConflictSnapshot;
+    setConflictState({
+      expectedVersion: details.expectedVersion,
+      currentVersion: details.currentVersion,
+      localSnapshot,
+      serverSnapshot: null,
+      isLoading: true,
+      showDetails: false,
+    });
+
+    if (!personId) return;
+
+    try {
+      const latestPersonResponse = await personsApi.get(personId);
+      const latestPerson = latestPersonResponse.data as ConflictSnapshot & { version?: number };
+      let latestRevision: PublicationRevision | null = null;
+      if (revisionMode) {
+        latestRevision = (await personsApi.activeRevision(personId)).data as PublicationRevision | null;
+      }
+      setConflictState((current) => current ? {
+        ...current,
+        currentVersion:
+          current.currentVersion ?? (revisionMode ? latestRevision?.version : latestPerson.version),
+        serverSnapshot: {
+          ...latestPerson,
+          ...(latestRevision?.payload ?? {}),
+        },
+        isLoading: false,
+      } : null);
+    } catch {
+      setConflictState((current) => current ? { ...current, isLoading: false } : null);
+    }
+  };
+
+  const handleMutationError = (error: unknown) => {
+    const details = getApiConflictDetails(error);
+    if (details) void loadConflictSnapshot(details);
+  };
 
   const createMutation = useMutation({
     mutationFn: async (data: PersonFormData) => {
@@ -304,7 +404,9 @@ export function PersonForm({
       });
       return { response, revision: response.data };
     },
+    onError: handleMutationError,
     onSuccess: async (result) => {
+      setConflictState(null);
       if (result.revision) setCurrentRevision(result.revision);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["persons"] }),
@@ -417,8 +519,62 @@ export function PersonForm({
     <form onSubmit={handleSubmit((data) => mutation.mutate(data), focusFirstInvalidField)} className="space-y-6">
       {revisionMode && (
         <div className="rounded-lg border border-primary/25 bg-primary/5 px-4 py-3 text-sm text-primary" role="status">
-          {copy.workflow.draftNotice}
+          <p>{copy.workflow.draftNotice}</p>
+          <p className="mt-1 text-xs text-primary/80">
+            {copy.workflow.baseVersionNotice.replace(
+              "{version}",
+              String(activeRevision?.base_version ?? expectedVersion ?? "—"),
+            )}
+          </p>
         </div>
+      )}
+
+      {conflictState && (
+        <section
+          className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100"
+          aria-labelledby="person-form-conflict-title"
+        >
+          <h2 id="person-form-conflict-title" className="font-semibold">{copy.workflow.conflictTitle}</h2>
+          <p className="mt-1 leading-6">{copy.workflow.conflictDescription}</p>
+          {(conflictState.expectedVersion || conflictState.currentVersion) && (
+            <p className="mt-2 text-xs font-medium text-amber-800 dark:text-amber-200">
+              {copy.workflow.conflictVersionNotice
+                .replace("{expected}", String(conflictState.expectedVersion ?? "—"))
+                .replace("{current}", String(conflictState.currentVersion ?? "—"))}
+            </p>
+          )}
+          <button
+            type="button"
+            className="mt-3 rounded-md border border-amber-400 px-3 py-1.5 text-xs font-semibold hover:bg-amber-100 dark:border-amber-700 dark:hover:bg-amber-900/40"
+            onClick={() => setConflictState((current) => current ? { ...current, showDetails: !current.showDetails } : null)}
+          >
+            {conflictState.showDetails ? copy.workflow.conflictHideDetails : copy.workflow.conflictDetailsAction}
+          </button>
+          {conflictState.showDetails && (
+            <div className="mt-4 space-y-3 border-t border-amber-300/70 pt-4 dark:border-amber-800/70">
+              {conflictState.isLoading && <p>{copy.workflow.conflictLoading}</p>}
+              {!conflictState.isLoading && !conflictState.serverSnapshot && <p>{copy.workflow.conflictUnavailable}</p>}
+              {!conflictState.isLoading && conflictState.serverSnapshot && (() => {
+                const differences = conflictDiff(conflictState.localSnapshot, conflictState.serverSnapshot);
+                return differences.length > 0 ? differences.map((difference) => (
+                  <div key={difference.field} className="rounded-lg border border-amber-200 bg-white/60 p-3 dark:border-amber-900/70 dark:bg-black/10">
+                    <code className="text-xs font-semibold">{difference.field}</code>
+                    <div className="mt-2 grid gap-2 md:grid-cols-2">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-200">{copy.workflow.conflictLocalValue}</p>
+                        <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded bg-amber-100/70 p-2 text-xs dark:bg-amber-900/30">{difference.local}</pre>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-200">{copy.workflow.conflictServerValue}</p>
+                        <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded bg-amber-100/70 p-2 text-xs dark:bg-amber-900/30">{difference.server}</pre>
+                      </div>
+                    </div>
+                  </div>
+                )) : <p>{copy.workflow.conflictNoChanges}</p>;
+              })()}
+            </div>
+          )}
+        </section>
       )}
       <div className="flex w-fit max-w-full flex-wrap gap-1 rounded-lg border border-border bg-muted/40 p-1">
         {TAB_IDS.map((tabId) => (
