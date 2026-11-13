@@ -68,8 +68,27 @@ REVISION_EDITABLE_FIELDS = frozenset(
         "liturgical_color",
         "is_featured",
         "external_ids",
+        # These relation fields are validated by ``PersonUpdateSchema`` and
+        # synchronized only when the reviewed revision is published. Keeping
+        # them in the revision payload prevents draft edits from leaking into
+        # the live person graph.
+        "avatar",
+        "aliases",
+        "patronages",
+        "beatification",
+        "canonization",
     }
 )
+REVISION_EDITED_RELATION_FIELDS = frozenset(
+    {
+        "avatar",
+        "aliases",
+        "patronages",
+        "beatification",
+        "canonization",
+    }
+)
+REVISION_EDITED_RELATION_FIELDS_KEY = "_edited_relation_fields"
 
 REVISION_WORKFLOW_FIELDS = frozenset(
     {
@@ -204,7 +223,7 @@ class PublicationRevisionService:
         audit_context: AuditContext | None = None,
         change_summary: str | None = None,
     ) -> PublicationRevision:
-        """Merge validated scalar profile changes into a draft snapshot."""
+        """Merge validated profile changes into an isolated draft snapshot."""
         revision = await self.db.scalar(
             select(PublicationRevision)
             .where(
@@ -269,7 +288,17 @@ class PublicationRevisionService:
 
         previous_version = revision.version
         previous_payload = dict(revision.payload)
-        revision.payload = {**previous_payload, **jsonable_encoder(normalized_changes)}
+        normalized_changes = jsonable_encoder(normalized_changes)
+        next_payload = {**previous_payload, **normalized_changes}
+        edited_relation_fields = set(
+            previous_payload.get(REVISION_EDITED_RELATION_FIELDS_KEY, [])
+        )
+        edited_relation_fields.update(
+            set(normalized_changes) & REVISION_EDITED_RELATION_FIELDS
+        )
+        if edited_relation_fields:
+            next_payload[REVISION_EDITED_RELATION_FIELDS_KEY] = sorted(edited_relation_fields)
+        revision.payload = next_payload
         revision.version = previous_version + 1
         revision.updated_at = datetime.now(UTC)
         if change_summary is not None:
@@ -288,7 +317,7 @@ class PublicationRevisionService:
             },
             new_value={
                 "version": revision.version,
-                "changes": jsonable_encoder(normalized_changes),
+                "changes": normalized_changes,
             },
             extra_metadata={"operation": "update_person_revision"},
         )
@@ -545,10 +574,15 @@ class PublicationRevisionService:
         expected_version: int,
         change_summary: str,
     ) -> PersonUpdateSchema:
-        """Convert a revision snapshot into a safe scalar person update."""
+        """Convert a revision snapshot into a safe person update."""
         editable_payload = {
-            field: payload[field] for field in REVISION_EDITABLE_FIELDS if field in payload
+            field: payload[field]
+            for field in REVISION_EDITABLE_FIELDS - REVISION_EDITED_RELATION_FIELDS
+            if field in payload
         }
+        for field in payload.get(REVISION_EDITED_RELATION_FIELDS_KEY, []):
+            if field in REVISION_EDITABLE_FIELDS and field in payload:
+                editable_payload[field] = payload[field]
         editable_payload.update(
             {
                 "status": PublicationStatus.PUBLISHED.value,

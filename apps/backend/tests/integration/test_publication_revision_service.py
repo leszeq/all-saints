@@ -18,12 +18,17 @@ from src.application.services.publication_revision_service import (
     PublicationRevisionVersionConflictError,
 )
 from src.domain.hagiography.models import (
+    Beatification,
+    Canonization,
+    Patronage,
     Person,
+    PersonName,
     PublicationRevision,
     PublicationRevisionStatus,
     PublicationStatus,
 )
 from src.domain.identity.models import AuditLog
+from src.domain.sources.models import Image
 
 _BACKFILL_MIGRATION = runpy.run_path(
     str(Path(__file__).parents[2] / "alembic/versions/0029_backfill_published_revision_pointer.py")
@@ -185,6 +190,215 @@ async def test_update_draft_revision_versions_scalar_changes_and_audits_them(
             changes={"summary_pl": "Próba na starej wersji"},
             author_id=None,
         )
+
+
+@pytest.mark.asyncio
+async def test_update_draft_revision_stages_editable_relations_without_live_mutation(
+    db_session: AsyncSession,
+) -> None:
+    person = await _published_person(db_session)
+    service = PublicationRevisionService(db_session)
+    revision = await service.create_draft(
+        person.id,
+        expected_version=person.version,
+        author_id=None,
+    )
+
+    updated = await service.update_draft(
+        revision.id,
+        expected_version=revision.version,
+        changes={
+            "avatar": {
+                "url": "https://example.org/rewizja.jpg",
+                "title": "Portret rewizji",
+                "license": "public_domain",
+            },
+            "aliases": [
+                {"value": "Rewizja Testowa", "language_code": "pl", "kind": "alias"}
+            ],
+            "patronages": [
+                {
+                    "patronage_type": "profession",
+                    "name_pl": "redaktorów",
+                    "name_en": "editors",
+                    "is_official": True,
+                }
+            ],
+            "beatification": {"beatification_year": 1953},
+            "canonization": {"canonization_date": "1983-06-02", "canonization_year": 1983},
+        },
+        author_id=None,
+    )
+
+    assert updated.payload["avatar"]["url"] == "https://example.org/rewizja.jpg"
+    assert updated.payload["aliases"][0]["value"] == "Rewizja Testowa"
+    assert updated.payload["patronages"][0]["name_pl"] == "redaktorów"
+    assert updated.payload["beatification"] == {"beatification_year": 1953}
+    assert updated.payload["canonization"] == {
+        "canonization_date": "1983-06-02",
+        "canonization_year": 1983,
+    }
+    assert updated.payload["_edited_relation_fields"] == [
+        "aliases",
+        "avatar",
+        "beatification",
+        "canonization",
+        "patronages",
+    ]
+
+    assert (
+        await db_session.scalars(select(PersonName).where(PersonName.person_id == person.id))
+    ).all() == []
+    assert (
+        await db_session.scalars(select(Patronage).where(Patronage.person_id == person.id))
+    ).all() == []
+    assert (
+        await db_session.scalars(select(Image).where(Image.person_id == person.id))
+    ).all() == []
+    assert (
+        await db_session.scalars(
+            select(Beatification).where(Beatification.person_id == person.id)
+        )
+    ).all() == []
+    assert (
+        await db_session.scalars(select(Canonization).where(Canonization.person_id == person.id))
+    ).all() == []
+
+
+@pytest.mark.asyncio
+async def test_publish_revision_applies_editable_relations_atomically(
+    db_session: AsyncSession,
+) -> None:
+    person = await _published_person(db_session)
+    service = PublicationRevisionService(db_session)
+    revision = await service.create_draft(
+        person.id,
+        expected_version=person.version,
+        author_id=None,
+    )
+    revision = await service.update_draft(
+        revision.id,
+        expected_version=revision.version,
+        changes={
+            "avatar": {
+                "url": "https://example.org/rewizja.jpg",
+                "title": "Portret rewizji",
+                "license": "public_domain",
+            },
+            "aliases": [{"value": "Rewizja Testowa", "language_code": "pl"}],
+            "patronages": [
+                {"patronage_type": "profession", "name_pl": "redaktorów"}
+            ],
+            "beatification": {"beatification_year": 1953},
+            "canonization": {"canonization_year": 1983},
+        },
+        author_id=None,
+    )
+    submitted = await service.submit_for_review(
+        revision.id,
+        expected_version=revision.version,
+        author_id=None,
+    )
+
+    await service.publish(
+        revision.id,
+        expected_version=submitted.version,
+        author_id=None,
+    )
+
+    alias = await db_session.scalar(
+        select(PersonName).where(PersonName.person_id == person.id)
+    )
+    patronage = await db_session.scalar(
+        select(Patronage).where(Patronage.person_id == person.id)
+    )
+    image = await db_session.scalar(select(Image).where(Image.person_id == person.id))
+    beatification = await db_session.scalar(
+        select(Beatification).where(Beatification.person_id == person.id)
+    )
+    canonization = await db_session.scalar(
+        select(Canonization).where(Canonization.person_id == person.id)
+    )
+
+    assert alias is not None
+    assert alias.value == "Rewizja Testowa"
+    assert patronage is not None
+    assert patronage.name_pl == "redaktorów"
+    assert image is not None
+    assert image.url == "https://example.org/rewizja.jpg"
+    assert image.is_primary is True
+    assert beatification is not None
+    assert beatification.beatification_year == 1953
+    assert canonization is not None
+    assert canonization.canonization_year == 1983
+
+
+@pytest.mark.asyncio
+async def test_scalar_revision_publish_preserves_relations_not_edited_in_draft(
+    db_session: AsyncSession,
+) -> None:
+    person = await PersonService(db_session).create_person(
+        PersonCreateSchema(
+            canonical_name="Św. Rewizja z relacjami",
+            person_type="saint",
+            gender="male",
+            avatar={
+                "url": "https://example.org/oryginal.jpg",
+                "title": "Oryginalny portret",
+                "license": "public_domain",
+            },
+            aliases=[{"value": "Oryginalny alias", "language_code": "pl"}],
+            patronages=[{"patronage_type": "city", "name_pl": "Krakowa"}],
+            beatification={"beatification_year": 1950},
+            canonization={"canonization_year": 1960},
+        )
+    )
+    person.status = PublicationStatus.PUBLISHED.value
+    await db_session.flush()
+    await db_session.refresh(person)
+
+    service = PublicationRevisionService(db_session)
+    revision = await service.create_draft(
+        person.id,
+        expected_version=person.version,
+        author_id=None,
+    )
+    revision = await service.update_draft(
+        revision.id,
+        expected_version=revision.version,
+        changes={"summary_pl": "Zmieniony opis"},
+        author_id=None,
+    )
+    submitted = await service.submit_for_review(
+        revision.id,
+        expected_version=revision.version,
+        author_id=None,
+    )
+    await service.publish(
+        revision.id,
+        expected_version=submitted.version,
+        author_id=None,
+    )
+
+    assert (
+        await db_session.scalar(
+            select(PersonName).where(PersonName.person_id == person.id)
+        )
+    ).value == "Oryginalny alias"
+    assert (
+        await db_session.scalar(select(Patronage).where(Patronage.person_id == person.id))
+    ).name_pl == "Krakowa"
+    assert (
+        await db_session.scalar(select(Image).where(Image.person_id == person.id))
+    ).url == "https://example.org/oryginal.jpg"
+    assert (
+        await db_session.scalar(
+            select(Beatification).where(Beatification.person_id == person.id)
+        )
+    ).beatification_year == 1950
+    assert (
+        await db_session.scalar(select(Canonization).where(Canonization.person_id == person.id))
+    ).canonization_year == 1960
 
 
 @pytest.mark.asyncio

@@ -279,6 +279,7 @@ PATCH treści osoby published może zmienić live bez ponownej recenzji; tłumac
 - [x] `PATCH /revisions/{id}` aktualizuje walidowane pola profilu w draftcie, zwiększa wersję rewizji i zapisuje audyt.
 - [x] `POST /revisions/{id}/submit` i `POST /revisions/{id}/publish` egzekwują kolejno uprawnienia `persons:submit` i `persons:review`.
 - [x] `POST /revisions/{id}/return` zwraca rewizję do draftu z obowiązkowym komentarzem, a `POST /revisions/{id}/reject` zachowuje odrzucony snapshot.
+- [x] `PATCH /revisions/{id}` obsługuje również aliasy, patronaty, avatar oraz dane beatyfikacji i kanonizacji; zmiany relacji pozostają w draftcie i są synchronizowane dopiero przy publikacji.
 - [x] public detail i katalog nakładają scalarne pola z `published_revision_id` z fallbackiem legacy, a publiczne cytowania źródeł, członkostwa zakonów, avatar/media i nazwy używane w wyszukiwaniu czytają odpowiednie sekcje snapshotu; pozostałe relacyjne filtry wyszukiwania pozostają otwarte.
 
 **Database**
@@ -304,7 +305,7 @@ PATCH treści osoby published może zmienić live bez ponownej recenzji; tłumac
 - [x] Zatwierdzenie przypisania patronatu do osoby `published` wymaga `persons:publish`; przypisania oczekujące pozostają pracą redakcyjną.
 - [x] Utworzenie rewizji zapisuje snapshot i audyt bez modyfikowania aktywnego `Person`.
 - [x] Edycja draftu ma optimistic locking po `PublicationRevision.version`; konflikt zwraca szczegółowy kod i wersje.
-- [x] Publikacja sprawdza `base_version`, aktualizuje scalarne pola `Person` atomowo i zapisuje audyt publikacji rewizji.
+- [x] Publikacja sprawdza `base_version`, aktualizuje scalarne pola `Person` oraz obsługiwane relacje atomowo i zapisuje audyt publikacji rewizji.
 - [x] Decyzje recenzenta mają optimistic locking, wymagają komentarza i zapisują zmianę statusu w audycie.
 - [ ] wszystkie write paths respektują granicę.
 - [ ] Frontend: konflikt zachowuje formularz.

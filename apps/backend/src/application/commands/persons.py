@@ -327,7 +327,7 @@ class CreatePersonRevisionCommand(BaseModel):
 
 
 class UpdatePersonRevisionCommand(BaseModel):
-    """Patch editable scalar fields in one isolated person revision."""
+    """Patch editable profile fields in one isolated person revision."""
 
     expected_version: int = Field(
         ge=1,
@@ -337,7 +337,7 @@ class UpdatePersonRevisionCommand(BaseModel):
         min_length=1,
         description=(
             "Partial profile fields to merge into the isolated snapshot. "
-            "Workflow and relation fields are managed separately."
+            "Workflow fields remain managed by the revision state machine."
         ),
     )
     change_summary: str | None = Field(
