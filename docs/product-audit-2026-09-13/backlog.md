@@ -312,7 +312,7 @@ PATCH treści osoby published może zmienić live bez ponownej recenzji; tłumac
 - [x] Odczyt aktywnego draftu oraz rewizji w recenzji ma test regresyjny; formularz nie synchronizuje w tym trybie wpisu kalendarzowego ani relacji źródeł/zakonów z live.
 - [ ] wszystkie write paths respektują granicę.
 - [x] Frontend: konflikt zachowuje formularz i pokazuje porównanie wartości lokalnych z aktualnym snapshotem.
-- [ ] E2E: dwie osoby edytują, tylko jedna publikuje zatwierdzoną rewizję.
+- [x] E2E: dwie osoby edytują, tylko jedna publikuje zatwierdzoną rewizję.
 
 **Infrastructure**
 
