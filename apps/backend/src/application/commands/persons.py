@@ -347,3 +347,19 @@ class UpdatePersonRevisionCommand(BaseModel):
     )
 
     model_config = ConfigDict(extra="forbid")
+
+
+class PersonRevisionWorkflowCommand(BaseModel):
+    """Advance one isolated revision using its optimistic-lock version."""
+
+    expected_version: int = Field(
+        ge=1,
+        description="Revision.version loaded by the editor; stale values return HTTP 409",
+    )
+    note: str | None = Field(
+        default=None,
+        max_length=500,
+        description="Optional editorial note recorded with the workflow transition",
+    )
+
+    model_config = ConfigDict(extra="forbid")

@@ -273,10 +273,11 @@ PATCH treści osoby published może zmienić live bez ponownej recenzji; tłumac
 
 **Backend**
 
-- [ ] Minimum: blokada niedozwolonych zapisów do published i audyt wszystkich writerów. Docelowo RevisionService, PATCH /revisions/{id}, POST /revisions/{id}/submit i /publish.
+- [ ] Minimum: blokada niedozwolonych zapisów do published i audyt wszystkich writerów. Docelowo pełny RevisionService i publiczna projekcja rewizji.
 - [x] Pierwszy etap RevisionService: `POST /persons/{id}/revisions` tworzy trwały snapshot draftu z `base_version` i nie zmienia danych live.
 - [x] RevisionCommand z `expected_version` dla rozpoczęcia rewizji.
 - [x] `PATCH /revisions/{id}` aktualizuje walidowane pola profilu w draftcie, zwiększa wersję rewizji i zapisuje audyt.
+- [x] `POST /revisions/{id}/submit` i `POST /revisions/{id}/publish` egzekwują kolejno uprawnienia `persons:submit` i `persons:review`.
 - [ ] public query czyta published_revision_id. Ta sama reguła dla sources/orders/AI.
 
 **Database**
@@ -302,6 +303,7 @@ PATCH treści osoby published może zmienić live bez ponownej recenzji; tłumac
 - [x] Zatwierdzenie przypisania patronatu do osoby `published` wymaga `persons:publish`; przypisania oczekujące pozostają pracą redakcyjną.
 - [x] Utworzenie rewizji zapisuje snapshot i audyt bez modyfikowania aktywnego `Person`.
 - [x] Edycja draftu ma optimistic locking po `PublicationRevision.version`; konflikt zwraca szczegółowy kod i wersje.
+- [x] Publikacja sprawdza `base_version`, aktualizuje scalarne pola `Person` atomowo i zapisuje audyt publikacji rewizji.
 - [ ] wszystkie write paths respektują granicę.
 - [ ] Frontend: konflikt zachowuje formularz.
 - [ ] E2E: dwie osoby edytują, tylko jedna publikuje zatwierdzoną rewizję.

@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.application.commands.persons import PersonCreateSchema
+from src.application.commands.persons import PersonCreateSchema, PersonUpdateSchema
 from src.application.services.audit_service import AuditContext
 from src.application.services.person_service import PersonService, PersonVersionConflictError
 from src.application.services.publication_revision_service import (
@@ -207,3 +207,87 @@ async def test_update_draft_revision_exposes_field_validation_details(
             "type": "revision_field_forbidden",
         }
     ]
+
+
+@pytest.mark.asyncio
+async def test_submit_and_publish_revision_updates_live_person_atomically(
+    db_session: AsyncSession,
+) -> None:
+    person = await _published_person(db_session)
+    service = PublicationRevisionService(db_session)
+    revision = await service.create_draft(
+        person.id,
+        expected_version=person.version,
+        author_id=None,
+    )
+    revision = await service.update_draft(
+        revision.id,
+        expected_version=revision.version,
+        changes={"summary_pl": "Opis zatwierdzony przez recenzenta"},
+        author_id=None,
+    )
+
+    submitted = await service.submit_for_review(
+        revision.id,
+        expected_version=revision.version,
+        author_id=None,
+        note="Gotowe do recenzji",
+    )
+    assert submitted.status == PublicationRevisionStatus.REVIEW.value
+    assert submitted.version == 3
+    assert person.summary_pl == "Aktualny opis publiczny"
+
+    published = await service.publish(
+        revision.id,
+        expected_version=submitted.version,
+        author_id=None,
+        audit_context=AuditContext(),
+        note="Publikacja po akceptacji",
+    )
+
+    await db_session.refresh(person)
+    assert published.status == PublicationRevisionStatus.PUBLISHED.value
+    assert published.version == 4
+    assert person.status == PublicationStatus.PUBLISHED.value
+    assert person.version == 2
+    assert person.summary_pl == "Opis zatwierdzony przez recenzenta"
+
+    audit_log = await db_session.scalar(
+        select(AuditLog).where(
+            AuditLog.resource_type == "person_revisions",
+            AuditLog.resource_id == revision.id,
+            AuditLog.action == "publish",
+        )
+    )
+    assert audit_log is not None
+    assert audit_log.new_value["person_version"] == person.version
+
+
+@pytest.mark.asyncio
+async def test_publish_revision_rejects_changed_live_person(
+    db_session: AsyncSession,
+) -> None:
+    person = await _published_person(db_session)
+    service = PublicationRevisionService(db_session)
+    revision = await service.create_draft(
+        person.id,
+        expected_version=person.version,
+        author_id=None,
+    )
+    await service.submit_for_review(
+        revision.id,
+        expected_version=revision.version,
+        author_id=None,
+    )
+    await PersonService(db_session).update_person(
+        person,
+        PersonUpdateSchema(summary_pl="Zmiana wykonana poza rewizją", expected_version=1),
+        allow_published_update=True,
+    )
+
+    with pytest.raises(PersonVersionConflictError):
+        await service.publish(
+            revision.id,
+            expected_version=2,
+            author_id=None,
+        )

@@ -33,6 +33,7 @@ PersonPatronageInputSchema = person_commands.PersonPatronageInputSchema
 PersonUpdateSchema = person_commands.PersonUpdateSchema
 CreatePersonRevisionCommand = person_commands.CreatePersonRevisionCommand
 UpdatePersonRevisionCommand = person_commands.UpdatePersonRevisionCommand
+PersonRevisionWorkflowCommand = person_commands.PersonRevisionWorkflowCommand
 PersonAvatarSchema = person_models.PersonAvatarSchema
 PersonLastEditorSchema = person_models.PersonLastEditorSchema
 PersonLocalizedContentSchema = person_models.PersonLocalizedContentSchema
