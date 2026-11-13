@@ -229,7 +229,7 @@ class PersonService(PersonQueryService):
         loaded_version = person.version
         await self.db.refresh(
             person,
-            attribute_names=["version", "status"],
+            attribute_names=["version", "status", "published_revision_id"],
             with_for_update=True,
         )
         require_published_change_permission(
@@ -242,6 +242,11 @@ class PersonService(PersonQueryService):
         if expected_version != person.version:
             raise PersonVersionConflictError(expected_version, person.version)
         previous_snapshot = await serialize_person_snapshot(self.db, person)
+        if previous_status == PublicationStatus.PUBLISHED.value and allow_published_update:
+            # A legacy direct edit no longer represents the selected revision.
+            # The revision workflow assigns the new pointer after projecting
+            # its snapshot, in the same transaction.
+            person.published_revision_id = None
 
         avatar_was_set = "avatar" in data.model_fields_set
         aliases_were_set = "aliases" in data.model_fields_set

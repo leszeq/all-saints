@@ -251,6 +251,7 @@ async def test_submit_and_publish_revision_updates_live_person_atomically(
     assert person.status == PublicationStatus.PUBLISHED.value
     assert person.version == 2
     assert person.summary_pl == "Opis zatwierdzony przez recenzenta"
+    assert person.published_revision_id == published.id
 
     audit_log = await db_session.scalar(
         select(AuditLog).where(
@@ -261,6 +262,43 @@ async def test_submit_and_publish_revision_updates_live_person_atomically(
     )
     assert audit_log is not None
     assert audit_log.new_value["person_version"] == person.version
+
+
+@pytest.mark.asyncio
+async def test_legacy_published_update_clears_selected_revision_pointer(
+    db_session: AsyncSession,
+) -> None:
+    person = await _published_person(db_session)
+    revision_service = PublicationRevisionService(db_session)
+    revision = await revision_service.create_draft(
+        person.id,
+        expected_version=person.version,
+        author_id=None,
+    )
+    submitted = await revision_service.submit_for_review(
+        revision.id,
+        expected_version=revision.version,
+        author_id=None,
+    )
+    await revision_service.publish(
+        revision.id,
+        expected_version=submitted.version,
+        author_id=None,
+    )
+    await db_session.refresh(person)
+    assert person.published_revision_id == revision.id
+
+    await PersonService(db_session).update_person(
+        person,
+        PersonUpdateSchema(
+            summary_pl="Starsza ścieżka edycji",
+            expected_version=person.version,
+        ),
+        allow_published_update=True,
+    )
+
+    await db_session.refresh(person)
+    assert person.published_revision_id is None
 
 
 @pytest.mark.asyncio

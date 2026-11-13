@@ -343,6 +343,18 @@ class Person(BaseModel, Base):
         server_default=text("'draft'"),
         comment="Publication status",
     )
+    published_revision_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey(
+            "publication_revisions.id",
+            ondelete="SET NULL",
+            use_alter=True,
+            name="fk_persons_published_revision_id",
+        ),
+        nullable=True,
+        index=True,
+        comment="Revision currently selected for public projection; NULL uses legacy live fields",
+    )
 
     # ── Names ──────────────────────────────────────────────────────────────────
     canonical_name: Mapped[str] = mapped_column(
@@ -525,8 +537,14 @@ class Person(BaseModel, Base):
     revisions: Mapped[list[PublicationRevision]] = relationship(
         "PublicationRevision",
         back_populates="person",
+        foreign_keys="PublicationRevision.person_id",
         order_by="PublicationRevision.revision_number",
         cascade="all, delete-orphan",
+    )
+    published_revision: Mapped[PublicationRevision | None] = relationship(
+        "PublicationRevision",
+        foreign_keys=[published_revision_id],
+        uselist=False,
     )
     occupations: Mapped[list[PersonOccupation]] = relationship(
         "PersonOccupation", back_populates="person"
@@ -1343,7 +1361,11 @@ class PublicationRevision(BaseModel, Base):
     )
     change_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    person: Mapped[Person] = relationship("Person", back_populates="revisions")
+    person: Mapped[Person] = relationship(
+        "Person",
+        back_populates="revisions",
+        foreign_keys=[person_id],
+    )
 
 
 # ==============================================================================

@@ -284,7 +284,7 @@ PATCH treści osoby published może zmienić live bez ponownej recenzji; tłumac
 **Database**
 
 - [x] PublicationRevision(id,person_id,revision_number,status,payload,base_revision_id,author_id,created_at) oraz migracja `0027_publication_revisions`.
-- [ ] Person.published_revision_id FK.
+- [x] Nullable `Person.published_revision_id` FK i indeks dodane w migracji `0028_published_revision_pointer`; publikacja rewizji ustawia wskaźnik, a starsza bezpośrednia edycja profilu go czyści.
 - [x] UNIQUE(person_id,revision_number), indeks kolejki i blokada jednego aktywnego draftu na poziomie serwisu.
 - [ ] backfill opublikowanych rekordów do pierwszej rewizji, parity test projekcji. Typed relacje rewizji dla źródeł.
 - [x] Payload korzysta z istniejącego `_snapshot_schema_version` serializera osoby.

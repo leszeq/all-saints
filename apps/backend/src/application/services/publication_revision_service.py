@@ -503,6 +503,13 @@ class PublicationRevisionService:
             allow_published_update=True,
             audit_context=audit_context,
         )
+        # Keep the selected public revision on the live row in the same
+        # transaction as the scalar projection. Legacy direct edits clear this
+        # pointer in ``PersonService`` before this assignment, so a successful
+        # revision publish always leaves an explicit projection target.
+        person.published_revision_id = revision.id
+        person.updated_at = datetime.now(UTC)
+        await self.db.flush()
 
         previous_version = revision.version
         previous_status = revision.status
