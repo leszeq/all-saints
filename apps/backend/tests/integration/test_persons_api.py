@@ -155,6 +155,62 @@ async def test_public_person_reads_use_selected_revision_scalars_with_legacy_fal
 
 
 @pytest.mark.asyncio
+async def test_public_person_reads_order_memberships_from_selected_revision(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    person = await PersonService(db_session).create_person(
+        PersonCreateSchema(canonical_name="Św. Zakon z rewizji")
+    )
+    person.status = PublicationStatus.PUBLISHED.value
+    selected_order = ReligiousOrder(
+        id=uuid.uuid4(),
+        slug="wybrany-zakon-z-rewizji",
+        name="Zakon z wybranej rewizji",
+    )
+    live_order = ReligiousOrder(
+        id=uuid.uuid4(),
+        slug="zakon-z-pol-live",
+        name="Zakon z pól live",
+    )
+    db_session.add_all([selected_order, live_order])
+    await db_session.flush()
+    db_session.add(PersonOrder(person_id=person.id, order_id=live_order.id))
+    revision = PublicationRevision(
+        person_id=person.id,
+        revision_number=1,
+        status=PublicationRevisionStatus.PUBLISHED.value,
+        base_version=person.version,
+        payload={
+            "orders": [
+                {
+                    "order_id": str(selected_order.id),
+                    "entry_date": "1500",
+                    "exit_date": None,
+                    "is_founder": True,
+                    "membership_type": "founder",
+                    "notes": "Notatka z rewizji",
+                }
+            ]
+        },
+    )
+    db_session.add(revision)
+    await db_session.flush()
+    person.published_revision_id = revision.id
+    await db_session.commit()
+
+    response = await async_client.get(f"/api/v1/persons/{person.slug}")
+
+    assert response.status_code == 200
+    orders = response.json()["orders"]
+    assert len(orders) == 1
+    assert orders[0]["order"]["name"] == "Zakon z wybranej rewizji"
+    assert orders[0]["entry_date"] == "1500"
+    assert orders[0]["is_founder"] is True
+    assert "Zakon z pól live" not in response.text
+
+
+@pytest.mark.asyncio
 async def test_legacy_admin_edit_keeps_primary_translation_current(
     async_client: AsyncClient,
     db_session: AsyncSession,

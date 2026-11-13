@@ -6,7 +6,7 @@ import base64
 import binascii
 import uuid
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, NamedTuple, cast
 
@@ -262,11 +262,26 @@ class PublishedPersonProjection:
 
     live: Person
     revision: PublicationRevision
+    relation_overrides: dict[str, object] = field(default_factory=dict)
 
     def __getattr__(self, name: str) -> object:
+        if name in self.relation_overrides:
+            return self.relation_overrides[name]
         if name in PUBLIC_REVISION_SCALAR_FIELDS and name in self.revision.payload:
             return self.revision.payload[name]
         return getattr(self.live, name)
+
+
+@dataclass(frozen=True, slots=True)
+class _PublicOrderMembershipSnapshot:
+    """Transient order membership reconstructed from a published revision."""
+
+    entry_date: str | None
+    exit_date: str | None
+    is_founder: bool
+    membership_type: str
+    notes: str | None
+    order: ReligiousOrder
 
 
 def _public_person_projection(person: Person) -> Person:
@@ -284,6 +299,16 @@ def public_revision_payload(person: Person) -> dict[str, Any] | None:
     if isinstance(person, PublishedPersonProjection):
         return person.revision.payload
     return None
+
+
+def _revision_uuid(value: object) -> uuid.UUID | None:
+    """Parse a revision relation identifier without trusting payload input."""
+    if value is None:
+        return None
+    try:
+        return value if isinstance(value, uuid.UUID) else uuid.UUID(str(value))
+    except (TypeError, ValueError, AttributeError):
+        return None
 
 
 def _enum_values(
@@ -455,6 +480,51 @@ class PersonQueryService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
+    async def _public_detail_projection(self, person: Person) -> Person:
+        """Hydrate relation overlays that are present in a selected revision."""
+        projected = _public_person_projection(person)
+        if not isinstance(projected, PublishedPersonProjection):
+            return projected
+
+        raw_orders = projected.revision.payload.get("orders")
+        if not isinstance(raw_orders, list):
+            return projected
+
+        snapshots = [item for item in raw_orders if isinstance(item, dict)]
+        order_ids = {
+            order_id
+            for item in snapshots
+            if (order_id := _revision_uuid(item.get("order_id"))) is not None
+        }
+        orders = {
+            order.id: order
+            for order in (
+                await self.db.scalars(
+                    select(ReligiousOrder).where(
+                        ReligiousOrder.id.in_(order_ids),
+                        ReligiousOrder.deleted_at.is_(None),
+                    )
+                )
+            ).all()
+        }
+        projected_orders: list[_PublicOrderMembershipSnapshot] = []
+        for item in snapshots:
+            order_id = _revision_uuid(item.get("order_id"))
+            order = orders.get(order_id)
+            if order_id is None or order is None:
+                continue
+            projected_membership = _PublicOrderMembershipSnapshot(
+                entry_date=item.get("entry_date"),
+                exit_date=item.get("exit_date"),
+                is_founder=bool(item.get("is_founder", False)),
+                membership_type=str(item.get("membership_type") or "member"),
+                notes=item.get("notes"),
+                order=order,
+            )
+            projected_orders.append(projected_membership)
+        projected.relation_overrides["orders"] = projected_orders
+        return projected
+
     async def get_by_id_or_slug(
         self,
         identifier: str,
@@ -491,7 +561,9 @@ class PersonQueryService:
 
         result = await self.db.execute(statement)
         person = result.scalar_one_or_none()
-        return _public_person_projection(person) if published_only and person is not None else person
+        if not published_only or person is None:
+            return person
+        return await self._public_detail_projection(person)
 
     async def get_public_slug_redirect(self, old_slug: str) -> Person | None:
         """Resolve a historical slug only when its target is still public."""

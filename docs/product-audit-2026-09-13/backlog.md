@@ -279,7 +279,7 @@ PATCH treści osoby published może zmienić live bez ponownej recenzji; tłumac
 - [x] `PATCH /revisions/{id}` aktualizuje walidowane pola profilu w draftcie, zwiększa wersję rewizji i zapisuje audyt.
 - [x] `POST /revisions/{id}/submit` i `POST /revisions/{id}/publish` egzekwują kolejno uprawnienia `persons:submit` i `persons:review`.
 - [x] `POST /revisions/{id}/return` zwraca rewizję do draftu z obowiązkowym komentarzem, a `POST /revisions/{id}/reject` zachowuje odrzucony snapshot.
-- [x] public detail i katalog nakładają scalarne pola z `published_revision_id` z fallbackiem legacy, a publiczne cytowania źródeł czytają sekcję `sources` snapshotu; orders/media/search-joiny pozostają otwarte.
+- [x] public detail i katalog nakładają scalarne pola z `published_revision_id` z fallbackiem legacy, a publiczne cytowania źródeł i członkostwa zakonów czytają odpowiednie sekcje snapshotu; media/search-joiny pozostają otwarte.
 
 **Database**
 
