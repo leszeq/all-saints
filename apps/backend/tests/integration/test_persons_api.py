@@ -23,6 +23,7 @@ from src.domain.hagiography.models import (
     PublicationRevisionStatus,
     PublicationStatus,
 )
+from src.domain.sources.models import Image
 
 
 @pytest.mark.asyncio
@@ -208,6 +209,63 @@ async def test_public_person_reads_order_memberships_from_selected_revision(
     assert orders[0]["entry_date"] == "1500"
     assert orders[0]["is_founder"] is True
     assert "Zakon z pól live" not in response.text
+
+
+@pytest.mark.asyncio
+async def test_public_person_reads_avatar_from_selected_revision_images(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    person = await PersonService(db_session).create_person(
+        PersonCreateSchema(canonical_name="Św. Avatar z rewizji")
+    )
+    person.status = PublicationStatus.PUBLISHED.value
+    live_image = Image(
+        person_id=person.id,
+        url="https://example.org/live-avatar.jpg",
+        license="public_domain",
+        is_primary=True,
+    )
+    db_session.add(live_image)
+    await db_session.flush()
+    selected_image_id = uuid.uuid4()
+    revision = PublicationRevision(
+        person_id=person.id,
+        revision_number=1,
+        status=PublicationRevisionStatus.PUBLISHED.value,
+        base_version=person.version,
+        payload={
+            "images": [
+                {
+                    "id": str(selected_image_id),
+                    "url": "https://example.org/revision-avatar.jpg",
+                    "thumbnail_url": "https://example.org/revision-avatar-thumb.jpg",
+                    "title": "Portret z rewizji",
+                    "license": "cc_by",
+                    "photographer": "Autor rewizji",
+                    "source_url": "https://example.org/image-source",
+                    "is_primary": True,
+                    "sort_order": 0,
+                }
+            ]
+        },
+    )
+    db_session.add(revision)
+    await db_session.flush()
+    person.published_revision_id = revision.id
+    await db_session.commit()
+
+    detail_response = await async_client.get(f"/api/v1/persons/{person.slug}")
+    list_response = await async_client.get("/api/v1/persons")
+
+    assert detail_response.status_code == 200
+    assert detail_response.json()["avatar"]["id"] == str(selected_image_id)
+    assert detail_response.json()["avatar"]["url"] == "https://example.org/revision-avatar.jpg"
+    assert list_response.status_code == 200
+    assert list_response.json()["items"][0]["avatar"]["url"] == (
+        "https://example.org/revision-avatar.jpg"
+    )
+    assert "live-avatar.jpg" not in detail_response.text
 
 
 @pytest.mark.asyncio

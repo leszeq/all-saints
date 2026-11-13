@@ -284,6 +284,21 @@ class _PublicOrderMembershipSnapshot:
     order: ReligiousOrder
 
 
+@dataclass(frozen=True, slots=True)
+class _PublicImageSnapshot:
+    """Transient image DTO reconstructed from a published revision."""
+
+    id: uuid.UUID
+    url: str
+    thumbnail_url: str | None
+    title: str | None
+    license: str
+    photographer: str | None
+    source_url: str | None
+    is_primary: bool
+    sort_order: int
+
+
 def _public_person_projection(person: Person) -> Person:
     """Overlay a valid published revision while retaining legacy fallback."""
     revision = person.published_revision
@@ -480,11 +495,48 @@ class PersonQueryService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
+    @staticmethod
+    def _apply_public_image_projection(projected: PublishedPersonProjection) -> None:
+        """Overlay image DTOs and the selected avatar without touching the ORM session."""
+        raw_images = projected.revision.payload.get("images")
+        if not isinstance(raw_images, list):
+            return
+        images: list[_PublicImageSnapshot] = []
+        for item in raw_images:
+            if not isinstance(item, dict):
+                continue
+            image_id = _revision_uuid(item.get("id"))
+            url = item.get("url")
+            if image_id is None or not isinstance(url, str) or not url:
+                continue
+            images.append(
+                _PublicImageSnapshot(
+                    id=image_id,
+                    url=url,
+                    thumbnail_url=item.get("thumbnail_url"),
+                    title=item.get("title"),
+                    license=str(item.get("license") or "unknown"),
+                    photographer=item.get("photographer"),
+                    source_url=item.get("source_url"),
+                    is_primary=bool(item.get("is_primary", False)),
+                    sort_order=int(item.get("sort_order") or 0),
+                )
+            )
+        projected.relation_overrides["images"] = images
+        active_primary = [image for image in images if image.is_primary]
+        projected.relation_overrides["avatar"] = min(
+            active_primary,
+            key=lambda image: (image.sort_order, str(image.id)),
+            default=None,
+        )
+
     async def _public_detail_projection(self, person: Person) -> Person:
         """Hydrate relation overlays that are present in a selected revision."""
         projected = _public_person_projection(person)
         if not isinstance(projected, PublishedPersonProjection):
             return projected
+
+        self._apply_public_image_projection(projected)
 
         raw_orders = projected.revision.payload.get("orders")
         if not isinstance(raw_orders, list):
@@ -795,7 +847,13 @@ class PersonQueryService:
         result = await self.db.execute(query)
         persons = list(result.scalars().all())
         if published_only:
-            persons = [_public_person_projection(person) for person in persons]
+            projected_persons = []
+            for person in persons:
+                projected = _public_person_projection(person)
+                if isinstance(projected, PublishedPersonProjection):
+                    self._apply_public_image_projection(projected)
+                projected_persons.append(projected)
+            persons = projected_persons
         if search_term:
             for person in persons:
                 object.__setattr__(
