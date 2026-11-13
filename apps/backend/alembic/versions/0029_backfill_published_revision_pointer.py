@@ -8,7 +8,7 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "0029_backfill_published_revision_pointer"
+revision: str = "0029_backfill_pub_revision_ptr"
 down_revision: str | None = "0028_published_revision_pointer"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
