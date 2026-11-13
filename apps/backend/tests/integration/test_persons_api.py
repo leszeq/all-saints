@@ -247,6 +247,14 @@ async def test_public_person_reads_order_memberships_from_selected_revision(
     assert selected_order_filter.json()["total"] == 1
     assert live_order_filter.status_code == 200
     assert live_order_filter.json()["total"] == 0
+    selected_order_facets = await async_client.get(
+        "/api/v1/persons/facets", params={"order_id": str(selected_order.id)}
+    )
+    assert selected_order_facets.status_code == 200
+    assert selected_order_facets.json()["total"] == 1
+    assert selected_order_facets.json()["orders"] == [
+        {"id": str(selected_order.id), "count": 1}
+    ]
 
 
 @pytest.mark.asyncio

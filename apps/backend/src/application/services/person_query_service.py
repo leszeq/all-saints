@@ -10,8 +10,10 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, NamedTuple, cast
 
-from sqlalchemy import Integer, and_, case, func, or_, select, true
+from sqlalchemy import Integer, Text, and_, case, func, or_, select, true
+from sqlalchemy import cast as sql_cast
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute, load_only, selectinload
 from sqlalchemy.sql import Select
@@ -1372,21 +1374,53 @@ class PersonQueryService:
             (await self.db.execute(select(func.count()).select_from(selected))).scalar_one()
         )
 
-        order_rows = (
+        live_order_rows = (
             await self.db.execute(
                 select(
                     PersonOrder.order_id,
                     func.count(func.distinct(PersonOrder.person_id)),
                 )
+                .join(Person, Person.id == PersonOrder.person_id)
                 .join(ReligiousOrder, ReligiousOrder.id == PersonOrder.order_id)
                 .where(
                     PersonOrder.person_id.in_(person_ids),
+                    ~_published_revision_payload_has_field("orders"),
                     ReligiousOrder.deleted_at.is_(None),
                 )
                 .group_by(PersonOrder.order_id)
-                .order_by(func.count(func.distinct(PersonOrder.person_id)).desc())
             )
         ).all()
+        revision_order_items = (
+            func.jsonb_array_elements(PublicationRevision.payload["orders"])
+            .table_valued("value")
+            .alias("facet_revision_order_items")
+        )
+        revision_order_id = revision_order_items.c.value.cast(JSONB)["order_id"].astext.cast(
+            PGUUID
+        )
+        revision_order_rows = (
+            await self.db.execute(
+                select(
+                    revision_order_id,
+                    func.count(func.distinct(PublicationRevision.person_id)),
+                )
+                .select_from(PublicationRevision)
+                .join(Person, Person.published_revision_id == PublicationRevision.id)
+                .join(revision_order_items, true())
+                .join(ReligiousOrder, ReligiousOrder.id == revision_order_id)
+                .where(
+                    Person.id.in_(person_ids),
+                    PublicationRevision.status == PublicationRevisionStatus.PUBLISHED.value,
+                    PublicationRevision.deleted_at.is_(None),
+                    ReligiousOrder.deleted_at.is_(None),
+                )
+                .group_by(revision_order_id)
+            )
+        ).all()
+        order_counts: dict[uuid.UUID, int] = {}
+        for facet_id, count in [*live_order_rows, *revision_order_rows]:
+            order_counts[facet_id] = order_counts.get(facet_id, 0) + int(count)
+        order_rows = sorted(order_counts.items(), key=lambda row: (-row[1], str(row[0])))
         occupation_rows = (
             await self.db.execute(
                 select(
@@ -1405,12 +1439,21 @@ class PersonQueryService:
 
         async def country_counts(
             column: InstrumentedAttribute[uuid.UUID | None],
+            field_name: str,
         ) -> list[tuple[uuid.UUID, int]]:
+            public_value = case(
+                (
+                    _published_revision_payload_has_field(field_name),
+                    _published_revision_text(field_name),
+                ),
+                else_=sql_cast(column, Text),
+            )
             rows = (
                 await self.db.execute(
-                    select(column, func.count())
-                    .where(selected.c.id == Person.id, column.is_not(None))
-                    .group_by(column)
+                    select(sql_cast(public_value, PGUUID), func.count())
+                    .where(selected.c.id == Person.id)
+                    .where(public_value.is_not(None))
+                    .group_by(public_value)
                     .order_by(func.count().desc())
                 )
             ).all()
@@ -1418,9 +1461,9 @@ class PersonQueryService:
                 (country_id, int(count)) for country_id, count in rows if country_id is not None
             ]
 
-        birth_country_rows = await country_counts(Person.birth_country_id)
-        death_country_rows = await country_counts(Person.death_country_id)
-        nationality_rows = await country_counts(Person.nationality_id)
+        birth_country_rows = await country_counts(Person.birth_country_id, "birth_country_id")
+        death_country_rows = await country_counts(Person.death_country_id, "death_country_id")
+        nationality_rows = await country_counts(Person.nationality_id, "nationality_id")
         return PersonFacetCounts(
             total=total,
             orders=[(facet_id, int(count)) for facet_id, count in order_rows],
