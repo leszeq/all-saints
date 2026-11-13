@@ -278,6 +278,81 @@ async def test_public_person_reads_avatar_from_selected_revision_images(
 
 
 @pytest.mark.asyncio
+async def test_public_person_reads_typed_relations_from_selected_revision(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    person = await PersonService(db_session).create_person(
+        PersonCreateSchema(
+            canonical_name="Św. Relacje z rewizji",
+            aliases=[{"value": "Alias live", "language_code": "pl"}],
+            patronages=[{"patronage_type": "city", "name_pl": "Miasta live"}],
+            beatification={"beatification_year": 1900},
+            canonization={"canonization_year": 1910},
+        )
+    )
+    person.status = PublicationStatus.PUBLISHED.value
+    await db_session.flush()
+
+    revision = PublicationRevision(
+        person_id=person.id,
+        revision_number=1,
+        status=PublicationRevisionStatus.PUBLISHED.value,
+        base_version=person.version,
+        payload={
+            "aliases": [
+                {
+                    "id": str(uuid.uuid4()),
+                    "value": "Alias z rewizji",
+                    "normalized_value": "alias z rewizji",
+                    "language_code": "pl",
+                    "kind": "alias",
+                }
+            ],
+            "patronages": [
+                {
+                    "id": str(uuid.uuid4()),
+                    "patronage_type": "profession",
+                    "name_pl": "Zawodu z rewizji",
+                    "name_en": "Revision profession",
+                    "description": "Opis z rewizji",
+                    "is_official": True,
+                }
+            ],
+            "beatification": {
+                "id": str(uuid.uuid4()),
+                "beatification_date": "1950-01-01",
+                "beatification_year": 1950,
+            },
+            "canonization": {
+                "id": str(uuid.uuid4()),
+                "canonization_date": "1960-01-01",
+                "canonization_year": 1960,
+            },
+        },
+    )
+    db_session.add(revision)
+    await db_session.flush()
+    person.published_revision_id = revision.id
+    await db_session.commit()
+
+    detail_response = await async_client.get(f"/api/v1/persons/{person.slug}")
+    list_response = await async_client.get("/api/v1/persons")
+
+    assert detail_response.status_code == 200
+    detail = detail_response.json()
+    assert detail["aliases"][0]["value"] == "Alias z rewizji"
+    assert detail["patronages"][0]["name_pl"] == "Zawodu z rewizji"
+    assert detail["beatification"]["beatification_year"] == 1950
+    assert detail["canonization"]["canonization_year"] == 1960
+    assert list_response.status_code == 200
+    assert list_response.json()["items"][0]["patronages"][0]["name_pl"] == (
+        "Zawodu z rewizji"
+    )
+    assert "Miasta live" not in detail_response.text
+
+
+@pytest.mark.asyncio
 async def test_legacy_admin_edit_keeps_primary_translation_current(
     async_client: AsyncClient,
     db_session: AsyncSession,

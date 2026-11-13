@@ -532,6 +532,19 @@ class PublicationRevisionService:
             allow_published_update=True,
             audit_context=audit_context,
         )
+        edited_relation_fields = set(
+            revision.payload.get(REVISION_EDITED_RELATION_FIELDS_KEY, [])
+        ) & REVISION_EDITED_RELATION_FIELDS
+        if edited_relation_fields:
+            # Relation edits use compact input schemas in the draft. Refresh
+            # their payload sections from the persisted graph so the published
+            # snapshot contains generated IDs and complete public metadata.
+            published_snapshot = await serialize_person_snapshot(self.db, person)
+            canonical_payload = dict(revision.payload)
+            for field in edited_relation_fields:
+                snapshot_field = "images" if field == "avatar" else field
+                canonical_payload[snapshot_field] = published_snapshot.get(snapshot_field)
+            revision.payload = canonical_payload
         # Keep the selected public revision on the live row in the same
         # transaction as the scalar projection. Legacy direct edits clear this
         # pointer in ``PersonService`` before this assignment, so a successful

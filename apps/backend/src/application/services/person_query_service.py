@@ -215,10 +215,9 @@ PERSON_LIST_COLUMNS = (
     Person.published_revision_id,
 )
 
-# Revision snapshots currently project scalar profile fields only. Relational
-# payloads stay on the live entity until the relation-specific revision stage
-# is implemented, so sources/orders/search joins cannot accidentally mix two
-# different representations of a profile.
+# Revision snapshots overlay scalar fields and the relation sections that have
+# a stable public DTO. Sources and order memberships still resolve referenced
+# records through their dedicated projection paths.
 PUBLIC_REVISION_SCALAR_FIELDS = frozenset(
     {
         "person_type",
@@ -297,6 +296,47 @@ class _PublicImageSnapshot:
     source_url: str | None
     is_primary: bool
     sort_order: int
+
+
+@dataclass(frozen=True, slots=True)
+class _PublicAliasSnapshot:
+    """Transient alias DTO reconstructed from a published revision."""
+
+    id: uuid.UUID
+    value: str
+    normalized_value: str
+    language_code: str
+    kind: str
+
+
+@dataclass(frozen=True, slots=True)
+class _PublicPatronageSnapshot:
+    """Transient patronage DTO reconstructed from a published revision."""
+
+    id: uuid.UUID
+    patronage_type: str
+    name_pl: str
+    name_en: str | None
+    description: str | None
+    is_official: bool
+
+
+@dataclass(frozen=True, slots=True)
+class _PublicBeatificationSnapshot:
+    """Transient beatification DTO reconstructed from a published revision."""
+
+    id: uuid.UUID
+    beatification_date: str | None
+    beatification_year: int | None
+
+
+@dataclass(frozen=True, slots=True)
+class _PublicCanonizationSnapshot:
+    """Transient canonization DTO reconstructed from a published revision."""
+
+    id: uuid.UUID
+    canonization_date: str | None
+    canonization_year: int | None
 
 
 def _public_person_projection(person: Person) -> Person:
@@ -519,6 +559,124 @@ class PersonQueryService:
         self.db = db
 
     @staticmethod
+    def _apply_public_relation_projection(projected: PublishedPersonProjection) -> None:
+        """Overlay typed relations when the selected snapshot has complete DTOs."""
+        payload = projected.revision.payload
+
+        raw_aliases = payload.get("aliases")
+        if isinstance(raw_aliases, list):
+            aliases: list[_PublicAliasSnapshot] = []
+            valid = True
+            for item in raw_aliases:
+                if not isinstance(item, dict):
+                    valid = False
+                    break
+                alias_id = _revision_uuid(item.get("id"))
+                value = item.get("value")
+                language_code = item.get("language_code", "pl")
+                kind = item.get("kind", "alias")
+                if (
+                    alias_id is None
+                    or not isinstance(value, str)
+                    or not isinstance(language_code, str)
+                    or not isinstance(kind, str)
+                ):
+                    valid = False
+                    break
+                normalized_value = item.get("normalized_value")
+                aliases.append(
+                    _PublicAliasSnapshot(
+                        id=alias_id,
+                        value=value,
+                        normalized_value=(
+                            normalized_value
+                            if isinstance(normalized_value, str) and normalized_value
+                            else normalize_person_name(value)
+                        ),
+                        language_code=language_code,
+                        kind=kind,
+                    )
+                )
+            if valid:
+                projected.relation_overrides["aliases"] = aliases
+
+        raw_patronages = payload.get("patronages")
+        if isinstance(raw_patronages, list):
+            patronages: list[_PublicPatronageSnapshot] = []
+            valid = True
+            for item in raw_patronages:
+                if not isinstance(item, dict):
+                    valid = False
+                    break
+                patronage_id = _revision_uuid(item.get("id"))
+                patronage_type = item.get("patronage_type")
+                name_pl = item.get("name_pl")
+                name_en = item.get("name_en")
+                description = item.get("description")
+                if (
+                    patronage_id is None
+                    or not isinstance(patronage_type, str)
+                    or not isinstance(name_pl, str)
+                    or (name_en is not None and not isinstance(name_en, str))
+                    or (description is not None and not isinstance(description, str))
+                ):
+                    valid = False
+                    break
+                patronages.append(
+                    _PublicPatronageSnapshot(
+                        id=patronage_id,
+                        patronage_type=patronage_type,
+                        name_pl=name_pl,
+                        name_en=name_en,
+                        description=description,
+                        is_official=bool(item.get("is_official", False)),
+                    )
+                )
+            if valid:
+                projected.relation_overrides["patronages"] = patronages
+
+        for field_name, id_field, date_field, year_field, dto_type in (
+            (
+                "beatification",
+                "id",
+                "beatification_date",
+                "beatification_year",
+                _PublicBeatificationSnapshot,
+            ),
+            (
+                "canonization",
+                "id",
+                "canonization_date",
+                "canonization_year",
+                _PublicCanonizationSnapshot,
+            ),
+        ):
+            if field_name not in payload:
+                continue
+            raw_recognition = payload[field_name]
+            if raw_recognition is None:
+                projected.relation_overrides[field_name] = None
+                continue
+            if not isinstance(raw_recognition, dict):
+                continue
+            recognition_id = _revision_uuid(raw_recognition.get(id_field))
+            recognition_date = raw_recognition.get(date_field)
+            recognition_year = raw_recognition.get(year_field)
+            if (
+                recognition_id is None
+                or (recognition_date is not None and not isinstance(recognition_date, str))
+                or (recognition_year is not None and not isinstance(recognition_year, int))
+            ):
+                continue
+            projected.relation_overrides[field_name] = dto_type(
+                id=recognition_id,
+                **{
+                    date_field: recognition_date,
+                    year_field: recognition_year,
+                },
+            )
+
+    @staticmethod
     def _apply_public_image_projection(projected: PublishedPersonProjection) -> None:
         """Overlay image DTOs and the selected avatar without touching the ORM session."""
         raw_images = projected.revision.payload.get("images")
@@ -559,6 +717,7 @@ class PersonQueryService:
         if not isinstance(projected, PublishedPersonProjection):
             return projected
 
+        self._apply_public_relation_projection(projected)
         self._apply_public_image_projection(projected)
 
         raw_orders = projected.revision.payload.get("orders")
@@ -904,6 +1063,7 @@ class PersonQueryService:
             for person in persons:
                 projected = _public_person_projection(person)
                 if isinstance(projected, PublishedPersonProjection):
+                    self._apply_public_relation_projection(projected)
                     self._apply_public_image_projection(projected)
                 projected_persons.append(projected)
             persons = projected_persons
