@@ -215,7 +215,7 @@ Backend: snapshot draftu nie zmienia aktywnego `Person`, konflikt wersji i dupli
 
 **Infrastructure**
 
-Po publikacji invalidacja cache; outbox 036 gdy pojawiają się async projekcje.
+Po publikacji endpoint rewizji czyści przestrzeń Redis `saints:calendar:*`, ponieważ zmiana opublikowanej osoby może wpłynąć na dowolną odpowiedź dnia lub miesiąca. Invalidacja używa `SCAN` w partiach i jest fail-open; baza pozostaje źródłem prawdy, a TTL ogranicza ewentualny okres nieaktualności przy awarii Redis. Outbox 036 pozostaje odłożony do momentu pojawienia się asynchronicznych projekcji.
 
 **Dependencies**
 

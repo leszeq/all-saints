@@ -52,3 +52,37 @@ async def test_cache_fails_open_when_redis_is_unavailable() -> None:
 
     assert await cache.get("calendar-key") is None
     await cache.set("calendar-key", {"total": 0})
+
+
+@pytest.mark.asyncio
+async def test_invalidate_all_deletes_only_calendar_namespace_in_batches() -> None:
+    redis = MagicMock()
+
+    async def scan_iter(*, match: str):
+        assert match == "saints:calendar:*"
+        for key in ("saints:calendar:v1:day:a", "saints:calendar:v1:month:b"):
+            yield key
+
+    redis.scan_iter = scan_iter
+    redis.delete = AsyncMock(return_value=2)
+    cache = CalendarResponseCache(redis)
+
+    assert await cache.invalidate_all() == 2
+    redis.delete.assert_awaited_once_with(
+        "saints:calendar:v1:day:a",
+        "saints:calendar:v1:month:b",
+    )
+
+
+@pytest.mark.asyncio
+async def test_invalidate_all_fails_open_when_redis_is_unavailable() -> None:
+    redis = MagicMock()
+
+    async def scan_iter(*, match: str):
+        raise ConnectionError("redis unavailable")
+        yield match  # pragma: no cover - keeps this an async generator
+
+    redis.scan_iter = scan_iter
+    cache = CalendarResponseCache(redis)
+
+    assert await cache.invalidate_all() == 0

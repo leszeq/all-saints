@@ -316,7 +316,7 @@ PATCH treści osoby published może zmienić live bez ponownej recenzji; tłumac
 
 **Infrastructure**
 
-- [ ] Po publikacji invalidacja cache.
+- [x] Po publikacji invalidacja cache: endpoint publikacji rewizji czyści przestrzeń Redis `saints:calendar:*` po udanej publikacji; awaria Redis pozostaje fail-open, a TTL ogranicza ewentualne dane nieaktualne.
 - [ ] outbox 036 gdy pojawiają się async projekcje.
 
 **Definition of Done**

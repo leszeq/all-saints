@@ -20,6 +20,7 @@ class CalendarResponseCache:
     """Cache serialized public day and month responses in Redis."""
 
     NAMESPACE = "saints:calendar"
+    INVALIDATION_BATCH_SIZE = 100
 
     def __init__(
         self,
@@ -109,3 +110,28 @@ class CalendarResponseCache:
             )
         except Exception as exc:
             logger.debug("Calendar cache write failed", key=key, error=str(exc))
+
+    async def invalidate_all(self) -> int:
+        """Remove every cached public calendar response.
+
+        Publication can change a person's name, image or featured flag in any
+        day/month response, so there is no safe single-key invalidation. Redis
+        failures remain fail-open: the database is authoritative and the
+        short TTL still bounds stale data.
+        """
+        if self._redis is None:
+            return 0
+        try:
+            keys: list[str] = []
+            async for key in self._redis.scan_iter(match=f"{self.NAMESPACE}:*"):
+                keys.append(key)
+
+            deleted = 0
+            for start in range(0, len(keys), self.INVALIDATION_BATCH_SIZE):
+                batch = keys[start : start + self.INVALIDATION_BATCH_SIZE]
+                if batch:
+                    deleted += int(await self._redis.delete(*batch))
+            return deleted
+        except Exception as exc:
+            logger.debug("Calendar cache invalidation failed", error=str(exc))
+            return 0

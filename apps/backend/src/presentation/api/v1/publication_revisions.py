@@ -16,6 +16,8 @@ from src.application.services.publication_revision_service import (
     PublicationRevisionVersionConflictError,
 )
 from src.domain.identity.models import User
+from src.infrastructure.cache.calendar_cache import CalendarResponseCache
+from src.infrastructure.cache.redis_client import RedisClient, get_redis
 from src.infrastructure.db.session import get_db_session
 from src.presentation.api.v1.auth.router import require_permission
 from src.presentation.api.v1.persons.schemas import (
@@ -213,6 +215,7 @@ async def publish_person_revision(
     data: PersonRevisionWorkflowCommand,
     request: Request,
     db: AsyncSession = Depends(get_db_session),
+    redis: RedisClient = Depends(get_redis),
     current_user: User = Depends(require_permission("persons", "review")),
 ) -> PersonRevisionSchema:
     """Publish a review revision using the reviewer permission."""
@@ -253,4 +256,5 @@ async def publish_person_revision(
                 "current_version": exc.current_version,
             },
         ) from exc
+    await CalendarResponseCache(redis).invalidate_all()
     return PersonRevisionSchema.model_validate(revision)
