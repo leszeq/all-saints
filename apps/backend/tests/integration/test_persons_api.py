@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.commands.persons import PersonCreateSchema, PersonUpdateSchema
 from src.application.services.person_service import PersonService
+from src.application.services.publication_revision_service import PublicationRevisionService
 from src.domain.geography.models import Country, ReligiousOrder
 from src.domain.hagiography.models import (
     Gender,
@@ -180,6 +181,69 @@ async def test_public_person_reads_use_selected_revision_scalars_with_legacy_fal
     assert revision_search_response.json()["items"][0]["canonical_name"] == (
         "Św. Nazwa z rewizji"
     )
+
+
+@pytest.mark.asyncio
+async def test_public_person_read_stays_on_published_revision_while_draft_changes(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    person = await PersonService(db_session).create_person(
+        PersonCreateSchema(
+            canonical_name="Św. Wersja publiczna",
+            summary_pl="Streszczenie opublikowane",
+            biography_pl="Biogram opublikowany",
+            person_type="saint",
+            gender="male",
+        )
+    )
+    person.status = PublicationStatus.PUBLISHED.value
+    await db_session.flush()
+
+    published_revision = PublicationRevision(
+        person_id=person.id,
+        revision_number=1,
+        status=PublicationRevisionStatus.PUBLISHED.value,
+        base_version=person.version,
+        payload={
+            "canonical_name": person.canonical_name,
+            "summary_pl": person.summary_pl,
+            "biography_pl": person.biography_pl,
+            "person_type": person.person_type,
+            "gender": person.gender,
+        },
+    )
+    db_session.add(published_revision)
+    await db_session.flush()
+    person.published_revision_id = published_revision.id
+    await db_session.commit()
+
+    revision_service = PublicationRevisionService(db_session)
+    draft = await revision_service.create_draft(
+        person.id,
+        expected_version=person.version,
+        author_id=None,
+    )
+    await revision_service.update_draft(
+        draft.id,
+        expected_version=draft.version,
+        changes={
+            "summary_pl": "Streszczenie tylko w aktywnym drafcie",
+            "biography_pl": "Biogram tylko w aktywnym drafcie",
+        },
+        author_id=None,
+    )
+    await db_session.commit()
+
+    response = await async_client.get(f"/api/v1/persons/{person.slug}")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["canonical_name"] == "Św. Wersja publiczna"
+    assert payload["summary_pl"] == "Streszczenie opublikowane"
+    assert payload["biography_pl"] == "Biogram opublikowany"
+    assert "Streszczenie tylko w aktywnym drafcie" not in response.text
+    assert "Biogram tylko w aktywnym drafcie" not in response.text
 
 
 @pytest.mark.asyncio
