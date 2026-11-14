@@ -26,6 +26,7 @@ import { resolveDictionaryLabel, resolveDictionaryValue } from "@/lib/i18n/label
 import { createBreadcrumbListJsonLd, serializeJsonLd } from "@/lib/json-ld";
 import { absoluteSiteUrl } from "@/lib/site-url";
 import { stripMarkdown } from "@/components/markdown-content";
+import { directoryRobots } from "@/lib/directory-metadata";
 
 export const revalidate = 300;
 
@@ -48,10 +49,11 @@ const loadOrder = cache(async (slug: string, membersPage: number): Promise<Relig
   })) as ReligiousOrderDetail;
 });
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const [{ slug }, dictionary] = await Promise.all([
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
+  const [{ slug }, dictionary, query] = await Promise.all([
     params,
     getWebDictionary(DEFAULT_WEB_UI_LOCALE),
+    searchParams ?? Promise.resolve({} as { members_page?: string | string[] }),
   ]);
   const copy = dictionary.orderProfile;
   try {
@@ -59,6 +61,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return {
       title: `${order.name}${copy.metadataTitleSuffix}`,
       alternates: { canonical: `/zakony/${encodeURIComponent(order.slug)}` },
+      robots: directoryRobots(query),
       description:
         order.description ||
         order.mission ||

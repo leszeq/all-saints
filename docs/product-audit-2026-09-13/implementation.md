@@ -316,7 +316,7 @@ V1 bez nowych tabel; v2 PersonSlugRedirect(old_slug UNIQUE,person_id,created_at)
 
 **Frontend — strony, komponenty, stan, integracja API**
 
-web metadataBase z env; canonical i OG; sitemap.ts / robots.ts; BreadcrumbList; 301 UUID/old_slug; noindex wyników wyszukiwania, filtrów i paginacji; kontrola stron tematycznych; state URL. API przekierowuje wejścia przez UUID i historyczny slug statusem 301 do kanonicznego sluga, a frontend po pobraniu profilu domyka kanoniczny adres przez permanentRedirect. W tej iteracji zamknięto metadataBase, canonical/OG, sitemap/robots, BreadcrumbList, redirecty UUID/old_slug oraz dynamiczne noindex dla stanów katalogu; strony tematyczne, polityka indeksowania faset i state URL pozostają otwarte.
+web metadataBase z env; canonical i OG; sitemap.ts / robots.ts; BreadcrumbList; 301 UUID/old_slug; noindex wyników wyszukiwania, filtrów i paginacji; kontrola stron tematycznych; state URL. API przekierowuje wejścia przez UUID i historyczny slug statusem 301 do kanonicznego sluga, a frontend po pobraniu profilu domyka kanoniczny adres przez permanentRedirect. Strony bazowe katalogów i trwałe profile pojęć pozostają indeksowalne, natomiast warianty filtrów, wyszukiwania i paginacji otrzymują `noindex, follow`. W tej iteracji zamknięto metadataBase, canonical/OG, sitemap/robots, BreadcrumbList, redirecty UUID/old_slug, politykę stron tematycznych oraz dynamiczne noindex dla stanów katalogu; state URL pozostaje otwarty.
 
 **Tests — backend, frontend, E2E**
 

@@ -20,6 +20,7 @@ import { DEFAULT_WEB_UI_LOCALE } from "@/lib/i18n/config";
 import { getWebDictionary } from "@/lib/i18n/dictionaries";
 import { resolveDictionaryLabel } from "@/lib/i18n/labels";
 import type { WebDictionary } from "@/lib/i18n/types";
+import { directoryRobots } from "@/lib/directory-metadata";
 
 export const revalidate = 300;
 
@@ -85,11 +86,16 @@ function OrderCard({
   );
 }
 
-export async function generateMetadata(): Promise<Metadata> {
-  const dictionary = await getWebDictionary(DEFAULT_WEB_UI_LOCALE);
+export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
+  const [params, dictionary] = await Promise.all([
+    searchParams,
+    getWebDictionary(DEFAULT_WEB_UI_LOCALE),
+  ]);
   return {
     title: dictionary.ordersDirectory.metadataTitle,
     description: dictionary.ordersDirectory.metadataDescription,
+    alternates: { canonical: "/zakony" },
+    robots: directoryRobots(params),
   };
 }
 

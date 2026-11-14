@@ -23,3 +23,14 @@ test("search, filters and pagination are followed but not indexed", () => {
     });
   }
 });
+
+test("thematic member pagination stays on the canonical order page", () => {
+  assert.deepEqual(directoryRobots({ members_page: "2" }), {
+    index: false,
+    follow: true,
+  });
+  assert.deepEqual(directoryRobots({ members_page: "  " }), {
+    index: true,
+    follow: true,
+  });
+});

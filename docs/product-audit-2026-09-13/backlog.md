@@ -376,7 +376,7 @@ Brak kompletnego canonical/sitemap/robots; profil może działać pod slug i UUI
 - [x] 301 UUID/old_slug (API przekierowuje do kanonicznego sluga; frontend domyka adres kanoniczny).
 - [x] BreadcrumbList.
 - [x] noindex wyników wyszukiwania, filtrów i paginacji.
-- [ ] polityka indeksowania stron tematycznych.
+- [x] polityka indeksowania stron tematycznych: strony bazowe i profile pojęć są indeksowalne, a warianty katalogów oraz paginacji są tylko do śledzenia.
 - [ ] state URL.
 
 **Tests**
