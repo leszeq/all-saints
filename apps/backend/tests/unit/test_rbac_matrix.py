@@ -25,7 +25,15 @@ def test_super_admin_is_the_only_role_with_identity_management_permissions() -> 
 def test_admin_can_manage_content_but_not_users_or_roles() -> None:
     permissions = ROLE_PERMISSIONS[SystemRole.ADMIN]
 
-    assert {"persons:create", "persons:update", "persons:submit", "persons:review"} <= permissions
+    assert {
+        "persons:create",
+        "persons:update",
+        "persons:delete",
+        "persons:restore",
+        "persons:submit",
+        "persons:review",
+        "persons:publish",
+    } <= permissions
     assert "persons:publish" in permissions
     assert "users:read" not in permissions
     assert "roles:read" not in permissions

@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, BookOpenText, CalendarDays, Download, Edit, HeartHandshake, History, Loader2 } from "lucide-react";
+import { ArrowLeft, BookOpenText, CalendarDays, Download, Edit, HeartHandshake, History, Loader2, Trash2 } from "lucide-react";
 import { calendarApi, personsApi, sourcesApi } from "@/lib/api";
 import { useAuthStore } from "@/lib/store/auth";
 import { SaintAvatar } from "@/components/persons/saint-avatar";
@@ -82,11 +82,19 @@ export function PersonDetailClient({
   const router = useRouter();
   const id = params.id as string;
   const canEdit = useAuthStore((state) => state.hasPermission("persons:update"));
+  const canDelete = useAuthStore((state) => state.hasPermission("persons:delete"));
   const canExport = useAuthStore((state) => state.hasPermission("export:read"));
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [versionsPage, setVersionsPage] = useState(1);
   const versionsPerPage = 20;
+
+  const deleteMutation = useMutation({
+    mutationFn: () => personsApi.delete(id),
+    onSuccess: () => router.push("/dashboard/persons"),
+    onError: () => setDeleteError(copy.deleteError),
+  });
 
   const { data: personData, isLoading } = useQuery({
     queryKey: ["person", id],
@@ -142,6 +150,14 @@ export function PersonDetailClient({
     } finally {
       setIsExporting(false);
     }
+  };
+
+  const deleteProfile = () => {
+    if (!person || !window.confirm(`${copy.deleteConfirmPrefix} ${person.canonical_name}${copy.deleteConfirmSuffix}`)) {
+      return;
+    }
+    setDeleteError(null);
+    deleteMutation.mutate();
   };
 
   if (isLoading) {
@@ -222,6 +238,15 @@ export function PersonDetailClient({
 
         <div className="flex flex-wrap gap-2">
           {canExport && <button type="button" disabled={isExporting} onClick={() => { void exportProfile(); }} className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-semibold hover:bg-accent disabled:opacity-50">{isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} {copy.exportAction}</button>}
+          {canDelete && <button
+            type="button"
+            disabled={deleteMutation.isPending}
+            onClick={deleteProfile}
+            className="flex items-center gap-2 rounded-lg border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-rose-900/60 dark:text-rose-300 dark:hover:bg-rose-950/30"
+          >
+            {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            {deleteMutation.isPending ? copy.deletingAction : copy.deleteAction}
+          </button>}
           {canEdit && <button
             onClick={() => router.push(`/dashboard/persons/${id}/edit`)}
             className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors"
@@ -231,7 +256,7 @@ export function PersonDetailClient({
           </button>}
         </div>
       </div>
-      {exportError && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">{exportError}</p>}
+      {(exportError || deleteError) && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">{deleteError ?? exportError}</p>}
 
       {/* Main Grid */}
       <div className="grid gap-6 lg:grid-cols-3">

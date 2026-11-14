@@ -1514,6 +1514,10 @@ export interface AdminDictionary {
     };
     systemActor: string;
     editAction: string;
+    deleteAction: string;
+    deleteConfirmPrefix: string;
+    deleteConfirmSuffix: string;
+    deleteError: string;
     pagination: {
       pagePrefix: string;
       pageSeparator: string;
@@ -1846,8 +1850,13 @@ export interface AdminDictionary {
     backAriaLabel: string;
     exportAction: string;
     editAction: string;
+    deleteAction: string;
+    deletingAction: string;
+    deleteConfirmPrefix: string;
+    deleteConfirmSuffix: string;
     exportFileFallback: string;
     exportError: string;
+    deleteError: string;
     notFound: string;
     backToListAction: string;
     biography: {

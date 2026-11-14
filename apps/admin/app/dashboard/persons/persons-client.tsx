@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import {
   ChevronLeft,
   ChevronRight,
+  Loader2,
   Plus,
   RefreshCw,
   Search,
+  Trash2,
   Upload,
 } from "lucide-react";
 import { personsApi } from "@/lib/api";
@@ -86,6 +88,7 @@ export function PersonsClient({
   const hasPermission = useAuthStore((state) => state.hasPermission);
   const canCreate = hasPermission("persons:create");
   const canEdit = hasPermission("persons:update");
+  const canDelete = hasPermission("persons:delete");
   const canImport = hasPermission("import:create");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -93,6 +96,8 @@ export function PersonsClient({
   const [typeFilter, setTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [importOpen, setImportOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -112,6 +117,16 @@ export function PersonsClient({
         ...(typeFilter && { person_type: typeFilter }),
         ...(statusFilter && { status: statusFilter }),
       }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => personsApi.delete(id),
+    onSuccess: () => {
+      setDeleteError(null);
+      void refetch();
+    },
+    onError: () => setDeleteError(copy.deleteError),
+    onSettled: () => setDeletingId(null),
   });
 
   const persons = (data?.data?.items ?? []) as AdminPersonListItem[];
@@ -199,6 +214,7 @@ export function PersonsClient({
       <p className="text-xs text-muted-foreground">
         {copy.resultsPrefix} <strong>{numberFormatter.format(total)}</strong> {copy.resultsSuffix}
       </p>
+      {deleteError && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">{deleteError}</p>}
 
       {/* Table */}
       <div className="overflow-hidden rounded-xl border border-border bg-card">
@@ -322,15 +338,33 @@ export function PersonsClient({
                     {formatAdminDateTime(p.created_at, locale)}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    {canEdit && <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        router.push(`/dashboard/persons/${p.id}/edit`);
-                      }}
-                      className="rounded-md px-3 py-1 text-xs font-medium text-primary hover:bg-accent"
-                    >
-                      {copy.editAction}
-                    </button>}
+                    <div className="flex justify-end gap-1">
+                      {canEdit && <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/dashboard/persons/${p.id}/edit`);
+                        }}
+                        className="rounded-md px-3 py-1 text-xs font-medium text-primary hover:bg-accent"
+                      >
+                        {copy.editAction}
+                      </button>}
+                      {canDelete && <button
+                        type="button"
+                        disabled={deleteMutation.isPending}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!window.confirm(`${copy.deleteConfirmPrefix} ${p.canonical_name}${copy.deleteConfirmSuffix}`)) return;
+                          setDeleteError(null);
+                          setDeletingId(p.id);
+                          deleteMutation.mutate(p.id);
+                        }}
+                        className="inline-flex items-center gap-1 rounded-md border border-rose-200 px-2.5 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-rose-900/60 dark:text-rose-300 dark:hover:bg-rose-950/30"
+                      >
+                        {deletingId === p.id && deleteMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                        {copy.deleteAction}
+                      </button>}
+                    </div>
                   </td>
                 </tr>
               ))
