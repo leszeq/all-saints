@@ -71,6 +71,7 @@ async def test_restore_records_the_responsible_editor() -> None:
     editor_id = uuid.uuid4()
     person = SimpleNamespace(
         id=person_id,
+        status="draft",
         deleted_at=datetime.now(UTC),
         version=2,
         updated_at=datetime.now(UTC),
@@ -112,6 +113,7 @@ async def test_soft_delete_stages_an_audit_record_without_committing() -> None:
     editor_id = uuid.uuid4()
     person = SimpleNamespace(
         id=person_id,
+        status="draft",
         deleted_at=None,
         version=1,
         updated_at=datetime.now(UTC),
@@ -125,6 +127,7 @@ async def test_soft_delete_stages_an_audit_record_without_committing() -> None:
     db.execute = AsyncMock(return_value=_empty_snapshot_query_result())
     db.flush = AsyncMock()
     db.commit = AsyncMock()
+    db.refresh = AsyncMock()
 
     await PersonService(db).soft_delete_person(person, user_id=editor_id)
 

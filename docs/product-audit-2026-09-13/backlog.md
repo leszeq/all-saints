@@ -310,7 +310,7 @@ PATCH treści osoby published może zmienić live bez ponownej recenzji; tłumac
 - [x] Publikacja sprawdza `base_version`, aktualizuje scalarne pola `Person` oraz obsługiwane relacje atomowo i zapisuje audyt publikacji rewizji.
 - [x] Decyzje recenzenta mają optimistic locking, wymagają komentarza i zapisują zmianę statusu w audycie.
 - [x] Odczyt aktywnego draftu oraz rewizji w recenzji ma test regresyjny; formularz nie synchronizuje w tym trybie wpisu kalendarzowego ani relacji źródeł/zakonów z live.
-- [ ] wszystkie write paths respektują granicę.
+- [x] wszystkie write paths respektują granicę; usunięcie i przywrócenie opublikowanego profilu wymagają `persons:publish`.
 - [x] Frontend: konflikt zachowuje formularz i pokazuje porównanie wartości lokalnych z aktualnym snapshotem.
 - [x] E2E: dwie osoby edytują, tylko jedna publikuje zatwierdzoną rewizję.
 

@@ -122,11 +122,15 @@ async def delete_person(
             detail="Osoba nie została znaleziona",
         )
 
-    await service.soft_delete_person(
-        person,
-        user_id=current_user.id,
-        audit_context=audit_context_from_request(request, current_user),
-    )
+    try:
+        await service.soft_delete_person(
+            person,
+            user_id=current_user.id,
+            allow_published_update=current_user.has_permission("persons", "publish"),
+            audit_context=audit_context_from_request(request, current_user),
+        )
+    except PublishedContentChangeError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
 
 
 @router.post(
@@ -141,11 +145,15 @@ async def restore_person(
     current_user: User = Depends(require_permission("persons", "restore")),
 ) -> PersonDetailSchema:
     """Restore a soft-deleted person."""
-    person = await PersonService(db).restore_person(
-        person_id,
-        user_id=current_user.id,
-        audit_context=audit_context_from_request(request, current_user),
-    )
+    try:
+        person = await PersonService(db).restore_person(
+            person_id,
+            user_id=current_user.id,
+            allow_published_update=current_user.has_permission("persons", "publish"),
+            audit_context=audit_context_from_request(request, current_user),
+        )
+    except PublishedContentChangeError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     if person is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

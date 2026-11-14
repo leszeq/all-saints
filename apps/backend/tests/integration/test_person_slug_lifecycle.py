@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.commands.persons import PersonCreateSchema, PersonUpdateSchema
 from src.application.services.person_service import PersonService
+from src.application.services.published_content_guard import PublishedContentChangeError
 from src.domain.hagiography.models import Person, PublicationStatus
 
 
@@ -43,6 +44,32 @@ async def test_soft_deleted_slug_stays_reserved_and_restore_keeps_its_url(
         ).all()
     )
     assert persisted_slugs == {"test-polityki-adresu", "test-polityki-adresu-1"}
+
+
+@pytest.mark.asyncio
+async def test_published_person_delete_and_restore_require_publish_permission(
+    db_session: AsyncSession,
+) -> None:
+    service = PersonService(db_session)
+    person = await service.create_person(
+        PersonCreateSchema(canonical_name="Test granicy usuwania profilu")
+    )
+    person.status = PublicationStatus.PUBLISHED.value
+    await db_session.commit()
+    await db_session.refresh(person)
+
+    with pytest.raises(PublishedContentChangeError, match="persons:publish"):
+        await service.soft_delete_person(person)
+
+    await service.soft_delete_person(person, allow_published_update=True)
+    assert person.deleted_at is not None
+
+    with pytest.raises(PublishedContentChangeError, match="persons:publish"):
+        await service.restore_person(person.id)
+
+    restored = await service.restore_person(person.id, allow_published_update=True)
+    assert restored is not None
+    assert restored.deleted_at is None
 
 
 @pytest.mark.asyncio

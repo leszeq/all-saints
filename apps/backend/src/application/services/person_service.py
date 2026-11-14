@@ -370,9 +370,20 @@ class PersonService(PersonQueryService):
         person: Person,
         user_id: uuid.UUID | None = None,
         *,
+        allow_published_update: bool = False,
         audit_context: AuditContext | None = None,
     ) -> None:
         """Soft delete a person record."""
+        await self.db.refresh(
+            person,
+            attribute_names=["status", "version"],
+            with_for_update=True,
+        )
+        require_published_change_permission(
+            person,
+            allow_published_update=allow_published_update,
+            error_message="Usunięcie opublikowanego profilu wymaga uprawnienia persons:publish",
+        )
         previous_snapshot = await serialize_person_snapshot(self.db, person)
         person.deleted_at = datetime.now(UTC)
         person.version += 1
@@ -404,6 +415,7 @@ class PersonService(PersonQueryService):
         person_id: uuid.UUID,
         user_id: uuid.UUID | None = None,
         *,
+        allow_published_update: bool = False,
         audit_context: AuditContext | None = None,
     ) -> Person | None:
         """Restore a soft-deleted person record."""
@@ -419,10 +431,16 @@ class PersonService(PersonQueryService):
                 selectinload(Person.canonization),
             )
             .where(Person.id == person_id)
+            .with_for_update()
         )
         res = await self.db.execute(stmt)
         person = res.scalar_one_or_none()
         if person and person.deleted_at is not None:
+            require_published_change_permission(
+                person,
+                allow_published_update=allow_published_update,
+                error_message="Przywrócenie opublikowanego profilu wymaga uprawnienia persons:publish",
+            )
             previous_snapshot = await serialize_person_snapshot(self.db, person)
             person.deleted_at = None
             person.version += 1
