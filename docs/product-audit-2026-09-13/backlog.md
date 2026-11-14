@@ -373,7 +373,7 @@ Brak kompletnego canonical/sitemap/robots; profil może działać pod slug i UUI
 - [x] web metadataBase z env.
 - [x] canonical i OG.
 - [x] sitemap.ts / robots.ts.
-- [ ] 301 UUID/old_slug.
+- [x] 301 UUID/old_slug (API przekierowuje do kanonicznego sluga; frontend domyka adres kanoniczny).
 - [x] BreadcrumbList.
 - [x] noindex wyników wyszukiwania, filtrów i paginacji.
 - [ ] polityka indeksowania stron tematycznych.

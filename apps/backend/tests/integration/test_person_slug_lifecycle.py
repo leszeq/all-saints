@@ -105,6 +105,28 @@ async def test_renamed_published_person_keeps_a_permanent_slug_redirect(
 
 
 @pytest.mark.asyncio
+async def test_published_person_uuid_redirects_to_its_canonical_slug(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    service = PersonService(db_session)
+    person = await service.create_person(
+        PersonCreateSchema(canonical_name="Św. Kanoniczny Adres UUID")
+    )
+    person.status = PublicationStatus.PUBLISHED.value
+    await db_session.commit()
+    await db_session.refresh(person)
+
+    response = await async_client.get(
+        f"/api/v1/persons/{person.id}",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 301
+    assert response.headers["location"].endswith(f"/api/v1/persons/{person.slug}")
+
+
+@pytest.mark.asyncio
 async def test_public_person_index_is_published_only_and_cursor_paginated(
     async_client: AsyncClient,
     db_session: AsyncSession,
