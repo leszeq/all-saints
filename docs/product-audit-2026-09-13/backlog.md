@@ -226,10 +226,11 @@ Publikacja wymaga tekstów i licencji, ale nie wymaga źródła; can_publish ma 
 
 **Tests**
 
-- [ ] Backend: publikacja bez aktywnego źródła odrzucona.
-- [ ] usunięty link nie spełnia bramki.
+- [x] Backend: publikacja bez aktywnego źródła odrzucona.
+- [x] usunięty link nie spełnia bramki.
 - [x] Import nadpisujący i akceptacja AI respektują wspólny guard dla profilu opublikowanego.
 - [x] Frontend: can_publish i API zgodne.
+- [x] Publikacja rewizji korzysta z tej samej bramki i odrzuca nieaktywne/usunięte źródła oraz niepełny payload.
 - [ ] E2E: draft→source→review→published.
 
 **Infrastructure**
@@ -238,10 +239,10 @@ Publikacja wymaga tekstów i licencji, ale nie wymaga źródła; can_publish ma 
 
 **Definition of Done**
 
-- [ ] Jedna polityka dla badge, kolejki i API.
+- [x] Jedna polityka dla badge, kolejki i API.
 - [ ] legacy ma listę naprawczą i właściciela.
 - [ ] wyjątek jawny z powodem.
-- [ ] test nie pozwala ominąć bramki alternatywną mutacją.
+- [x] test nie pozwala ominąć bramki alternatywną mutacją.
 
 **Dependencies**
 

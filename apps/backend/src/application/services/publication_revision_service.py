@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
-from typing import Any
+from types import SimpleNamespace
+from typing import Any, cast
 
 from fastapi.encoders import jsonable_encoder
 from pydantic import ValidationError
@@ -12,23 +13,29 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.commands.persons import PersonUpdateSchema
+from src.application.editorial_models import EditorialIssueSchema
 from src.application.services.audit_service import AuditContext, add_audit_log
+from src.application.services.editorial_quality import EditorialQualityPolicy
 from src.application.services.person_service import PersonService, PersonVersionConflictError
 from src.application.services.person_snapshot import (
     lock_person_for_snapshot,
     serialize_person_snapshot,
 )
+from src.application.services.publication_policy import PublicationPolicy
 from src.domain.hagiography.models import (
+    Person,
     PublicationRevision,
     PublicationRevisionStatus,
     PublicationStatus,
 )
 from src.domain.identity.models import AuditAction
+from src.domain.sources.models import Image
 
 __all__ = [
     "PublicationRevisionConflictError",
     "PublicationRevisionNotFoundError",
     "PublicationRevisionPayloadError",
+    "PublicationRevisionPublicationBlockedError",
     "PublicationRevisionService",
     "PublicationRevisionStateError",
     "PublicationRevisionVersionConflictError",
@@ -138,6 +145,14 @@ class PublicationRevisionPayloadError(ValueError):
     def __init__(self, details: list[dict[str, str]]) -> None:
         self.details = details
         super().__init__("Dane rewizji zawierają błędy walidacji")
+
+
+class PublicationRevisionPublicationBlockedError(PublicationRevisionStateError):
+    """Raised when a reviewed revision still fails the publication gate."""
+
+    def __init__(self, blockers: list[EditorialIssueSchema]) -> None:
+        self.blockers = blockers
+        super().__init__(PublicationPolicy.rejection_message(blockers))
 
 
 class PublicationRevisionService:
@@ -544,6 +559,10 @@ class PublicationRevisionService:
                 "Rewizję można opublikować tylko dla nadal opublikowanego profilu"
             )
 
+        blockers = await self._publication_blockers(person, revision.payload)
+        if blockers:
+            raise PublicationRevisionPublicationBlockedError(blockers)
+
         publish_summary = note.strip() if note else None
         if not publish_summary:
             publish_summary = revision.change_summary or f"Publikacja rewizji #{revision.revision_number}"
@@ -607,6 +626,75 @@ class PublicationRevisionService:
         await self.db.flush()
         await self.db.refresh(revision)
         return revision
+
+    async def _publication_blockers(
+        self,
+        person: Person,
+        payload: dict[str, Any],
+    ) -> list[EditorialIssueSchema]:
+        """Evaluate the shared publication policy against the revision payload."""
+        source_count = int(
+            (
+                await self.db.execute(
+                    select(EditorialQualityPolicy.source_count_expression()).where(
+                        Person.id == person.id
+                    )
+                )
+            ).scalar_one()
+            or 0
+        )
+        image_licenses = list(
+            (
+                await self.db.execute(
+                    select(Image.license)
+                    .where(Image.person_id == person.id, Image.deleted_at.is_(None))
+                    .order_by(Image.is_primary.desc(), Image.sort_order.asc(), Image.id.asc())
+                )
+            )
+            .scalars()
+            .all()
+        )
+        edited_relations = set(payload.get(REVISION_EDITED_RELATION_FIELDS_KEY, []))
+        if "avatar" in edited_relations:
+            avatar = payload.get("avatar")
+            if avatar is not None:
+                avatar_license = (
+                    avatar.get("license", "unknown")
+                    if isinstance(avatar, dict)
+                    else "unknown"
+                )
+                has_primary_image = bool(
+                    await self.db.scalar(
+                        select(Image.id).where(
+                            Image.person_id == person.id,
+                            Image.deleted_at.is_(None),
+                            Image.is_primary.is_(True),
+                        )
+                    )
+                )
+                if has_primary_image:
+                    image_licenses[0] = avatar_license
+                else:
+                    image_licenses.append(avatar_license)
+
+        projection = SimpleNamespace(
+            summary_pl=payload.get("summary_pl", person.summary_pl),
+            biography_pl=payload.get("biography_pl", person.biography_pl),
+            birth_year=payload.get("birth_year", person.birth_year),
+            death_year=payload.get("death_year", person.death_year),
+            state_of_life_id=payload.get("state_of_life_id", person.state_of_life_id),
+        )
+        return PublicationPolicy.blockers(
+            EditorialQualityPolicy.issues(
+                cast(Person, projection),
+                source_count=source_count,
+                image_count=len(image_licenses),
+                unknown_license_count=sum(
+                    getattr(license_value, "value", license_value) == "unknown"
+                    for license_value in image_licenses
+                ),
+            )
+        )
 
     @staticmethod
     def _person_update_from_payload(

@@ -11,6 +11,7 @@ from src.application.services.person_service import PersonVersionConflictError
 from src.application.services.publication_revision_service import (
     PublicationRevisionNotFoundError,
     PublicationRevisionPayloadError,
+    PublicationRevisionPublicationBlockedError,
     PublicationRevisionService,
     PublicationRevisionStateError,
     PublicationRevisionVersionConflictError,
@@ -229,6 +230,17 @@ async def publish_person_revision(
         )
     except PublicationRevisionNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PublicationRevisionPublicationBlockedError as exc:
+        blockers = [item.model_dump(mode="json") for item in exc.blockers]
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "message": str(exc),
+                "code": "publication_blocked",
+                "blockers": blockers,
+                "details": blockers,
+            },
+        ) from exc
     except PublicationRevisionStateError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except PublicationRevisionPayloadError as exc:

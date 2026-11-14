@@ -1,6 +1,7 @@
 """Integration coverage for isolated publication revision drafts."""
 
 import runpy
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -13,6 +14,7 @@ from src.application.services.person_service import PersonService, PersonVersion
 from src.application.services.publication_revision_service import (
     PublicationRevisionConflictError,
     PublicationRevisionPayloadError,
+    PublicationRevisionPublicationBlockedError,
     PublicationRevisionService,
     PublicationRevisionStateError,
     PublicationRevisionVersionConflictError,
@@ -28,7 +30,7 @@ from src.domain.hagiography.models import (
     PublicationStatus,
 )
 from src.domain.identity.models import AuditLog
-from src.domain.sources.models import Image
+from src.domain.sources.models import Bibliography, Image, PersonSource, SourceType
 
 _BACKFILL_MIGRATION = runpy.run_path(
     str(Path(__file__).parents[2] / "alembic/versions/0029_backfill_published_revision_pointer.py")
@@ -40,14 +42,91 @@ async def _published_person(db_session: AsyncSession) -> Person:
         PersonCreateSchema(
             canonical_name="Św. Rewizja Testowa",
             summary_pl="Aktualny opis publiczny",
+            biography_pl="Biogram testowego profilu.",
             person_type="saint",
             gender="male",
         )
     )
     person.status = PublicationStatus.PUBLISHED.value
     await db_session.flush()
+    bibliography = Bibliography(
+        source_type=SourceType.BOOK.value,
+        title="Źródło rewizji testowej",
+    )
+    db_session.add(bibliography)
+    await db_session.flush()
+    db_session.add(PersonSource(person_id=person.id, bibliography_id=bibliography.id))
+    await db_session.flush()
     await db_session.refresh(person)
     return person
+
+
+@pytest.mark.asyncio
+async def test_publish_revision_reuses_publication_gate_for_deleted_sources(
+    db_session: AsyncSession,
+) -> None:
+    person = await _published_person(db_session)
+    source = await db_session.scalar(
+        select(PersonSource).where(PersonSource.person_id == person.id)
+    )
+    assert source is not None
+    source.deleted_at = datetime.now(UTC)
+    await db_session.flush()
+
+    service = PublicationRevisionService(db_session)
+    revision = await service.create_draft(
+        person.id,
+        expected_version=person.version,
+        author_id=None,
+    )
+    submitted = await service.submit_for_review(
+        revision.id,
+        expected_version=revision.version,
+        author_id=None,
+    )
+
+    with pytest.raises(PublicationRevisionPublicationBlockedError) as error:
+        await service.publish(
+            revision.id,
+            expected_version=submitted.version,
+            author_id=None,
+        )
+
+    assert [blocker.code for blocker in error.value.blockers] == ["missing_sources"]
+
+
+@pytest.mark.asyncio
+async def test_publish_revision_checks_payload_content_before_live_mutation(
+    db_session: AsyncSession,
+) -> None:
+    person = await _published_person(db_session)
+    service = PublicationRevisionService(db_session)
+    revision = await service.create_draft(
+        person.id,
+        expected_version=person.version,
+        author_id=None,
+    )
+    updated = await service.update_draft(
+        revision.id,
+        expected_version=revision.version,
+        changes={"summary_pl": ""},
+        author_id=None,
+    )
+    submitted = await service.submit_for_review(
+        revision.id,
+        expected_version=updated.version,
+        author_id=None,
+    )
+
+    with pytest.raises(PublicationRevisionPublicationBlockedError) as error:
+        await service.publish(
+            revision.id,
+            expected_version=submitted.version,
+            author_id=None,
+        )
+
+    assert [blocker.code for blocker in error.value.blockers] == ["missing_summary"]
+    assert person.summary_pl == "Aktualny opis publiczny"
 
 
 @pytest.mark.asyncio
@@ -368,6 +447,8 @@ async def test_scalar_revision_publish_preserves_relations_not_edited_in_draft(
     person = await PersonService(db_session).create_person(
         PersonCreateSchema(
             canonical_name="Św. Rewizja z relacjami",
+            summary_pl="Aktualne streszczenie",
+            biography_pl="Aktualny biogram.",
             person_type="saint",
             gender="male",
             avatar={
@@ -382,6 +463,14 @@ async def test_scalar_revision_publish_preserves_relations_not_edited_in_draft(
         )
     )
     person.status = PublicationStatus.PUBLISHED.value
+    await db_session.flush()
+    bibliography = Bibliography(
+        source_type=SourceType.BOOK.value,
+        title="Źródło profilu z relacjami",
+    )
+    db_session.add(bibliography)
+    await db_session.flush()
+    db_session.add(PersonSource(person_id=person.id, bibliography_id=bibliography.id))
     await db_session.flush()
     await db_session.refresh(person)
 
