@@ -20,12 +20,12 @@ JSON.stringify w script dangerouslySetInnerHTML nie neutralizuje zamknięcia zna
 
 **Backend**
 
-- [ ] API bez zmian.
-- [ ] walidacja treści pomocnicza nie zastępuje bezpiecznego renderera.
+- [x] API bez zmian.
+- [x] walidacja treści pomocnicza nie zastępuje bezpiecznego renderera.
 
 **Database**
 
-- [ ] Brak migracji ani masowej zmiany danych.
+- [x] Brak migracji ani masowej zmiany danych.
 
 **Frontend**
 
@@ -36,19 +36,19 @@ JSON.stringify w script dangerouslySetInnerHTML nie neutralizuje zamknięcia zna
 **Tests**
 
 - [ ] Backend: bez nowych testów gdy kontrakt bez zmian.
-- [ ] Frontend: payload zawierający zamknięcie script, Unicode i cudzysłowy.
+- [x] Frontend: payload zawierający zamknięcie script, Unicode i cudzysłowy.
 - [ ] E2E na fixture izolowanym: jedno script JSON-LD, brak dodatkowego elementu/wykonania.
 
 **Infrastructure**
 
 - [ ] CSP jest dodatkową ochroną FEATURE-038.
-- [ ] nie uzależniać szybkiego fixu od wdrożenia CSP.
+- [x] nie uzależniać szybkiego fixu od wdrożenia CSP.
 
 **Definition of Done**
 
-- [ ] Serializator poprawnie obsługuje niebezpieczny fragment i zwykłe nazwy.
-- [ ] JSON po odczycie zachowuje oryginalną wartość.
-- [ ] żadna ścieżka nie osadza surowego JSON.stringify.
+- [x] Serializator poprawnie obsługuje niebezpieczny fragment i zwykłe nazwy.
+- [x] JSON po odczycie zachowuje oryginalną wartość.
+- [x] żadna ścieżka nie osadza surowego JSON.stringify.
 
 **Dependencies**
 
