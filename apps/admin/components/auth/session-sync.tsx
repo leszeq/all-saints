@@ -10,6 +10,8 @@ export function SessionSync({ children }: { children: React.ReactNode }) {
   const copy = useAdminSystemCopy().loading;
   const setAuth = useAuthStore((state) => state.setAuth);
   const [sessionReady, setSessionReady] = useState(false);
+  const [sessionError, setSessionError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -25,7 +27,7 @@ export function SessionSync({ children }: { children: React.ReactNode }) {
       } catch {
         if (!active) return;
         useAuthStore.getState().logout();
-        window.location.replace("/login");
+        setSessionError(true);
       }
     };
 
@@ -34,7 +36,40 @@ export function SessionSync({ children }: { children: React.ReactNode }) {
     return () => {
       active = false;
     };
-  }, [setAuth]);
+  }, [retryCount, setAuth]);
+
+  if (sessionError) {
+    return (
+      <div
+        className="flex min-h-screen items-center justify-center bg-background p-6"
+        aria-live="assertive"
+      >
+        <div className="admin-card w-full max-w-md space-y-4 px-5 py-5 text-sm">
+          <p className="font-semibold text-foreground">{copy.sessionError}</p>
+          <p className="text-muted-foreground">{copy.sessionErrorDescription}</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setSessionError(false);
+                setRetryCount((count) => count + 1);
+              }}
+              className="rounded-lg bg-primary px-4 py-2 font-semibold text-primary-foreground hover:bg-primary/90"
+            >
+              {copy.retrySession}
+            </button>
+            <button
+              type="button"
+              onClick={() => window.location.replace("/login")}
+              className="rounded-lg border border-border px-4 py-2 font-semibold hover:bg-muted"
+            >
+              {copy.loginAction}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!sessionReady) {
     return (

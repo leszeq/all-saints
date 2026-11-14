@@ -329,6 +329,10 @@ export interface AdminDictionary {
       application: string;
       dashboard: string;
       sessionVerification: string;
+      sessionError: string;
+      sessionErrorDescription: string;
+      retrySession: string;
+      loginAction: string;
     };
     apiErrors: {
       unauthorized: string;

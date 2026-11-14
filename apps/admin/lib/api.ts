@@ -43,10 +43,13 @@ import type {
 
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_REQUEST_TIMEOUT_MS = 60_000;
+const REFRESH_REQUEST_TIMEOUT_MS = 15_000;
 
 export const api = axios.create({
   baseURL: `${API_BASE_URL}/api/v1`,
   withCredentials: true, // HttpOnly refresh cookie
+  timeout: API_REQUEST_TIMEOUT_MS,
   headers: { "Content-Type": "application/json" },
 });
 
@@ -95,7 +98,7 @@ async function refreshAccessToken(): Promise<string> {
       .post<TokenResponse>(
         `${API_BASE_URL}/api/v1/auth/refresh`,
         {},
-        { withCredentials: true },
+        { withCredentials: true, timeout: REFRESH_REQUEST_TIMEOUT_MS },
       )
       .then(({ data }) => {
         useAuthStore.getState().setAccessToken(data.access_token);

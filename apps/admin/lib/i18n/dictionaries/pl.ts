@@ -305,6 +305,11 @@ const dictionary = {
       application: "Trwa wczytywanie aplikacji.",
       dashboard: "Trwa wczytywanie panelu administracyjnego.",
       sessionVerification: "Weryfikowanie bezpiecznej sesji…",
+      sessionError: "Nie udało się zweryfikować sesji.",
+      sessionErrorDescription:
+        "Serwer API nie odpowiedział na czas albo sesja wygasła. Sprawdź połączenie i spróbuj ponownie.",
+      retrySession: "Spróbuj ponownie",
+      loginAction: "Przejdź do logowania",
     },
     apiErrors: {
       unauthorized: "Sesja wygasła. Zaloguj się ponownie.",
