@@ -462,6 +462,10 @@ async def test_editor_and_reviewer_complete_the_full_publication_flow(
     assert returned.status_code == 200
     assert resubmitted.status_code == 200
     assert approved_without_source.status_code == 409
+    publication_blocked = approved_without_source.json()["detail"]
+    assert publication_blocked["code"] == "publication_blocked"
+    assert publication_blocked["blockers"] == publication_blocked["details"]
+    assert any(blocker["code"] == "missing_sources" for blocker in publication_blocked["blockers"])
     assert approved.status_code == 200
     assert approved.json()["status"] == "published"
     assert editor_published_edit.status_code == 403

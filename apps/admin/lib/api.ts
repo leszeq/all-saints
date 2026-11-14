@@ -55,7 +55,17 @@ export const api = axios.create({
 
 interface ApiErrorPayload {
   error?: string;
-  detail?: string | { message?: string; errors?: unknown[] } | Array<unknown>;
+  detail?:
+    | string
+    | {
+        code?: string;
+        message?: string;
+        errors?: unknown[];
+        blockers?: unknown[];
+        details?: unknown[];
+      }
+    | Array<unknown>;
+  blockers?: unknown[];
   message?: string;
   details?: unknown[];
   request_id?: string | null;
@@ -121,14 +131,21 @@ export function getApiErrorMessage(
   }
 
   const payload = error.response?.data;
+  const nestedDetail =
+    payload?.detail &&
+    typeof payload.detail === "object" &&
+    !Array.isArray(payload.detail)
+      ? payload.detail
+      : undefined;
   const localizedCodeMessage = payload?.error
     ? options.messagesByCode?.[payload.error]
-    : undefined;
-  if (payload?.details?.length) {
-    const structuredMessage = payload.details
-      .map((value) => {
-        const detail = normalizeApiErrorDetail(value);
-        if (!detail) return null;
+    : nestedDetail?.code
+      ? options.messagesByCode?.[nestedDetail.code]
+      : undefined;
+  const details = getApiErrorDetails(error);
+  if (details.length) {
+    const structuredMessage = details
+      .map((detail) => {
         const fieldName = detail.field ? formatApiErrorField(detail.field) : undefined;
         return fieldName
           ? `${fieldName}: ${detail.message ?? options.invalidValue}`
@@ -137,13 +154,16 @@ export function getApiErrorMessage(
       .filter((message): message is string => Boolean(message))
       .join(" · ");
     if (structuredMessage) {
-      return [localizedCodeMessage, structuredMessage].filter(Boolean).join(" · ");
+      return [localizedCodeMessage, nestedDetail?.message, structuredMessage]
+        .filter(Boolean)
+        .join(" · ");
     }
   }
 
   if (localizedCodeMessage) return localizedCodeMessage;
 
   if (payload?.message) return payload.message;
+  if (nestedDetail?.message) return nestedDetail.message;
   if (typeof payload?.detail === "string") return payload.detail;
   if (Array.isArray(payload?.detail)) {
     const validationMessages = payload.detail
@@ -218,13 +238,16 @@ export function getApiErrorDetails(error: unknown): ApiErrorDetail[] {
     rawDetails = payload.details;
   } else if (Array.isArray(payload.detail)) {
     rawDetails = payload.detail;
-  } else if (
-    payload.detail &&
-    typeof payload.detail === "object" &&
-    !Array.isArray(payload.detail) &&
-    Array.isArray(payload.detail.errors)
-  ) {
-    rawDetails = payload.detail.errors;
+  } else if (Array.isArray(payload.blockers)) {
+    rawDetails = payload.blockers;
+  } else if (payload.detail && typeof payload.detail === "object" && !Array.isArray(payload.detail)) {
+    if (Array.isArray(payload.detail.details)) {
+      rawDetails = payload.detail.details;
+    } else if (Array.isArray(payload.detail.blockers)) {
+      rawDetails = payload.detail.blockers;
+    } else if (Array.isArray(payload.detail.errors)) {
+      rawDetails = payload.detail.errors;
+    }
   }
 
   return rawDetails

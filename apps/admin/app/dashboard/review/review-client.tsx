@@ -22,7 +22,13 @@ import {
   X,
 } from "lucide-react";
 import { SaintAvatar } from "@/components/persons/saint-avatar";
-import { editorialApi, getApiErrorMessage } from "@/lib/api";
+import {
+  editorialApi,
+  formatApiErrorField,
+  getApiErrorDetails,
+  getApiErrorMessage,
+  type ApiErrorDetail,
+} from "@/lib/api";
 import { focusFirstDialogControl } from "@/lib/focus";
 import { useAuthStore } from "@/lib/store/auth";
 import {
@@ -104,6 +110,8 @@ export function EditorialQueueClient({
   const [priorityFilter, setPriorityFilter] = useState<QueuePriorityFilter>(initialFilters.priority);
   const [attentionFilter, setAttentionFilter] = useState(initialFilters.attention);
   const [actionError, setActionError] = useState("");
+  const [actionErrorDetails, setActionErrorDetails] = useState<ApiErrorDetail[]>([]);
+  const [actionErrorPersonId, setActionErrorPersonId] = useState<string | null>(null);
   const [returnDecision, setReturnDecision] = useState<{
     id: string;
     version: number;
@@ -140,16 +148,24 @@ export function EditorialQueueClient({
   const transitionMutation = useMutation({
     mutationFn: ({ id, targetStatus, version, note }: { id: string; targetStatus: PublicationStatus; version: number; note?: string }) =>
       editorialApi.transition(id, targetStatus, version, note),
-    onMutate: () => setActionError(""),
+    onMutate: () => {
+      setActionError("");
+      setActionErrorDetails([]);
+      setActionErrorPersonId(null);
+    },
     onSuccess: async () => {
       setReturnDecision(null);
       setReturnNote("");
+      setActionErrorDetails([]);
+      setActionErrorPersonId(null);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["editorial"] }),
         queryClient.invalidateQueries({ queryKey: ["persons"] }),
       ]);
     },
-    onError: (error) =>
+    onError: (error, variables) => {
+      setActionErrorDetails(getApiErrorDetails(error));
+      setActionErrorPersonId(variables.id);
       setActionError(
         getApiErrorMessage(error, {
           messagesByCode: {
@@ -167,7 +183,8 @@ export function EditorialQueueClient({
           httpError: (status) =>
             `${copy.errors.requestFailedPrefix}${status}${copy.errors.requestFailedSuffix}`,
         }),
-      ),
+      );
+    },
   });
 
   const queue = queueQuery.data?.data;
@@ -292,7 +309,37 @@ export function EditorialQueueClient({
 
         {actionError && (
           <div className="m-4 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> {actionError}
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p>{actionError}</p>
+              {actionErrorDetails.length > 0 && (
+                <details className="mt-2 rounded-md border border-rose-200/80 bg-white/50 p-2 dark:border-rose-900/60 dark:bg-rose-950/20">
+                  <summary className="cursor-pointer font-semibold underline-offset-4 hover:underline">
+                    {copy.errors.detailsToggle} ({actionErrorDetails.length})
+                  </summary>
+                  <ul className="mt-2 space-y-2">
+                    {actionErrorDetails.map((detail, index) => (
+                      <li key={`${detail.code ?? detail.field ?? "blocker"}-${index}`} className="rounded border border-rose-200/70 bg-rose-50/70 p-2 dark:border-rose-900/50 dark:bg-rose-950/30">
+                        <p className="font-medium">{detail.message ?? detail.code ?? copy.errors.invalidValue}</p>
+                        {detail.field && (
+                          <code className="mt-1 block break-all text-[11px] text-rose-700/80 dark:text-rose-300/80">
+                            {formatApiErrorField(detail.field)}
+                          </code>
+                        )}
+                        {detail.code === "missing_sources" && actionErrorPersonId && (
+                          <Link
+                            href={`/dashboard/persons/${actionErrorPersonId}/edit#sources`}
+                            className="mt-2 inline-flex font-semibold underline underline-offset-2 hover:no-underline"
+                          >
+                            {copy.errors.openSources}
+                          </Link>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </div>
           </div>
         )}
 

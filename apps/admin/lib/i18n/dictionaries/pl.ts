@@ -559,6 +559,8 @@ const dictionary = {
       invalidValue: "nieprawidłowa wartość",
       invalidData: "API zwróciło nieprawidłowe dane.",
       network: "Nie udało się połączyć z API. Sprawdź, czy backend działa na porcie 8000.",
+      detailsToggle: "Pokaż szczegóły blokady publikacji",
+      openSources: "Otwórz zakładkę Źródła profilu",
       requestFailedPrefix: "Nie udało się zapisać decyzji (HTTP ",
       requestFailedSuffix: ").",
     },

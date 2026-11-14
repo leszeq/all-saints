@@ -574,6 +574,8 @@ export interface AdminDictionary {
       invalidValue: string;
       invalidData: string;
       network: string;
+      detailsToggle: string;
+      openSources: string;
       requestFailedPrefix: string;
       requestFailedSuffix: string;
     };
