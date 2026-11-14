@@ -11,6 +11,7 @@ import { DEFAULT_WEB_UI_LOCALE } from "@/lib/i18n/config";
 import { getWebDictionary } from "@/lib/i18n/dictionaries";
 import { resolveDictionaryLabel, resolveDictionaryValue } from "@/lib/i18n/labels";
 import { stripMarkdown } from "@/components/markdown-content";
+import { absoluteSiteUrl } from "@/lib/site-url";
 
 export const revalidate = 300;
 
@@ -32,7 +33,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const data = await loadConcept(slug);
     return {
       title: `${data.concept.name_pl}${copy.metadataTitleSuffix}`,
-      alternates: { canonical: `/patronaty/${encodeURIComponent(data.concept.slug)}` },
+      alternates: {
+        canonical: absoluteSiteUrl(`/patronaty/${encodeURIComponent(data.concept.slug)}`),
+      },
       description:
         data.concept.description || `${copy.metadataDescriptionPrefix}${data.concept.name_pl}.`,
     };

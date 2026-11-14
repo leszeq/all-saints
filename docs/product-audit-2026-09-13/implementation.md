@@ -320,7 +320,7 @@ web metadataBase z env; canonical i OG; sitemap.ts / robots.ts; BreadcrumbList; 
 
 **Tests — backend, frontend, E2E**
 
-Backend: brak draftów w indeksie (test obejmuje także rekord usunięty); Frontend: absolutne canonical/OG oraz test reguły robots dla bazowego katalogu, wyszukiwania, filtrów i paginacji; E2E crawler fixture: brak pętli redirect, sitemap zawiera canonical i poprawne statusy, publikacja/usunięcie odświeża indeks.
+Backend: brak draftów w indeksie (test obejmuje także rekord usunięty); Frontend: absolutne canonical/OG z `absoluteSiteUrl` oraz test reguły robots dla bazowego katalogu, wyszukiwania, filtrów i paginacji; E2E crawler fixture: brak pętli redirect, sitemap zawiera canonical i poprawne statusy, publikacja/usunięcie odświeża indeks.
 
 **Infrastructure**
 

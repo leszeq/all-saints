@@ -60,7 +60,9 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
     const order = await loadOrder(slug, 1);
     return {
       title: `${order.name}${copy.metadataTitleSuffix}`,
-      alternates: { canonical: `/zakony/${encodeURIComponent(order.slug)}` },
+      alternates: {
+        canonical: absoluteSiteUrl(`/zakony/${encodeURIComponent(order.slug)}`),
+      },
       robots: directoryRobots(query),
       description:
         order.description ||
@@ -68,7 +70,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
         `${copy.metadataDescriptionPrefix}${order.name}.`,
       openGraph: {
         title: order.name,
-        url: `/zakony/${encodeURIComponent(order.slug)}`,
+        url: absoluteSiteUrl(`/zakony/${encodeURIComponent(order.slug)}`),
         description:
           order.description ||
           order.mission ||

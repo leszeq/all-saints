@@ -20,6 +20,7 @@ import type { ReligiousOrder } from "@/lib/orders";
 import { stripMarkdown } from "@/components/markdown-content";
 import { directoryRobots, type DirectorySearchParams } from "@/lib/directory-metadata";
 import { buildSaintsDirectoryHref } from "@/lib/directory-state";
+import { absoluteSiteUrl } from "@/lib/site-url";
 
 export const revalidate = 30;
 
@@ -91,7 +92,7 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
   return {
     title: dictionary.saintsDirectory.title,
     description: dictionary.saintsDirectory.description,
-    alternates: { canonical: "/swieci" },
+    alternates: { canonical: absoluteSiteUrl("/swieci") },
     robots: directoryRobots(params),
   };
 }

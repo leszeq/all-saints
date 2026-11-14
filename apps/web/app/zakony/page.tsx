@@ -21,6 +21,7 @@ import { getWebDictionary } from "@/lib/i18n/dictionaries";
 import { resolveDictionaryLabel } from "@/lib/i18n/labels";
 import type { WebDictionary } from "@/lib/i18n/types";
 import { directoryRobots } from "@/lib/directory-metadata";
+import { absoluteSiteUrl } from "@/lib/site-url";
 
 export const revalidate = 300;
 
@@ -94,7 +95,7 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
   return {
     title: dictionary.ordersDirectory.metadataTitle,
     description: dictionary.ordersDirectory.metadataDescription,
-    alternates: { canonical: "/zakony" },
+    alternates: { canonical: absoluteSiteUrl("/zakony") },
     robots: directoryRobots(params),
   };
 }

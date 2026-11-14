@@ -71,14 +71,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const person = await fetchPersonDetail(slug, DEFAULT_WEB_UI_LOCALE);
     if (!person) return { title: copy.notFoundTitle };
     const content = readPublicPersonContent(person);
+    const profilePath = `/swieci/${encodeURIComponent(String(person.slug))}`;
+    const profileUrl = absoluteSiteUrl(profilePath);
     return {
       title: `${content.canonicalName}${copy.metadataTitleSuffix}`,
-      alternates: { canonical: `/swieci/${encodeURIComponent(String(person.slug))}` },
+      alternates: { canonical: profileUrl },
       description:
         stripMarkdown(content.summary ?? "") || `${copy.metadataDescriptionPrefix}${content.canonicalName}.`,
       openGraph: {
         title: content.canonicalName,
-        url: `/swieci/${encodeURIComponent(String(person.slug))}`,
+        url: profileUrl,
         description:
           stripMarkdown(content.summary ?? "") || `${copy.metadataBiographyPrefix}${content.canonicalName}`,
         images: person.avatar?.url
