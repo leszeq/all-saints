@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { BookOpen, ChevronRight, Search } from "lucide-react";
 import {
@@ -17,13 +18,14 @@ import { LEGACY_ERA_PERIODS, LEGACY_SEARCH_PATRONAGES } from "@/lib/person-filte
 import { highlightSearchText } from "@/lib/search-highlight";
 import type { ReligiousOrder } from "@/lib/orders";
 import { stripMarkdown } from "@/components/markdown-content";
+import { directoryRobots, type DirectorySearchParams } from "@/lib/directory-metadata";
 
 export const revalidate = 30;
 
 type SearchParamValue = string | string[] | undefined;
 
 interface PageProps {
-  searchParams: Promise<{
+  searchParams: Promise<DirectorySearchParams & {
     search?: SearchParamValue;
     type?: SearchParamValue;
     era?: SearchParamValue;
@@ -78,6 +80,19 @@ function validParamValues(
   return Array.from(
     new Set(normalizeParamValues(value).filter((item) => item in dictionary)),
   );
+}
+
+export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
+  const [params, dictionary] = await Promise.all([
+    searchParams,
+    getWebDictionary(DEFAULT_WEB_UI_LOCALE),
+  ]);
+  return {
+    title: dictionary.saintsDirectory.title,
+    description: dictionary.saintsDirectory.description,
+    alternates: { canonical: "/swieci" },
+    robots: directoryRobots(params),
+  };
 }
 
 function buildDirectoryHref({

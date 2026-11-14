@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --experimental-strip-types --test lib/json-ld.test.ts",
+    "test": "node --experimental-strip-types --test lib/*.test.ts",
     "audit": "npm audit --audit-level=high",
     "type-check": "tsc --noEmit"
   },

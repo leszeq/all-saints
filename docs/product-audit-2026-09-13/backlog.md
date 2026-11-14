@@ -375,7 +375,8 @@ Brak kompletnego canonical/sitemap/robots; profil może działać pod slug i UUI
 - [x] sitemap.ts / robots.ts.
 - [ ] 301 UUID/old_slug.
 - [x] BreadcrumbList.
-- [ ] noindex wyszukiwania, kontrola stron tematycznych i paginacji.
+- [x] noindex wyników wyszukiwania, filtrów i paginacji.
+- [ ] polityka indeksowania stron tematycznych.
 - [ ] state URL.
 
 **Tests**
