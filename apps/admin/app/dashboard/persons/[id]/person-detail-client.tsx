@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, BookOpenText, CalendarDays, Download, Edit, HeartHandshake, History, Loader2, Trash2 } from "lucide-react";
 import { calendarApi, personsApi, sourcesApi } from "@/lib/api";
@@ -80,6 +80,7 @@ export function PersonDetailClient({
 }: PersonDetailClientProps) {
   const params = useParams();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const id = params.id as string;
   const canEdit = useAuthStore((state) => state.hasPermission("persons:update"));
   const canDelete = useAuthStore((state) => state.hasPermission("persons:delete"));
@@ -92,7 +93,14 @@ export function PersonDetailClient({
 
   const deleteMutation = useMutation({
     mutationFn: () => personsApi.delete(id),
-    onSuccess: () => router.push("/dashboard/persons"),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["persons"] }),
+        queryClient.invalidateQueries({ queryKey: ["editorial"] }),
+        queryClient.removeQueries({ queryKey: ["person", id] }),
+      ]);
+      router.push("/dashboard/persons");
+    },
     onError: () => setDeleteError(copy.deleteError),
   });
 

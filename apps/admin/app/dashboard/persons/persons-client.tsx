@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import {
   ChevronLeft,
@@ -85,6 +85,7 @@ export function PersonsClient({
   locale,
 }: PersonsClientProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const hasPermission = useAuthStore((state) => state.hasPermission);
   const canCreate = hasPermission("persons:create");
   const canEdit = hasPermission("persons:update");
@@ -121,9 +122,12 @@ export function PersonsClient({
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => personsApi.delete(id),
-    onSuccess: () => {
+    onSuccess: async () => {
       setDeleteError(null);
-      void refetch();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["persons"] }),
+        queryClient.invalidateQueries({ queryKey: ["editorial"] }),
+      ]);
     },
     onError: () => setDeleteError(copy.deleteError),
     onSettled: () => setDeletingId(null),
