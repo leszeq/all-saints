@@ -17,8 +17,8 @@ interface PersonDatesSectionProps {
   retryCountries: () => void;
 }
 
-const numberOrNull = (value: string) => {
-  const normalized = value.trim();
+const numberOrNull = (value: unknown) => {
+  const normalized = String(value ?? "").trim();
   if (!normalized || normalized === "0") return null;
   const number = Number(normalized);
   return Number.isFinite(number) ? number : null;
