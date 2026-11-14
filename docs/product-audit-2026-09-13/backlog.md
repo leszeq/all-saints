@@ -221,8 +221,8 @@ Publikacja wymaga tekstów i licencji, ale nie wymaga źródła; can_publish ma 
 
 **Frontend**
 
-- [ ] Kolejka i detail: ten sam zestaw blockerów, odnośnik do sekcji Źródła.
-- [ ] React Query invalidation quality/person po przypisaniu.
+- [x] Kolejka i panel szczegółów: ten sam zestaw typed blockerów, odnośnik do sekcji Źródła.
+- [x] React Query invalidation quality/person po przypisaniu — edytor źródeł unieważnia `person/{id}` i `editorial`.
 
 **Tests**
 
