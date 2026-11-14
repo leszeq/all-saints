@@ -383,7 +383,8 @@ Brak kompletnego canonical/sitemap/robots; profil może działać pod slug i UUI
 
 - [x] Backend: brak draftów w indeksie.
 - [x] Frontend: absolutne canonical/OG.
-- [ ] E2E crawler fixture: brak pętli redirect, sitemap zawiera canonical i poprawne statusy, publikacja/usunięcie odświeża indeks.
+- [x] E2E crawler fixture: robots, sitemap, canonical profilu i wejście przez UUID są sprawdzane na publicznym fixture.
+- [ ] E2E lifecycle: publikacja i usunięcie odświeżają sitemapę bez pętli redirectów.
 
 **Infrastructure**
 
