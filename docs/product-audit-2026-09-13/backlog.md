@@ -377,7 +377,7 @@ Brak kompletnego canonical/sitemap/robots; profil może działać pod slug i UUI
 - [x] BreadcrumbList.
 - [x] noindex wyników wyszukiwania, filtrów i paginacji.
 - [x] polityka indeksowania stron tematycznych: strony bazowe i profile pojęć są indeksowalne, a warianty katalogów oraz paginacji są tylko do śledzenia.
-- [ ] state URL.
+- [x] state URL: filtry, paginacja i reset katalogu świętych zachowują stan w adresie i są odtwarzalne przez link/back-forward.
 
 **Tests**
 

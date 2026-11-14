@@ -19,6 +19,7 @@ import { highlightSearchText } from "@/lib/search-highlight";
 import type { ReligiousOrder } from "@/lib/orders";
 import { stripMarkdown } from "@/components/markdown-content";
 import { directoryRobots, type DirectorySearchParams } from "@/lib/directory-metadata";
+import { buildSaintsDirectoryHref } from "@/lib/directory-state";
 
 export const revalidate = 30;
 
@@ -93,52 +94,6 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
     alternates: { canonical: "/swieci" },
     robots: directoryRobots(params),
   };
-}
-
-function buildDirectoryHref({
-  search,
-  typeFilters,
-  genderFilters,
-  periodFilters,
-  eraFilters,
-  patronageFilters,
-  orderId,
-  occupationId,
-  birthCountryId,
-  deathCountryId,
-  nationalityId,
-  page,
-}: {
-  search: string;
-  typeFilters: string[];
-  genderFilters: string[];
-  periodFilters: string[];
-  eraFilters: string[];
-  patronageFilters: string[];
-  orderId?: string;
-  occupationId?: string;
-  birthCountryId?: string;
-  deathCountryId?: string;
-  nationalityId?: string;
-  page?: number;
-}) {
-  const query = new URLSearchParams();
-
-  if (search) query.set("search", search);
-  typeFilters.forEach((value) => query.append("type", value));
-  genderFilters.forEach((value) => query.append("gender", value));
-  periodFilters.forEach((value) => query.append("period", value));
-  eraFilters.forEach((value) => query.append("era", value));
-  patronageFilters.forEach((value) => query.append("patronage", value));
-  if (orderId) query.set("order_id", orderId);
-  if (occupationId) query.set("occupation_id", occupationId);
-  if (birthCountryId) query.set("birth_country_id", birthCountryId);
-  if (deathCountryId) query.set("death_country_id", deathCountryId);
-  if (nationalityId) query.set("nationality_id", nationalityId);
-  if (page && page > 1) query.set("page", String(page));
-
-  const serialized = query.toString();
-  return serialized ? `/swieci?${serialized}` : "/swieci";
 }
 
 function getPersonPatronages(person: Record<string, unknown>): PatronageRecord[] {
@@ -578,7 +533,7 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
               {copy.searchExamples.map((example) => (
                 <Link
                   key={example}
-                  href={buildDirectoryHref({
+                  href={buildSaintsDirectoryHref({
                     search: example,
                     typeFilters: [],
                     genderFilters: [],
@@ -592,7 +547,7 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
                 </Link>
               ))}
               <Link
-                href={buildDirectoryHref({
+                href={buildSaintsDirectoryHref({
                   search: "",
                   typeFilters,
                   genderFilters,
@@ -767,7 +722,7 @@ export default async function SaintsDirectoryPage({ searchParams }: PageProps) {
             return (
               <Link
                 key={pageNum}
-                href={buildDirectoryHref({
+                href={buildSaintsDirectoryHref({
                   search,
                   typeFilters,
                   genderFilters,
