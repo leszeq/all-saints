@@ -358,15 +358,15 @@ Brak kompletnego canonical/sitemap/robots; profil może działać pod slug i UUI
 
 **Backend**
 
-- [ ] GET /public-index/persons?cursor z lekkim PublicIndexItem(id,slug,updated_at).
-- [ ] tylko published. Obsługa aliasu sluga/redirect target.
-- [ ] nie używać pełnych biografii do sitemap.
+- [x] GET /public-index/persons?cursor z lekkim PublicIndexItem(id,slug,updated_at).
+- [x] tylko published. Obsługa aliasu sluga/redirect target.
+- [x] nie używać pełnych biografii do sitemap.
 
 **Database**
 
-- [ ] V1 bez nowych tabel.
-- [ ] v2 PersonSlugRedirect(old_slug UNIQUE,person_id,created_at), FK i indeks.
-- [ ] migration/backfill tylko przy udokumentowanej zmianie sluga.
+- [x] V1 bez nowych tabel dla samego indeksu publicznego.
+- [x] v2 PersonSlugRedirect(old_slug UNIQUE,person_id,created_at), FK i indeks.
+- [x] migration/backfill tylko przy udokumentowanej zmianie sluga.
 
 **Frontend**
 
@@ -381,7 +381,7 @@ Brak kompletnego canonical/sitemap/robots; profil może działać pod slug i UUI
 
 **Tests**
 
-- [ ] Backend: brak draftów w indeksie.
+- [x] Backend: brak draftów w indeksie.
 - [ ] Frontend: absolutne canonical/OG.
 - [ ] E2E crawler fixture: brak pętli redirect, sitemap zawiera canonical i poprawne statusy, publikacja/usunięcie odświeża indeks.
 

@@ -308,11 +308,11 @@ Techniczna: **5/10 (średnia)**; dane: **3/10**; utrzymanie: **3/10**. Są to ko
 
 **Backend — endpointy, serwisy, schemas, permissions**
 
-GET /public-index/persons?cursor z lekkim PublicIndexItem(id,slug,updated_at); tylko published. Obsługa aliasu sluga/redirect target; nie używać pełnych biografii do sitemap.
+GET /public-index/persons?cursor z lekkim PublicIndexItem(id,slug,updated_at); tylko published. Obsługa aliasu sluga/redirect target; nie używać pełnych biografii do sitemap. Test integracyjny obejmuje jednocześnie opublikowane rekordy, draft bez soft-delete oraz rekord usunięty.
 
 **Database — tabele, relacje, indeksy, migracje**
 
-V1 bez nowych tabel; v2 PersonSlugRedirect(old_slug UNIQUE,person_id,created_at), FK i indeks; migration/backfill tylko przy udokumentowanej zmianie sluga.
+V1 bez nowych tabel dla samego indeksu publicznego; v2 PersonSlugRedirect(old_slug UNIQUE,person_id,created_at), FK i indeks; migration/backfill tylko przy udokumentowanej zmianie sluga.
 
 **Frontend — strony, komponenty, stan, integracja API**
 
@@ -320,7 +320,7 @@ web metadataBase z env; canonical i OG; sitemap.ts / robots.ts; BreadcrumbList; 
 
 **Tests — backend, frontend, E2E**
 
-Backend: brak draftów w indeksie; Frontend: absolutne canonical/OG oraz test reguły robots dla bazowego katalogu, wyszukiwania, filtrów i paginacji; E2E crawler fixture: brak pętli redirect, sitemap zawiera canonical i poprawne statusy, publikacja/usunięcie odświeża indeks.
+Backend: brak draftów w indeksie (test obejmuje także rekord usunięty); Frontend: absolutne canonical/OG oraz test reguły robots dla bazowego katalogu, wyszukiwania, filtrów i paginacji; E2E crawler fixture: brak pętli redirect, sitemap zawiera canonical i poprawne statusy, publikacja/usunięcie odświeża indeks.
 
 **Infrastructure**
 

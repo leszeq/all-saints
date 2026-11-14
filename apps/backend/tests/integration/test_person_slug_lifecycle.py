@@ -135,9 +135,12 @@ async def test_public_person_index_is_published_only_and_cursor_paginated(
     first = await service.create_person(PersonCreateSchema(canonical_name="Św. Indeks Pierwszy"))
     second = await service.create_person(PersonCreateSchema(canonical_name="Św. Indeks Drugi"))
     draft = await service.create_person(PersonCreateSchema(canonical_name="Szkic Poza Indeksem"))
+    deleted_draft = await service.create_person(
+        PersonCreateSchema(canonical_name="Usunięty Szkic Poza Indeksem")
+    )
     for person in (first, second):
         person.status = PublicationStatus.PUBLISHED.value
-    draft.deleted_at = datetime.now(UTC)
+    deleted_draft.deleted_at = datetime.now(UTC)
     await db_session.commit()
 
     first_page = await async_client.get("/api/v1/public-index/persons", params={"limit": 1})
@@ -156,6 +159,10 @@ async def test_public_person_index_is_published_only_and_cursor_paginated(
     assert {first_data["items"][0]["slug"], second_data["items"][0]["slug"]} == {
         first.slug,
         second.slug,
+    }
+    assert draft.slug not in {item["slug"] for item in first_data["items"] + second_data["items"]}
+    assert deleted_draft.slug not in {
+        item["slug"] for item in first_data["items"] + second_data["items"]
     }
     assert second_data["next_cursor"] is None
 
