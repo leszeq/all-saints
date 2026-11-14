@@ -117,6 +117,8 @@ class PersonProfileExportService:
                     {
                         "canonization_date": person.canonization.canonization_date,
                         "canonization_year": person.canonization.canonization_year,
+                        "authority": person.canonization.authority,
+                        "notes": person.canonization.notes,
                     }
                     if person.canonization is not None
                     else None

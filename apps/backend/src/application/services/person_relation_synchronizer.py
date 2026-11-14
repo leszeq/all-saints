@@ -144,7 +144,12 @@ class PersonRelationSynchronizer:
             select(Canonization).where(Canonization.person_id == person.id)
         )
         current = result.scalar_one_or_none()
-        if data is None or not (data.canonization_date or data.canonization_year):
+        if data is None or not (
+            data.canonization_date
+            or data.canonization_year
+            or data.authority
+            or data.notes
+        ):
             if current is not None:
                 await self.db.delete(current)
             return
@@ -155,3 +160,5 @@ class PersonRelationSynchronizer:
             person.canonization = current
         current.canonization_date = data.canonization_date
         current.canonization_year = data.canonization_year
+        current.authority = data.authority
+        current.notes = data.notes

@@ -154,6 +154,8 @@ class PersonCanonizationSchema(BaseModel):
     id: uuid.UUID
     canonization_date: str | None = None
     canonization_year: int | None = None
+    authority: str | None = None
+    notes: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

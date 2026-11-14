@@ -1812,6 +1812,8 @@ const dictionary = {
       beatificationYearPlaceholder: "np. 1993",
       canonization: "Kanonizacja",
       canonizationYearPlaceholder: "np. 2000",
+      canonizationAuthority: "Władza kanonizująca / papież",
+      canonizationNotes: "Notatka dotycząca kanonizacji",
       exactDate: "Dokładna data",
       yearOnly: "Rok (gdy brak dokładnej daty)",
     },
@@ -2017,6 +2019,8 @@ const dictionary = {
       deathYear: "Rok śmierci",
       beatification: "Beatyfikacja",
       canonization: "Kanonizacja",
+      canonizationAuthority: "Władza kanonizująca / papież",
+      canonizationNotes: "Informacje o kanonizacji",
     },
     history: {
       titlePrefix: "Historia zmian",

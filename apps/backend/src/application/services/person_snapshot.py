@@ -93,6 +93,7 @@ CANONIZATION_FIELDS = (
     "pope_id",
     "canonization_date",
     "canonization_year",
+    "authority",
     "place_id",
     "decree_number",
     "acta_reference",

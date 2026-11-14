@@ -50,7 +50,6 @@ def test_profile_document_rejects_unknown_version_and_invalid_source_shape() -> 
                 "profile": {"canonical_name": "Św. Test"},
             }
         )
-
     with pytest.raises(ValidationError, match="bibliography"):
         PersonProfileDocument.model_validate(
             {
@@ -65,6 +64,28 @@ def test_profile_document_rejects_unknown_version_and_invalid_source_shape() -> 
             }
         )
 
+
+def test_profile_document_accepts_legacy_canonization_shape_and_normalizes_zero_year() -> None:
+    document = PersonProfileDocument.model_validate(
+        {
+            "profile": {
+                "canonical_name": "Św. Elżbieta Węgierska",
+                "canonization": {
+                    "date": "1235-05-27",
+                    "year": 0,
+                    "authority": "Papież Grzegorz IX",
+                    "notes": "Uroczysta kanonizacja odbyła się w Perugii.",
+                },
+            }
+        }
+    )
+
+    canonization = document.profile.canonization
+    assert canonization is not None
+    assert canonization.canonization_date == "1235-05-27"
+    assert canonization.canonization_year is None
+    assert canonization.authority == "Papież Grzegorz IX"
+    assert canonization.notes == "Uroczysta kanonizacja odbyła się w Perugii."
 
 def test_profile_portability_routes_are_exposed_in_openapi() -> None:
     paths = app.openapi()["paths"]

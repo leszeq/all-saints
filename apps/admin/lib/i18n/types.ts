@@ -1699,6 +1699,8 @@ export interface AdminDictionary {
       beatificationYearPlaceholder: string;
       canonization: string;
       canonizationYearPlaceholder: string;
+      canonizationAuthority: string;
+      canonizationNotes: string;
       exactDate: string;
       yearOnly: string;
     };
@@ -1904,6 +1906,8 @@ export interface AdminDictionary {
       deathYear: string;
       beatification: string;
       canonization: string;
+      canonizationAuthority: string;
+      canonizationNotes: string;
     };
     history: {
       titlePrefix: string;

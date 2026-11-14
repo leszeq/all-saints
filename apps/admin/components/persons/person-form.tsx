@@ -82,6 +82,8 @@ const TAB_BY_FIELD: Record<string, PersonFormTabId> = {
   beatification_year: "dates",
   canonization_date: "dates",
   canonization_year: "dates",
+  canonization_authority: "dates",
+  canonization_notes: "dates",
   summary_pl: "biography",
   biography_pl: "biography",
   change_summary: "biography",

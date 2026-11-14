@@ -32,6 +32,10 @@ export function EditPersonClient({ copy, domainCopy, locale }: EditPersonClientP
     enabled: canEdit && person?.status === "published",
   });
   const activeRevision = (revisionData?.data ?? null) as PublicationRevision | null;
+  const recognitionYearOrNull = (value: unknown) => {
+    const year = Number(value);
+    return Number.isInteger(year) && year > 0 ? year : null;
+  };
 
   if (!canEdit) {
     return (
@@ -120,9 +124,11 @@ export function EditPersonClient({ copy, domainCopy, locale }: EditPersonClientP
             birth_year: draftPerson.birth_year ?? null,
             death_year: draftPerson.death_year ?? null,
             beatification_date: draftPerson.beatification?.beatification_date ?? "",
-            beatification_year: draftPerson.beatification?.beatification_year ?? null,
+            beatification_year: recognitionYearOrNull(draftPerson.beatification?.beatification_year),
             canonization_date: draftPerson.canonization?.canonization_date ?? "",
-            canonization_year: draftPerson.canonization?.canonization_year ?? null,
+            canonization_year: recognitionYearOrNull(draftPerson.canonization?.canonization_year),
+            canonization_authority: draftPerson.canonization?.authority ?? "",
+            canonization_notes: draftPerson.canonization?.notes ?? "",
             birth_country_id: draftPerson.birth_country_id ?? null,
             death_country_id: draftPerson.death_country_id ?? null,
             state_of_life_id: draftPerson.state_of_life_id ?? null,

@@ -17,7 +17,12 @@ interface PersonDatesSectionProps {
   retryCountries: () => void;
 }
 
-const numberOrNull = (value: string) => value === "" ? null : Number(value);
+const numberOrNull = (value: string) => {
+  const normalized = value.trim();
+  if (!normalized || normalized === "0") return null;
+  const number = Number(normalized);
+  return Number.isFinite(number) ? number : null;
+};
 
 export function PersonDatesSection({
   copy,
@@ -105,9 +110,13 @@ export function PersonDatesSection({
         title={copy.canonization}
         dateField="canonization_date"
         yearField="canonization_year"
+        authorityField="canonization_authority"
+        notesField="canonization_notes"
         yearPlaceholder={copy.canonizationYearPlaceholder}
         exactDateLabel={copy.exactDate}
         yearOnlyLabel={copy.yearOnly}
+        authorityLabel={copy.canonizationAuthority}
+        notesLabel={copy.canonizationNotes}
         register={register}
       />
     </div>
@@ -142,9 +151,13 @@ interface MilestoneFieldsProps {
   title: string;
   dateField: "beatification_date" | "canonization_date";
   yearField: "beatification_year" | "canonization_year";
+  authorityField?: "canonization_authority";
+  notesField?: "canonization_notes";
   yearPlaceholder: string;
   exactDateLabel: string;
   yearOnlyLabel: string;
+  authorityLabel?: string;
+  notesLabel?: string;
   register: UseFormRegister<PersonFormData>;
 }
 
@@ -152,9 +165,13 @@ function MilestoneFields({
   title,
   dateField,
   yearField,
+  authorityField,
+  notesField,
   yearPlaceholder,
   exactDateLabel,
   yearOnlyLabel,
+  authorityLabel,
+  notesLabel,
   register,
 }: MilestoneFieldsProps) {
   return (
@@ -174,6 +191,27 @@ function MilestoneFields({
           placeholder={yearPlaceholder}
         />
       </div>
+      {authorityField && authorityLabel && (
+        <div>
+          <label htmlFor={personFieldId(authorityField)} className={PERSON_FORM_LABEL_CLASS}>{authorityLabel}</label>
+          <input
+            id={personFieldId(authorityField)}
+            {...register(authorityField)}
+            className={PERSON_FORM_INPUT_CLASS}
+          />
+        </div>
+      )}
+      {notesField && notesLabel && (
+        <div className="sm:col-span-2">
+          <label htmlFor={personFieldId(notesField)} className={PERSON_FORM_LABEL_CLASS}>{notesLabel}</label>
+          <textarea
+            id={personFieldId(notesField)}
+            {...register(notesField)}
+            rows={3}
+            className={PERSON_FORM_INPUT_CLASS}
+          />
+        </div>
+      )}
     </section>
   );
 }

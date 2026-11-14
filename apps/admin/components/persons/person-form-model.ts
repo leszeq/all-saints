@@ -49,6 +49,8 @@ export function createPersonSchema(copy: AdminPersonEditorDictionary["validation
   beatification_year: z.number().int().min(1).max(2100).optional().nullable(),
   canonization_date: z.string().optional(),
   canonization_year: z.number().int().min(1).max(2100).optional().nullable(),
+  canonization_authority: z.string().optional(),
+  canonization_notes: z.string().optional(),
   birth_country_id: z.string().optional().nullable(),
   death_country_id: z.string().optional().nullable(),
   state_of_life_id: z.string().optional().nullable(),
@@ -167,6 +169,8 @@ const PERSON_FORM_ONLY_FIELDS = [
   "beatification_year",
   "canonization_date",
   "canonization_year",
+  "canonization_authority",
+  "canonization_notes",
   "feast_calendar_code",
   "feast_month",
   "feast_day",
@@ -213,6 +217,8 @@ export function normalizePersonPayload(data: PersonFormData, isEdit: boolean) {
   const canonization = {
     canonization_date: optionalText(data.canonization_date),
     canonization_year: Number.isFinite(data.canonization_year) ? data.canonization_year : null,
+    authority: optionalText(data.canonization_authority),
+    notes: optionalText(data.canonization_notes),
   };
 
   return {

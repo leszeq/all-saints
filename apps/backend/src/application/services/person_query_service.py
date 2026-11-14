@@ -342,6 +342,8 @@ class _PublicCanonizationSnapshot:
     id: uuid.UUID
     canonization_date: str | None
     canonization_year: int | None
+    authority: str | None
+    notes: str | None
 
 
 def _public_person_projection(person: Person) -> Person:
@@ -852,19 +854,32 @@ class PersonQueryService:
             recognition_id = _revision_uuid(raw_recognition.get(id_field))
             recognition_date = raw_recognition.get(date_field)
             recognition_year = raw_recognition.get(year_field)
+            recognition_authority = raw_recognition.get("authority")
+            recognition_notes = raw_recognition.get("notes")
             if (
                 recognition_id is None
                 or (recognition_date is not None and not isinstance(recognition_date, str))
                 or (recognition_year is not None and not isinstance(recognition_year, int))
+                or (
+                    field_name == "canonization"
+                    and recognition_authority is not None
+                    and not isinstance(recognition_authority, str)
+                )
+                or (
+                    field_name == "canonization"
+                    and recognition_notes is not None
+                    and not isinstance(recognition_notes, str)
+                )
             ):
                 continue
-            projected.relation_overrides[field_name] = dto_type(
-                id=recognition_id,
-                **{
-                    date_field: recognition_date,
-                    year_field: recognition_year,
-                },
-            )
+            values: dict[str, object] = {
+                "id": recognition_id,
+                date_field: recognition_date,
+                year_field: recognition_year,
+            }
+            if field_name == "canonization":
+                values.update(authority=recognition_authority, notes=recognition_notes)
+            projected.relation_overrides[field_name] = dto_type(**values)
 
     @staticmethod
     def _apply_public_image_projection(projected: PublishedPersonProjection) -> None:

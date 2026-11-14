@@ -37,7 +37,12 @@ async def test_person_create_and_update_synchronize_editable_relations(
                     }
                 ],
                 "beatification": {"beatification_year": 2001},
-                "canonization": {"canonization_year": 2005},
+                "canonization": {
+                    "canonization_date": "2005-04-24",
+                    "canonization_year": 2005,
+                    "authority": "Papież Jan Paweł II",
+                    "notes": "Uroczystość na placu św. Piotra.",
+                },
             }
         )
     )
@@ -52,6 +57,9 @@ async def test_person_create_and_update_synchronize_editable_relations(
     assert person.beatification.beatification_year == 2001
     assert person.canonization is not None
     assert person.canonization.canonization_year == 2005
+    assert person.canonization.canonization_date == "2005-04-24"
+    assert person.canonization.authority == "Papież Jan Paweł II"
+    assert person.canonization.notes == "Uroczystość na placu św. Piotra."
 
     updated = await service.update_person(
         person,
@@ -68,7 +76,10 @@ async def test_person_create_and_update_synchronize_editable_relations(
                 ],
                 "patronages": [],
                 "beatification": None,
-                "canonization": {"canonization_year": 2006},
+                "canonization": {
+                    "canonization_year": 2006,
+                    "authority": "Papież Benedykt XVI",
+                },
                 "change_summary": "Aktualizacja relacji testowych",
             }
         ),
@@ -82,3 +93,4 @@ async def test_person_create_and_update_synchronize_editable_relations(
     assert updated.beatification is None
     assert updated.canonization is not None
     assert updated.canonization.canonization_year == 2006
+    assert updated.canonization.authority == "Papież Benedykt XVI"

@@ -818,6 +818,7 @@ class Canonization(BaseModel, Base):
     )
     canonization_date: Mapped[str | None] = mapped_column(String(50), nullable=True)
     canonization_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    authority: Mapped[str | None] = mapped_column(String(300), nullable=True)
     place_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("places.id", ondelete="SET NULL"),

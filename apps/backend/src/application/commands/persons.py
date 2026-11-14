@@ -9,7 +9,7 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
 from src.domain.hagiography.models import (
     Era,
@@ -35,6 +35,13 @@ OPTIONAL_UUID_FIELDS = (
 def _blank_as_none(value: object) -> object:
     """Treat blank HTML form values as an omitted optional field."""
     if isinstance(value, str) and not value.strip():
+        return None
+    return value
+
+
+def _zero_as_none(value: object) -> object:
+    """Treat empty numeric controls and legacy zero sentinels as omitted."""
+    if value in ("", "0", 0, 0.0):
         return None
     return value
 
@@ -95,16 +102,47 @@ class PersonBeatificationInputSchema(BaseModel):
     def normalize_date(cls, value: object) -> object:
         return _blank_as_none(value)
 
+    @field_validator("beatification_year", mode="before")
+    @classmethod
+    def normalize_year(cls, value: object) -> object:
+        return _zero_as_none(value)
+
 
 class PersonCanonizationInputSchema(BaseModel):
     """Editable canonization facts; partial dates may use the year only."""
 
-    canonization_date: str | None = Field(None, max_length=50)
-    canonization_year: int | None = Field(None, ge=1, le=2100)
+    canonization_date: str | None = Field(
+        None,
+        max_length=50,
+        validation_alias=AliasChoices("canonization_date", "date"),
+    )
+    canonization_year: int | None = Field(
+        None,
+        ge=1,
+        le=2100,
+        validation_alias=AliasChoices("canonization_year", "year"),
+    )
+    authority: str | None = Field(None, max_length=300)
+    notes: str | None = None
 
     @field_validator("canonization_date", mode="before")
     @classmethod
     def normalize_date(cls, value: object) -> object:
+        return _blank_as_none(value)
+
+    @field_validator("canonization_year", mode="before")
+    @classmethod
+    def normalize_year(cls, value: object) -> object:
+        return _zero_as_none(value)
+
+    @field_validator("authority", mode="before")
+    @classmethod
+    def normalize_authority(cls, value: object) -> object:
+        return _blank_as_none(value)
+
+    @field_validator("notes", mode="before")
+    @classmethod
+    def normalize_notes(cls, value: object) -> object:
         return _blank_as_none(value)
 
 

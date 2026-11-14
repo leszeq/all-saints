@@ -491,6 +491,16 @@ export function PersonDetailClient({
                     locale,
                   )}
                 </span>
+                {person.canonization?.authority && (
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    {copy.hagiographicMetadata.canonizationAuthority}: {person.canonization.authority}
+                  </span>
+                )}
+                {person.canonization?.notes && (
+                  <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                    {copy.hagiographicMetadata.canonizationNotes}: {person.canonization.notes}
+                  </span>
+                )}
               </div>
             </div>
           </div>
