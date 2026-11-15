@@ -320,7 +320,7 @@ web metadataBase z env; canonical i OG; sitemap.ts / robots.ts; BreadcrumbList; 
 
 **Tests — backend, frontend, E2E**
 
-Backend: brak draftów w indeksie (test obejmuje także rekord usunięty); Frontend: absolutne canonical/OG z `absoluteSiteUrl` oraz test reguły robots dla bazowego katalogu, wyszukiwania, filtrów i paginacji; E2E fixture sprawdza robots, sitemap, canonical profilu oraz wejście przez UUID, natomiast odświeżenie sitemap po publikacji/usunięciu pozostaje osobnym krokiem zależnym od invalidacji cache.
+Backend: brak draftów w indeksie (test obejmuje także rekord usunięty); Frontend: absolutne canonical/OG z `absoluteSiteUrl` oraz test reguły robots dla bazowego katalogu, wyszukiwania, filtrów i paginacji; E2E fixture sprawdza robots, sitemap, canonical profilu oraz wejście przez UUID, a osobny scenariusz cyklu życia potwierdza pojawienie się profilu po publikacji i usunięcie go po soft-delete. `apps/web/app/sitemap.ts` działa jako dynamiczna metadata route (`dynamic = "force-dynamic"`, `revalidate = 0`), więc zmiany publicznego indeksu są widoczne bez oczekiwania na wygasanie snapshotu.
 
 **Infrastructure**
 

@@ -2,6 +2,12 @@ import type { MetadataRoute } from "next";
 import { fetchOrders, fetchPublicPersonIndex } from "@/lib/api";
 import { absoluteSiteUrl } from "@/lib/site-url";
 
+// The public index changes when a profile is published or removed. Keep this
+// metadata route dynamic so crawlers see the current set of public profiles
+// without waiting for a build-time snapshot to expire.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 type SitemapPerson = {
   slug?: string;
   updated_at?: string;

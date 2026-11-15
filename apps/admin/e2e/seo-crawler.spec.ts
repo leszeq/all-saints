@@ -2,8 +2,24 @@ import { expect, test, type APIRequestContext } from "@playwright/test";
 
 const apiUrl = process.env.E2E_API_URL ?? "http://localhost:8000/api/v1";
 const webUrl = process.env.E2E_WEB_URL ?? "http://localhost:3001";
+const password = process.env.E2E_PASSWORD ?? "DemoE2E123!";
+
+const accounts = {
+  admin: process.env.E2E_ADMIN_EMAIL ?? "admin.test@encyklopedia.pl",
+  editor: process.env.E2E_EDITOR_EMAIL ?? "redaktor.test@encyklopedia.pl",
+  reviewer: process.env.E2E_REVIEWER_EMAIL ?? "recenzent.test@encyklopedia.pl",
+};
 
 type PublicIndexItem = {
+  id: string;
+  slug: string;
+};
+
+type LoginResponse = {
+  access_token: string;
+};
+
+type CreatedPerson = {
   id: string;
   slug: string;
 };
@@ -25,6 +41,27 @@ async function getFirstPublicPerson(request: APIRequestContext): Promise<PublicI
   expect(person, "fixture musi zawierać opublikowany profil").toBeTruthy();
   if (!person) throw new Error("Brak opublikowanego profilu w publicznym indeksie");
   return person;
+}
+
+async function loginAs(request: APIRequestContext, email: string): Promise<string> {
+  const response = await request.post(`${apiUrl}/auth/login`, {
+    data: { email, password },
+  });
+  expect(response.ok(), `Logowanie konta testowego ${email}`).toBeTruthy();
+  const payload = (await response.json()) as LoginResponse;
+  return payload.access_token;
+}
+
+function authorization(token: string) {
+  return { Authorization: `Bearer ${token}` };
+}
+
+async function sitemapHasProfile(request: APIRequestContext, slug: string): Promise<boolean> {
+  const response = await request.get(`${webUrl}/sitemap.xml`);
+  expect(response.status(), "sitemap powinien być dostępny").toBe(200);
+  const locations = sitemapLocations(await response.text());
+  const profilePath = `/swieci/${encodeURIComponent(slug)}`;
+  return locations.some((location) => new URL(location).pathname === profilePath);
 }
 
 test("crawler endpoints expose one canonical public profile URL", async ({ page, request }) => {
@@ -55,4 +92,77 @@ test("crawler endpoints expose one canonical public profile URL", async ({ page,
   const uuidResponse = await page.goto(`${webUrl}/swieci/${person.id}`);
   expect(uuidResponse?.status()).toBe(200);
   await expect(page).toHaveURL(new URL(profilePath, webUrl).toString());
+});
+
+test("publikacja i usunięcie profilu odświeżają sitemapę", async ({ request }) => {
+  const editorToken = await loginAs(request, accounts.editor);
+  const reviewerToken = await loginAs(request, accounts.reviewer);
+  const uniqueSuffix = `${Date.now()}-${test.info().workerIndex}`;
+  let person: CreatedPerson | null = null;
+
+  try {
+    const createResponse = await request.post(`${apiUrl}/persons`, {
+      headers: authorization(editorToken),
+      data: {
+        canonical_name: `Św. Sitemap E2E ${uniqueSuffix}`,
+        person_type: "saint",
+        status: "draft",
+        gender: "unknown",
+        summary_pl: "Profil techniczny do sprawdzenia odświeżania sitemap.",
+        biography_pl: "Profil techniczny do sprawdzenia cyklu publikacji i usunięcia.",
+      },
+    });
+    expect(createResponse.status()).toBe(201);
+    person = (await createResponse.json()) as CreatedPerson;
+
+    await expect.poll(() => sitemapHasProfile(request, person!.slug)).toBe(false);
+
+    const reviewResponse = await request.post(
+      `${apiUrl}/editorial/queue/${person.id}/transition`,
+      {
+        headers: authorization(editorToken),
+        data: { target_status: "review", expected_version: 1 },
+      },
+    );
+    expect(reviewResponse.status()).toBe(200);
+
+    const sourceResponse = await request.post(`${apiUrl}/sources/person-links/${person.id}/web`, {
+      headers: authorization(editorToken),
+      data: {
+        title: "Źródło testowego profilu sitemap",
+        url: `https://example.test/sitemap/${uniqueSuffix}`,
+        is_primary: true,
+      },
+    });
+    expect(sourceResponse.status()).toBe(201);
+
+    const publishResponse = await request.post(
+      `${apiUrl}/editorial/queue/${person.id}/transition`,
+      {
+        headers: authorization(reviewerToken),
+        data: { target_status: "published", expected_version: 3 },
+      },
+    );
+    expect(publishResponse.status()).toBe(200);
+
+    await expect.poll(() => sitemapHasProfile(request, person!.slug)).toBe(true);
+
+    const adminToken = await loginAs(request, accounts.admin);
+    const deleteResponse = await request.delete(`${apiUrl}/persons/${person.id}`, {
+      headers: authorization(adminToken),
+    });
+    expect(deleteResponse.status()).toBe(204);
+    const deletedSlug = person.slug;
+    person = null;
+
+    await expect.poll(() => sitemapHasProfile(request, deletedSlug)).toBe(false);
+  } finally {
+    if (person) {
+      const adminToken = await loginAs(request, accounts.admin);
+      const cleanupResponse = await request.delete(`${apiUrl}/persons/${person.id}`, {
+        headers: authorization(adminToken),
+      });
+      expect(cleanupResponse.status()).toBe(204);
+    }
+  }
 });
