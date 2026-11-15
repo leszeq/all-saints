@@ -47,8 +47,9 @@ const dictionary = {
   },
   footer: {
     description:
-      "Redakcyjna baza wiedzy o życiu, kulcie i dziedzictwie świętych. Każdy profil powstaje na podstawie udokumentowanych źródeł.",
-    disclaimer: "Portal ma charakter informacyjno-edukacyjny.",
+      "Redakcyjna baza wiedzy o życiu, kulcie i dziedzictwie świętych. Profile są opracowywane na podstawie dostępnych materiałów, a przypisane źródła pokazujemy przy konkretnym wpisie.",
+    disclaimer:
+      "Portal ma charakter informacyjno-edukacyjny. Zakres udokumentowania może różnić się między profilami — sprawdź źródła i informacje redakcyjne przy wybranym wpisie.",
     groups: [
       {
         title: "Odkrywaj",
