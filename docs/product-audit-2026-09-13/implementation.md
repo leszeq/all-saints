@@ -41,7 +41,7 @@ Bez migracji w minimum; jeśli dodajemy last_reviewed_at, przechowywać zdarzeni
 
 **Frontend — strony, komponenty, stan, integracja API**
 
-Homepage używa jawnego statusu `published` zamiast historycznej nazwy `verified`, a copy metodologii rozdziela decyzję redakcyjną o publikacji od potwierdzenia każdej tezy i nie obiecuje NLP. Footer opisuje dostępne materiały oraz różny zakres udokumentowania profili bez deklarowania źródeł dla każdego wpisu. Pozostaje przegląd kontrolek topbara admina. State: brak nowego globalnego store.
+Homepage używa jawnego statusu `published` zamiast historycznej nazwy `verified`, a copy metodologii rozdziela decyzję redakcyjną o publikacji od potwierdzenia każdej tezy i nie obiecuje NLP. Footer opisuje dostępne materiały oraz różny zakres udokumentowania profili bez deklarowania źródeł dla każdego wpisu. Topbar admina prowadzi semantycznym linkiem do listy osób i nie pokazuje nieaktywnej kontrolki powiadomień. State: brak nowego globalnego store.
 
 **Tests — backend, frontend, E2E**
 

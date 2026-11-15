@@ -54,6 +54,22 @@ test("redaktor loguje się do panelu administracyjnego", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Pulpit redakcyjny" })).toBeVisible();
 });
 
+test("topbar prowadzi do listy osób bez pustych kontrolek", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByLabel("Adres e-mail").fill(accounts.editor);
+  await page.locator("#password").fill(password);
+  await page.getByRole("button", { name: "Zaloguj się" }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+
+  const peopleLink = page.getByRole("link", { name: "Otwórz listę osób i świętych" });
+  await expect(peopleLink).toHaveAttribute("href", "/dashboard/persons");
+  await expect(peopleLink).toContainText("Osoby i święci");
+  await expect(page.getByRole("button", { name: "Powiadomienia" })).toHaveCount(0);
+
+  await peopleLink.click();
+  await expect(page).toHaveURL(/\/dashboard\/persons$/);
+});
+
 test("błędy walidacji logowania są powiązane z polami", async ({ page }) => {
   await page.goto("/login");
   await page.getByRole("button", { name: "Zaloguj się" }).click();

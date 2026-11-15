@@ -93,7 +93,7 @@ Homepage przypisuje wszystkim kartom verified, obiecuje NLP i przypisy do inform
 
 - [x] apps/web/app/page.tsx i słownik pl: status karty nazywa się „Opublikowany”, a copy metodologii rozdziela publikację od potwierdzenia każdej tezy i nie obiecuje NLP.
 - [x] footer: opisuje dostępne materiały i zakres udokumentowania bez deklarowania źródeł dla każdego profilu.
-- [ ] topbar admin: link do listy osób zamiast pustego search, ukryć nieaktywny dzwonek. State: brak nowego globalnego store.
+- [x] topbar admin: semantyczny link do listy osób zamiast pustego search, bez nieaktywnego dzwonka. State: brak nowego globalnego store.
 
 **Tests**
 

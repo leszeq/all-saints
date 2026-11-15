@@ -268,10 +268,9 @@ const dictionary = {
     },
   },
   topbar: {
-    globalSearchAriaLabel: "Otwórz wyszukiwanie globalne",
-    globalSearchPlaceholder: "Szukaj w panelu…",
+    peopleDirectoryAriaLabel: "Otwórz listę osób i świętych",
+    peopleDirectoryLabel: "Osoby i święci",
     changeThemeAriaLabel: "Zmień motyw",
-    notificationsAriaLabel: "Powiadomienia",
     userFallback: "Użytkownik",
     noRoleFallback: "Brak roli",
     roleLabels: {

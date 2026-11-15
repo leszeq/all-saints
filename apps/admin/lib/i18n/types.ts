@@ -301,10 +301,9 @@ export interface AdminDictionary {
     };
   };
   topbar: {
-    globalSearchAriaLabel: string;
-    globalSearchPlaceholder: string;
+    peopleDirectoryAriaLabel: string;
+    peopleDirectoryLabel: string;
     changeThemeAriaLabel: string;
-    notificationsAriaLabel: string;
     userFallback: string;
     noRoleFallback: string;
     roleLabels: Record<AdminSystemRoleKey, string>;
