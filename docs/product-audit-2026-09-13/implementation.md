@@ -265,7 +265,7 @@ Profil swieci/[slug]: wspólny serializeJsonLd neutralizujący < do sekwencji Un
 
 **Tests — backend, frontend, E2E**
 
-Backend: bez nowych testów gdy kontrakt bez zmian; Frontend: payload zawierający zamknięcie script, Unicode i cudzysłowy; E2E na fixture izolowanym: jedno script JSON-LD, brak dodatkowego elementu/wykonania.
+Backend: bez nowych testów gdy kontrakt bez zmian; Frontend: payload zawierający zamknięcie script, Unicode i cudzysłowy; E2E na izolowanym profilu sprawdza jeden blok JSON-LD, parsowanie oryginalnej treści oraz brak dodatkowego elementu i wykonania sondy skryptowej.
 
 **Infrastructure**
 

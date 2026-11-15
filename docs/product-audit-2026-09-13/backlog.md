@@ -37,7 +37,7 @@ JSON.stringify w script dangerouslySetInnerHTML nie neutralizuje zamknięcia zna
 
 - [ ] Backend: bez nowych testów gdy kontrakt bez zmian.
 - [x] Frontend: payload zawierający zamknięcie script, Unicode i cudzysłowy.
-- [ ] E2E na fixture izolowanym: jedno script JSON-LD, brak dodatkowego elementu/wykonania.
+- [x] E2E na fixture izolowanym: jedno script JSON-LD, parsowalny payload i brak dodatkowego elementu/wykonania.
 
 **Infrastructure**
 

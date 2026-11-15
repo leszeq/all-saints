@@ -166,3 +166,81 @@ test("publikacja i usunięcie profilu odświeżają sitemapę", async ({ request
     }
   }
 });
+
+test("profil osadza jeden bezpieczny i parsowalny blok JSON-LD", async ({ page, request }) => {
+  const editorToken = await loginAs(request, accounts.editor);
+  const reviewerToken = await loginAs(request, accounts.reviewer);
+  const uniqueSuffix = `${Date.now()}-${test.info().workerIndex}`;
+  const maliciousSummary =
+    `Opis profilu ${uniqueSuffix} </script><script>window.jsonLdProbe=(window.jsonLdProbe||0)+1</script>`;
+  let person: CreatedPerson | null = null;
+
+  await page.addInitScript(() => {
+    (window as Window & { jsonLdProbe?: number }).jsonLdProbe = 0;
+  });
+
+  try {
+    const createResponse = await request.post(`${apiUrl}/persons`, {
+      headers: authorization(editorToken),
+      data: {
+        canonical_name: `Św. JSON-LD E2E ${uniqueSuffix}`,
+        person_type: "saint",
+        status: "draft",
+        gender: "unknown",
+        summary_pl: maliciousSummary,
+        biography_pl: "Profil techniczny do sprawdzenia bezpiecznego JSON-LD.",
+      },
+    });
+    expect(createResponse.status()).toBe(201);
+    person = (await createResponse.json()) as CreatedPerson;
+
+    const reviewResponse = await request.post(
+      `${apiUrl}/editorial/queue/${person.id}/transition`,
+      {
+        headers: authorization(editorToken),
+        data: { target_status: "review", expected_version: 1 },
+      },
+    );
+    expect(reviewResponse.status()).toBe(200);
+
+    const sourceResponse = await request.post(`${apiUrl}/sources/person-links/${person.id}/web`, {
+      headers: authorization(editorToken),
+      data: {
+        title: "Źródło testowego profilu JSON-LD",
+        url: `https://example.test/json-ld/${uniqueSuffix}`,
+        is_primary: true,
+      },
+    });
+    expect(sourceResponse.status()).toBe(201);
+
+    const publishResponse = await request.post(
+      `${apiUrl}/editorial/queue/${person.id}/transition`,
+      {
+        headers: authorization(reviewerToken),
+        data: { target_status: "published", expected_version: 3 },
+      },
+    );
+    expect(publishResponse.status()).toBe(200);
+
+    await page.goto(`${webUrl}/swieci/${person.slug}`);
+    const jsonLdScript = page.locator('script[type="application/ld+json"]');
+    await expect(jsonLdScript).toHaveCount(1);
+
+    const serialized = await jsonLdScript.textContent();
+    expect(serialized).toBeTruthy();
+    expect(serialized).not.toContain("</script>");
+    const parsed = JSON.parse(serialized ?? "null") as {
+      "@graph"?: Array<{ description?: string }>;
+    };
+    expect(parsed["@graph"]?.[0]?.description).toBe(maliciousSummary);
+    expect(await page.evaluate(() => (window as Window & { jsonLdProbe?: number }).jsonLdProbe)).toBe(0);
+  } finally {
+    if (person) {
+      const adminToken = await loginAs(request, accounts.admin);
+      const cleanupResponse = await request.delete(`${apiUrl}/persons/${person.id}`, {
+        headers: authorization(adminToken),
+      });
+      expect(cleanupResponse.status()).toBe(204);
+    }
+  }
+});
