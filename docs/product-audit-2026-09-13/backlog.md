@@ -91,7 +91,7 @@ Homepage przypisuje wszystkim kartom verified, obiecuje NLP i przypisy do inform
 
 **Frontend**
 
-- [ ] apps/web/app/page.tsx i słownik pl: poprawić verified/NLP/metodologię.
+- [x] apps/web/app/page.tsx i słownik pl: status karty nazywa się „Opublikowany”, a copy metodologii rozdziela publikację od potwierdzenia każdej tezy i nie obiecuje NLP.
 - [ ] footer: usunąć nieudowodnione zapewnienia.
 - [ ] topbar admin: link do listy osób zamiast pustego search, ukryć nieaktywny dzwonek. State: brak nowego globalnego store.
 

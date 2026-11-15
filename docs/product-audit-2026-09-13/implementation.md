@@ -41,7 +41,7 @@ Bez migracji w minimum; jeśli dodajemy last_reviewed_at, przechowywać zdarzeni
 
 **Frontend — strony, komponenty, stan, integracja API**
 
-apps/web/app/page.tsx i słownik pl: poprawić verified/NLP/metodologię; footer: usunąć nieudowodnione zapewnienia; topbar admin: link do listy osób zamiast pustego search, ukryć nieaktywny dzwonek. State: brak nowego globalnego store.
+Homepage używa jawnego statusu `published` zamiast historycznej nazwy `verified`, a copy metodologii rozdziela decyzję redakcyjną o publikacji od potwierdzenia każdej tezy i nie obiecuje NLP. Pozostają: usunięcie nieudowodnionych zapewnień w footerze oraz przegląd kontrolek topbara admina. State: brak nowego globalnego store.
 
 **Tests — backend, frontend, E2E**
 

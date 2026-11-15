@@ -223,7 +223,7 @@ export default async function HomePage() {
           <div className="mt-9 grid gap-5 md:grid-cols-3">
             {recentlyUpdated.map((person) => (
               <Link key={person.id} href={`/swieci/${person.slug}`} className="surface-card group flex min-h-72 flex-col p-6 transition-transform hover:-translate-y-1">
-                <div className="flex items-start justify-between gap-4"><SaintAvatar name={person.name} avatar={person.avatar} className="h-16 w-16 text-lg" /><span className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-700">{copy.verified}</span></div>
+                <div className="flex items-start justify-between gap-4"><SaintAvatar name={person.name} avatar={person.avatar} className="h-16 w-16 text-lg" /><span className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-700">{copy.published}</span></div>
                 <div className="mt-auto pt-12"><p className="text-xs text-gold-800">{person.years}</p><h3 className="mt-2 font-serif text-2xl font-semibold text-charcoal group-hover:text-burgundy-700">{person.name}</h3><p className="mt-3 line-clamp-3 text-sm leading-6 text-stone-600">{person.summary}</p></div>
               </Link>
             ))}

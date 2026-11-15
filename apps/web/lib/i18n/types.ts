@@ -195,7 +195,7 @@ export interface WebDictionary {
     editorialKicker: string;
     recentTitle: string;
     allProfiles: string;
-    verified: string;
+    published: string;
     datesPending: string;
     profilePending: string;
     recentEmpty: string;

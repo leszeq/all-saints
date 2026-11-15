@@ -209,7 +209,7 @@ const dictionary = {
     projectAriaLabel: "O projekcie",
     projectTitle: "Wiedza budowana źródło po źródle.",
     projectDescription:
-      "Profile są porządkowane przez redakcję, a przypisane źródła pokazujemy bezpośrednio przy opracowaniu.",
+      "Profile są publikowane po decyzji redakcyjnej, a przypisane źródła pokazujemy bezpośrednio przy opracowaniu.",
     peopleStat: "opracowanych postaci",
     sourcesStat: "przypisanych źródeł",
     featuredCommemoration: "Główne wspomnienie",
@@ -240,13 +240,13 @@ const dictionary = {
     editorialKicker: "Praca redakcji",
     recentTitle: "Ostatnio opracowane",
     allProfiles: "Wszystkie profile",
-    verified: "Opublikowany",
+    published: "Opublikowany",
     datesPending: "Daty w opracowaniu",
     profilePending: "Profil jest obecnie opracowywany przez redakcję.",
     recentEmpty: "Brak opublikowanych profili do wyświetlenia.",
     methodologyKicker: "Metodologia",
     methodologyDescription:
-      "Profile pokazują informacje biograficzne oraz przypisane do nich źródła. Zakres opracowania zależy od dostępnych materiałów.",
+      "Publikacja oznacza decyzję redakcyjną o udostępnieniu profilu. Źródła wskazują podstawę opracowania, ale nie są automatycznym potwierdzeniem każdej tezy; zakres zależy od dostępnych materiałów.",
     methodologyAction: "Rozpocznij odkrywanie",
   },
   calendar: {
